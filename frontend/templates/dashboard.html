@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operations Dashboard | FieldCRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    {% set role = current_user.role if current_user else "Loan Officer" %}
+    <div class="app-shell" data-user-role="{{ role }}">
+        <header class="topbar">
+            <div class="brand-block">
+                <span class="brand-mark">FieldCRM</span>
+                <span class="brand-subtitle">Loan document operations</span>
+            </div>
+            <nav class="nav-links" aria-label="Primary">
+                <a href="/dashboard" class="nav-link active">Dashboard</a>
+                {% if role in ["Branch Manager", "Credit Officer", "Auditor", "System Admin"] %}
+                <a href="/borrowers" id="navBorrowers" class="nav-link">Current Loans</a>
+                {% endif %}
+                <a href="/pipeline" id="navPipeline" class="nav-link">Pipeline</a>
+                {% if role == "System Admin" %}
+                <a href="/audit" id="navAudit" class="nav-link">Audit</a>
+                {% endif %}
+                <a href="/logout" class="nav-link">Logout</a>
+            </nav>
+        </header>
+
+        <main class="{% if role == 'Loan Officer' %}loan-officer-view{% endif %}">
+            <section class="work-header" aria-labelledby="dashboardTitle">
+                <div>
+                    <div class="eyebrow">Single role dashboard</div>
+                    <h1 id="dashboardTitle">{{ role }} workspace</h1>
+                    <p>
+                        Complete loan forms by digital entry or upload, review OCR extraction, verify documents,
+                        and clear approval gates from one operational screen.
+                    </p>
+                </div>
+                <aside class="operator-card" aria-label="Signed in user">
+                    <span class="operator-label">Signed in</span>
+                    <strong>{{ current_user.name if current_user else "Demo User" }}</strong>
+                    <span>{{ role }}</span>
+                </aside>
+            </section>
+
+            <section class="metrics-grid" aria-label="Workflow summary">
+                <article class="metric-card" id="metricPortfolio">
+                    <span class="metric-title">Ready For Action</span>
+                    <strong class="metric-value">
+                        {% if role == "Loan Officer" %}7{% elif role == "Branch Manager" %}4{% elif role == "Credit Officer" %}5{% elif role == "Auditor" %}6{% else %}9{% endif %}
+                    </strong>
+                    <span class="metric-trend">Assigned to {{ role }}</span>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-title">OCR Exceptions</span>
+                    <strong class="metric-value">12</strong>
+                    <span class="metric-trend warning">Low confidence or missing critical fields</span>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-title">Document Gaps</span>
+                    <strong class="metric-value">18</strong>
+                    <span class="metric-trend danger">Required files before final approval</span>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-title">Approval Readiness</span>
+                    <strong class="metric-value">64%</strong>
+                    <span class="metric-trend positive">Forms, signatures, consents, verification</span>
+                </article>
+            </section>
+
+            <div class="dashboard-layout">
+                <section class="panel primary-panel" aria-labelledby="roleQueueTitle">
+                    <div class="panel-header">
+                        <div>
+                            <span class="section-kicker">Role queue</span>
+                            <h2 id="roleQueueTitle">Work requiring your review</h2>
+                        </div>
+                        <a class="btn btn-secondary" href="/pipeline">Open Pipeline</a>
+                    </div>
+
+                    <div class="queue-list">
+                        {% if role == "Loan Officer" %}
+                        <article class="queue-item">
+                            <div>
+                                <strong>Grace Omowunmi - Loan Application Form</strong>
+                                <span>Missing spouse consent, applicant signature, and bank statement upload.</span>
+                            </div>
+                            <span class="status-pill missing">Missing</span>
+                        </article>
+                        <article class="queue-item">
+                            <div>
+                                <strong>Ibrahim Musa - Uploaded Guarantors Form</strong>
+                                <span>OCR found BVN and phone number. Guarantor signature is unreadable.</span>
+                            </div>
+                            <span class="status-pill low">Low Confidence</span>
+                        </article>
+                        <article class="queue-item">
+                            <div>
+                                <strong>Visitation Report</strong>
+                                <span>Premises description, landmark, and account officer signature are pending.</span>
+                            </div>
+                            <span class="status-pill review">Needs Review</span>
+                        </article>
+                        {% elif role == "Branch Manager" %}
+                        <article class="queue-item">
+                            <div>
+                                <strong>Branch signoff pending</strong>
+                                <span>Two applications have completed officer verification and need signoff.</span>
+                            </div>
+                            <span class="status-pill review">Needs Review</span>
+                        </article>
+                        <article class="queue-item">
+                            <div>
+                                <strong>Document exception review</strong>
+                                <span>Business address proof does not match visitation report location.</span>
+                            </div>
+                            <span class="status-pill low">Low Confidence</span>
+                        </article>
+                        {% elif role == "Credit Officer" %}
+                        <article class="queue-item">
+                            <div>
+                                <strong>Collateral and pledge review</strong>
+                                <span>Pledged stock schedule needs valuation evidence and purchase invoices.</span>
+                            </div>
+                            <span class="status-pill missing">Missing</span>
+                        </article>
+                        <article class="queue-item">
+                            <div>
+                                <strong>Guarantor strength check</strong>
+                                <span>Maximum guarantee amount conflicts with loan amount and cheque number.</span>
+                            </div>
+                            <span class="status-pill review">Needs Review</span>
+                        </article>
+                        {% elif role == "Auditor" %}
+                        <article class="queue-item">
+                            <div>
+                                <strong>Consent verification</strong>
+                                <span>Credit bureau consent, cheque authorization, and GSI mandate require confirmation.</span>
+                            </div>
+                            <span class="status-pill review">Needs Review</span>
+                        </article>
+                        <article class="queue-item">
+                            <div>
+                                <strong>Audit trail inspection</strong>
+                                <span>Review OCR corrections and officer approvals before compliance pass.</span>
+                            </div>
+                            <span class="status-pill verified">Verified</span>
+                        </article>
+                        {% else %}
+                        <article class="queue-item">
+                            <div>
+                                <strong>Final approval readiness</strong>
+                                <span>Committee vote record and disbursement gate are waiting on final document checks.</span>
+                            </div>
+                            <span class="status-pill review">Needs Review</span>
+                        </article>
+                        <article class="queue-item">
+                            <div>
+                                <strong>Role and user oversight</strong>
+                                <span>Confirm active workflow owners for returned and escalated applications.</span>
+                            </div>
+                            <span class="status-pill verified">Verified</span>
+                        </article>
+                        {% endif %}
+                    </div>
+                </section>
+
+                <aside class="panel readiness-panel" aria-labelledby="readinessTitle">
+                    <div class="panel-header compact">
+                        <div>
+                            <span class="section-kicker">Approval gate</span>
+                            <h2 id="readinessTitle">Final readiness</h2>
+                        </div>
+                    </div>
+                    <ol class="readiness-list">
+                        <li class="complete"><span>Required forms completed</span><strong>2 / 3</strong></li>
+                        <li class="blocked"><span>Mandatory documents attached</span><strong>11 / 18</strong></li>
+                        <li class="blocked"><span>Critical OCR values confirmed</span><strong>7 / 12</strong></li>
+                        <li class="complete"><span>Declarations and consents accepted</span><strong>3 / 3</strong></li>
+                        <li class="blocked"><span>Officer verification and manager signoff</span><strong>1 / 2</strong></li>
+                    </ol>
+                    <button class="btn btn-disabled" type="button" disabled>Final Approval Locked</button>
+                </aside>
+            </div>
+
+            {% if role == "Loan Officer" %}
+            <section class="form-workbench" aria-labelledby="formsTitle">
+                <div class="panel-header">
+                    <div>
+                        <span class="section-kicker">Digital entry + upload</span>
+                        <h2 id="formsTitle">Loan form workbench</h2>
+                    </div>
+                    <button class="btn btn-primary" type="button" onclick="openFirstForm()">Start Form Capture</button>
+                </div>
+
+                <div class="form-grid">
+                    <article class="form-card" id="loanApplicationCard" data-form-type="loan_application">
+                        <div class="form-card-header">
+                            <span class="form-type required">Required</span>
+                            <span class="status-pill missing">Missing Fields</span>
+                        </div>
+                        <h3>Loan Application Form</h3>
+                        <p>Applicant details, BVN, loan terms, collateral, disbursement account, consents, signature, and date.</p>
+                        <div class="choice-row" role="group" aria-label="Loan Application Form actions">
+                            <button class="choice-btn active" type="button" data-form-choice="manual">Fill Form in App</button>
+                            <button class="choice-btn" type="button" data-form-choice="upload">Upload Completed Form</button>
+                        </div>
+                    </article>
+
+                    <article class="form-card" data-form-type="guarantor">
+                        <div class="form-card-header">
+                            <span class="form-type">Per guarantor</span>
+                            <span class="status-pill low">OCR Review</span>
+                        </div>
+                        <h3>Guarantors Form</h3>
+                        <p>Identity, BVN, employment, declaration, maximum guarantee amount, cheque number, pledged items, and witness.</p>
+                        <div class="choice-row" role="group" aria-label="Guarantors Form actions">
+                            <button class="choice-btn active" type="button" data-form-choice="manual">Fill Form in App</button>
+                            <button class="choice-btn" type="button" data-form-choice="upload">Upload Completed Form</button>
+                        </div>
+                    </article>
+
+                    <article class="form-card" data-form-type="pledge_trust_receipt">
+                        <div class="form-card-header">
+                            <span class="form-type">When pledged</span>
+                            <span class="status-pill review">Needs Review</span>
+                        </div>
+                        <h3>Pledge and Trust Receipt</h3>
+                        <p>Facility amount, pledged goods or assets, schedule, quantity, estimated value, borrower and witness signatures.</p>
+                        <div class="choice-row" role="group" aria-label="Pledge and Trust Receipt actions">
+                            <button class="choice-btn active" type="button" data-form-choice="manual">Fill Form in App</button>
+                            <button class="choice-btn" type="button" data-form-choice="upload">Upload Completed Form</button>
+                        </div>
+                    </article>
+                </div>
+
+                <section id="inlineFormWorkspace" class="inline-form-workspace" aria-live="polite">
+                    <div class="inline-empty-state">
+                        Select a form action to open the digital entry or upload workspace here.
+                    </div>
+                </section>
+            </section>
+            {% endif %}
+
+            <div class="review-layout">
+                <section class="panel" aria-labelledby="ocrTitle">
+                    <div class="panel-header compact">
+                        <div>
+                            <span class="section-kicker">OCR extraction</span>
+                            <h2 id="ocrTitle">Extracted field review</h2>
+                        </div>
+                    </div>
+                    <div class="ocr-table" role="table" aria-label="OCR confidence review">
+                        <div class="ocr-row header" role="row">
+                            <span>Field</span>
+                            <span>Extracted value</span>
+                            <span>Confidence</span>
+                            <span>Status</span>
+                        </div>
+                        <div class="ocr-row" role="row">
+                            <span>Applicant Name</span>
+                            <strong>Grace Omowunmi</strong>
+                            <span>98%</span>
+                            <span class="status-pill verified">Verified</span>
+                        </div>
+                        <div class="ocr-row flagged" role="row">
+                            <span>Loan Amount</span>
+                            <strong>NGN 500,000?</strong>
+                            <span>61%</span>
+                            <span class="status-pill low">Low Confidence</span>
+                        </div>
+                        <div class="ocr-row flagged" role="row">
+                            <span>Guarantor Signature</span>
+                            <strong>Unreadable</strong>
+                            <span>22%</span>
+                            <span class="status-pill missing">Missing</span>
+                        </div>
+                        <div class="ocr-row" role="row">
+                            <span>GSI Mandate</span>
+                            <strong>Accepted</strong>
+                            <span>94%</span>
+                            <span class="status-pill review">Needs Review</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel" aria-labelledby="docsTitle">
+                    <div class="panel-header compact">
+                        <div>
+                            <span class="section-kicker">Document verification</span>
+                            <h2 id="docsTitle">Required supporting documents</h2>
+                        </div>
+                    </div>
+                    <div class="document-groups">
+                        <div class="doc-group">
+                            <h3>Applicant</h3>
+                            <span>Passport photograph</span>
+                            <span>Valid ID</span>
+                            <span>Recent bank statement</span>
+                            <span class="missing-text">Proof of address missing</span>
+                        </div>
+                        <div class="doc-group">
+                            <h3>Self-employed business</h3>
+                            <span>Business account statement</span>
+                            <span>Stock evidence</span>
+                            <span class="missing-text">Sales records missing</span>
+                            <span class="missing-text">Invoices missing</span>
+                        </div>
+                        <div class="doc-group">
+                            <h3>Pledged stock</h3>
+                            <span>Inventory list</span>
+                            <span>Photographs</span>
+                            <span class="missing-text">Valuation evidence missing</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <section class="panel verification-panel" aria-labelledby="verificationTitle">
+                <div class="panel-header">
+                    <div>
+                        <span class="section-kicker">Internal bank officer section</span>
+                        <h2 id="verificationTitle">Visitation and signoff</h2>
+                    </div>
+                    <span class="status-pill review">Final Signoff Pending</span>
+                </div>
+                <div class="verification-grid">
+                    <label>
+                        Date of visitation
+                        <input type="date" name="visit_date">
+                    </label>
+                    <label>
+                        Person met
+                        <input type="text" name="person_met" placeholder="Customer, spouse, trader association lead">
+                    </label>
+                    <label>
+                        Premises description
+                        <input type="text" name="premises_description" placeholder="Shop, residence, warehouse">
+                    </label>
+                    <label>
+                        Landmark
+                        <input type="text" name="landmark" placeholder="Direction from branch or market marker">
+                    </label>
+                    <label>
+                        Visiting officer
+                        <input type="text" name="visiting_officer" value="{{ current_user.name if current_user else '' }}">
+                    </label>
+                    <label>
+                        Final signoff
+                        <select name="manager_signoff">
+                            <option>Pending</option>
+                            <option>Approved</option>
+                            <option>Returned</option>
+                        </select>
+                    </label>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

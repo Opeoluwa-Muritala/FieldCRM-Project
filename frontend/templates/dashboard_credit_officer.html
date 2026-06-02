@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Credit Officer Dashboard | FieldCRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body class="role-credit-officer">
+    <div class="app-shell" data-user-role="Credit Officer">
+        <header class="topbar role-topbar">
+            <div class="brand-block"><span class="brand-mark">FieldCRM</span><span class="brand-subtitle">Credit risk review</span></div>
+            <nav class="nav-links"><a href="/dashboard" class="nav-link active">Dashboard</a><a href="/borrowers" class="nav-link">Current Loans</a><a href="/pipeline" class="nav-link">Pipeline</a><a href="/logout" class="nav-link">Logout</a></nav>
+        </header>
+        <main>
+            <section class="risk-matrix">
+                <div class="risk-head"><span class="section-kicker">Credit officer</span><h1>Credit analysis and recommendation</h1><p>Review typed entries, uploaded forms, OCR results, supporting documents, signatures, declarations, affordability, repayment capacity, collateral, GSI mandate, guarantor limit, account details, and cheque details.</p></div>
+                <div class="risk-score-box"><span>Risk queue</span><strong>5</strong><small>{{ current_user.name }}</small></div>
+            </section>
+            <section class="risk-box-grid">
+                <article id="roleQueueTitle" class="risk-box high"><span>Debt and capacity</span><strong>30%</strong><small>DTI review target</small></article>
+                <article class="risk-box"><span>Verification flags</span><strong>4</strong><small>Expired ID, missing BVN, name mismatch, unsigned forms</small></article>
+                <article class="risk-box"><span>Guarantor capacity</span><strong>2</strong><small>Limit, account, cheque and witness review</small></article>
+            </section>
+            <div class="review-layout">
+                <section class="panel" aria-labelledby="ocrTitle"><div class="panel-header compact"><div><span class="section-kicker">Critical fields</span><h2 id="ocrTitle">OCR confidence checks</h2></div></div><div class="ocr-table"><div class="ocr-row header"><span>Field</span><span>Value</span><span>Confidence</span><span>Status</span></div><div class="ocr-row flagged"><span>Loan Amount</span><strong>NGN 500,000?</strong><span>61%</span><span class="status-pill low">Review</span></div><div class="ocr-row"><span>BVN</span><strong>222***4455</strong><span>88%</span><span class="status-pill review">Confirm</span></div></div></section>
+                <section class="panel" aria-labelledby="docsTitle"><div class="panel-header compact"><div><span class="section-kicker">Evidence</span><h2 id="docsTitle">Collateral documents</h2></div></div><div class="document-groups"><div class="doc-group"><h3>Stock</h3><span>Inventory list</span><span class="missing-text">Valuation missing</span></div><div class="doc-group"><h3>Equipment</h3><span class="missing-text">Serial numbers missing</span></div></div></section>
+            </div>
+            <section class="panel readiness-panel" aria-labelledby="readinessTitle"><div class="panel-header compact"><div><span class="section-kicker">Risk blockers</span><h2 id="readinessTitle">Credit readiness</h2></div></div><ol class="readiness-list"><li class="blocked"><span>Collateral verified</span><strong>No</strong></li><li class="complete"><span>BVN confirmed</span><strong>Yes</strong></li><li class="blocked"><span>Guarantee amount confirmed</span><strong>No</strong></li></ol></section>
+        </main>
+    </div>
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

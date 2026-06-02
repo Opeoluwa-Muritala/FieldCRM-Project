@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Admin Dashboard | FieldCRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body class="role-system-admin">
+    <div class="app-shell" data-user-role="System Admin">
+        <header class="topbar role-topbar"><div class="brand-block"><span class="brand-mark">FieldCRM</span><span class="brand-subtitle">System control room</span></div><nav class="nav-links"><a href="/dashboard" class="nav-link active">Dashboard</a><a href="/borrowers" class="nav-link">Current Loans</a><a href="/pipeline" class="nav-link">Pipeline</a><a href="/audit" id="navAudit" class="nav-link">Audit</a><a href="/logout" class="nav-link">Logout</a></nav></header>
+        <main>
+            <section class="admin-command">
+                <div><span class="section-kicker">System admin</span><h1>Final approval and audit command</h1><p>Monitor final readiness, committee decisions, disbursement locks, role ownership, and immutable audit events.</p></div>
+                <div class="admin-command-card"><strong>{{ current_user.name }}</strong><span>Main system admin</span></div>
+            </section>
+            <section class="admin-box-grid">
+                <article id="roleQueueTitle" class="admin-box"><span>Final queue</span><strong>9</strong><small>Approval and release</small></article>
+                <article class="admin-box"><span>Disbursement locks</span><strong>5</strong><small>Forms incomplete</small></article>
+                <article class="admin-box"><span>Ownership alerts</span><strong>2</strong><small>Returned files</small></article>
+                <article class="admin-box"><span>Audit events</span><strong>128</strong><small>Immutable log</small></article>
+            </section>
+            <div class="dashboard-layout">
+                <section class="panel"><div class="panel-header"><div><span class="section-kicker">Command queue</span><h2>Final files requiring control</h2></div><a href="/audit" class="btn btn-primary">Open Audit</a></div><div class="queue-list"><article class="queue-item"><div><strong>Committee vote pending</strong><span>Two applications need vote record before release.</span></div><span class="status-pill review">Review</span></article><article class="queue-item"><div><strong>Disbursement form lock</strong><span>One file is missing guarantor form completion.</span></div><span class="status-pill missing">Blocked</span></article></div></section>
+                <aside class="panel readiness-panel" aria-labelledby="readinessTitle"><div class="panel-header compact"><div><span class="section-kicker">Final gate</span><h2 id="readinessTitle">Approval readiness</h2></div></div><ol class="readiness-list"><li class="blocked"><span>All forms complete</span><strong>No</strong></li><li class="blocked"><span>Documents attached</span><strong>Partial</strong></li><li class="complete"><span>Audit trail present</span><strong>Yes</strong></li></ol></aside>
+            </div>
+            <section class="panel" aria-labelledby="docsTitle"><div class="panel-header compact"><div><span class="section-kicker">Documents</span><h2 id="docsTitle">System document gaps</h2></div></div><div class="document-groups"><div class="doc-group"><h3>Disbursement</h3><span class="missing-text">Pledge receipt incomplete</span><span>Loan application signed</span></div></div></section>
+        </main>
+    </div>
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
