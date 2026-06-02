@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mainstreet Loan Forms | FieldCRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body class="forms-page">
+    <div class="app-shell" data-user-role="Loan Officer">
+        <header class="topbar">
+            <div class="brand-block">
+                <span class="brand-mark">FieldCRM</span>
+                <span class="brand-subtitle">Mainstreet Microfinance Bank loan processing</span>
+            </div>
+            <nav class="nav-links">
+                <a href="/forms" class="nav-link active">Forms</a>
+                <a href="/pipeline" class="nav-link">Pipeline</a>
+                <a href="/logout" class="nav-link">Logout</a>
+            </nav>
+        </header>
+
+        <main class="forms-shell">
+            <section class="forms-header">
+                <div>
+                    <span class="section-kicker">Loan officer only</span>
+                    <h1>Loan forms and document capture</h1>
+                    <p>Enter form data directly or upload completed forms for OCR extraction, correction, validation and approval.</p>
+                    <div style="margin-top: 15px; display: flex; align-items: center; gap: 10px;">
+                        <label for="appSelector" style="font-weight: 500; font-size: 0.9rem;">Target Application:</label>
+                        <select id="appSelector" style="background: #1e1e2e; color: #f8f8f2; border: 1px solid #3e3e5e; padding: 6px 12px; border-radius: 6px; font-family: inherit; font-size: 0.9rem; cursor: pointer;">
+                            {% for app in applications %}
+                            <option value="{{ app.id }}">{{ app.borrower.name }} (₦{{ "{:,.0f}".format(app.amount) }})</option>
+                            {% else %}
+                            <option value="">No Active Stage 1 Applications</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="forms-mode-switch">
+                    <button class="choice-btn active" type="button" data-mode="manual">Fill Form in App</button>
+                    <button class="choice-btn" type="button" data-mode="upload">Upload Completed Form</button>
+                </div>
+            </section>
+
+            <section class="forms-tabs" aria-label="Form type">
+                <button class="tab-btn active" type="button" data-form="loan_application">Loan Application</button>
+                <button class="tab-btn" type="button" data-form="guarantor">Guarantors Form</button>
+                <button class="tab-btn" type="button" data-form="pledge_trust_receipt">Pledge and Trust Receipt</button>
+                <button class="tab-btn" type="button" data-form="field_visitation_report">Field Visitation Report</button>
+                <button id="addRepeatTabBtn" class="tab-btn" type="button">Add Tab</button>
+            </section>
+
+            <section class="capture-audit-strip" aria-label="Capture audit details">
+                <span>User: <strong>{{ current_user.name }}</strong></span>
+                <span>Role: <strong>{{ current_user.role }}</strong></span>
+                <span>Status: <strong>Draft Capture</strong></span>
+                <span>Action: <strong>Manual Entry / OCR Review</strong></span>
+            </section>
+
+            <section class="form-page-panel">
+                <div class="form-step-header">
+                    <div>
+                        <span id="formStepCount" class="section-kicker">Step 1</span>
+                        <h2 id="formPageTitle">Loan Application Form</h2>
+                    </div>
+                    <span id="formPageMode" class="status-pill review">Manual Entry</span>
+                </div>
+                <div id="formPageBody"></div>
+                <div class="form-step-actions">
+                    <button id="prevStepBtn" class="btn btn-secondary" type="button">Back</button>
+                    <button id="nextStepBtn" class="btn btn-primary" type="button">Next</button>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="/static/js/loan_forms.js"></script>
+</body>
+</html>

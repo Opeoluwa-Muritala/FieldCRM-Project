@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | FieldCRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <style>
+        body {
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+        }
+
+        .login-shell {
+            width: min(440px, 100%);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow-premium);
+            padding: 32px;
+        }
+
+        .login-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .login-subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            display: block;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-main);
+            font: inherit;
+            padding: 12px 14px;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent-color);
+        }
+
+        .login-error {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            color: #fecaca;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 13px;
+            margin-bottom: 18px;
+        }
+
+        .login-btn {
+            width: 100%;
+            border: 0;
+            border-radius: 8px;
+            background: var(--accent-color);
+            color: #fff;
+            font: inherit;
+            font-weight: 700;
+            padding: 12px 16px;
+            cursor: pointer;
+        }
+
+        .demo-logins {
+            margin-top: 22px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 12.5px;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <main class="login-shell">
+        <div class="header-logo">FieldCRM</div>
+        <h1 class="login-title">Staff Login</h1>
+        <p class="login-subtitle">Mainstreet Microfinance Bank Limited MVP</p>
+
+        {% if error %}
+            <div class="login-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" action="/login">
+            <div class="form-group">
+                <label class="form-label" for="username">Phone Number</label>
+                <input class="form-input" id="username" name="username" type="text" autocomplete="username" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="password">Password</label>
+                <input class="form-input" id="password" name="password" type="password" autocomplete="current-password" required>
+            </div>
+            <button class="login-btn" type="submit">Sign In</button>
+        </form>
+
+        <div class="demo-logins">
+            <div>Admin: 08010000000</div>
+            <div>Manager: 08010000001</div>
+            <div>Loan Officer: 08010000002</div>
+            <div>Credit Officer: 08010000003</div>
+            <div>Auditor: 08010000004</div>
+            <div>Password: password123</div>
+        </div>
+    </main>
+</body>
+</html>

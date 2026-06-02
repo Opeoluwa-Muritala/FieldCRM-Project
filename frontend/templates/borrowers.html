@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Current Loans | FieldCRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/borrowers.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div>
+                <span class="header-logo">FieldCRM</span>
+                <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Current loan states</p>
+            </div>
+            <nav class="nav-links" aria-label="Primary">
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/borrowers" class="nav-link active">Current Loans</a>
+                <a href="/pipeline" class="nav-link">Pipeline</a>
+                {% if current_user.role == "System Admin" %}
+                <a href="/audit" class="nav-link">Audit</a>
+                {% endif %}
+                <a href="/logout" class="nav-link">Logout</a>
+            </nav>
+        </header>
+
+        <section class="loan-state-hero">
+            <div>
+                <span class="section-kicker">Top-chain visibility</span>
+                <h1>Current loans and workflow states</h1>
+                <p>Review all current loan files in your organisation, their owners, status, stage, and approval readiness.</p>
+            </div>
+            <div class="operator-card">
+                <span class="operator-label">Viewing as</span>
+                <strong>{{ current_user.name }}</strong>
+                <span>{{ current_user.role }}</span>
+            </div>
+        </section>
+
+        <section class="metrics-grid" aria-label="Loan state summary">
+            <article class="metric-card">
+                <span class="metric-title">Total Current Loans</span>
+                <strong class="metric-value">{{ state_counts.total }}</strong>
+                <span class="metric-trend">Organisation scoped</span>
+            </article>
+            <article class="metric-card">
+                <span class="metric-title">In Review</span>
+                <strong class="metric-value">{{ state_counts.review }}</strong>
+                <span class="metric-trend warning">Stages 2 to 5</span>
+            </article>
+            <article class="metric-card">
+                <span class="metric-title">Approved Queue</span>
+                <strong class="metric-value">{{ state_counts.approved }}</strong>
+                <span class="metric-trend positive">Pending release or forms</span>
+            </article>
+            <article class="metric-card">
+                <span class="metric-title">Active Loans</span>
+                <strong class="metric-value">{{ state_counts.active }}</strong>
+                <span class="metric-trend positive">Disbursed</span>
+            </article>
+        </section>
+
+        <section class="card">
+            <div class="card-title">Loan State List</div>
+            <div class="loan-table" role="table" aria-label="Current loans and states">
+                <div class="loan-row loan-row-header" role="row">
+                    <span>Borrower</span>
+                    <span>Amount</span>
+                    <span>Stage</span>
+                    <span>Status</span>
+                    <span>Current Owner</span>
+                    <span>Readiness</span>
+                </div>
+
+                {% for app in applications %}
+                <div class="loan-row" role="row">
+                    <span>
+                        <strong>{{ app.borrower.name }}</strong>
+                        <small>{{ app.product_type }} · {{ app.repayment_frequency }}</small>
+                    </span>
+                    <span>NGN {{ "{:,.2f}".format(app.amount) }}</span>
+                    <span>
+                        {% if app.current_stage == 1 %}
+                            Draft
+                        {% elif app.current_stage == 2 %}
+                            Approval Review
+                        {% elif app.current_stage == 3 %}
+                            Credit Review
+                        {% elif app.current_stage == 4 %}
+                            Compliance Review
+                        {% elif app.current_stage == 5 %}
+                            Final Review
+                        {% elif app.current_stage == 6 %}
+                            Disbursement Queue
+                        {% else %}
+                            Unknown
+                        {% endif %}
+                    </span>
+                    <span>{{ app.status }}</span>
+                    <span>{{ app.current_owner.name if app.current_owner else "Unassigned" }}</span>
+                    <span>
+                        {% if app.status == "Active" %}
+                            <span class="status-pill verified">Active</span>
+                        {% elif app.current_stage == 6 %}
+                            <span class="status-pill review">Forms Required</span>
+                        {% elif app.status.startswith("Returned") %}
+                            <span class="status-pill low">Returned</span>
+                        {% elif app.status == "Denied" %}
+                            <span class="status-pill missing">Denied</span>
+                        {% else %}
+                            <span class="status-pill review">In Progress</span>
+                        {% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+
+                {% if applications|length == 0 %}
+                <div class="empty-loans">No current loans are available for your organisation.</div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</body>
+</html>

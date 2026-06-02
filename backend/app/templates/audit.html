@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regulatory Compliance Audit | FieldCRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0b0f19;
+            --bg-secondary: #151c2c;
+            --accent-color: #3b82f6;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border-color: #243049;
+            --shadow-premium: 0 10px 30px rgba(0, 0, 0, 0.5);
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 24px;
+            margin-bottom: 40px;
+        }
+
+        .header-logo {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .header-status {
+            background-color: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--accent-success);
+            color: var(--accent-success);
+            padding: 6px 14px;
+            border-radius: 99px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: var(--shadow-premium);
+            transition: var(--transition-smooth);
+            margin-bottom: 30px;
+        }
+
+        .card:hover {
+            border-color: rgba(59, 130, 246, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid var(--accent-color);
+            padding-left: 12px;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(36, 48, 73, 0.5);
+        }
+
+        .checklist-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .indicator {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .indicator.checked {
+            background-color: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--accent-success);
+            color: var(--accent-success);
+        }
+
+        .indicator.warning {
+            background-color: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--accent-warning);
+            color: var(--accent-warning);
+        }
+
+        .item-text h4 {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .item-text p {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* Immutable Event Log Table */
+        .log-table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            color: var(--text-muted);
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 16px;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(36, 48, 73, 0.3);
+            color: var(--text-main);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-block;
+        }
+
+        .badge-success {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: var(--accent-success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .badge-info {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: var(--accent-color);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .badge-warning {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: var(--accent-warning);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .badge-danger {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--accent-danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .timestamp {
+            font-family: monospace;
+            color: var(--text-muted);
+        }
+
+        .reason-text {
+            max-width: 250px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text-muted);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            font-size: 13px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <span class="header-logo">FieldCRM</span>
+                <p style="font-size: 14px; color: var(--text-muted); margin-top: 4px;">Regulatory Compliance Audit Ledger</p>
+            </div>
+            <div class="header-status">
+                <span style="display:inline-block; width:8px; height:8px; background-color:var(--accent-success); border-radius:50%;"></span>
+                CBN / NDPC Compliant Mode Active
+            </div>
+        </header>
+
+        <div class="grid">
+            <div class="main-content">
+                <div class="card">
+                    <div class="card-title">
+                        <span>Immutable Workflow Event Log</span>
+                        <span style="font-size: 13px; font-weight: normal; color: var(--text-muted);">NDPC Security Audit Trail</span>
+                    </div>
+                    <div class="log-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Event ID</th>
+                                    <th>Application ID</th>
+                                    <th>Action</th>
+                                    <th>Stages</th>
+                                    <th>Actor</th>
+                                    <th>Reason / Log</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if events %}
+                                    {% for event in events %}
+                                        <tr>
+                                            <td style="font-family: monospace; font-size: 12px; color: var(--text-muted);">{{ event.id | truncate(8, True, '') }}</td>
+                                            <td style="font-family: monospace; font-size: 12px; color: var(--text-muted);">{{ event.application_id | truncate(8, True, '') }}</td>
+                                            <td>
+                                                {% if "Approve" in event.action or "Pass" in event.action %}
+                                                    <span class="badge badge-success">{{ event.action }}</span>
+                                                {% elif "Return" in event.action %}
+                                                    <span class="badge badge-warning">{{ event.action }}</span>
+                                                {% elif "Deny" in event.action or "Flag" in event.action %}
+                                                    <span class="badge badge-danger">{{ event.action }}</span>
+                                                {% else %}
+                                                    <span class="badge badge-info">{{ event.action }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td style="font-size: 13px; color: var(--text-muted);">
+                                                {% if event.from_stage %}
+                                                    S{{ event.from_stage }} &rarr; S{{ event.to_stage }}
+                                                {% else %}
+                                                    S{{ event.to_stage }}
+                                                {% endif %}
+                                            </td>
+                                            <td>User: {{ event.actor_id | truncate(8, True, '') }}</td>
+                                            <td class="reason-text" title="{{ event.reason }}">{{ event.reason }}</td>
+                                            <td class="timestamp">{{ event.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                                            No immutable audit events logged yet. Proceed with loan pipeline transitions.
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="card">
+                    <div class="card-title">Regulatory Checklist</div>
+                    
+                    <div class="checklist-item">
+                        <div class="indicator checked">&checkmark;</div>
+                        <div class="item-text">
+                            <h4>CBN AML Directive</h4>
+                            <p>Automated AML tracking and strict BVN/NIN verification algorithms are enabled.</p>
+                        </div>
+                    </div>
+
+                    <div class="checklist-item">
+                        <div class="indicator checked">&checkmark;</div>
+                        <div class="item-text">
+                            <h4>NDPC Annual Filing</h4>
+                            <p>Immutable logging tracks user, action, stage invalidation, and reasons for returns.</p>
+                        </div>
+                    </div>
+
+                    <div class="checklist-item">
+                        <div class="indicator warning">!</div>
+                        <div class="item-text">
+                            <h4>FCCPC Submission</h4>
+                            <p>Formal digital lending compliance application details must be submitted before production.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(29, 78, 216, 0.1) 100%);">
+                    <div class="card-title" style="border-left-color: var(--accent-success);">System Integrity</div>
+                    <div style="font-size: 14px; margin-bottom: 12px;">
+                        <strong>Security Framework:</strong> active
+                    </div>
+                    <div style="font-size: 14px; margin-bottom: 12px;">
+                        <strong>Session Isolation:</strong> HttpOnly Cookies Enforced
+                    </div>
+                    <div style="font-size: 14px; color: var(--text-muted);">
+                        All transaction data is digitally logged under NDPC standards. Soft deletes are enforced.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            FieldCRM &copy; 2026. Confidential Regulatory Reporting Console.
+        </div>
+    </div>
+</body>
+</html>

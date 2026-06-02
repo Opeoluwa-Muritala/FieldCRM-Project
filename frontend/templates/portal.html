@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Loan Progress Portal | FieldCRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/portal.css">
+</head>
+<body>
+    <div class="portal-container">
+        {% if not borrower %}
+            <!-- Secure Borrower Portal Login Form -->
+            <div class="card" style="width: 450px; margin: 60px auto;">
+                <div class="card-title" style="text-align: center; border-left: none; padding-left: 0; display:block;">
+                    <span class="header-logo" style="display:block; margin-bottom:6px;">FieldCRM</span>
+                    <p style="font-size:13.5px; color:var(--text-muted); font-weight:normal;">Borrower Access Portal</p>
+                </div>
+                <form onsubmit="event.preventDefault(); submitPortalLogin();">
+                    <div class="form-group">
+                        <label class="form-label" for="portalPhone">Phone Number</label>
+                        <input type="tel" id="portalPhone" class="form-input" placeholder="+234..." required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="portalBVN">Bank Verification Number (BVN)</label>
+                        <input type="password" id="portalBVN" class="form-input" placeholder="11-digit security BVN" required maxlength="11">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Access My Progress</button>
+                </form>
+            </div>
+        {% else %}
+            <!-- Borrower Dashboard (Restricted View) -->
+            <div class="header">
+                <div>
+                    <span class="header-logo">FieldCRM Client Portal</span>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Welcome back, {{ borrower.name }}</p>
+                </div>
+                <button class="btn btn-secondary" style="padding:6px 14px; font-size:12px;" onclick="exitPortal()">Log Out</button>
+            </div>
+
+            {% if not loan %}
+                <!-- Case: Borrower profile exists but has no active applications -->
+                <div class="card" style="text-align: center; padding: 50px 20px;">
+                    <div class="card-title" style="border-left:none; padding-left:0; display:block;">No Active Loan Application</div>
+                    <p style="color:var(--text-muted); font-size:14.5px;">Your borrower profile is registered. Contact your loan officer to initiate a new loan application draft.</p>
+                </div>
+            {% else %}
+                <!-- Case: Loan Application exists (Show Progress Step Tracker) -->
+                <div class="card">
+                    <div class="card-title">My Loan Progress</div>
+                    
+                    <!-- Horizontal Step Tracker Progress Bar -->
+                    <div class="progress-bar-wrapper">
+                        <!-- Filled percent calculations: Stage 1=0%, Stage 2=20%, Stage 3=40%, Stage 4=60%, Stage 5=80%, Active=100% -->
+                        {% set stage = loan.current_stage %}
+                        {% set percent = 0 %}
+                        {% if loan.status == "Active" %}
+                            {% set percent = 100 %}
+                        {% elif stage == 2 %}
+                            {% set percent = 20 %}
+                        {% elif stage == 3 %}
+                            {% set percent = 40 %}
+                        {% elif stage == 4 %}
+                            {% set percent = 60 %}
+                        {% elif stage == 5 %}
+                            {% set percent = 80 %}
+                        {% endif %}
+                        <div class="progress-line"></div>
+                        <div class="progress-line-fill" style="width: {{ percent }}%;"></div>
+                        
+                        <!-- Step 1 -->
+                        <div class="progress-step {% if stage >= 1 or loan.status == 'Active' %}completed{% endif %}">
+                            1
+                            <span class="step-label">Draft</span>
+                        </div>
+                        <!-- Step 2 -->
+                        <div class="progress-step {% if stage > 2 or loan.status == 'Active' %}completed{% elif stage == 2 %}active{% endif %}">
+                            2
+                            <span class="step-label">Manager</span>
+                        </div>
+                        <!-- Step 3 -->
+                        <div class="progress-step {% if stage > 3 or loan.status == 'Active' %}completed{% elif stage == 3 %}active{% endif %}">
+                            3
+                            <span class="step-label">Risk Check</span>
+                        </div>
+                        <!-- Step 4 -->
+                        <div class="progress-step {% if stage > 4 or loan.status == 'Active' %}completed{% elif stage == 4 %}active{% endif %}">
+                            4
+                            <span class="step-label">Compliance</span>
+                        </div>
+                        <!-- Step 5 -->
+                        <div class="progress-step {% if loan.status == 'Active' %}completed{% elif stage == 5 %}active{% endif %}">
+                            5
+                            <span class="step-label">Committee</span>
+                        </div>
+                    </div>
+
+                    <div style="font-size:14px; text-align:center; color:var(--text-muted); margin-top:20px; border-top: 1px solid var(--border-color); padding-top:20px;">
+                        Current Status: <strong style="color:#fff;">{{ loan.status }}</strong>
+                    </div>
+                </div>
+
+                <!-- Loan summary cards -->
+                <div class="metrics-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 30px;">
+                    <div class="metric-card">
+                        <div class="metric-title">Principal Requested</div>
+                        <div class="metric-value">NGN {{ "{:,.2f}".format(loan.amount) }}</div>
+                        <div class="metric-trend" style="color:var(--text-muted);">
+                            Tenure: {{ loan.tenure }} repayments
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-title">Interest Rate / Frequency</div>
+                        <div class="metric-value">{{ loan.interest_rate }}%</div>
+                        <div class="metric-trend" style="color:var(--text-muted);">
+                            Schedule: {{ loan.repayment_frequency }}
+                        </div>
+                    </div>
+                </div>
+
+                {% if loan.status == "Active" %}
+                    <!-- Show repayment schedule only if disbursed (active) -->
+                    <div class="card">
+                        <div class="card-title">My Repayment Installments</div>
+                        <div style="display:flex; flex-direction:column;">
+                            {% for schedule in loan.repayment_schedule %}
+                                <div class="installment-row">
+                                    <span style="font-size:14px;">Due: <strong>{{ schedule.due_date.strftime('%Y-%m-%d') }}</strong></span>
+                                    <span style="font-size:14.5px; color:#fff;">NGN {{ "{:,.2f}".format(schedule.amount_due) }}</span>
+                                    <span class="badge {% if schedule.status == 'Paid' %}badge-success{% else %}badge-warning{% endif %}">{{ schedule.status }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <script>
+        async function submitPortalLogin() {
+            const phone = document.getElementById("portalPhone").value;
+            const bvn = document.getElementById("portalBVN").value;
+            
+            if (phone.length < 5 || bvn.length !== 11) {
+                alert("Credentials check failed: Verify Phone number and 11-digit BVN details are accurate.");
+                return;
+            }
+            
+            try {
+                const response = await fetch("/api/v1/portal/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ phone: phone, bvn: bvn })
+                });
+                
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const err = await response.json();
+                    alert("Access Denied: " + err.detail);
+                }
+            } catch (e) {
+                alert("Network error: " + e.message);
+            }
+        }
+
+        async function exitPortal() {
+            try {
+                await fetch("/api/v1/portal/logout", { method: "POST" });
+                window.location.reload();
+            } catch (e) {
+                alert("Network error: " + e.message);
+            }
+        }
+    </script>
+</body>
+</html>
