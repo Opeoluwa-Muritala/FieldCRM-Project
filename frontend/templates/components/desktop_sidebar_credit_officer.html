@@ -1,0 +1,17 @@
+{% set active_page = active_page|default('dashboard') %}
+
+<div class="sidebar-nav-group">
+    <div class="sidebar-nav-group-title">Credit Desk</div>
+    <div class="sidebar-nav-links">
+        <a href="/dashboard" class="sidebar-nav-link {% if active_page == 'dashboard' %}active{% endif %}"><span>Dashboard</span></a>
+        <a href="/my-reviews" class="sidebar-nav-link {% if active_page == 'reviews' %}active{% endif %}">
+            <span>My Reviews</span>
+            {% if metrics and metrics.reviews_due %}<span class="sidebar-badge">{{ metrics.reviews_due }}</span>{% endif %}
+        </a>
+        <a href="/ocr-exceptions" class="sidebar-nav-link {% if active_page == 'exceptions' %}active{% endif %}">
+            <span>OCR Exceptions</span>
+            {% if metrics and metrics.ocr_exceptions %}<span class="sidebar-badge sidebar-badge-warning">{{ metrics.ocr_exceptions }}</span>{% endif %}
+        </a>
+        <a href="/borrowers" class="sidebar-nav-link {% if active_page == 'borrowers' %}active{% endif %}"><span>Current Loans</span></a>
+    </div>
+</div>

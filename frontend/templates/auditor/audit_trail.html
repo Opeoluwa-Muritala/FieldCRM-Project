@@ -1,0 +1,15 @@
+{% set mobile_title_text = "Audit Trail" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+
+{% block title %}Audit Trail - FieldCRM{% endblock %}
+{% block page_title %}Audit Trail{% endblock %}
+{% block breadcrumb %}Compliance -> Audit Trail{% endblock %}
+
+{% block content %}
+<div class="queue-page-header"><div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">Immutable Audit Trail</h1></div></div>
+<div class="role-card-list">
+    {% for item in activity %}
+    <div class="role-list-card"><strong>{{ item.action }}</strong><span>{{ item.user_name or item.user_role }} - {{ item.entity_type }} - {{ item.field_name or 'event' }}</span><em>{{ item.created_at.strftime('%d %b %H:%M') if item.created_at else '' }}</em></div>
+    {% else %}<div class="lo-empty-state">No audit activity.</div>{% endfor %}
+</div>
+{% endblock %}

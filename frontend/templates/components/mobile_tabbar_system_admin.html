@@ -1,0 +1,6 @@
+{% set active_tab = active_tab|default('home') %}
+<button class="tab-item {% if active_tab == 'home' %}active{% endif %}" type="button" onclick="window.location.href='/dashboard'" aria-label="Home"><span class="tab-icon">&#x1F3E0;</span><span class="tab-label">Home</span></button>
+<button class="tab-item {% if active_tab == 'users' %}active{% endif %}" type="button" onclick="window.location.href='/users'" aria-label="Users"><span class="tab-icon">&#x1F465;</span><span class="tab-label">Users</span></button>
+<button class="tab-item {% if active_tab == 'activity' %}active{% endif %}" type="button" onclick="window.location.href='/system-activity'" aria-label="Activity"><span class="tab-icon">&#x1F4A0;</span><span class="tab-label">Activity</span></button>
+<button class="tab-item {% if active_tab == 'audit' %}active{% endif %}" type="button" onclick="window.location.href='/audit-trail'" aria-label="Audit"><span class="tab-icon">&#x1F4DC;</span><span class="tab-label">Audit</span></button>
+<button class="tab-item" type="button" onclick="window.location.href='/logout'" aria-label="Logout"><span class="tab-icon">&#x21AA;</span><span class="tab-label">Logout</span></button>

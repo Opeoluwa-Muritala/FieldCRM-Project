@@ -1,0 +1,14 @@
+{% set active_page = active_page|default('dashboard') %}
+
+<div class="sidebar-nav-group">
+    <div class="sidebar-nav-group-title">Control</div>
+    <div class="sidebar-nav-links">
+        <a href="/dashboard" class="sidebar-nav-link {% if active_page == 'dashboard' %}active{% endif %}"><span>Dashboard</span></a>
+        <a href="/users" class="sidebar-nav-link {% if active_page == 'users' %}active{% endif %}">
+            <span>Users</span>
+            {% if metrics and metrics.active_users %}<span class="sidebar-badge">{{ metrics.active_users }}</span>{% endif %}
+        </a>
+        <a href="/system-activity" class="sidebar-nav-link {% if active_page == 'activity' %}active{% endif %}"><span>System Activity</span></a>
+        <a href="/audit-trail" class="sidebar-nav-link {% if active_page == 'audit' %}active{% endif %}"><span>Audit Trail</span></a>
+    </div>
+</div>

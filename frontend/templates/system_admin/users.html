@@ -1,0 +1,30 @@
+{% set mobile_title_text = "Users" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+
+{% block title %}Users - FieldCRM{% endblock %}
+{% block page_title %}Users{% endblock %}
+{% block breadcrumb %}Control -> Users{% endblock %}
+
+{% block content %}
+<div class="queue-page-header"><div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">User Management</h1></div></div>
+<div class="role-pipeline-grid role-user-counts">
+    {% for item in role_counts %}
+    <div class="role-stage-card"><span>{{ item.role|replace('_', ' ')|title }}</span><strong>{{ item.count }}</strong><em>active</em></div>
+    {% endfor %}
+</div>
+<div class="queue-cards">
+    {% for item in users %}
+    <div class="queue-card">
+        <span class="queue-card-name">{{ item.full_name }}</span>
+        <span class="queue-card-meta">{{ item.email }} - {{ item.role|replace('_', ' ')|title }}</span>
+        <span class="queue-card-amount">{{ 'Active' if item.active else 'Inactive' }}</span>
+        <span class="status-badge queue-card-badge {% if item.active %}verified{% else %}missing{% endif %}">{{ item.role|replace('_', ' ')|title }}</span>
+    </div>
+    {% else %}<div class="lo-empty-state">No users found.</div>{% endfor %}
+</div>
+<div class="custom-table-container queue-table-wrap page-card"><table class="custom-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th></tr></thead><tbody>
+{% for item in users %}
+<tr><td>{{ item.full_name }}</td><td>{{ item.email }}</td><td>{{ item.role|replace('_', ' ')|title }}</td><td>{{ 'Active' if item.active else 'Inactive' }}</td><td>{{ item.last_login_at.strftime('%d %b') if item.last_login_at else '-' }}</td></tr>
+{% else %}<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No users found.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

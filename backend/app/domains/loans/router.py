@@ -152,6 +152,187 @@ async def render_visits_due(
     )
     return templates.TemplateResponse(request, "loan_officer/visits.html", ctx)
 
+@router.get("/awaiting-me")
+async def render_awaiting_me(
+    request: Request,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["Branch Manager"]))
+):
+    """Render applications awaiting branch manager concurrence."""
+    dashboard_svc = DashboardService(conn)
+    queue = await dashboard_svc.get_awaiting_concurrence(current_user)
+    data = await dashboard_svc.get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request,
+        current_user,
+        queue=queue,
+        data=data,
+        metrics=data.get("metrics", {}),
+        active_tab="awaiting",
+        active_page="awaiting",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "branch_manager/awaiting_concurrence.html", ctx)
+
+@router.get("/pending-signoffs")
+async def render_pending_signoffs(
+    request: Request,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["Branch Manager"]))
+):
+    """Render visitation signoffs awaiting branch manager concurrence."""
+    dashboard_svc = DashboardService(conn)
+    signoffs = await dashboard_svc.get_pending_signoffs(current_user)
+    data = await dashboard_svc.get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request,
+        current_user,
+        signoffs=signoffs,
+        data=data,
+        metrics=data.get("metrics", {}),
+        active_tab="signoffs",
+        active_page="signoffs",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "branch_manager/pending_signoffs.html", ctx)
+
+@router.get("/my-reviews")
+async def render_my_reviews(
+    request: Request,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["Credit Officer"]))
+):
+    """Render the credit officer review queue."""
+    dashboard_svc = DashboardService(conn)
+    reviews = await dashboard_svc.get_credit_reviews(current_user)
+    data = await dashboard_svc.get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request,
+        current_user,
+        reviews=reviews,
+        data=data,
+        metrics=data.get("metrics", {}),
+        active_tab="reviews",
+        active_page="reviews",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "credit_officer/review_queue.html", ctx)
+
+@router.get("/ocr-exceptions")
+async def render_ocr_exceptions(
+    request: Request,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["Credit Officer"]))
+):
+    """Render OCR exceptions assigned to the current credit officer."""
+    dashboard_svc = DashboardService(conn)
+    exceptions = await dashboard_svc.get_credit_ocr_exceptions(current_user)
+    data = await dashboard_svc.get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request,
+        current_user,
+        exceptions=exceptions,
+        data=data,
+        metrics=data.get("metrics", {}),
+        active_tab="exceptions",
+        active_page="exceptions",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "credit_officer/ocr_exceptions.html", ctx)
+
+@router.get("/audit-trail")
+async def render_audit_trail(
+    request: Request,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["Auditor", "System Admin"]))
+):
+    """Render read-only audit trail for auditors and system admins."""
+    dashboard_svc = DashboardService(conn)
+    activity = await dashboard_svc.get_recent_audit_activity(current_user)
+    data = await dashboard_svc.get_dashboard_data(current_user)
+    role_dir = current_user.role.lower().replace(" ", "_")
+    template = "system_admin/system_activity.html" if role_dir == "system_admin" else "auditor/audit_trail.html"
+    ctx = build_template_context(
+        request,
+        current_user,
+        activity=activity,
+        data=data,
+        metrics=data.get("metrics", {}),
+        active_tab="audit",
+        active_page="audit",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, template, ctx)
+
+@router.get("/compliance-flags")
+async def render_compliance_flags(
+    request: Request,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["Auditor", "System Admin"]))
+):
+    """Render compliance flags from documents, OCR fields, and workflow events."""
+    dashboard_svc = DashboardService(conn)
+    flags = await dashboard_svc.get_compliance_flags(current_user)
+    data = await dashboard_svc.get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request,
+        current_user,
+        flags=flags,
+        data=data,
+        metrics=data.get("metrics", {}),
+        active_tab="flags",
+        active_page="flags",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "auditor/compliance_flags.html", ctx)
+
+@router.get("/users")
+async def render_user_management(
+    request: Request,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["System Admin"]))
+):
+    """Render system admin user management view."""
+    dashboard_svc = DashboardService(conn)
+    users = await dashboard_svc.get_admin_users(current_user)
+    data = await dashboard_svc.get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request,
+        current_user,
+        users=users,
+        data=data,
+        role_counts=data.get("role_counts", []),
+        metrics=data.get("metrics", {}),
+        active_tab="users",
+        active_page="users",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "system_admin/users.html", ctx)
+
+@router.get("/system-activity")
+async def render_system_activity(
+    request: Request,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["System Admin"]))
+):
+    """Render system admin activity and final-control queue."""
+    dashboard_svc = DashboardService(conn)
+    activity = await dashboard_svc.get_recent_audit_activity(current_user)
+    control_queue = await dashboard_svc.get_system_control_queue(current_user)
+    data = await dashboard_svc.get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request,
+        current_user,
+        activity=activity,
+        control_queue=control_queue,
+        data=data,
+        metrics=data.get("metrics", {}),
+        active_tab="activity",
+        active_page="activity",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "system_admin/system_activity.html", ctx)
+
 @router.get("/applications")
 async def render_applications_list(
     request: Request,
@@ -669,6 +850,22 @@ async def render_loan_pipeline(
     current_user = Depends(get_current_user)
 ):
     """Renders the standard CRM pipeline board."""
+    if current_user.role.lower().replace(" ", "_") == "branch_manager":
+        dashboard_svc = DashboardService(conn)
+        pipeline = await dashboard_svc.get_branch_pipeline(current_user)
+        data = await dashboard_svc.get_dashboard_data(current_user)
+        ctx = build_template_context(
+            request,
+            current_user,
+            pipeline=pipeline,
+            data=data,
+            metrics=data.get("metrics", {}),
+            active_tab="pipeline",
+            active_page="pipeline",
+            today_label=datetime.now().strftime("%A, %d %B %Y"),
+        )
+        return templates.TemplateResponse(request, "branch_manager/pipeline.html", ctx)
+
     repo = LoanRepository(conn)
     counts = await repo.count_by_stage(current_user.org_id)
     

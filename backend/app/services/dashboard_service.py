@@ -5,9 +5,6 @@ Each role gets a genuinely different dashboard with role-appropriate metrics,
 task lists, and queue data. This service dispatches to role-specific methods
 that run the corresponding SQL queries.
 """
-from datetime import datetime
-from uuid import UUID
-
 from app.core.sql import load_sql
 from app.domains.loans.schemas import LoanRow
 
@@ -117,67 +114,152 @@ class DashboardService:
         return row
 
     async def _branch_manager_data(self, user) -> dict:
-        """Branch Manager: pipeline overview + awaiting concurrence."""
-        # Reuse existing metrics query for now
-        metrics_sql = load_sql("loans", "dashboard_metrics")
-        metrics_row = await self.conn.fetchrow(
-            metrics_sql, user.org_id, user.id, "branch_manager"
-        )
-        metrics = dict(metrics_row) if metrics_row else {}
-
-        # Pipeline counts
-        pipeline_sql = load_sql("loans", "count_by_stage")
-        pipeline_rows = await self.conn.fetch(pipeline_sql, user.org_id)
-        pipeline = [dict(r) for r in pipeline_rows] if pipeline_rows else []
-
-        # Recent applications
-        recent_sql = load_sql("loans", "list_recent")
-        recent_rows = await self.conn.fetch(recent_sql, user.org_id, 10)
-        recent = [LoanRow(**r) for r in recent_rows] if recent_rows else []
+        """Branch Manager dashboard: approvals, signoffs, and assigned pipeline."""
+        metrics = await self._fetch_one("loans", "dashboard_branch_manager", user.org_id, user.id)
+        queue = await self.get_awaiting_concurrence(user, limit=8)
+        signoffs = await self.get_pending_signoffs(user, limit=6)
+        pipeline = await self.get_branch_pipeline(user)
 
         return {
             "metrics": metrics,
+            "queue": queue,
+            "signoffs": signoffs,
             "pipeline": pipeline,
-            "recent": recent,
         }
 
     async def _credit_officer_data(self, user) -> dict:
-        """Credit Officer: analysis-heavy review queue."""
-        metrics_sql = load_sql("loans", "dashboard_metrics")
-        metrics_row = await self.conn.fetchrow(
-            metrics_sql, user.org_id, user.id, "credit_officer"
-        )
-        metrics = dict(metrics_row) if metrics_row else {}
-
-        recent_sql = load_sql("loans", "list_recent")
-        recent_rows = await self.conn.fetch(recent_sql, user.org_id, 10)
-        recent = [LoanRow(**r) for r in recent_rows] if recent_rows else []
+        """Credit Officer dashboard: review queue and OCR exceptions."""
+        metrics = await self._fetch_one("loans", "dashboard_credit_officer", user.org_id, user.id)
+        reviews = await self.get_credit_reviews(user, limit=8)
+        exceptions = await self.get_credit_ocr_exceptions(user, limit=8)
 
         return {
             "metrics": metrics,
-            "recent": recent,
+            "reviews": reviews,
+            "exceptions": exceptions,
         }
 
     async def _auditor_data(self, user) -> dict:
-        """Auditor: compliance overview, read-only."""
-        metrics_sql = load_sql("loans", "dashboard_metrics")
-        metrics_row = await self.conn.fetchrow(
-            metrics_sql, user.org_id, user.id, "auditor"
-        )
-        metrics = dict(metrics_row) if metrics_row else {}
+        """Auditor dashboard: read-only compliance flags and audit activity."""
+        metrics = await self._fetch_one("loans", "dashboard_auditor", user.org_id)
+        flags = await self.get_compliance_flags(user, limit=10)
+        activity = await self.get_recent_audit_activity(user, limit=8)
+        flag_counts = await self._fetch_one("audit", "count_compliance_flags", user.org_id)
 
         return {
             "metrics": metrics,
+            "flags": flags,
+            "activity": activity,
+            "flag_counts": flag_counts,
         }
 
     async def _system_admin_data(self, user) -> dict:
-        """System Admin: user management overview."""
-        metrics_sql = load_sql("loans", "dashboard_metrics")
-        metrics_row = await self.conn.fetchrow(
-            metrics_sql, user.org_id, user.id, "system_admin"
-        )
-        metrics = dict(metrics_row) if metrics_row else {}
+        """System Admin dashboard: user and system control overview."""
+        metrics = await self._fetch_one("loans", "dashboard_system_admin", user.org_id)
+        users = await self.get_admin_users(user, limit=8)
+        role_counts = await self.get_user_counts_by_role(user)
+        control_queue = await self.get_system_control_queue(user, limit=8)
+        activity = await self.get_recent_audit_activity(user, limit=8)
 
         return {
             "metrics": metrics,
+            "users": users,
+            "role_counts": role_counts,
+            "control_queue": control_queue,
+            "activity": activity,
         }
+
+    async def get_awaiting_concurrence(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
+        rows = await self.conn.fetch(
+            load_sql("loans", "list_awaiting_concurrence"),
+            user.org_id,
+            user.id,
+            limit,
+            offset,
+        )
+        return [self._with_stage_display(dict(r)) for r in rows] if rows else []
+
+    async def get_branch_pipeline(self, user) -> list[dict]:
+        rows = await self.conn.fetch(load_sql("loans", "branch_pipeline_counts"), user.org_id, user.id)
+        return [dict(r) for r in rows] if rows else []
+
+    async def get_pending_signoffs(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
+        rows = await self.conn.fetch(
+            load_sql("visitation", "list_pending_signoffs"),
+            user.org_id,
+            user.id,
+            limit,
+            offset,
+        )
+        return [dict(r) for r in rows] if rows else []
+
+    async def get_credit_reviews(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
+        rows = await self.conn.fetch(
+            load_sql("loans", "list_credit_reviews"),
+            user.org_id,
+            user.id,
+            limit,
+            offset,
+        )
+        return [self._with_stage_display(dict(r)) for r in rows] if rows else []
+
+    async def get_credit_ocr_exceptions(
+        self,
+        user,
+        threshold: int = 70,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict]:
+        rows = await self.conn.fetch(
+            load_sql("ocr", "list_exceptions_by_credit_officer"),
+            user.org_id,
+            user.id,
+            threshold,
+            limit,
+            offset,
+        )
+        return [dict(r) for r in rows] if rows else []
+
+    async def get_compliance_flags(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
+        rows = await self.conn.fetch(
+            load_sql("audit", "list_compliance_flags"),
+            user.org_id,
+            limit,
+            offset,
+        )
+        return [dict(r) for r in rows] if rows else []
+
+    async def get_recent_audit_activity(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
+        rows = await self.conn.fetch(
+            load_sql("audit", "list_recent_activity"),
+            user.org_id,
+            limit,
+            offset,
+        )
+        return [dict(r) for r in rows] if rows else []
+
+    async def get_admin_users(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
+        rows = await self.conn.fetch(
+            load_sql("users", "list_users_admin"),
+            user.org_id,
+            limit,
+            offset,
+        )
+        return [dict(r) for r in rows] if rows else []
+
+    async def get_user_counts_by_role(self, user) -> list[dict]:
+        rows = await self.conn.fetch(load_sql("users", "count_by_role"), user.org_id)
+        return [dict(r) for r in rows] if rows else []
+
+    async def get_system_control_queue(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
+        rows = await self.conn.fetch(
+            load_sql("loans", "list_system_control_queue"),
+            user.org_id,
+            limit,
+            offset,
+        )
+        return [self._with_stage_display(dict(r)) for r in rows] if rows else []
+
+    async def _fetch_one(self, domain: str, query: str, *args) -> dict:
+        row = await self.conn.fetchrow(load_sql(domain, query), *args)
+        return dict(row) if row else {}

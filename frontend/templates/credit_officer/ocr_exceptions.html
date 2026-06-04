@@ -1,0 +1,25 @@
+{% set mobile_title_text = "OCR Exceptions" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+
+{% block title %}OCR Exceptions - FieldCRM{% endblock %}
+{% block page_title %}OCR Exceptions{% endblock %}
+{% block breadcrumb %}Credit -> OCR Exceptions{% endblock %}
+
+{% block content %}
+<div class="queue-page-header"><div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">Assigned OCR Exceptions</h1></div></div>
+<div class="queue-cards">
+    {% for item in exceptions %}
+    <a href="/applications/{{ item.loan_id }}/ocr-review" class="queue-card">
+        <span class="queue-card-name">{{ item.applicant_name }}</span>
+        <span class="queue-card-meta">{{ item.field_name }} - {{ item.doc_type }}</span>
+        <span class="queue-card-amount">{{ item.final_value or item.ocr_value or 'Blank value' }}</span>
+        <span class="status-badge queue-card-badge {% if item.is_critical %}missing{% else %}needs-review{% endif %}">{{ item.confidence or 0 }}%</span>
+    </a>
+    {% else %}<div class="lo-empty-state">No OCR exceptions assigned.</div>{% endfor %}
+</div>
+<div class="custom-table-container queue-table-wrap page-card"><table class="custom-table"><thead><tr><th>Applicant</th><th>Field</th><th>Value</th><th>Confidence</th><th>Critical</th></tr></thead><tbody>
+{% for item in exceptions %}
+<tr onclick="window.location.href='/applications/{{ item.loan_id }}/ocr-review'"><td>{{ item.applicant_name }}</td><td>{{ item.field_name }}</td><td>{{ item.final_value or item.ocr_value or '-' }}</td><td>{{ item.confidence or 0 }}%</td><td>{{ 'Yes' if item.is_critical else 'No' }}</td></tr>
+{% else %}<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No OCR exceptions assigned.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

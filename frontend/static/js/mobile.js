@@ -16,11 +16,23 @@
     function setActiveTab() {
         const path = window.location.pathname;
         document.querySelectorAll(".tab-item").forEach((item) => item.classList.remove("active"));
-        const label = path.includes("/applications/new")
-            ? "New Application"
-            : path.includes("/applications")
-                ? "My Queue"
-                : "Home";
+        const routeLabels = [
+            ["/applications/new", "New Application"],
+            ["/my-queue", "My Queue"],
+            ["/visits", "Visits"],
+            ["/awaiting-me", "Awaiting"],
+            ["/pending-signoffs", "Signoffs"],
+            ["/pipeline", "Pipeline"],
+            ["/my-reviews", "Reviews"],
+            ["/ocr-exceptions", "Exceptions"],
+            ["/compliance-flags", "Flags"],
+            ["/audit-trail", "Audit"],
+            ["/users", "Users"],
+            ["/system-activity", "Activity"],
+            ["/applications", "My Queue"]
+        ];
+        const match = routeLabels.find(([prefix]) => path.startsWith(prefix));
+        const label = match ? match[1] : "Home";
         const target = Array.from(document.querySelectorAll(".tab-item")).find((item) => {
             return item.getAttribute("aria-label") === label;
         });
