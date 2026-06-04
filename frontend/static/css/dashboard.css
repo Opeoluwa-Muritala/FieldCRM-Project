@@ -1815,3 +1815,193 @@ textarea,
         display: none;
     }
 }
+
+/* Role workspaces for Batch 2-3 dashboards and queues */
+.role-workspace {
+    display: grid;
+    gap: 18px;
+}
+
+.role-hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.role-hero h1 {
+    margin: 0;
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    font-weight: 400;
+    color: var(--text-main);
+}
+
+.role-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.role-stat {
+    min-height: 96px;
+    border: 0.5px solid var(--border-color);
+    border-radius: 8px;
+    background: #fff;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.role-stat span,
+.role-list-card span,
+.role-stage-card span,
+.role-pipeline-row span {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.role-stat strong {
+    font-family: 'Playfair Display', serif;
+    font-size: 30px;
+    font-weight: 400;
+    line-height: 1;
+}
+
+.role-stat.warning strong {
+    color: var(--accent-warning);
+}
+
+.role-stat.danger strong {
+    color: var(--accent-danger);
+}
+
+.role-grid-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.8fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.role-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.role-section-head h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 400;
+}
+
+.role-section-head a {
+    color: var(--role-accent, var(--color-brand-shield));
+    font-size: 12px;
+    text-decoration: none;
+}
+
+.role-card-list {
+    display: grid;
+    gap: 10px;
+}
+
+.role-list-card {
+    min-height: 64px;
+    border: 0.5px solid var(--border-color);
+    border-radius: 8px;
+    background: #fff;
+    padding: 12px;
+    color: var(--text-main);
+    text-decoration: none;
+    display: grid;
+    gap: 4px;
+}
+
+.role-list-card:hover {
+    border-color: var(--role-accent, var(--color-brand-shield));
+    background: var(--role-accent-tint, var(--color-brand-tint));
+}
+
+.role-list-card strong {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.role-list-card em,
+.role-stage-card em {
+    color: var(--text-main);
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 500;
+}
+
+.role-pipeline-list {
+    display: grid;
+    gap: 8px;
+}
+
+.role-pipeline-row {
+    min-height: 42px;
+    border-bottom: 0.5px solid var(--color-divider);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--text-main);
+    text-decoration: none;
+}
+
+.role-pipeline-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.role-stage-card {
+    min-height: 112px;
+    border: 0.5px solid var(--border-color);
+    border-radius: 8px;
+    background: #fff;
+    padding: 14px;
+    color: var(--text-main);
+    text-decoration: none;
+    display: grid;
+    align-content: space-between;
+}
+
+.role-stage-card strong {
+    font-family: 'Playfair Display', serif;
+    font-size: 30px;
+    font-weight: 400;
+}
+
+.desktop-only {
+    display: inline-flex;
+}
+
+@media (max-width: 767px) {
+    .role-hero {
+        display: block;
+    }
+
+    .role-hero h1 {
+        font-size: 22px;
+    }
+
+    .role-stat-grid,
+    .role-pipeline-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .role-grid-main {
+        grid-template-columns: 1fr;
+    }
+
+    .desktop-only,
+    .queue-table-wrap {
+        display: none !important;
+    }
+}

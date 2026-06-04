@@ -1,0 +1,31 @@
+{% set mobile_title_text = "Admin" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+
+{% block title %}System Admin - FieldCRM{% endblock %}
+{% block page_title %}System Admin Dashboard{% endblock %}
+{% block breadcrumb %}Control -> Dashboard{% endblock %}
+
+{% block content %}
+{% set m = data.metrics if data and data.metrics else {} %}
+<div class="role-workspace">
+    <div class="role-hero"><div><div class="dashboard-date">{{ today_label }}</div><h1>System control desk</h1></div><a class="btn-primary-filled desktop-only" href="/users">Manage Users</a></div>
+    <div class="role-stat-grid">
+        <div class="role-stat"><span>Active Users</span><strong>{{ m.get('active_users', 0) }}</strong></div>
+        <div class="role-stat"><span>Active Loans</span><strong>{{ m.get('active_loans', 0) }}</strong></div>
+        <div class="role-stat warning"><span>Ready Files</span><strong>{{ m.get('ready_for_disbursement', 0) }}</strong></div>
+        <div class="role-stat danger"><span>Blocked</span><strong>{{ m.get('blocked_files', 0) }}</strong></div>
+    </div>
+    <div class="role-grid-main">
+        <section class="page-card"><div class="role-section-head"><h2>Final Control Queue</h2><a href="/system-activity">Open</a></div><div class="role-card-list">
+            {% for item in data.control_queue %}
+            <a class="role-list-card" href="/applications/{{ item.id }}"><strong>{{ item.applicant_name }}</strong><span>{{ item.ref_no }} - {{ item.status }}</span><em>{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% endif %}</em></a>
+            {% else %}<div class="lo-empty-state">No final-control files.</div>{% endfor %}
+        </div></section>
+        <section class="page-card"><div class="role-section-head"><h2>User Roles</h2><a href="/users">Manage</a></div><div class="role-pipeline-list">
+            {% for item in data.role_counts %}
+            <a href="/users" class="role-pipeline-row"><span>{{ item.role|replace('_', ' ')|title }}</span><strong>{{ item.count }}</strong></a>
+            {% else %}<div class="lo-empty-state">No active users.</div>{% endfor %}
+        </div></section>
+    </div>
+</div>
+{% endblock %}

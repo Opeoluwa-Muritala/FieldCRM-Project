@@ -1,0 +1,27 @@
+{% set mobile_title_text = "Signoffs" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+
+{% block title %}Visit Signoffs - FieldCRM{% endblock %}
+{% block page_title %}Visit Signoffs{% endblock %}
+{% block breadcrumb %}Branch -> Signoffs{% endblock %}
+
+{% block content %}
+<div class="queue-page-header"><div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">Pending Visit Signoffs</h1></div></div>
+<div class="queue-cards">
+    {% for item in signoffs %}
+    <a href="/applications/{{ item.loan_id }}/visitation" class="queue-card">
+        <span class="queue-card-name">{{ item.applicant_name }}</span>
+        <span class="queue-card-meta">{{ item.ref_no }} - {{ item.visiting_officer_name or 'Officer' }}</span>
+        <span class="queue-card-amount">{{ item.visit_date or 'No visit date' }}</span>
+        <span class="status-badge queue-card-badge needs-review">Submitted</span>
+    </a>
+    {% else %}<div class="lo-empty-state">No submitted visits awaiting signoff.</div>{% endfor %}
+</div>
+<div class="custom-table-container queue-table-wrap page-card">
+    <table class="custom-table"><thead><tr><th>Applicant</th><th>Officer</th><th>Met With</th><th>Status</th><th>Updated</th></tr></thead><tbody>
+    {% for item in signoffs %}
+    <tr onclick="window.location.href='/applications/{{ item.loan_id }}/visitation'"><td>{{ item.applicant_name }}</td><td>{{ item.visiting_officer_name or '-' }}</td><td>{{ item.met_with or '-' }}</td><td>{{ item.status|title }}</td><td>{{ item.updated_at.strftime('%d %b') if item.updated_at else '' }}</td></tr>
+    {% else %}<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No submitted visits awaiting signoff.</td></tr>{% endfor %}
+    </tbody></table>
+</div>
+{% endblock %}

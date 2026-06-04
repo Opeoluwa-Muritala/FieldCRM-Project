@@ -1,0 +1,19 @@
+{% set mobile_title_text = "Pipeline" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+
+{% block title %}Branch Pipeline - FieldCRM{% endblock %}
+{% block page_title %}Branch Pipeline{% endblock %}
+{% block breadcrumb %}Branch -> Pipeline{% endblock %}
+
+{% block content %}
+<div class="queue-page-header"><div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">Assigned Pipeline</h1></div></div>
+<div class="role-pipeline-grid">
+    {% for stage in pipeline %}
+    <a href="/applications?stage={{ stage.stage }}" class="role-stage-card">
+        <span>{{ stage.stage|replace('_', ' ')|title }}</span>
+        <strong>{{ stage.count }}</strong>
+        <em>&#x20A6;{{ "{:,.0f}".format(stage.total_amount) }}</em>
+    </a>
+    {% else %}<div class="lo-empty-state">No assigned branch files.</div>{% endfor %}
+</div>
+{% endblock %}

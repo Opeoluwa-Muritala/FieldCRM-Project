@@ -1,0 +1,31 @@
+{% set mobile_title_text = "Compliance" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+
+{% block title %}Auditor - FieldCRM{% endblock %}
+{% block page_title %}Auditor Dashboard{% endblock %}
+{% block breadcrumb %}Compliance -> Dashboard{% endblock %}
+
+{% block content %}
+{% set m = data.metrics if data and data.metrics else {} %}
+<div class="role-workspace">
+    <div class="role-hero"><div><div class="dashboard-date">{{ today_label }}</div><h1>Compliance review desk</h1></div><a class="btn-primary-filled desktop-only" href="/compliance-flags">Open Flags</a></div>
+    <div class="role-stat-grid">
+        <div class="role-stat warning"><span>Unverified Docs</span><strong>{{ m.get('unverified_documents', 0) }}</strong></div>
+        <div class="role-stat danger"><span>Critical OCR</span><strong>{{ m.get('critical_ocr_gaps', 0) }}</strong></div>
+        <div class="role-stat"><span>Workflow Exceptions</span><strong>{{ m.get('workflow_exceptions', 0) }}</strong></div>
+        <div class="role-stat"><span>Audit Today</span><strong>{{ m.get('audit_events_today', 0) }}</strong></div>
+    </div>
+    <div class="role-grid-main">
+        <section class="page-card"><div class="role-section-head"><h2>Compliance Flags</h2><a href="/compliance-flags">View all</a></div><div class="role-card-list">
+            {% for item in data.flags %}
+            <a class="role-list-card" href="/applications/{{ item.loan_id }}"><strong>{{ item.applicant_name }}</strong><span>{{ item.flag_type|title }} - {{ item.flag_label }}</span><em>{{ item.flag_status|replace('_', ' ')|title }}</em></a>
+            {% else %}<div class="lo-empty-state">No compliance flags.</div>{% endfor %}
+        </div></section>
+        <section class="page-card"><div class="role-section-head"><h2>Audit Activity</h2><a href="/audit-trail">Open</a></div><div class="role-card-list">
+            {% for item in data.activity %}
+            <div class="role-list-card"><strong>{{ item.action }}</strong><span>{{ item.user_name or item.user_role }} - {{ item.entity_type }}</span><em>{{ item.created_at.strftime('%d %b %H:%M') if item.created_at else '' }}</em></div>
+            {% else %}<div class="lo-empty-state">No audit activity.</div>{% endfor %}
+        </div></section>
+    </div>
+</div>
+{% endblock %}

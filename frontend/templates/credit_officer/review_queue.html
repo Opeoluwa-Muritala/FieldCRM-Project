@@ -1,0 +1,25 @@
+{% set mobile_title_text = "Reviews" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+
+{% block title %}My Reviews - FieldCRM{% endblock %}
+{% block page_title %}My Reviews{% endblock %}
+{% block breadcrumb %}Credit -> My Reviews{% endblock %}
+
+{% block content %}
+<div class="queue-page-header"><div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">Credit Review Queue</h1></div></div>
+<div class="queue-cards">
+    {% for item in reviews %}
+    <a href="/applications/{{ item.id }}/credit-review" class="queue-card">
+        <span class="queue-card-name">{{ item.applicant_name }}</span>
+        <span class="queue-card-meta">{{ item.ref_no }} - {{ item.loan_type|title }}</span>
+        <span class="queue-card-amount">{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}No amount{% endif %}</span>
+        <span class="status-badge queue-card-badge needs-review">{{ item.exception_count }} OCR</span>
+    </a>
+    {% else %}<div class="lo-empty-state">No credit reviews waiting.</div>{% endfor %}
+</div>
+<div class="custom-table-container queue-table-wrap page-card"><table class="custom-table"><thead><tr><th>Applicant</th><th>Officer</th><th>Amount</th><th>Tenor</th><th>OCR Issues</th></tr></thead><tbody>
+{% for item in reviews %}
+<tr onclick="window.location.href='/applications/{{ item.id }}/credit-review'"><td>{{ item.applicant_name }}</td><td>{{ item.officer_name or '-' }}</td><td>{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}-{% endif %}</td><td>{{ item.tenor_months or '-' }}</td><td>{{ item.exception_count }}</td></tr>
+{% else %}<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No credit reviews waiting.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% set mobile_title_text = "Flags" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+
+{% block title %}Compliance Flags - FieldCRM{% endblock %}
+{% block page_title %}Compliance Flags{% endblock %}
+{% block breadcrumb %}Compliance -> Flags{% endblock %}
+
+{% block content %}
+<div class="queue-page-header"><div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">Open Compliance Flags</h1></div></div>
+<div class="queue-cards">
+    {% for item in flags %}
+    <a href="/applications/{{ item.loan_id }}" class="queue-card">
+        <span class="queue-card-name">{{ item.applicant_name }}</span>
+        <span class="queue-card-meta">{{ item.flag_type|title }} - {{ item.flag_label }}</span>
+        <span class="queue-card-amount">{{ item.flag_status|replace('_', ' ')|title }}</span>
+        <span class="status-badge queue-card-badge needs-review">Review</span>
+    </a>
+    {% else %}<div class="lo-empty-state">No compliance flags.</div>{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% set mobile_title_text = "Approvals" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+
+{% block title %}Branch Manager - FieldCRM{% endblock %}
+{% block page_title %}Branch Manager Dashboard{% endblock %}
+{% block breadcrumb %}Branch -> Dashboard{% endblock %}
+
+{% block content %}
+{% set m = data.metrics if data and data.metrics else {} %}
+<div class="role-workspace">
+    <div class="role-hero">
+        <div>
+            <div class="dashboard-date">{{ today_label }}</div>
+            <h1>Approval command desk</h1>
+        </div>
+        <a class="btn-primary-filled desktop-only" href="/awaiting-me">Open Queue</a>
+    </div>
+
+    <div class="role-stat-grid">
+        <div class="role-stat"><span>Awaiting Me</span><strong>{{ m.get('awaiting_concurrence', 0) }}</strong></div>
+        <div class="role-stat"><span>Visit Signoffs</span><strong>{{ m.get('pending_signoffs', 0) }}</strong></div>
+        <div class="role-stat"><span>Approved Today</span><strong>{{ m.get('approved_today', 0) }}</strong></div>
+        <div class="role-stat danger"><span>Returned Week</span><strong>{{ m.get('returned_this_week', 0) }}</strong></div>
+    </div>
+
+    <div class="role-grid-main">
+        <section class="page-card">
+            <div class="role-section-head"><h2>Priority Approvals</h2><a href="/awaiting-me">View all</a></div>
+            <div class="role-card-list">
+                {% for item in data.queue %}
+                <a class="role-list-card" href="/applications/{{ item.id }}/approve">
+                    <strong>{{ item.applicant_name }}</strong>
+                    <span>{{ item.ref_no }} - {{ item.loan_type|title }} - {{ item.days_waiting }}d waiting</span>
+                    <em>{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}No amount{% endif %}</em>
+                </a>
+                {% else %}<div class="lo-empty-state">No approvals waiting.</div>{% endfor %}
+            </div>
+        </section>
+
+        <section class="page-card">
+            <div class="role-section-head"><h2>Branch Pipeline</h2><a href="/pipeline">Open</a></div>
+            <div class="role-pipeline-list">
+                {% for stage in data.pipeline %}
+                <a href="/pipeline" class="role-pipeline-row"><span>{{ stage.stage|replace('_', ' ')|title }}</span><strong>{{ stage.count }}</strong></a>
+                {% else %}<div class="lo-empty-state">No assigned branch files.</div>{% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

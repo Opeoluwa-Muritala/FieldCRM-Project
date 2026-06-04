@@ -1,0 +1,6 @@
+{% set active_tab = active_tab|default('home') %}
+<button class="tab-item {% if active_tab == 'home' %}active{% endif %}" type="button" onclick="window.location.href='/dashboard'" aria-label="Home"><span class="tab-icon">&#x1F3E0;</span><span class="tab-label">Home</span></button>
+<button class="tab-item {% if active_tab == 'flags' %}active{% endif %}" type="button" onclick="window.location.href='/compliance-flags'" aria-label="Flags"><span class="tab-icon">&#x26A0;</span><span class="tab-label">Flags</span></button>
+<button class="tab-item {% if active_tab == 'audit' %}active{% endif %}" type="button" onclick="window.location.href='/audit-trail'" aria-label="Audit"><span class="tab-icon">&#x1F4DC;</span><span class="tab-label">Audit</span></button>
+<button class="tab-item" type="button" onclick="window.location.href='/borrowers'" aria-label="Loans"><span class="tab-icon">&#x1F4C1;</span><span class="tab-label">Loans</span></button>
+<button class="tab-item" type="button" onclick="window.location.href='/logout'" aria-label="Logout"><span class="tab-icon">&#x21AA;</span><span class="tab-label">Logout</span></button>
