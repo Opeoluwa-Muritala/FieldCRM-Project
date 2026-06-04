@@ -1,8 +1,10 @@
 document.addEventListener("DOMContentLoaded", () => {
+    initializeRoleShell();
     bindFormChoices();
     bindFormCards();
     bindTourStart();
     startGuideOnce();
+    startBadgePolling();
 });
 
 let currentTourStep = 0;
@@ -300,7 +302,13 @@ function startGuideOnce() {
 
 function getCurrentRole() {
     const shell = document.querySelector(".app-shell");
-    return shell ? shell.dataset.userRole || "Loan Officer" : "Loan Officer";
+    if (shell && shell.dataset.userRole) return shell.dataset.userRole;
+
+    const role = document.body?.dataset.role || "loan_officer";
+    return role
+        .split("_")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
 }
 
 function getUsageGuideStorageKey() {
@@ -386,7 +394,11 @@ function saveFormDraft() {
     if (getCurrentRole() !== "Loan Officer") return;
 
     const definition = formDefinitions[activeFormType] || formDefinitions.loan_application;
-    alert(`${definition.title} draft saved locally for ${activeFormMode === "upload" ? "OCR review" : "manual entry"}.`);
+    const status = document.getElementById("dashboardInlineStatus") || document.createElement("div");
+    status.id = "dashboardInlineStatus";
+    status.className = "inline-empty-state";
+    status.textContent = `${definition.title} draft saved locally for ${activeFormMode === "upload" ? "OCR review" : "manual entry"}.`;
+    document.getElementById("inlineFormWorkspace")?.appendChild(status);
     closeFormWorkspace();
 }
 
@@ -506,65 +518,7 @@ function renderUploadMode(container, definition) {
 }
 
 function startTrainingTour() {
-    currentTourStep = 0;
-    activeTourSteps = getAvailableTourSteps();
-    if (activeTourSteps.length === 0) return;
-
-    let overlay = document.getElementById("tourOverlay");
-    if (!overlay) {
-        overlay = document.createElement("div");
-        overlay.id = "tourOverlay";
-        overlay.className = "tour-overlay";
-        overlay.addEventListener("click", handleOverlayGuideClick);
-
-        const tooltip = document.createElement("div");
-        tooltip.id = "tourTooltip";
-        tooltip.className = "tour-tooltip";
-        tooltip.addEventListener("click", (event) => {
-            event.stopPropagation();
-        });
-
-        const indicator = document.createElement("div");
-        indicator.id = "tourIndicator";
-        indicator.className = "tour-step-indicator";
-
-        const title = document.createElement("div");
-        title.id = "tourTitle";
-        title.className = "tour-step-title";
-
-        const desc = document.createElement("div");
-        desc.id = "tourDesc";
-        desc.className = "tour-step-desc";
-
-        const footer = document.createElement("div");
-        footer.className = "btn-group";
-
-        const prevBtn = document.createElement("button");
-        prevBtn.id = "tourPrevBtn";
-        prevBtn.className = "btn btn-secondary";
-        prevBtn.type = "button";
-        prevBtn.textContent = "Back";
-        prevBtn.addEventListener("click", previousTourStep);
-
-        const nextBtn = document.createElement("button");
-        nextBtn.id = "tourNextBtn";
-        nextBtn.className = "btn btn-primary";
-        nextBtn.type = "button";
-        nextBtn.textContent = "Next";
-        nextBtn.addEventListener("click", nextTourStep);
-
-        footer.appendChild(prevBtn);
-        footer.appendChild(nextBtn);
-        tooltip.appendChild(indicator);
-        tooltip.appendChild(title);
-        tooltip.appendChild(desc);
-        tooltip.appendChild(footer);
-        overlay.appendChild(tooltip);
-        document.body.appendChild(overlay);
-    }
-
-    overlay.style.display = "block";
-    showTourStep(0);
+    return;
 }
 
 function showTourStep(stepIndex) {
@@ -626,10 +580,6 @@ function previousTourStep() {
 }
 
 function completeTour() {
-    const overlay = document.getElementById("tourOverlay");
-    if (overlay) {
-        overlay.style.display = "none";
-    }
     if (activeTourTarget) {
         activeTourTarget.classList.remove("tour-highlight");
         activeTourTarget = null;
@@ -645,4 +595,40 @@ function getAvailableTourSteps() {
 
 function handleOverlayGuideClick() {
     nextTourStep();
+}
+
+function initializeRoleShell() {
+    const role = document.body?.dataset.role;
+    if (!role) return;
+    document.documentElement.dataset.role = role;
+    document.querySelectorAll("[data-role-label]").forEach((node) => {
+        node.textContent = getCurrentRole();
+    });
+}
+
+function startBadgePolling() {
+    const badgeTargets = document.querySelectorAll("[data-badge-url]");
+    if (!badgeTargets.length) return;
+
+    const poll = async () => {
+        await Promise.all(Array.from(badgeTargets).map(async (target) => {
+            try {
+                const response = await fetch(target.dataset.badgeUrl, {
+                    headers: { "Accept": "application/json" },
+                    credentials: "same-origin"
+                });
+                if (!response.ok) return;
+                const payload = await response.json();
+                const key = target.dataset.badgeKey || "count";
+                const value = payload[key] ?? 0;
+                target.textContent = value;
+                target.hidden = Number(value) <= 0;
+            } catch {
+                target.hidden = target.hidden;
+            }
+        }));
+    };
+
+    poll();
+    window.setInterval(poll, 60000);
 }

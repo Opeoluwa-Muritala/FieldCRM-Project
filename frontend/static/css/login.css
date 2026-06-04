@@ -1,0 +1,379 @@
+/* Mainstreet Microfinance Bank login */
+:root {
+    --color-brand-shield: #6B3FA0;
+    --color-brand-deep: #2D1A4A;
+    --color-brand-mid: #8B5CC8;
+    --color-brand-light: #B794D4;
+    --color-brand-tint: #F0E8FA;
+    --bg-primary: #FFFFFF;
+    --bg-secondary: #F5F3F0;
+    --text-main: #1C1A2E;
+    --text-muted: #6B6880;
+    --border-color: #C8C5D0;
+    --color-divider: #E2DFE8;
+    --accent-success: #1A6B45;
+    --accent-danger: #A01A1A;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: 'DM Sans', sans-serif;
+    background-color: var(--bg-secondary);
+    color: var(--text-main);
+    min-height: 100vh;
+}
+
+button,
+input {
+    font-family: 'DM Sans', sans-serif;
+}
+
+.login-split-container {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+}
+
+.brand-panel {
+    flex: 1;
+    background-color: var(--color-brand-deep);
+    color: #FFFFFF;
+    padding: 56px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.brand-logo-img,
+.logo-composite {
+    width: 180px;
+    aspect-ratio: 1 / 1;
+    display: inline-block;
+    position: relative;
+    overflow: hidden;
+}
+
+.logo-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.logo-layer-shield {
+    clip-path: inset(0 68% 0 0);
+}
+
+.logo-layer-text {
+    clip-path: inset(0 0 0 28%);
+    filter: grayscale(1) saturate(0) brightness(0.82);
+}
+
+.brand-content {
+    max-width: 560px;
+}
+
+.brand-badge,
+.widget-title {
+    color: var(--color-brand-light);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.brand-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 40px;
+    font-weight: 400;
+    line-height: 1.15;
+    margin: 18px 0 14px;
+}
+
+.brand-description {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0 0 32px;
+}
+
+.preview-widget {
+    border: 0.5px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.widget-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.16);
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+}
+
+.widget-status {
+    color: #FFFFFF;
+    font-size: 12px;
+}
+
+.widget-status-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background-color: var(--accent-success);
+}
+
+.preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.preview-metric-card {
+    border: 0.5px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.preview-metric-label,
+.brand-footer {
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 12px;
+}
+
+.preview-metric-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    margin-top: 4px;
+}
+
+.form-panel {
+    flex: 0 0 480px;
+    background-color: var(--bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    border-left: 0.5px solid var(--border-color);
+}
+
+.form-shell {
+    width: 100%;
+    max-width: 400px;
+}
+
+.mobile-logo-area {
+    display: none;
+    justify-content: center;
+    margin-bottom: 28px;
+}
+
+.login-title-area {
+    margin-bottom: 28px;
+}
+
+.login-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 30px;
+    font-weight: 400;
+    margin: 0 0 6px;
+}
+
+.login-subtitle {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 0;
+}
+
+.login-error {
+    border: 0.5px solid var(--accent-danger);
+    border-radius: 8px;
+    color: var(--accent-danger);
+    padding: 12px;
+    font-size: 13px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 8px;
+}
+
+.login-error svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-label {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+.input-container {
+    position: relative;
+}
+
+.input-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+}
+
+.form-input {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-main);
+    font-size: 13px;
+    padding: 9px 12px 9px 40px;
+    outline: none;
+}
+
+.form-input:focus {
+    border-color: var(--color-brand-mid);
+    outline: 2px solid var(--color-brand-mid);
+    outline-offset: 2px;
+}
+
+.login-btn {
+    width: 100%;
+    min-height: 40px;
+    border: 0;
+    border-radius: 8px;
+    background-color: var(--color-brand-shield);
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.login-btn:hover {
+    background-color: var(--color-brand-mid);
+}
+
+.login-btn-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.demo-section {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 0.5px solid var(--color-divider);
+}
+
+.demo-section-header {
+    margin-bottom: 12px;
+}
+
+.demo-title {
+    color: var(--color-brand-shield);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.demo-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.demo-card {
+    border: 0.5px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--bg-primary);
+    color: var(--text-main);
+    padding: 12px;
+    cursor: pointer;
+    text-align: left;
+    display: grid;
+    gap: 3px;
+}
+
+.demo-card:hover,
+.demo-card.active {
+    border-color: var(--color-brand-shield);
+    background-color: var(--color-brand-tint);
+}
+
+.demo-card-full {
+    grid-column: span 2;
+}
+
+.demo-card-role {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.demo-card-desc,
+.demo-card-phone,
+.demo-footer-info {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.demo-card-phone {
+    font-family: 'DM Sans', sans-serif;
+    color: var(--color-brand-shield);
+}
+
+.demo-footer-info {
+    margin-top: 12px;
+    border: 0.5px solid var(--color-divider);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+}
+
+.brand-panel {
+    display: none;
+}
+
+.form-panel {
+    flex: 1;
+    border-left: 0;
+    padding: 28px;
+}
+
+.mobile-logo-area {
+    display: flex;
+}
+
+@media (min-width: 901px) {
+    .brand-panel {
+        display: flex;
+    }
+
+    .form-panel {
+        flex: 0 0 480px;
+        border-left: 0.5px solid var(--border-color);
+        padding: 40px;
+    }
+
+    .mobile-logo-area {
+        display: none;
+    }
+}

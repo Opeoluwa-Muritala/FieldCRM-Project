@@ -353,7 +353,11 @@ async function nextStep() {
         return;
     }
 
-    alert("All form sections have been saved and verified successfully.");
+    const status = document.getElementById("formCompletionStatus") || document.createElement("div");
+    status.id = "formCompletionStatus";
+    status.className = "flat-card brand";
+    status.textContent = "All form sections have been saved and verified successfully.";
+    document.body.appendChild(status);
 }
 
 async function render() {
@@ -942,4 +946,3 @@ function renderOcrReviewWorkspace(container, ocrResult) {
         container.appendChild(flagsSec);
     }
 }
-

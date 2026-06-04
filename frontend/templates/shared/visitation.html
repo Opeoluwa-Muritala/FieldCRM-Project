@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Field Visitation Report | FieldCRM{% endblock %}
+
+{% block breadcrumb %}Field &rarr; Visitation &rarr; {{ app_id }}{% endblock %}
+{% block page_title %}Field Visitation Report{% endblock %}
+
+{% block content %}
+<div class="page-card no-shadow">
+    <div class="page-card-header">
+        <h2 class="page-card-title">Field Visitation Report</h2>
+        <p class="page-card-subtitle">Verify business viability and residential premises for borrower {{ borrower_name }}.</p>
+    </div>
+
+    <form id="visitationForm" action="/applications/{{ app_id }}/visitation" method="POST">
+        <!-- Section 1: Visiting Officer Report -->
+        <div style="margin-bottom: 32px;">
+            <div style="font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 16px; letter-spacing:0.05em; font-weight: 500;">Officer Report</div>
+            
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="field-label">Date of Visitation <span class="required">*</span></label>
+                    <input type="date" name="visit_date" class="field-input" value="{{ data.visit_date or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Time of Arrival</label>
+                    <input type="time" name="visit_time" class="field-input" value="{{ data.visit_time or '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Person Met <span class="required">*</span></label>
+                    <input type="text" name="person_met" class="field-input" value="{{ data.person_met or '' }}" placeholder="Customer, spouse, landlord, etc." required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Relationship to Applicant</label>
+                    <input type="text" name="relationship" class="field-input" value="{{ data.relationship or '' }}">
+                </div>
+                <div class="form-group-full">
+                    <label class="field-label">Premises Description <span class="required">*</span></label>
+                    <textarea name="premises_description" class="field-textarea" placeholder="Detail structure type, walling, color, stores..." required>{{ data.premises_description or '' }}</textarea>
+                </div>
+                <div class="form-group-full">
+                    <label class="field-label">Direction from Branch <span class="required">*</span></label>
+                    <textarea name="direction_from_branch" class="field-textarea" placeholder="Detailed navigation route landmarks..." required>{{ data.direction_from_branch or '' }}</textarea>
+                </div>
+                <div class="form-group-full">
+                    <label class="field-label">Business Condition Observed</label>
+                    <textarea name="business_condition" class="field-textarea" placeholder="Active stock volume, customer traffic, etc.">{{ data.business_condition or '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Visiting Officer Name</label>
+                    <input type="text" name="visiting_officer" class="field-input" value="{{ data.visiting_officer or current_user.name }}" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Account Officer <span class="required">*</span></label>
+                    <input type="text" name="account_officer" class="field-input" value="{{ data.account_officer or '' }}" required>
+                </div>
+
+                <div class="form-group" style="margin-top: 16px;">
+                    <label class="field-label">Visiting Officer Signature <span class="required">*</span></label>
+                    <div class="signature-box">
+                        <canvas id="visitor_sig_canvas"></canvas>
+                        <button type="button" class="signature-clear-btn" onclick="clearSignature('visitor_sig_canvas')">Clear</button>
+                    </div>
+                    <input type="hidden" name="visiting_officer_sig" id="visitor_sig_val" value="{{ data.visiting_officer_sig or '' }}">
+                </div>
+
+                <div class="form-group" style="margin-top: 16px;">
+                    <label class="field-label">Account Officer Signature</label>
+                    <div class="signature-box">
+                        <canvas id="ao_sig_canvas"></canvas>
+                        <button type="button" class="signature-clear-btn" onclick="clearSignature('ao_sig_canvas')">Clear</button>
+                    </div>
+                    <input type="hidden" name="account_officer_sig" id="ao_sig_val" value="{{ data.account_officer_sig or '' }}">
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Branch Manager Concurrence -->
+        <div style="border-top: 0.5px solid var(--color-divider); padding-top: 24px; margin-bottom: 24px;">
+            <div style="font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 16px; letter-spacing:0.05em; font-weight: 500;">Branch Manager Concurrence</div>
+            
+            {% set is_bm = (current_user.role == "branch_manager") %}
+            
+            {% if not is_bm %}
+            <!-- Locked State for Loan Officers or other roles -->
+            <div class="flat-card warning" style="background-color: var(--bg-secondary); border-color: var(--border-color); display:flex; align-items:center; gap:12px;">
+                <span style="font-size:20px;">&#x1F512;</span>
+                <div>
+                    <span class="status-badge needs-review">Awaiting Branch Manager Concurrence</span>
+                    <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Concurrence signoff remains locked until a Branch Manager logs in to review this application.</p>
+                </div>
+            </div>
+            {% else %}
+            <!-- Active State for Branch Manager -->
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="field-label">Branch Manager Name</label>
+                    <input type="text" name="bm_name" class="field-input" value="{{ current_user.name }}" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Concurrence Decision <span class="required">*</span></label>
+                    <div class="pill-radio-group">
+                        <div class="pill-radio-btn">
+                            <input type="radio" name="concurrence" value="Concurred" id="conc_yes" {% if data.concurrence == 'Concurred' or not data.concurrence %}checked{% endif %} onchange="toggleConcurrenceReturn()">
+                            <label for="conc_yes">Concurred</label>
+                        </div>
+                        <div class="pill-radio-btn">
+                            <input type="radio" name="concurrence" value="Returned for Correction" id="conc_no" {% if data.concurrence == 'Returned for Correction' %}checked{% endif %} onchange="toggleConcurrenceReturn()">
+                            <label for="conc_no">Returned for Correction</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group-full" id="concurrenceReasonSlot" style="display: none; margin-top: 12px;">
+                    <label class="field-label">Reason for Return <span class="required">*</span></label>
+                    <textarea name="concurrence_return_reason" id="concurrence_return_reason" class="field-textarea" placeholder="Specify corrections or omissions..."></textarea>
+                </div>
+
+                <div class="form-group-full">
+                    <label class="field-label">Concurrence Notes / Observations</label>
+                    <textarea name="bm_notes" class="field-textarea" placeholder="Manager feedback notes...">{{ data.bm_notes or '' }}</textarea>
+                </div>
+
+                <div class="form-group" style="margin-top: 16px;">
+                    <label class="field-label">Manager Signature <span class="required">*</span></label>
+                    <div class="signature-box">
+                        <canvas id="bm_sig_canvas"></canvas>
+                        <button type="button" class="signature-clear-btn" onclick="clearSignature('bm_sig_canvas')">Clear</button>
+                    </div>
+                    <input type="hidden" name="bm_sig" id="bm_sig_val" value="{{ data.bm_sig or '' }}">
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Action Footer -->
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:0.5px solid var(--color-divider); padding-top:16px;">
+            <a href="/applications/{{ app_id }}" class="btn-ghost-link">&larr; Back to Application</a>
+            
+            {% if is_bm %}
+            <button type="submit" name="action" value="concur" class="btn-primary-filled">Submit Concurrence &rarr;</button>
+            {% else %}
+            <button type="submit" name="action" value="save_report" class="btn-primary-filled">Save Visitation Report &rarr;</button>
+            {% endif %}
+        </div>
+
+    </form>
+</div>
+
+<script>
+    function toggleConcurrenceReturn() {
+        const radNo = document.getElementById('conc_no');
+        const slot = document.getElementById('concurrenceReasonSlot');
+        const reasonInput = document.getElementById('concurrence_return_reason');
+        if (!radNo || !slot) return;
+        
+        if (radNo.checked) {
+            slot.style.display = 'block';
+            reasonInput.setAttribute('required', 'required');
+        } else {
+            slot.style.display = 'none';
+            reasonInput.removeAttribute('required');
+        }
+    }
+
+    function initSignature(canvasId, valInputId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        const rect = canvas.parentNode.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+
+        function startDrawing(e) {
+            drawing = true;
+            draw(e);
+        }
+
+        function endDrawing() {
+            drawing = false;
+            ctx.beginPath();
+            document.getElementById(valInputId).value = canvas.toDataURL();
+        }
+
+        function draw(e) {
+            if (!drawing) return;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#1C1A2E';
+
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            ctx.lineTo(clientX - rect.left, clientY - rect.top);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(clientX - rect.left, clientY - rect.top);
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDrawing);
+
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', endDrawing);
+    }
+
+    function clearSignature(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        if (canvasId === 'visitor_sig_canvas') document.getElementById('visitor_sig_val').value = '';
+        if (canvasId === 'ao_sig_canvas') document.getElementById('ao_sig_val').value = '';
+        if (canvasId === 'bm_sig_canvas') document.getElementById('bm_sig_val').value = '';
+    }
+
+    window.addEventListener('load', () => {
+        initSignature('visitor_sig_canvas', 'visitor_sig_val');
+        initSignature('ao_sig_canvas', 'ao_sig_val');
+        initSignature('bm_sig_canvas', 'bm_sig_val');
+        
+        // Concurrence check
+        if (document.getElementById('conc_no')) {
+            toggleConcurrenceReturn();
+        }
+    });
+</script>
+{% endblock %}

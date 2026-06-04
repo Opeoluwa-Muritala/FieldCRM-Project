@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Application Queue | FieldCRM{% endblock %}
+{% set active_page = "applications" %}
+
+{% block breadcrumb %}Loans &rarr; Queue{% endblock %}
+{% block page_title %}Application Queue{% endblock %}
+
+{% block content %}
+<div class="page-card no-shadow">
+    <!-- Header of the Card -->
+    <div class="page-card-header queue-page-header">
+        <div>
+            <h2 class="page-card-title">Applications List</h2>
+            <p class="page-card-subtitle">Manage and filter loans through intake, OCR review, and approval pipelines.</p>
+        </div>
+        <a href="/applications/new" class="btn-primary-filled queue-new-link">+ New Loan Application</a>
+    </div>
+
+    <!-- Filter Bar below header -->
+    <div class="queue-filter-panel">
+        <form id="filterForm" action="/applications" method="GET">
+            <!-- Stage Selector Pill Group -->
+            <div style="margin-bottom: 16px;">
+                <span class="field-label" style="margin-bottom: 8px;">Filter by Stage</span>
+                <div class="pill-radio-group">
+                    <div class="pill-radio-btn">
+                        <input type="radio" name="stage" value="all" id="stage_all" {% if not current_stage or current_stage == 'all' %}checked{% endif %} onchange="submitFilters()">
+                        <label for="stage_all">All Stages</label>
+                    </div>
+                    <div class="pill-radio-btn">
+                        <input type="radio" name="stage" value="intake" id="stage_1" {% if current_stage == 'intake' %}checked{% endif %} onchange="submitFilters()">
+                        <label for="stage_1">Intake</label>
+                    </div>
+                    <div class="pill-radio-btn">
+                        <input type="radio" name="stage" value="ocr_review" id="stage_2" {% if current_stage == 'ocr_review' %}checked{% endif %} onchange="submitFilters()">
+                        <label for="stage_2">OCR Review</label>
+                    </div>
+                    <div class="pill-radio-btn">
+                        <input type="radio" name="stage" value="credit_review" id="stage_3" {% if current_stage == 'credit_review' %}checked{% endif %} onchange="submitFilters()">
+                        <label for="stage_3">Credit Review</label>
+                    </div>
+                    <div class="pill-radio-btn">
+                        <input type="radio" name="stage" value="branch_approval" id="stage_4" {% if current_stage == 'branch_approval' %}checked{% endif %} onchange="submitFilters()">
+                        <label for="stage_4">Branch Approval</label>
+                    </div>
+                    <div class="pill-radio-btn">
+                        <input type="radio" name="stage" value="disbursement_ready" id="stage_5" {% if current_stage == 'disbursement_ready' %}checked{% endif %} onchange="submitFilters()">
+                        <label for="stage_5">Disbursement</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other filter inputs in a row -->
+            <div class="queue-filter-grid">
+                <div class="form-group">
+                    <label class="field-label" for="loanTypeFilter">Loan Category</label>
+                    <select name="loan_type" id="loanTypeFilter" class="field-select" onchange="submitFilters()">
+                        <option value="all" {% if not current_loan_type or current_loan_type == 'all' %}selected{% endif %}>All Categories</option>
+                        <option value="enterprise" {% if current_loan_type == 'enterprise' %}selected{% endif %}>Enterprise Loan</option>
+                        <option value="msef" {% if current_loan_type == 'msef' %}selected{% endif %}>MSEF</option>
+                        <option value="payee" {% if current_loan_type == 'payee' %}selected{% endif %}>PAYEE</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="field-label" for="searchFilter">Search Name/Officer</label>
+                    <input type="text" name="q" id="searchFilter" class="field-input" placeholder="Search applicant/officer..." value="{{ search_query or '' }}">
+                </div>
+
+                <div class="form-group queue-date-range">
+                    <div style="flex:1;">
+                        <label class="field-label" for="dateFrom">From Date</label>
+                        <input type="date" name="from_date" id="dateFrom" class="field-input" value="{{ from_date or '' }}">
+                    </div>
+                    <div style="flex:1;">
+                        <label class="field-label" for="dateTo">To Date</label>
+                        <input type="date" name="to_date" id="dateTo" class="field-input" value="{{ to_date or '' }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buttons below fields -->
+            <div style="margin-top: 12px; display: flex; justify-content: flex-end; align-items: center; gap: 16px;">
+                <a href="/applications" class="btn-ghost-link" style="color: var(--text-muted); font-size:12px;">Clear Filters</a>
+                <button type="submit" class="btn-primary-filled" style="height: 34px; padding: 0 20px;">Apply Filters</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="queue-cards" aria-label="Application queue cards">
+        {% if applications %}
+            {% for app in applications %}
+            {% set app_id = app.id|string %}
+            <a class="queue-card" href="/applications/{{ app_id }}">
+                <span class="queue-card-name">{{ app.borrower.name if app.borrower else 'Borrower ' ~ app_id[:8] }}</span>
+                <span class="queue-card-badge">
+                    {% if app.stage in ['disbursement_ready', 'disbursed'] %}
+                        <span class="status-badge verified"><span class="status-badge-label">{{ app.status }}</span></span>
+                    {% elif app.stage == 'returned' %}
+                        <span class="status-badge returned"><span class="status-badge-label">Returned</span></span>
+                    {% elif app.stage == 'ocr_review' %}
+                        <span class="status-badge low-confidence"><span class="status-badge-label">OCR</span></span>
+                    {% else %}
+                        <span class="status-badge needs-review"><span class="status-badge-label">{{ app.status }}</span></span>
+                    {% endif %}
+                </span>
+                <span class="queue-card-meta">{{ app.ref_no }} · {{ (app.product_type or 'msef')|replace('_', ' ')|title }}</span>
+                <span class="queue-card-amount">NGN {{ "{:,}".format((app.amount or 0)|int) }}</span>
+            </a>
+            {% endfor %}
+        {% else %}
+            <div class="empty-loans">No current applications are available.</div>
+        {% endif %}
+    </div>
+
+    <!-- Results Table -->
+    <div class="custom-table-container queue-table-wrap">
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>Ref No.</th>
+                    <th>Applicant Name</th>
+                    <th>Loan Type</th>
+                    <th>Amount (₦)</th>
+                    <th>Stage</th>
+                    <th>Loan Officer</th>
+                    <th>Credit Officer</th>
+                    <th>Last Updated</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if applications %}
+                    {% for app in applications %}
+                    {% set app_id = app.id|string %}
+                    <tr onclick="window.location.href='/applications/{{ app_id }}'">
+                        <td>{{ app.ref_no }}</td>
+                        <td style="font-weight: 500;">{{ app.borrower.name if app.borrower else 'Borrower ' ~ app_id[:8] }}</td>
+                        <td>{{ (app.product_type or 'msef')|replace('_', ' ')|title }}</td>
+                        <td>₦{{ "{:,}".format(app.amount|int) }}</td>
+                        <td>
+                            {% if app.current_stage == 1 %}Intake
+                            {% elif app.current_stage == 2 %}OCR Review
+                            {% elif app.current_stage == 3 %}Credit Review
+                            {% elif app.current_stage == 4 %}Branch Approval
+                            {% elif app.current_stage == 5 %}Disbursement Ready
+                            {% elif app.current_stage == 6 %}Disbursed
+                            {% else %}Stage {{ app.current_stage }}
+                            {% endif %}
+                        </td>
+                        <td>{{ app.current_owner.name if app.current_owner else 'Unassigned' }}</td>
+                        <td>{{ app.credit_officer_name if app.credit_officer_name else '--' }}</td>
+                        <td>{{ app.created_at.strftime('%d %b %Y') if app.created_at else '03 Jun 2026' }}</td>
+                        <td>
+                            {% if app.status == 'Approved' or app.status == 'Active' %}
+                                <span class="status-badge verified">Verified</span>
+                            {% elif app.status == 'Returned' %}
+                                <span class="status-badge returned">Returned</span>
+                            {% elif app.current_stage == 2 %}
+                                <span class="status-badge low-confidence">OCR Review</span>
+                            {% else %}
+                                <span class="status-badge needs-review">Needs Review</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="/applications/{{ app_id }}" class="btn-ghost-link" style="color: var(--color-brand-shield); font-weight: 500;">Open &rarr;</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <!-- Fallback Mock Applications -->
+                    <tr onclick="window.location.href='/applications/1/step/1'">
+                        <td>REF-G820F1A1</td>
+                        <td style="font-weight: 500;">Grace Omowunmi</td>
+                        <td>MSEF</td>
+                        <td>₦500,000</td>
+                        <td>Intake</td>
+                        <td>Segun Alao</td>
+                        <td>--</td>
+                        <td>03 Jun 2026</td>
+                        <td><span class="status-badge returned">Returned</span></td>
+                        <td><a href="/applications/1/step/1" style="color: var(--color-brand-shield); text-decoration:none; font-weight:500;">Open &rarr;</a></td>
+                    </tr>
+                    <tr onclick="window.location.href='/applications/2/step/1'">
+                        <td>REF-I890A2E2</td>
+                        <td style="font-weight: 500;">Ibrahim Musa</td>
+                        <td>Enterprise Loan</td>
+                        <td>₦1,200,000</td>
+                        <td>OCR Review</td>
+                        <td>Segun Alao</td>
+                        <td>--</td>
+                        <td>02 Jun 2026</td>
+                        <td><span class="status-badge low-confidence">Low Confidence</span></td>
+                        <td><a href="/applications/2/step/1" style="color: var(--color-brand-shield); text-decoration:none; font-weight:500;">Open &rarr;</a></td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="simple-pagination">
+        <span>Showing 1–10 of 47</span>
+        <div style="display:flex; gap: 8px;">
+            <a href="#">&larr; Prev</a>
+            <a href="#">Next &rarr;</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function submitFilters() {
+        document.getElementById('filterForm').submit();
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base/shell.html" %}
+
+{% block shell %}
+<div class="mobile-shell">
+    {% include "components/mobile_topbar.html" %}
+
+    {# === MOBILE CONTENT AREA === #}
+    <main class="mobile-content" id="mobileContent">
+        {# Pull-to-refresh sentinel #}
+        <div class="ptr-sentinel" id="ptrSentinel"></div>
+
+        {% block content %}{% endblock %}
+    </main>
+
+    {# === MOBILE BOTTOM TAB BAR === #}
+    <nav class="mobile-tabbar" id="mobileTabbar" aria-label="Primary navigation">
+        {% block tabbar %}
+        {# Role-specific tabbar injected by child templates #}
+        {% include tabbar_component ignore missing %}
+        {% endblock %}
+    </nav>
+
+    {# === FLOATING ACTION BUTTON (role-specific, optional) === #}
+    {% block fab %}{% endblock %}
+</div>
+
+<script src="/static/js/mobile.js"></script>
+{% endblock %}

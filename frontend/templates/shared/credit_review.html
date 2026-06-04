@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}Credit Review | FieldCRM{% endblock %}
+
+{% block breadcrumb %}Review &rarr; Credit Review &rarr; {{ app_id }}{% endblock %}
+{% block page_title %}Credit Review{% endblock %}
+
+{% block content %}
+<div class="page-card no-shadow">
+    <div class="page-card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <div>
+            <h2 class="page-card-title">Credit Risk Review</h2>
+            <p class="page-card-subtitle">Review by Credit Officer: {{ current_user.name }} · Date: 4 June 2026</p>
+        </div>
+        <span class="status-badge needs-review">Under Credit Review</span>
+    </div>
+
+    <!-- Inside page tabbed navigation -->
+    <div class="tab-row">
+        <button type="button" class="tab-btn active" id="tabSummaryBtn" onclick="switchReviewTab('summary')">Summary</button>
+        <button type="button" class="tab-btn" id="tabAffordabilityBtn" onclick="switchReviewTab('affordability')">Affordability</button>
+        <button type="button" class="tab-btn" id="tabDocsBtn" onclick="switchReviewTab('docs')">Documents</button>
+        <button type="button" class="tab-btn" id="tabOcrBtn" onclick="switchReviewTab('ocr')">OCR Exceptions</button>
+        <button type="button" class="tab-btn" id="tabRecBtn" onclick="switchReviewTab('recommendation')">Recommendation</button>
+    </div>
+
+    <form id="creditReviewForm" action="/applications/{{ app_id }}/credit-review" method="POST">
+        
+        <!-- Tab 1: Summary -->
+        <div id="tabSummary" class="tab-pane">
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="field-label">Borrower Name</label>
+                    <input type="text" class="field-input" value="{{ borrower_name }}" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Requested Amount</label>
+                    <input type="text" class="field-input" value="₦{{ '{:,}'.format(amount) }}" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Loan Tenor</label>
+                    <input type="text" class="field-input" value="{{ tenure }} Months" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Product Type</label>
+                    <input type="text" class="field-input" value="{{ product_type }}" readonly>
+                </div>
+                <div class="form-group-full">
+                    <label class="field-label">Collateral Pledged</label>
+                    <textarea class="field-textarea" readonly>{{ collateral_desc or 'Shop Stock, Household Appliances' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Affordability -->
+        <div id="tabAffordability" class="tab-pane" style="display: none;">
+            <div style="font-size: 14px; font-weight: 500; margin-bottom: 12px;">Debt Service Ratio (DSR) & Affordability Table</div>
+            
+            <div class="custom-table-container" style="margin-bottom: 16px;">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Declared Value</th>
+                            <th>Bank Statement Verified</th>
+                            <th>Variance (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Monthly Income / Business Sales</td>
+                            <td>₦650,000</td>
+                            <td>₦610,000</td>
+                            <td style="color: var(--accent-warning);">-6.1%</td>
+                        </tr>
+                        <tr>
+                            <td>Proposed Monthly Repayment</td>
+                            <td>₦55,000</td>
+                            <td>₦55,000</td>
+                            <td>0%</td>
+                        </tr>
+                        <tr>
+                            <td>Debt-to-Income (DTI) Ratio</td>
+                            <td>8.4%</td>
+                            <td>9.0%</td>
+                            <td>+0.6%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="form-group-full">
+                <label class="field-label">Credit Officer Override Notes</label>
+                <textarea name="affordability_notes" class="field-textarea" placeholder="Detail any variance explanations or cashflow strengths...">DSR remains well within regulatory limits (<33.3%). Statement turnover verifies cashflow capability.</textarea>
+            </div>
+        </div>
+
+        <!-- Tab 3: Documents Checklist -->
+        <div id="tabDocs" class="tab-pane" style="display: none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div style="font-size: 14px; font-weight: 500;">Document Verification Log</div>
+                <a href="/applications/{{ app_id }}/documents/upload" class="btn-ghost-link" style="color:var(--color-brand-shield);">+ Request Missing Document</a>
+            </div>
+
+            <div class="custom-table-container">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Document Category</th>
+                            <th>Source</th>
+                            <th>Upload Date</th>
+                            <th>Verification Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Passport Photograph</td>
+                            <td>Loan Officer Intake</td>
+                            <td>03 Jun 2026</td>
+                            <td><span class="status-badge verified">Verified</span></td>
+                        </tr>
+                        <tr>
+                            <td>Valid Identity Card</td>
+                            <td>OCR Extraction</td>
+                            <td>03 Jun 2026</td>
+                            <td><span class="status-badge verified">Verified</span></td>
+                        </tr>
+                        <tr>
+                            <td>Utility Bill</td>
+                            <td>File Upload</td>
+                            <td>04 Jun 2026</td>
+                            <td><span class="status-badge needs-review">Needs Review</span></td>
+                        </tr>
+                        <tr>
+                            <td>Salary Bank Statement</td>
+                            <td>NUBAN API</td>
+                            <td>03 Jun 2026</td>
+                            <td><span class="status-badge returned">Missing</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab 4: OCR Exceptions -->
+        <div id="tabOcr" class="tab-pane" style="display: none;">
+            <div style="font-size: 14px; font-weight: 500; margin-bottom: 12px;">Low-Confidence and Critical Field Exceptions</div>
+            
+            <div class="custom-table-container">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Form Name</th>
+                            <th>Field Name</th>
+                            <th>Extracted OCR Value</th>
+                            <th>Confidence</th>
+                            <th>Status Tag</th>
+                            <th>Override Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="background-color:rgba(160,90,0,0.05);">
+                            <td>Pledge Form</td>
+                            <td>Facility Amount figures</td>
+                            <td>₦500,000?</td>
+                            <td style="color: var(--accent-warning);">61%</td>
+                            <td><span class="source-pill corrected">Corrected</span></td>
+                            <td>
+                                <select name="ocr_override_1" class="field-select" style="min-height:30px; padding:2px 8px;">
+                                    <option>Accept Correction</option>
+                                    <option>Return for Correction</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr style="background-color:rgba(160,26,26,0.05);">
+                            <td>Guarantors Form 1</td>
+                            <td>Guarantor Phone</td>
+                            <td>Unreadable</td>
+                            <td style="color: var(--accent-danger);">22%</td>
+                            <td><span class="source-pill" style="background-color:rgba(160,26,26,0.1); color:var(--accent-danger);">Missing</span></td>
+                            <td>
+                                <select name="ocr_override_2" class="field-select" style="min-height:30px; padding:2px 8px;">
+                                    <option>Return for Correction</option>
+                                    <option>Accept Correction</option>
+                                </select>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab 5: Recommendation -->
+        <div id="tabRecommendation" class="tab-pane" style="display: none;">
+            <div class="form-grid-2">
+                <div class="form-group-full">
+                    <label class="field-label">Risk Verdict Decision <span class="required">*</span></label>
+                    <div class="pill-radio-group">
+                        <div class="pill-radio-btn">
+                            <input type="radio" name="recommendation_decision" value="Recommend Approval" id="rec_approve" checked onchange="toggleRecommendationNotes()">
+                            <label for="rec_approve">Recommend Approval</label>
+                        </div>
+                        <div class="pill-radio-btn">
+                            <input type="radio" name="recommendation_decision" value="Recommend Rejection" id="rec_reject" onchange="toggleRecommendationNotes()">
+                            <label for="rec_reject">Recommend Rejection</label>
+                        </div>
+                        <div class="pill-radio-btn">
+                            <input type="radio" name="recommendation_decision" value="Return for Correction" id="rec_return" onchange="toggleRecommendationNotes()">
+                            <label for="rec_return">Return for Correction</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group-full" id="recommendationNotesSlot">
+                    <label class="field-label" id="notesLabel">Decision Reason / Notes <span class="required">*</span></label>
+                    <textarea name="recommendation_notes" class="field-textarea" placeholder="Provide comprehensive credit underwriting justification..." required>Applicant possesses adequate cashflow capacity. Guarantor strength and DSR parameters align with risk thresholds. Highly recommended for approval.</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sticky Bottom actions bar -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:32px; border-top:0.5px solid var(--color-divider); padding-top:16px;">
+            <a href="/applications/{{ app_id }}" class="btn-ghost-link">&larr; Back to Profile</a>
+            <button type="submit" class="btn-primary-filled">Submit Recommendation &rarr;</button>
+        </div>
+
+    </form>
+</div>
+
+<script>
+    function switchReviewTab(tab) {
+        // Toggle Buttons active classes
+        document.getElementById('tabSummaryBtn').classList.toggle('active', tab === 'summary');
+        document.getElementById('tabAffordabilityBtn').classList.toggle('active', tab === 'affordability');
+        document.getElementById('tabDocsBtn').classList.toggle('active', tab === 'docs');
+        document.getElementById('tabOcrBtn').classList.toggle('active', tab === 'ocr');
+        document.getElementById('tabRecBtn').classList.toggle('active', tab === 'recommendation');
+
+        // Toggle Panes visibility
+        document.getElementById('tabSummary').style.display = (tab === 'summary') ? 'block' : 'none';
+        document.getElementById('tabAffordability').style.display = (tab === 'affordability') ? 'block' : 'none';
+        document.getElementById('tabDocs').style.display = (tab === 'docs') ? 'block' : 'none';
+        document.getElementById('tabOcr').style.display = (tab === 'ocr') ? 'block' : 'none';
+        document.getElementById('tabRecommendation').style.display = (tab === 'recommendation') ? 'block' : 'none';
+    }
+
+    function toggleRecommendationNotes() {
+        const radApp = document.getElementById('rec_approve');
+        const radRej = document.getElementById('rec_reject');
+        const radRet = document.getElementById('rec_return');
+        const label = document.getElementById('notesLabel');
+        
+        if (radApp.checked) {
+            label.innerHTML = 'Decision Reason / Notes <span class="required">*</span>';
+        } else if (radRej.checked) {
+            label.innerHTML = 'Rejection Reason Explanation <span class="required">*</span>';
+        } else if (radRet.checked) {
+            label.innerHTML = 'Return Checklist Omissions <span class="required">*</span>';
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,17 @@
+{# Mobile top bar shared by role-specific mobile shells. #}
+<header class="mobile-topbar">
+    <img class="mobile-topbar-logo" src="/static/img/logo.png" alt="Mainstreet" width="24" height="24" loading="lazy">
+    <span class="mobile-topbar-title">{{ mobile_title_text|default('Dashboard') }}</span>
+    {% set user_role = user.role|lower|replace(' ', '_') if user else 'loan_officer' %}
+    {% set role_labels = {
+        'loan_officer': 'Loan Officer',
+        'credit_officer': 'Credit Officer',
+        'branch_manager': 'Branch Manager',
+        'auditor': 'Auditor',
+        'system_admin': 'System Admin'
+    } %}
+    <span class="mobile-role-badge role-{{ user_role }}">{{ role_labels.get(user_role, user_role) }}</span>
+    <button class="mobile-topbar-bell" type="button" aria-label="Notifications" id="mobileNotifBell">
+        &#x1F514;
+    </button>
+</header>

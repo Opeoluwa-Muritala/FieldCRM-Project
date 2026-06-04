@@ -1,0 +1,963 @@
+{% extends "base.html" %}
+
+{% block title %}Application Wizard - Step {{ step }} | FieldCRM{% endblock %}
+
+{% block breadcrumb %}Loans &rarr; Application {{ app_id }} &rarr; Step {{ step }}{% endblock %}
+{% block page_title %}Application Wizard{% endblock %}
+
+{% block content %}
+    <!-- Horizontal Step Indicator -->
+    <div class="wizard-steps">
+        {% set step_labels = ["Details", "Consent", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge", "Submit Application"] %}
+        {% for s_num in range(1, 10) %}
+            {% set is_active = (s_num == step) %}
+            {% set is_completed = (s_num < step) %}
+            <div class="wizard-step-segment {% if is_active %}active{% elif is_completed %}completed{% endif %}">
+                <div class="wizard-step-circle">
+                    {% if is_completed %}&#x2713;{% else %}{{ s_num }}{% endif %}
+                </div>
+                <div class="wizard-step-label">{{ step_labels[s_num - 1] }}</div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Main Card wrapper -->
+    <div class="page-card no-shadow">
+        <div class="page-card-header">
+            <h2 class="page-card-title">
+                {% if step == 1 %}Applicant Details
+                {% elif step == 2 %}Spousal Consent
+                {% elif step == 3 %}Guarantors List
+                {% elif step == 4 %}Employment & Business Details
+                {% elif step == 5 %}Existing Facilities
+                {% elif step == 6 %}Loan Request Details
+                {% elif step == 7 %}Disbursement Account
+                {% elif step == 8 %}Pledge and Trust Receipt (MMFB/CRM/02)
+                {% elif step == 9 %}Declarations & Consents
+                {% endif %}
+            </h2>
+            <p class="page-card-subtitle">
+                {% if step == 1 %}Personal identity and contact information.
+                {% elif step == 2 %}Required for married applicants.
+                {% elif step == 3 %}Two guarantors are required for this facility.
+                {% elif step == 4 %}Declare current income sources and upload supporting proofs.
+                {% elif step == 5 %}Disclose all active loan obligations with other financial institutions.
+                {% elif step == 6 %}Specify the amount, tenor, purpose, and security.
+                {% elif step == 7 %}Where the approved facility will be paid.
+                {% elif step == 8 %}Collateral security terms and description.
+                {% elif step == 9 %}All disclosures and consents must be accepted before submission.
+                {% endif %}
+            </p>
+        </div>
+
+        <form id="wizardForm" action="/applications/{{ app_id }}/step/{{ step }}" method="POST" onsubmit="return validateWizardForm();">
+            
+            <!-- STEP 1: APPLICANT DETAILS -->
+            {% if step == 1 %}
+            <div style="display: flex; gap: 24px; margin-bottom: 20px; align-items: flex-start; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 280px;" class="form-grid-2">
+                    <div class="form-group">
+                        <label class="field-label">Full Name <span class="required">*</span></label>
+                        <input type="text" name="full_name" class="field-input" value="{{ data.full_name or '' }}" required>
+                        <span class="error-msg" id="err_full_name" style="color:var(--accent-danger); font-size: 12px; display:none;">Full name is required.</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="field-label">Means of Identification <span class="required">*</span></label>
+                        <div class="pill-radio-group">
+                            {% for option in ["National ID", "Voters Card", "Drivers License", "Passport"] %}
+                            <div class="pill-radio-btn">
+                                <input type="radio" name="id_type" value="{{ option }}" id="id_{{ option }}" {% if data.id_type == option or (loop.first and not data.id_type) %}checked{% endif %}>
+                                <label for="id_{{ option }}">{{ option }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="field-label">ID Number <span class="required">*</span></label>
+                        <input type="text" name="id_number" class="field-input" value="{{ data.id_number or '' }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="field-label">Expiry Date <span class="required">*</span></label>
+                        <input type="date" name="id_expiry" id="id_expiry" class="field-input" value="{{ data.id_expiry or '' }}" onchange="checkIdExpiry()" required>
+                        <span class="error-msg" id="err_expiry" style="color:var(--accent-danger); font-size: 12px; display:none;">This ID has expired. Please upload a valid ID.</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="field-label">Telephone Number <span class="required">*</span></label>
+                        <input type="tel" name="phone" class="field-input" value="{{ data.phone or '' }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="field-label">Bank Verification Number (BVN) <span class="required">*</span></label>
+                        <input type="text" name="bvn" id="bvn_input" class="field-input" value="{{ data.bvn or '' }}" maxlength="11" required>
+                        <span style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 4px;">11-digit Bank Verification Number. Treated as a critical security field.</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="field-label">Marital Status <span class="required">*</span></label>
+                        <div class="pill-radio-group">
+                            <div class="pill-radio-btn">
+                                <input type="radio" name="marital_status" value="Single" id="status_single" {% if data.marital_status == 'Single' or not data.marital_status %}checked{% endif %}>
+                                <label for="status_single">Single</label>
+                            </div>
+                            <div class="pill-radio-btn">
+                                <input type="radio" name="marital_status" value="Married" id="status_married" {% if data.marital_status == 'Married' %}checked{% endif %}>
+                                <label for="status_married">Married</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="field-label">Date of Birth <span class="required">*</span></label>
+                        <input type="date" name="dob" class="field-input" value="{{ data.dob or '' }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="field-label">State of Origin</label>
+                        <input type="text" name="state_of_origin" class="field-input" value="{{ data.state_of_origin or '' }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="field-label">LGA</label>
+                        <input type="text" name="lga" class="field-input" value="{{ data.lga or '' }}">
+                    </div>
+
+                    <div class="form-group-full">
+                        <label class="field-label">Home Address <span class="required">*</span></label>
+                        <textarea name="home_address" class="field-textarea" required>{{ data.home_address or '' }}</textarea>
+                    </div>
+
+                    <div class="form-group-full">
+                        <label class="field-label">Nearest Landmark / Bus Stop</label>
+                        <input type="text" name="landmark" class="field-input" value="{{ data.landmark or '' }}">
+                        <span style="font-size: 12px; color: var(--text-muted);">Helps visiting officers locate the premises.</span>
+                    </div>
+                </div>
+
+                <!-- Passport Photograph Box -->
+                <div style="width: 150px; text-align: center; border: 0.5px solid var(--border-color); padding: 12px; border-radius: 8px; background-color: var(--bg-secondary);">
+                    <div style="width: 120px; height: 120px; border: 1px dashed var(--border-color); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; background-color: #FFF; position: relative; overflow: hidden;" id="photo_slot">
+                        {% if data.photo_url %}
+                            <img src="{{ data.photo_url }}" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover;">
+                        {% else %}
+                            <span style="font-size: 12px; color: var(--text-muted);">Upload Photo</span>
+                        {% endif %}
+                    </div>
+                    <input type="file" id="photo_file" style="display: none;" onchange="previewPhoto(this)">
+                    <button type="button" class="btn-ghost-link" onclick="document.getElementById('photo_file').click()" style="font-size: 12px; font-weight: 500;">Choose Image</button>
+                    <input type="hidden" name="photo_url" id="photo_url_val" value="{{ data.photo_url or '' }}">
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- STEP 2: SPOUSAL CONSENT -->
+            {% if step == 2 %}
+            <div class="flat-card warning">
+                The spouse's signature confirms awareness of this loan application. Refer to bank policy for spousal liability implications.
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="field-label">Name of Spouse <span class="required">*</span></label>
+                    <input type="text" name="spouse_name" class="field-input" value="{{ data.spouse_name or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Spouse Telephone Number <span class="required">*</span></label>
+                    <input type="tel" name="spouse_phone" class="field-input" value="{{ data.spouse_phone or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Number of Children</label>
+                    <input type="number" name="spouse_children" class="field-input" value="{{ data.spouse_children or '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Number of Dependants</label>
+                    <input type="number" name="spouse_dependants" class="field-input" value="{{ data.spouse_dependants or '' }}">
+                </div>
+                <div class="form-group-full">
+                    <label class="field-label">Spouse Business Address</label>
+                    <textarea name="spouse_business_address" class="field-textarea">{{ data.spouse_business_address or '' }}</textarea>
+                </div>
+                <div class="form-group-full" style="margin-top: 12px;">
+                    <label class="field-label">Spouse Signature <span class="required">*</span></label>
+                    <div class="signature-box" id="spouse_sig_box">
+                        <canvas id="spouse_sig_canvas"></canvas>
+                        <button type="button" class="signature-clear-btn" onclick="clearSignature('spouse_sig_canvas')">Clear</button>
+                    </div>
+                    <input type="hidden" name="spouse_signature" id="spouse_signature_val" value="{{ data.spouse_signature or '' }}">
+                    <span style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 4px;">Click and drag to capture signature</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- STEP 3: GUARANTORS -->
+            {% if step == 3 %}
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <!-- Guarantor Slot 1 -->
+                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 20px; background-color: var(--bg-secondary);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h4 style="font-size: 16px; font-weight: 500;">Guarantor 1</h4>
+                        <span class="status-badge {% if data.guarantor_1_status == 'Verified' %}verified{% elif data.guarantor_1_status == 'Submitted' %}signed{% else %}missing{% endif %}">
+                            {{ data.guarantor_1_status or 'Guarantor Form Pending' }}
+                        </span>
+                    </div>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label class="field-label">Full Name <span class="required">*</span></label>
+                            <input type="text" name="guarantor_1_name" class="field-input" value="{{ data.guarantor_1_name or '' }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="field-label">Relationship to Applicant <span class="required">*</span></label>
+                            <input type="text" name="guarantor_1_relationship" class="field-input" value="{{ data.guarantor_1_relationship or '' }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="field-label">Phone Number <span class="required">*</span></label>
+                            <input type="tel" name="guarantor_1_phone" class="field-input" value="{{ data.guarantor_1_phone or '' }}" required>
+                        </div>
+                    </div>
+                    <div style="margin-top: 16px;">
+                        <a href="/applications/{{ app_id }}/guarantors/1/step/1" class="btn-primary-filled" style="text-decoration: none; font-size: 12px; height: 32px;">Complete Guarantor Form &rarr;</a>
+                    </div>
+                </div>
+
+                <!-- Guarantor Slot 2 -->
+                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 20px; background-color: var(--bg-secondary);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h4 style="font-size: 16px; font-weight: 500;">Guarantor 2</h4>
+                        <span class="status-badge {% if data.guarantor_2_status == 'Verified' %}verified{% elif data.guarantor_2_status == 'Submitted' %}signed{% else %}missing{% endif %}">
+                            {{ data.guarantor_2_status or 'Guarantor Form Pending' }}
+                        </span>
+                    </div>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label class="field-label">Full Name <span class="required">*</span></label>
+                            <input type="text" name="guarantor_2_name" class="field-input" value="{{ data.guarantor_2_name or '' }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="field-label">Relationship to Applicant <span class="required">*</span></label>
+                            <input type="text" name="guarantor_2_relationship" class="field-input" value="{{ data.guarantor_2_relationship or '' }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="field-label">Phone Number <span class="required">*</span></label>
+                            <input type="tel" name="guarantor_2_phone" class="field-input" value="{{ data.guarantor_2_phone or '' }}" required>
+                        </div>
+                    </div>
+                    <div style="margin-top: 16px;">
+                        <a href="/applications/{{ app_id }}/guarantors/2/step/1" class="btn-primary-filled" style="text-decoration: none; font-size: 12px; height: 32px;">Complete Guarantor Form &rarr;</a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- STEP 4: EMPLOYMENT & BUSINESS -->
+            {% if step == 4 %}
+            <div style="margin-bottom: 20px;">
+                <label class="field-label">Employment Type</label>
+                <div class="pill-radio-group" id="empTypeGroup">
+                    {% for opt in ["Full-time", "Part-time", "Contract Staff", "Public Servant", "Self-employed"] %}
+                    <div class="pill-radio-btn">
+                        <input type="radio" name="employment_type" value="{{ opt }}" id="emp_{{ opt }}" {% if data.employment_type == opt or (loop.first and not data.employment_type) %}checked{% endif %} onchange="toggleEmploymentFields()">
+                        <label for="emp_{{ opt }}">{{ opt }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Fieldset for Salary Earners -->
+            <div id="salaryFields" style="display: none;" class="form-grid-2">
+                <div class="form-group">
+                    <label class="field-label">Industry/Sector</label>
+                    <input type="text" name="industry" class="field-input" value="{{ data.industry or '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Years in Employment</label>
+                    <input type="number" name="years_employed" class="field-input" value="{{ data.years_employed or '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Employer Name <span class="required">*</span></label>
+                    <input type="text" name="employer_name" id="employer_name" class="field-input" value="{{ data.employer_name or '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Monthly Salary <span class="required">*</span></label>
+                    <input type="number" name="monthly_salary" id="monthly_salary" class="field-input" value="{{ data.monthly_salary or '' }}">
+                </div>
+                <div class="form-group-full">
+                    <label class="field-label">Employer Address <span class="required">*</span></label>
+                    <textarea name="employer_address" id="employer_address" class="field-textarea">{{ data.employer_address or '' }}</textarea>
+                </div>
+            </div>
+
+            <!-- Fieldset for Self Employed -->
+            <div id="businessFields" style="display: none;" class="form-grid-2">
+                <div class="form-group">
+                    <label class="field-label">Type of Business</label>
+                    <input type="text" name="business_type" class="field-input" value="{{ data.business_type or '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Years in Business</label>
+                    <input type="number" name="years_in_business" class="field-input" value="{{ data.years_in_business or '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Average Monthly Sales <span class="required">*</span></label>
+                    <input type="number" name="monthly_sales" id="monthly_sales" class="field-input" value="{{ data.monthly_sales or '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Average Monthly Credit Turnover <span class="required">*</span></label>
+                    <input type="number" name="monthly_turnover" id="monthly_turnover" class="field-input" value="{{ data.monthly_turnover or '' }}">
+                </div>
+                <div class="form-group-full">
+                    <label class="field-label">Business Address</label>
+                    <textarea name="business_address" class="field-textarea">{{ data.business_address or '' }}</textarea>
+                </div>
+                <div class="form-group-full">
+                    <div style="font-size: 12px; color: var(--accent-warning); margin-bottom: 12px;">
+                        &#x26A0; The bank may compare declared sales figures against bank statement inflows.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Required Documents slots -->
+            <div style="margin-top: 24px; border-top: 0.5px solid var(--color-divider); padding-top: 16px;">
+                <div class="field-label" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px;">Required Documents</div>
+                
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                    <!-- Payslip / Business Statement -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 0.5px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary);">
+                        <div>
+                            <span id="docLabelPrimary" style="font-weight: 500;">Payslip / Business Statement</span>
+                            <div style="font-size: 12px; color: var(--text-muted);">PDF, JPG, JPEG, or PNG formats accepted</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span class="status-badge verified">Verified</span>
+                            <a href="/applications/{{ app_id }}/documents/upload?type=primary_statement" class="btn-ghost-link" style="color: var(--color-brand-shield);">Upload</a>
+                        </div>
+                    </div>
+
+                    <!-- Bank Statement -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 0.5px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary);">
+                        <div>
+                            <span style="font-weight: 500;">Salary / Business Account Bank Statement</span>
+                            <div style="font-size: 12px; color: var(--text-muted);">Most recent 3 months history</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span class="status-badge missing">Missing</span>
+                            <a href="/applications/{{ app_id }}/documents/upload?type=bank_statement" class="btn-ghost-link" style="color: var(--color-brand-shield);">Upload</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- STEP 5: EXISTING FACILITIES -->
+            {% if step == 5 %}
+            <div class="flat-card warning">
+                Failure to disclose existing facilities may be treated as misrepresentation. The bank will verify through credit checks.
+            </div>
+
+            <div id="facilitiesContainer" style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- Initial Facility Row 1 -->
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: end;">
+                    <div class="form-group">
+                        <label class="field-label">Bank Name</label>
+                        <input type="text" name="facility_bank[]" class="field-input" placeholder="e.g. Access Bank">
+                    </div>
+                    <div class="form-group">
+                        <label class="field-label">Amount (₦)</label>
+                        <input type="number" name="facility_amount[]" class="field-input" placeholder="e.g. 200000">
+                    </div>
+                    <div class="form-group">
+                        <label class="field-label">Tenor (Months)</label>
+                        <input type="number" name="facility_tenor[]" class="field-input" placeholder="e.g. 12">
+                    </div>
+                    <div style="padding-bottom: 8px;">
+                        <button type="button" class="btn-ghost-link" style="color: var(--accent-danger);" onclick="this.parentElement.parentElement.remove()">Remove</button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 12px; margin-bottom: 32px;">
+                <button type="button" class="btn-ghost-link" style="color: var(--color-brand-shield); font-weight: 500;" onclick="addFacilityRow()">+ Add Another Facility</button>
+            </div>
+
+            <div style="border-top: 0.5px solid var(--color-divider); padding-top: 20px;">
+                <label class="field-label" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; margin-bottom: 12px;">Educational Background</label>
+                <div class="pill-radio-group">
+                    {% for opt in ["Primary", "Secondary", "Graduate", "Postgraduate"] %}
+                    <div class="pill-radio-btn">
+                        <input type="radio" name="education" value="{{ opt }}" id="edu_{{ opt }}" {% if data.education == opt or (loop.first and not data.education) %}checked{% endif %}>
+                        <label for="edu_{{ opt }}">{{ opt }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- STEP 6: LOAN DETAILS -->
+            {% if step == 6 %}
+            <div class="form-grid-2">
+                <div class="form-group-full">
+                    <label class="field-label">Loan Purpose <span class="required">*</span></label>
+                    <select name="loan_purpose" id="loan_purpose" class="field-select" onchange="toggleOtherPurpose()">
+                        <option value="Working Capital" {% if data.loan_purpose == 'Working Capital' %}selected{% endif %}>Working Capital</option>
+                        <option value="Business Asset Acquisition" {% if data.loan_purpose == 'Business Asset Acquisition' %}selected{% endif %}>Business Asset Acquisition</option>
+                        <option value="Emergency Personal Expense" {% if data.loan_purpose == 'Emergency Personal Expense' %}selected{% endif %}>Emergency Personal Expense</option>
+                        <option value="Other" {% if data.loan_purpose == 'Other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group-full" id="otherPurposeSlot" style="display: none;">
+                    <label class="field-label">Specify Purpose <span class="required">*</span></label>
+                    <input type="text" name="loan_purpose_other" id="loan_purpose_other" class="field-input" value="{{ data.loan_purpose_other or '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label class="field-label">Loan Amount (₦) <span class="required">*</span></label>
+                    <input type="number" name="amount" class="field-input" value="{{ data.amount or '' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="field-label">Loan Tenor (Months) <span class="required">*</span></label>
+                    <input type="number" name="tenor" class="field-input" value="{{ data.tenor or '' }}" required>
+                </div>
+
+                <div class="form-group-full">
+                    <label class="field-label">Type of Security/Collateral <span class="required">*</span></label>
+                    <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px;">
+                        {% for sec in ["Shop Stock", "Household Appliances", "Business Proceeds", "Property Documents", "Vehicles"] %}
+                        <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 0.5px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary);">
+                            <input type="checkbox" name="collateral_security[]" value="{{ sec }}" id="sec_{{ sec }}" onchange="checkCollateralSelection()" {% if sec in data.collateral_security %}checked{% endif %}>
+                            <label for="sec_{{ sec }}" style="font-size: 12px; cursor: pointer;">{{ sec }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-group-full">
+                    <div id="pledgeNotice" class="flat-card warning" style="display: none;">
+                        &#x26A0; A Pledge and Trust Receipt (MMFB/CRM/02) is required for the selected collateral. You will complete this in Step 8.
+                    </div>
+                </div>
+
+                <div class="form-group-full">
+                    <label class="field-label">Mode of Repayment <span class="required">*</span></label>
+                    <div class="pill-radio-group">
+                        {% for rep_value, rep_label in [("cheque", "Cheque"), ("standing_order", "Standing Order"), ("direct_debit", "Direct Debit"), ("cash_deposit", "Cash Deposit")] %}
+                        <div class="pill-radio-btn">
+                            <input type="radio" name="repayment_mode" value="{{ rep_value }}" id="rep_{{ rep_value }}" {% if data.repayment_mode == rep_value or (loop.first and not data.repayment_mode) %}checked{% endif %}>
+                            <label for="rep_{{ rep_value }}">{{ rep_label }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- STEP 7: DISBURSEMENT ACCOUNT -->
+            {% if step == 7 %}
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="field-label">Account Name <span class="required">*</span></label>
+                    <input type="text" name="account_name" class="field-input" value="{{ data.account_name or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Account Number <span class="required">*</span></label>
+                    <input type="text" name="account_number" class="field-input" value="{{ data.account_number or '' }}" maxlength="10" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Bank Name <span class="required">*</span></label>
+                    <input type="text" name="bank_name" class="field-input" value="{{ data.bank_name or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Sort Code</label>
+                    <input type="text" name="sort_code" class="field-input" value="{{ data.sort_code or '' }}">
+                </div>
+            </div>
+            <div class="flat-card warning" style="margin-top: 20px;">
+                The account name must match the applicant's registered name. Third-party accounts require additional supporting documentation.
+            </div>
+            {% endif %}
+
+            <!-- STEP 8: PLEDGE AND TRUST RECEIPT -->
+            {% if step == 8 %}
+            <div class="tab-row">
+                <button type="button" class="tab-btn active" id="tabFill" onclick="switchPledgeTab('fill')">Fill Form</button>
+                <button type="button" class="tab-btn" id="tabUpload" onclick="switchPledgeTab('upload')">Upload Completed Form</button>
+            </div>
+
+            <!-- Tab content: Fill Form -->
+            <div id="pledgeFillSection">
+                <div style="font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; font-weight: 500;">Receipt Details</div>
+                <div class="form-grid-2" style="margin-bottom: 24px;">
+                    <div class="form-group">
+                        <label class="field-label">Date <span class="required">*</span></label>
+                        <input type="date" name="pledge_date" class="field-input" value="{{ data.pledge_date or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label class="field-label">Name of Borrower/Association <span class="required">*</span></label>
+                        <input type="text" name="pledge_borrower" class="field-input" value="{{ data.pledge_borrower or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label class="field-label">Facility Amount in Figures (₦) <span class="required">*</span></label>
+                        <input type="number" name="pledge_amount_figs" id="pledge_amount_figs" class="field-input" value="{{ data.pledge_amount_figs or '' }}" oninput="checkPledgeAmountMismatch()">
+                    </div>
+                    <div class="form-group">
+                        <label class="field-label">Facility Amount in Words <span class="required">*</span></label>
+                        <input type="text" name="pledge_amount_words" id="pledge_amount_words" class="field-input" value="{{ data.pledge_amount_words or '' }}" oninput="checkPledgeAmountMismatch()">
+                    </div>
+                    <div class="form-group-full">
+                        <span id="pledgeMismatchWarning" style="color:var(--accent-warning); font-size: 12px; display:none;">&#x26A0; Amount in words does not match figures — please correct.</span>
+                    </div>
+                    <div class="form-group-full">
+                        <label class="field-label">Shop/House Address where goods are located <span class="required">*</span></label>
+                        <input type="text" name="pledge_location" class="field-input" value="{{ data.pledge_location or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label class="field-label">Name of Obligor <span class="required">*</span></label>
+                        <input type="text" name="pledge_obligor" class="field-input" value="{{ data.pledge_obligor or '' }}">
+                    </div>
+                </div>
+
+                <div style="font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; font-weight: 500;">Pledged Items Schedule</div>
+                
+                <div class="custom-table-container">
+                    <table class="custom-table" id="pledgeItemsTable">
+                        <thead>
+                            <tr>
+                                <th>No.</th>
+                                <th>Item Name</th>
+                                <th>Quantity</th>
+                                <th>Description</th>
+                                <th>Estimated Value (₦)</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td><input type="text" name="pledge_item_name[]" class="field-input" placeholder="e.g. Sharp Refrigerator" required></td>
+                                <td><input type="number" name="pledge_item_qty[]" class="field-input" placeholder="1" required></td>
+                                <td><input type="text" name="pledge_item_desc[]" class="field-input" placeholder="Model SJ-X380"></td>
+                                <td><input type="number" name="pledge_item_val[]" class="field-input" placeholder="350000" oninput="calculatePledgeTotal()" required></td>
+                                <td><button type="button" class="btn-ghost-link" style="color: var(--accent-danger);" onclick="removePledgeRow(this)">Remove</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <button type="button" class="btn-ghost-link" style="color: var(--color-brand-shield); font-weight: 500;" onclick="addPledgeRow()">+ Add Item</button>
+                    <div style="font-size: 14px; font-weight: bold; color: var(--text-main);" id="pledgeTotalText">Total Estimated Value: ₦350,000</div>
+                </div>
+
+                <div class="flat-card brand" style="margin-bottom: 20px;">
+                    <strong style="display:block; margin-bottom: 8px;">Legal Acknowledgement Summary</strong>
+                    <p style="font-size:12px; line-height: 1.5; color: var(--text-muted);">
+                        The borrower declares that the listed goods are their absolute property, free from any lien. The borrower holds the goods in trust for Mainstreet Microfinance Bank, and agrees that any proceeds from sales will be paid immediately to the bank to retire the outstanding loan amount.
+                    </p>
+                    <div style="margin-top: 12px;">
+                        <input type="checkbox" name="pledge_legal_ack" id="pledge_legal_ack" value="1" required>
+                        <label for="pledge_legal_ack" style="font-size: 12px; cursor: pointer; font-weight: 500; color: var(--text-main);">I confirm I have read and understood the terms of this Pledge and Trust Receipt.</label>
+                    </div>
+                </div>
+
+                <div class="form-grid-2" style="border-top: 0.5px solid var(--color-divider); padding-top: 20px;">
+                    <div class="form-group">
+                        <label class="field-label">Borrower Signature <span class="required">*</span></label>
+                        <div class="signature-box">
+                            <canvas id="borrower_pledge_canvas"></canvas>
+                            <button type="button" class="signature-clear-btn" onclick="clearSignature('borrower_pledge_canvas')">Clear</button>
+                        </div>
+                        <input type="hidden" name="borrower_pledge_signature" id="borrower_pledge_sig_val">
+                    </div>
+                    <div class="form-group">
+                        <label class="field-label">Witness Signature <span class="required">*</span></label>
+                        <div class="signature-box">
+                            <canvas id="witness_pledge_canvas"></canvas>
+                            <button type="button" class="signature-clear-btn" onclick="clearSignature('witness_pledge_canvas')">Clear</button>
+                        </div>
+                        <input type="hidden" name="witness_pledge_signature" id="witness_pledge_sig_val">
+                    </div>
+                    <div class="form-group">
+                        <label class="field-label">Witness Name</label>
+                        <input type="text" name="witness_name" class="field-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="field-label">Witness Address</label>
+                        <input type="text" name="witness_address" class="field-input">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab content: Upload completed -->
+            <div id="pledgeUploadSection" style="display: none;">
+                <div class="upload-dragzone" onclick="document.getElementById('pledge_file').click()">
+                    <span>Drag and drop signed Pledge Form here</span>
+                    <span style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Supports PDF, PNG, JPG (Max 5MB)</span>
+                    <input type="file" id="pledge_file" style="display: none;" onchange="handlePledgeUpload(this)">
+                </div>
+                <div id="pledgeUploadFeedback" style="margin-top:12px; display:none; padding:12px; border:0.5px solid var(--border-color); border-radius:8px; background-color: var(--bg-secondary);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong id="pledge_fn">pledge_form_completed.pdf</strong>
+                            <div style="font-size: 12px; color: var(--text-muted);">Size: 1.4 MB · Status: OCR Processed</div>
+                        </div>
+                        <a href="/applications/{{ app_id }}/ocr-review?doc=pledge" class="btn-primary-filled" style="text-decoration:none; font-size: 12px; height:28px;">Review Extracted Data &rarr;</a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- STEP 9: DECLARATIONS & CONSENTS -->
+            {% if step == 9 %}
+            <div style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 24px;">
+                <!-- Block 1 -->
+                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary);">
+                    <h4 style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Credit Bureau Disclosure</h4>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+                        The bank is required by the Central Bank of Nigeria (CBN) to disclose the borrower's payment history, outstanding obligations, and general transaction behavior to licensed Credit Reference Bureaus.
+                    </p>
+                    <input type="checkbox" name="consent_credit_bureau" id="consent_cb" value="1" required>
+                    <label for="consent_cb" style="font-size: 12px; cursor: pointer;">I consent to the Bank disclosing my transaction information to Credit Bureaus as prescribed by the CBN.</label>
+                </div>
+
+                <!-- Block 2 -->
+                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary);">
+                    <h4 style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Credit Check Authorisation</h4>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+                        The borrower authorises Mainstreet Microfinance Bank to request credit scores, repayment histories, and default records from any credit bureau or banking institution in Nigeria to verify creditworthiness.
+                    </p>
+                    <input type="checkbox" name="consent_credit_check" id="consent_cc" value="1" required>
+                    <label for="consent_cc" style="font-size: 12px; cursor: pointer;">I authorise the Bank to conduct credit information checks on me from other financial institutions.</label>
+                </div>
+
+                <!-- Block 3 -->
+                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary);">
+                    <h4 style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Cheque Recovery Authorisation</h4>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+                        The borrower mandates the bank to fill and present any post-dated cheques deposited as collateral in the event of default on the agreed loan repayment dates.
+                    </p>
+                    <div class="flat-card warning" style="padding: 10px; margin-bottom: 8px; font-size: 12px;">
+                        This authorises the bank to fill and present your cheque as repayment if you default. Do not sign if you do not understand this clause.
+                    </div>
+                    <input type="checkbox" name="consent_cheque" id="consent_ch" value="1" required>
+                    <label for="consent_ch" style="font-size: 12px; cursor: pointer;">I authorise the Bank to fill and pay my cheque in repayment of this facility in the event of default.</label>
+                </div>
+
+                <!-- Block 4 -->
+                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary);">
+                    <h4 style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Global Standing Instruction (GSI) Mandate</h4>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+                        The borrower mandates Mainstreet Microfinance Bank to trigger a GSI command through NIBSS to debit any bank account linked to their BVN across all licensed commercial and microfinance institutions in Nigeria to offset default debts.
+                    </p>
+                    <div class="flat-card warning" style="padding: 10px; margin-bottom: 8px; font-size: 12px;">
+                        GSI allows the bank to recover outstanding principal and interest from your accounts across all financial institutions in Nigeria.
+                    </div>
+                    <input type="checkbox" name="consent_gsi" id="consent_g" value="1" required>
+                    <label for="consent_g" style="font-size: 12px; cursor: pointer;">I execute a GSI Mandate authorising Mainstreet Microfinance Bank to recover any outstanding amount from my accounts across all financial institutions.</label>
+                </div>
+            </div>
+
+            <!-- Signature block -->
+            <div style="border-top: 0.5px solid var(--color-divider); padding-top: 20px; margin-bottom: 24px;">
+                <label class="field-label">Applicant Signature <span class="required">*</span></label>
+                <div class="signature-box" style="margin-bottom: 8px;">
+                    <canvas id="applicant_sig_canvas"></canvas>
+                    <button type="button" class="signature-clear-btn" onclick="clearSignature('applicant_sig_canvas')">Clear</button>
+                </div>
+                <input type="hidden" name="applicant_signature" id="applicant_sig_val">
+                <span style="font-size: 12px; color: var(--text-muted);">I declare that all information provided in this application is true and correct.</span>
+            </div>
+            {% endif %}
+
+            <!-- Navigation Actions Footer -->
+            <div class="wizard-footer">
+                <div>
+                    {% if step > 1 %}
+                    <a href="/applications/{{ app_id }}/step/{{ step - 1 }}" class="btn-ghost-link">&larr; Back</a>
+                    {% endif %}
+                    <span style="margin-left: 20px; font-size: 12px; color: var(--text-muted); cursor: pointer;" onclick="saveDraft()">Save Draft</span>
+                </div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                    <button type="submit" class="btn-primary-filled" id="continueBtn">
+                        {% if step == 9 %}Submit for Credit Review &rarr;{% else %}Save & Continue &rarr;{% endif %}
+                    </button>
+                    <span id="consent_remaining" style="font-size: 12px; color:var(--accent-danger); margin-top:4px; display:none;">Consents still required.</span>
+                </div>
+            </div>
+        </form>
+    </div>
+
+<script>
+    // Toggle fields based on employment type selection
+    function toggleEmploymentFields() {
+        const empType = document.querySelector('input[name="employment_type"]:checked').value;
+        const salaryFields = document.getElementById('salaryFields');
+        const businessFields = document.getElementById('businessFields');
+        const docLabel = document.getElementById('docLabelPrimary');
+
+        if (!salaryFields || !businessFields) return;
+
+        if (empType === 'Self-employed') {
+            salaryFields.style.display = 'none';
+            businessFields.style.display = 'grid';
+            if (docLabel) docLabel.textContent = 'Business Registration & Turnover Evidence';
+            
+            // Set required markers
+            document.getElementById('monthly_sales').setAttribute('required', 'required');
+            document.getElementById('monthly_turnover').setAttribute('required', 'required');
+            document.getElementById('employer_name').removeAttribute('required');
+            document.getElementById('monthly_salary').removeAttribute('required');
+            document.getElementById('employer_address').removeAttribute('required');
+        } else {
+            salaryFields.style.display = 'grid';
+            businessFields.style.display = 'none';
+            if (docLabel) docLabel.textContent = 'Payslip / Employer Letter';
+
+            document.getElementById('monthly_sales').removeAttribute('required');
+            document.getElementById('monthly_turnover').removeAttribute('required');
+            document.getElementById('employer_name').setAttribute('required', 'required');
+            document.getElementById('monthly_salary').setAttribute('required', 'required');
+            document.getElementById('employer_address').setAttribute('required', 'required');
+        }
+    }
+
+    // Checking ID expiry
+    function checkIdExpiry() {
+        const input = document.getElementById('id_expiry');
+        const err = document.getElementById('err_expiry');
+        if (!input || !err) return;
+        const expiryDate = new Date(input.value);
+        const today = new Date();
+        if (expiryDate < today) {
+            err.style.display = 'block';
+        } else {
+            err.style.display = 'none';
+        }
+    }
+
+    // Check Collateral Selection Notice
+    function checkCollateralSelection() {
+        const checkBoxes = document.getElementsByName('collateral_security[]');
+        const notice = document.getElementById('pledgeNotice');
+        if (!notice) return;
+        let isPledgeable = false;
+        
+        checkBoxes.forEach(cb => {
+            if (cb.checked && ["Shop Stock", "Household Appliances", "Business Proceeds", "Property Documents"].includes(cb.value)) {
+                isPledgeable = true;
+            }
+        });
+
+        notice.style.display = isPledgeable ? 'block' : 'none';
+    }
+
+    // Add Dynamic rows to facilities disclosure
+    function addFacilityRow() {
+        const container = document.getElementById('facilitiesContainer');
+        const newRow = document.createElement('div');
+        newRow.style.display = 'grid';
+        newRow.style.gridTemplateColumns = '2fr 1fr 1fr auto';
+        newRow.style.gap = '12px';
+        newRow.style.alignItems = 'end';
+        newRow.innerHTML = `
+            <div class="form-group">
+                <label class="field-label">Bank Name</label>
+                <input type="text" name="facility_bank[]" class="field-input">
+            </div>
+            <div class="form-group">
+                <label class="field-label">Amount (₦)</label>
+                <input type="number" name="facility_amount[]" class="field-input">
+            </div>
+            <div class="form-group">
+                <label class="field-label">Tenor (Months)</label>
+                <input type="number" name="facility_tenor[]" class="field-input">
+            </div>
+            <div style="padding-bottom: 8px;">
+                <button type="button" class="btn-ghost-link" style="color: var(--accent-danger);" onclick="this.parentElement.parentElement.remove()">Remove</button>
+            </div>
+        `;
+        container.appendChild(newRow);
+    }
+
+    // Pledge fields tab toggles
+    function switchPledgeTab(tab) {
+        document.getElementById('tabFill').classList.toggle('active', tab === 'fill');
+        document.getElementById('tabUpload').classList.toggle('active', tab === 'upload');
+
+        document.getElementById('pledgeFillSection').style.display = (tab === 'fill') ? 'block' : 'none';
+        document.getElementById('pledgeUploadSection').style.display = (tab === 'upload') ? 'block' : 'none';
+    }
+
+    function checkPledgeAmountMismatch() {
+        const figs = document.getElementById('pledge_amount_figs').value;
+        const words = document.getElementById('pledge_amount_words').value;
+        const warning = document.getElementById('pledgeMismatchWarning');
+        if (!warning) return;
+        // Simple mock mismatch check
+        if (figs && words && words.length > 3 && !words.includes(figs.substring(0, 1))) {
+            warning.style.display = 'block';
+        } else {
+            warning.style.display = 'none';
+        }
+    }
+
+    function addPledgeRow() {
+        const table = document.getElementById('pledgeItemsTable').getElementsByTagName('tbody')[0];
+        const rowCount = table.rows.length + 1;
+        const row = table.insertRow();
+        row.innerHTML = `
+            <td>${rowCount}</td>
+            <td><input type="text" name="pledge_item_name[]" class="field-input" required></td>
+            <td><input type="number" name="pledge_item_qty[]" class="field-input" required></td>
+            <td><input type="text" name="pledge_item_desc[]" class="field-input"></td>
+            <td><input type="number" name="pledge_item_val[]" class="field-input" oninput="calculatePledgeTotal()" required></td>
+            <td><button type="button" class="btn-ghost-link" style="color: var(--accent-danger);" onclick="removePledgeRow(this)">Remove</button></td>
+        `;
+    }
+
+    function removePledgeRow(btn) {
+        const row = btn.parentElement.parentElement;
+        row.remove();
+        calculatePledgeTotal();
+    }
+
+    function calculatePledgeTotal() {
+        const valInputs = document.getElementsByName('pledge_item_val[]');
+        let total = 0;
+        valInputs.forEach(input => {
+            if (input.value) total += parseFloat(input.value);
+        });
+        document.getElementById('pledgeTotalText').textContent = "Total Estimated Value: ₦" + total.toLocaleString();
+    }
+
+    function handlePledgeUpload(input) {
+        if (input.files && input.files[0]) {
+            document.getElementById('pledge_fn').textContent = input.files[0].name;
+            document.getElementById('pledgeUploadFeedback').style.display = 'block';
+        }
+    }
+
+    // HTML5 SignaturePad helper setup
+    const sigCanvases = {};
+    function initSignature(canvasId, valInputId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        // Make canvas responsive
+        const rect = canvas.parentNode.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+
+        function startDrawing(e) {
+            drawing = true;
+            draw(e);
+        }
+
+        function endDrawing() {
+            drawing = false;
+            ctx.beginPath();
+            // Save base64
+            document.getElementById(valInputId).value = canvas.toDataURL();
+        }
+
+        function draw(e) {
+            if (!drawing) return;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#1C1A2E';
+
+            const rect = canvas.getBoundingClientRect();
+            // touch or mouse coordinates
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            ctx.lineTo(clientX - rect.left, clientY - rect.top);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(clientX - rect.left, clientY - rect.top);
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDrawing);
+
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', endDrawing);
+    }
+
+    function clearSignature(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        if (canvasId === 'spouse_sig_canvas') document.getElementById('spouse_signature_val').value = '';
+        if (canvasId === 'borrower_pledge_canvas') document.getElementById('borrower_pledge_sig_val').value = '';
+        if (canvasId === 'witness_pledge_canvas') document.getElementById('witness_pledge_sig_val').value = '';
+        if (canvasId === 'applicant_sig_canvas') document.getElementById('applicant_sig_val').value = '';
+    }
+
+    function saveDraft() {
+        const status = document.getElementById('wizard_inline_status') || document.createElement('div');
+        status.id = 'wizard_inline_status';
+        status.className = 'flat-card brand';
+        status.textContent = 'Draft saved successfully.';
+        const card = document.querySelector('.page-card');
+        if (card && !status.parentElement) {
+            card.appendChild(status);
+        }
+    }
+
+    function previewPhoto(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('photo_slot').innerHTML = `<img src="${e.target.result}" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover;">`;
+                document.getElementById('photo_url_val').value = e.target.result;
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function validateWizardForm() {
+        // Step-specific validations
+        {% if step == 1 %}
+        checkIdExpiry();
+        const bvn = document.getElementById('bvn_input').value;
+        if (bvn.length !== 11 || isNaN(bvn)) {
+            const error = document.getElementById('bvn_inline_error') || document.createElement('div');
+            error.id = 'bvn_inline_error';
+            error.style.color = 'var(--accent-danger)';
+            error.style.fontSize = '11px';
+            error.style.marginTop = '6px';
+            error.textContent = 'BVN must be an 11-digit number.';
+            document.getElementById('bvn_input').insertAdjacentElement('afterend', error);
+            return false;
+        }
+        {% endif %}
+        return true;
+    }
+
+    // Initialize triggers on page load
+    window.addEventListener('load', () => {
+        if (document.getElementById('emp_Full-time')) {
+            toggleEmploymentFields();
+        }
+        if (document.getElementById('sec_Shop Stock')) {
+            checkCollateralSelection();
+        }
+        
+        // Init signatures
+        initSignature('spouse_sig_canvas', 'spouse_signature_val');
+        initSignature('borrower_pledge_canvas', 'borrower_pledge_sig_val');
+        initSignature('witness_pledge_canvas', 'witness_pledge_sig_val');
+        initSignature('applicant_sig_canvas', 'applicant_sig_val');
+    });
+</script>
+{% endblock %}

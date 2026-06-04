@@ -1,0 +1,67 @@
+{# Desktop sidebar for Loan Officer — task-oriented navigation #}
+{# Everything is about moving applications forward #}
+
+{% set active_page = active_page|default('dashboard') %}
+
+{# APPLICATIONS group #}
+<div class="sidebar-nav-group">
+    <div class="sidebar-nav-group-title">Applications</div>
+    <div class="sidebar-nav-links">
+        <a href="/dashboard" class="sidebar-nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+            <span>Dashboard</span>
+        </a>
+        <a href="/my-queue" class="sidebar-nav-link {% if active_page == 'queue' %}active{% endif %}">
+            <span>My Queue</span>
+            {% if metrics and metrics.my_applications %}
+            <span class="sidebar-badge">{{ metrics.my_applications }}</span>
+            {% endif %}
+        </a>
+        <a href="/applications/new" class="sidebar-nav-link {% if active_page == 'new_application' %}active{% endif %}">
+            <span>New Application</span>
+        </a>
+        <a href="/applications?stage=intake" class="sidebar-nav-link {% if active_page == 'drafts' %}active{% endif %}">
+            <span>Drafts</span>
+            {% if metrics and metrics.drafts %}
+            <span class="sidebar-badge">{{ metrics.drafts }}</span>
+            {% endif %}
+        </a>
+        <a href="/applications?stage=returned" class="sidebar-nav-link {% if active_page == 'returned' %}active{% endif %}">
+            <span>Returned</span>
+            {% if metrics and metrics.returned %}
+            <span class="sidebar-badge sidebar-badge-danger">{{ metrics.returned }}</span>
+            {% endif %}
+        </a>
+    </div>
+</div>
+
+{# FIELD group #}
+<div class="sidebar-nav-group">
+    <div class="sidebar-nav-group-title">Field</div>
+    <div class="sidebar-nav-links">
+        <a href="/visits" class="sidebar-nav-link {% if active_page == 'visits' %}active{% endif %}">
+            <span>Visit Schedule</span>
+            {% if metrics and metrics.visits_due %}
+            <span class="sidebar-badge">{{ metrics.visits_due }}</span>
+            {% endif %}
+        </a>
+        <a href="/applications" class="sidebar-nav-link {% if active_page == 'visit_reports' %}active{% endif %}">
+            <span>My Visitation Reports</span>
+        </a>
+    </div>
+</div>
+
+{# DOCUMENTS group #}
+<div class="sidebar-nav-group">
+    <div class="sidebar-nav-group-title">Documents</div>
+    <div class="sidebar-nav-links">
+        <a href="/applications" class="sidebar-nav-link {% if active_page == 'upload' %}active{% endif %}">
+            <span>Upload Form</span>
+        </a>
+        <a href="/applications?stage=ocr_review" class="sidebar-nav-link {% if active_page == 'ocr_queue' %}active{% endif %}">
+            <span>OCR Review Queue</span>
+            {% if metrics and metrics.ocr_review %}
+            <span class="sidebar-badge sidebar-badge-warning">{{ metrics.ocr_review }}</span>
+            {% endif %}
+        </a>
+    </div>
+</div>

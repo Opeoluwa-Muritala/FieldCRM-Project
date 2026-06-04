@@ -1,0 +1,60 @@
+{% set mobile_title_text = "Visits" %}
+{% if device == 'mobile' %}
+{% extends "base/mobile_shell.html" %}
+{% else %}
+{% extends "base/desktop_shell.html" %}
+{% endif %}
+
+{% block title %}Visits - FieldCRM{% endblock %}
+{% block mobile_title %}Visits{% endblock %}
+{% block page_title %}Visits Due{% endblock %}
+{% block breadcrumb %}Field -> Visits{% endblock %}
+
+{% block content %}
+<div class="queue-page-header">
+    <div>
+        <div class="dashboard-date">{{ today_label }}</div>
+        <h1 class="page-card-title">Visits Due Today</h1>
+    </div>
+</div>
+
+<div class="queue-cards">
+    {% for visit in visits %}
+    <a href="/applications/{{ visit.loan_id }}/visitation" class="queue-card">
+        <span class="queue-card-name">{{ visit.applicant_name }}</span>
+        <span class="queue-card-meta">{{ visit.ref_no }} - {{ visit.stage|replace('_', ' ')|title }}</span>
+        <span class="queue-card-amount">{% if visit.amount %}&#x20A6;{{ "{:,.0f}".format(visit.amount) }}{% else %}No amount{% endif %}</span>
+        <span class="status-badge queue-card-badge needs-review">Visit</span>
+    </a>
+    {% else %}
+    <div class="lo-empty-state">No visits due today.</div>
+    {% endfor %}
+</div>
+
+<div class="custom-table-container queue-table-wrap page-card">
+    <table class="custom-table">
+        <thead>
+            <tr>
+                <th>Applicant</th>
+                <th>Ref</th>
+                <th>Stage</th>
+                <th>Amount</th>
+                <th>Application Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for visit in visits %}
+            <tr onclick="window.location.href='/applications/{{ visit.loan_id }}/visitation'">
+                <td>{{ visit.applicant_name }}</td>
+                <td>{{ visit.ref_no }}</td>
+                <td>{{ visit.stage|replace('_', ' ')|title }}</td>
+                <td>{% if visit.amount %}&#x20A6;{{ "{:,.0f}".format(visit.amount) }}{% else %}-{% endif %}</td>
+                <td>{{ visit.application_date.strftime('%d %b') if visit.application_date else '' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No visits due today.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

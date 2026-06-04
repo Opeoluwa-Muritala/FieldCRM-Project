@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% set active_page = "pipeline" %}
+
+{% block title %}Pipeline | FieldCRM{% endblock %}
+{% block breadcrumb %}Loans -> Pipeline{% endblock %}
+{% block page_title %}Loan Pipeline{% endblock %}
+
+{% block topbar_actions %}
+<a class="btn-primary-filled" href="/applications/new">New Application</a>
+{% endblock %}
+
+{% block content %}
+<div class="page-card">
+    <div class="page-card-header">
+        <h1 class="page-card-title">Workflow Pipeline</h1>
+        <p class="page-card-subtitle">Applications move through dedicated full pages for intake, OCR, review, approval, return, and disbursement readiness.</p>
+    </div>
+
+    <div class="pipeline-board">
+        {% set stage_labels = {
+            1: ("Intake", "Prepare application"),
+            2: ("OCR Review", "Verify extracted values"),
+            3: ("Credit Review", "Assess affordability"),
+            4: ("Branch Approval", "Readiness review"),
+            5: ("Disbursement Ready", "Await release"),
+            6: ("Disbursed", "Completed")
+        } %}
+        {% for stage_num in [1, 2, 3, 4, 5, 6] %}
+            {% set stage_key = "stage_" ~ stage_num %}
+            <section class="pipeline-column">
+                <header class="pipeline-column-header">
+                    <div>
+                        <h2>{{ stage_labels[stage_num][0] }}</h2>
+                        <span>{{ stage_labels[stage_num][1] }}</span>
+                    </div>
+                    <strong>{{ stage_counts[stage_key] }}</strong>
+                </header>
+
+                <div class="pipeline-list">
+                    {% for app in applications if app.current_stage == stage_num %}
+                        <a class="pipeline-card" href="/applications/{{ app.id }}">
+                            <div class="pipeline-card-top">
+                                <span class="pipeline-ref">{{ app.ref_no }}</span>
+                                <span class="status-badge {% if app.stage in ['returned', 'rejected'] %}returned{% elif app.stage in ['ocr_review', 'credit_review'] %}needs-review{% else %}verified{% endif %}">
+                                    {{ app.status }}
+                                </span>
+                            </div>
+                            <h3>{{ app.borrower.name }}</h3>
+                            <dl>
+                                <div>
+                                    <dt>Loan Type</dt>
+                                    <dd>{{ app.product_type|replace("_", " ")|title }}</dd>
+                                </div>
+                                <div>
+                                    <dt>Amount</dt>
+                                    <dd>NGN {{ "{:,.2f}".format(app.amount or 0) }}</dd>
+                                </div>
+                                <div>
+                                    <dt>Tenor</dt>
+                                    <dd>{{ app.tenure }} months</dd>
+                                </div>
+                                <div>
+                                    <dt>Owner</dt>
+                                    <dd>{{ app.current_owner.name if app.current_owner else "Unassigned" }}</dd>
+                                </div>
+                            </dl>
+                            <span class="pipeline-open">Open full page -></span>
+                        </a>
+                    {% else %}
+                        <div class="pipeline-empty">No applications in this stage.</div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
