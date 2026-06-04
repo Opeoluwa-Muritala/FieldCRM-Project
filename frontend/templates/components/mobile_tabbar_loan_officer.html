@@ -1,0 +1,35 @@
+{# Mobile bottom tab bar for Loan Officer #}
+{# 5 tabs: Home, My Queue, New App (primary), Upload, Visits #}
+
+{% set active_tab = active_tab|default('home') %}
+
+<button class="tab-item {% if active_tab == 'home' %}active{% endif %}" type="button" onclick="window.location.href='/dashboard'" aria-label="Home">
+    <span class="tab-icon">&#x1F3E0;</span>
+    <span class="tab-label">Home</span>
+</button>
+
+<button class="tab-item {% if active_tab == 'queue' %}active{% endif %}" type="button" onclick="window.location.href='/my-queue'" aria-label="My Queue">
+    {% if metrics and metrics.my_applications and metrics.my_applications > 0 %}
+    <span class="tab-badge">{{ metrics.my_applications }}</span>
+    {% endif %}
+    <span class="tab-icon">&#x2611;</span>
+    <span class="tab-label">My Queue</span>
+</button>
+
+<button class="tab-item tab-item-primary {% if active_tab == 'new' %}active{% endif %}" type="button" onclick="window.location.href='/applications/new'" aria-label="New Application">
+    <span class="tab-icon tab-icon-primary">&#x2795;</span>
+    <span class="tab-label">New App</span>
+</button>
+
+<button class="tab-item {% if active_tab == 'upload' %}active{% endif %}" type="button" onclick="window.location.href='/applications'" aria-label="Upload">
+    <span class="tab-icon">&#x1F4E4;</span>
+    <span class="tab-label">Upload</span>
+</button>
+
+<button class="tab-item {% if active_tab == 'visits' %}active{% endif %}" type="button" onclick="window.location.href='/visits'" aria-label="Visits">
+    {% if metrics and metrics.visits_due and metrics.visits_due > 0 %}
+    <span class="tab-badge">{{ metrics.visits_due }}</span>
+    {% endif %}
+    <span class="tab-icon">&#x1F4CD;</span>
+    <span class="tab-label">Visits</span>
+</button>

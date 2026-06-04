@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% set active_page = "borrowers" %}
+
+{% block title %}Current Loans | FieldCRM{% endblock %}
+{% block breadcrumb %}Loans -> Current Loans{% endblock %}
+{% block page_title %}Current Loans{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/borrowers.css">
+{% endblock %}
+
+{% block content %}
+<section class="loan-state-hero">
+    <div>
+        <span class="section-kicker">Organisation Scoped</span>
+        <h1>Current loans and workflow states</h1>
+        <p>Review all current loan files in your organisation, their owners, status, stage, and approval readiness.</p>
+    </div>
+    <div class="operator-card">
+        <span class="operator-label">Viewing as</span>
+        <strong>{{ current_user.name }}</strong>
+        <span>{{ current_user.display_role if current_user.display_role else current_user.role }}</span>
+    </div>
+</section>
+
+<section class="metrics-row" aria-label="Loan state summary">
+    <article class="metric-card">
+        <div class="metric-card-top">
+            <span class="metric-label">Total Current Loans</span>
+            <div class="metric-icon-bg">#</div>
+        </div>
+        <div class="metric-card-bottom">
+            <strong class="metric-value">{{ state_counts.total }}</strong>
+            <span class="metric-delta">Scoped</span>
+        </div>
+    </article>
+    <article class="metric-card">
+        <div class="metric-card-top">
+            <span class="metric-label">In Review</span>
+            <div class="metric-icon-bg">R</div>
+        </div>
+        <div class="metric-card-bottom">
+            <strong class="metric-value">{{ state_counts.review }}</strong>
+            <span class="metric-delta" style="color: var(--accent-warning);">Stages 2-5</span>
+        </div>
+    </article>
+    <article class="metric-card">
+        <div class="metric-card-top">
+            <span class="metric-label">Approved Queue</span>
+            <div class="metric-icon-bg">A</div>
+        </div>
+        <div class="metric-card-bottom">
+            <strong class="metric-value">{{ state_counts.approved }}</strong>
+            <span class="metric-delta" style="color: var(--accent-success);">Pending release</span>
+        </div>
+    </article>
+    <article class="metric-card">
+        <div class="metric-card-top">
+            <span class="metric-label">Active Loans</span>
+            <div class="metric-icon-bg">D</div>
+        </div>
+        <div class="metric-card-bottom">
+            <strong class="metric-value">{{ state_counts.active }}</strong>
+            <span class="metric-delta" style="color: var(--accent-success);">Disbursed</span>
+        </div>
+    </article>
+</section>
+
+<section class="page-card">
+    <div class="page-card-header">
+        <h2 class="page-card-title">Loan State List</h2>
+        <p class="page-card-subtitle">Open a loan record to continue the next full-page workflow step.</p>
+    </div>
+
+    <div class="loan-table" role="table" aria-label="Current loans and states">
+        <div class="loan-row loan-row-header" role="row">
+            <span>Borrower</span>
+            <span>Amount</span>
+            <span>Stage</span>
+            <span>Status</span>
+            <span>Current Owner</span>
+            <span>Readiness</span>
+        </div>
+
+        {% for app in applications %}
+        <a class="loan-row loan-row-link" role="row" href="/applications/{{ app.id }}">
+            <span>
+                <strong>{{ app.borrower.name }}</strong>
+                <small>{{ app.product_type|replace("_", " ")|title }} · {{ app.repayment_frequency }}</small>
+            </span>
+            <span>NGN {{ "{:,.2f}".format(app.amount or 0) }}</span>
+            <span>
+                {% if app.current_stage == 1 %}
+                    Intake
+                {% elif app.current_stage == 2 %}
+                    OCR Review
+                {% elif app.current_stage == 3 %}
+                    Credit Review
+                {% elif app.current_stage == 4 %}
+                    Branch Approval
+                {% elif app.current_stage == 5 %}
+                    Disbursement Ready
+                {% elif app.current_stage == 6 %}
+                    Disbursed
+                {% else %}
+                    {{ app.status }}
+                {% endif %}
+            </span>
+            <span>{{ app.status }}</span>
+            <span>{{ app.current_owner.name if app.current_owner else "Unassigned" }}</span>
+            <span>
+                {% if app.stage == "disbursed" %}
+                    <span class="status-badge verified">Active</span>
+                {% elif app.stage == "disbursement_ready" %}
+                    <span class="status-badge verified">Ready</span>
+                {% elif app.stage == "returned" %}
+                    <span class="status-badge returned">Returned</span>
+                {% elif app.stage == "rejected" %}
+                    <span class="status-badge missing">Rejected</span>
+                {% else %}
+                    <span class="status-badge needs-review">In Progress</span>
+                {% endif %}
+            </span>
+        </a>
+        {% endfor %}
+
+        {% if applications|length == 0 %}
+        <div class="empty-loans">No current loans are available for your organisation.</div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

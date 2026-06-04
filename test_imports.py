@@ -12,14 +12,13 @@ try:
     from app.core import security
     print("[OK] Security utilities imported successfully.")
     
-    from app.db import session
-    print("[OK] Database session configuration imported successfully.")
-    
-    from app.db import models
-    print("[OK] Database models registered and imported successfully.")
-    
-    from app.api.v1 import auth, borrowers, communication, applications, collections, groups
-    print("[OK] All API v1 router modules imported successfully.")
+    from app.core.database import init_pool, close_pool, db_conn
+    print("[OK] Raw SQL database layer imported successfully.")
+
+    from app.domains.auth.router import router as auth_router
+    from app.domains.users.router import router as users_router
+    from app.domains.loans.router import router as loans_router
+    print("[OK] Active domain router modules imported successfully.")
     
     from app.main import app
     print("[OK] FastAPI application instance initialized and imported successfully.")

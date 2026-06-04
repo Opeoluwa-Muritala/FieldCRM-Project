@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Approval Readiness Review | FieldCRM{% endblock %}
+
+{% block breadcrumb %}Loans &rarr; Application {{ app_id }} &rarr; Approval Readiness{% endblock %}
+{% block page_title %}Approval Readiness Review{% endblock %}
+
+{% block content %}
+<div class="page-card no-shadow">
+    <div class="page-card-header">
+        <h2 class="page-card-title">Approval Readiness Review</h2>
+        <p class="page-card-subtitle">Verify all structural checklist items before disbursement release. ID: {{ app_id }} · Borrower: {{ borrower_name }}</p>
+    </div>
+
+    <!-- Summary progress strip -->
+    <div style="background-color: var(--bg-secondary); border-radius: 8px; padding: 16px; margin-bottom: 24px; border: 0.5px solid var(--border-color);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; font-weight:500;">
+            <span>Checklist Status: 18 of 22 items ready</span>
+            <span style="color: var(--color-brand-shield);">81% Complete</span>
+        </div>
+        <div style="height: 6px; background-color: var(--border-color); border-radius: 3px; overflow: hidden; margin-bottom: 8px;">
+            <div style="width: 81%; height: 100%; background-color: var(--color-brand-shield);"></div>
+        </div>
+        <div style="font-size:12px; color: var(--accent-danger); font-weight:500;">
+            &#x26A0; 4 critical checklist items still require attention.
+        </div>
+    </div>
+
+    <!-- Group 1: Forms Completed -->
+    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px; background-color: #FFFFFF;">
+        <h3 style="font-size:15px; font-weight:500; margin-bottom:12px; border-bottom:0.5px solid var(--color-divider); padding-bottom:8px;">1. Forms Completed</h3>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <span>Loan Application Form (MMFB/CRM/01)</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="status-badge verified">Verified</span>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <span>Guarantor Form 1</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="status-badge verified">Verified</span>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <span>Guarantor Form 2</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="status-badge returned">Missing</span>
+                    <a href="/applications/{{ app_id }}/step/3" style="color:var(--color-brand-shield); text-decoration:none; font-weight:500;">Fix &rarr;</a>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <span>Pledge and Trust Receipt (MMFB/CRM/02)</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="status-badge verified">Verified</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group 2: Supporting Documents -->
+    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px; background-color: #FFFFFF;">
+        <h3 style="font-size:15px; font-weight:500; margin-bottom:12px; border-bottom:0.5px solid var(--color-divider); padding-bottom:8px;">2. Supporting Documents</h3>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <span>Passport Photograph</span>
+                <span class="status-badge verified">Verified</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <span>Valid ID Card</span>
+                <span class="status-badge verified">Verified</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <span>Recent Salary Account Bank Statement</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="status-badge needs-review">Needs Review</span>
+                    <a href="/applications/{{ app_id }}/step/4" style="color:var(--color-brand-shield); text-decoration:none; font-weight:500;">Fix &rarr;</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group 3: Data Quality -->
+    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px; background-color: #FFFFFF;">
+        <h3 style="font-size:15px; font-weight:500; margin-bottom:12px; border-bottom:0.5px solid var(--color-divider); padding-bottom:8px;">3. Data Quality & Checks</h3>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <span>BVN Matching Verification</span>
+                <span class="status-badge verified">Verified</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <span>OCR Low-Confidence Exceptions</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="status-badge needs-review">Needs Review</span>
+                    <a href="/applications/{{ app_id }}/ocr-review" style="color:var(--color-brand-shield); text-decoration:none; font-weight:500;">Fix &rarr;</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group 4: Declarations and Consents -->
+    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px; background-color: #FFFFFF;">
+        <h3 style="font-size:15px; font-weight:500; margin-bottom:12px; border-bottom:0.5px solid var(--color-divider); padding-bottom:8px;">4. Declarations & Consents</h3>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <span>Credit Bureau Consent Checked</span>
+                <span class="status-badge verified">Verified</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <span>Cheque Authority Received</span>
+                <span class="status-badge verified">Verified</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <span>GSI Mandate Signed</span>
+                <span class="status-badge verified">Verified</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group 5: Field Verification -->
+    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px; background-color: #FFFFFF;">
+        <h3 style="font-size:15px; font-weight:500; margin-bottom:12px; border-bottom:0.5px solid var(--color-divider); padding-bottom:8px;">5. Field Verification</h3>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <span>Visitation Report Uploaded</span>
+                <span class="status-badge verified">Verified</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <span>Branch Manager Visitation Concurrence</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="status-badge needs-review">Needs Review</span>
+                    <a href="/applications/{{ app_id }}/visitation" style="color:var(--color-brand-shield); text-decoration:none; font-weight:500;">Fix &rarr;</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group 6: Approval Chain -->
+    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 32px; background-color: #FFFFFF;">
+        <h3 style="font-size:15px; font-weight:500; margin-bottom:12px; border-bottom:0.5px solid var(--color-divider); padding-bottom:8px;">6. Approval Chain</h3>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <span>Credit Underwriter Recommendation</span>
+                <span class="status-badge verified">Verified</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Actions bar -->
+    <div style="display:flex; justify-content:space-between; align-items:center; border-top:0.5px solid var(--color-divider); padding-top:16px;">
+        <div style="display:flex; gap:16px;">
+            <a href="/applications/{{ app_id }}/return?type=officer" style="color: var(--accent-danger); font-size:12px; font-weight:500; text-decoration:none;">Return to Loan Officer</a>
+            <a href="/applications/{{ app_id }}/return?type=credit" style="color: var(--accent-warning); font-size:12px; font-weight:500; text-decoration:none;">Return to Credit Officer</a>
+        </div>
+        
+        <form action="/applications/{{ app_id }}/approve" method="POST" style="display:flex; flex-direction:column; align-items:flex-end;">
+            <!-- Simple query override mock to make testing possible -->
+            <input type="hidden" name="force_approve" value="1">
+            <button type="submit" class="btn-primary-filled" id="approveBtn">
+                Approve for Disbursement &rarr;
+            </button>
+            <span style="font-size: 12px; color:var(--accent-warning); margin-top:4px;">Force approval bypass enables testing overrides.</span>
+        </form>
+    </div>
+</div>
+{% endblock %}

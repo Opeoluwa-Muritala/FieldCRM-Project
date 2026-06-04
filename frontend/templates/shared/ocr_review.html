@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}OCR Review | FieldCRM{% endblock %}
+
+{% block breadcrumb %}Loans &rarr; Application {{ app_id }} &rarr; OCR Review{% endblock %}
+{% block page_title %}OCR Review — {{ doc_name }}{% endblock %}
+
+{% block content %}
+<div class="ocr-split-container">
+    <!-- Left panel: Document Image/PDF Viewer -->
+    <div class="ocr-viewer-panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div style="font-size:12px; font-weight:500;">Document Viewport</div>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="btn-primary-filled doc-zoom-btn" onclick="zoomDoc(1.1)" aria-label="Zoom in">+</button>
+                <button type="button" class="btn-primary-filled doc-zoom-btn" onclick="zoomDoc(0.9)" aria-label="Zoom out">&minus;</button>
+                <button type="button" class="btn-primary-filled doc-zoom-btn" onclick="fitDoc()">Fit</button>
+            </div>
+        </div>
+        
+        <div class="ocr-viewer-viewport" id="viewport">
+            <img src="/static/img/logo.png" alt="Uploaded Document Mock Image" id="docImg" class="doc-viewer-img" loading="lazy" decoding="async" style="transform: scale(1.0); transition: transform 0.1s ease;">
+            <!-- Inline highlight box representing field bounding boxes -->
+            <div id="highlightBox" style="position: absolute; border: 2.5px solid var(--color-brand-shield); background-color: rgba(107, 63, 160, 0.2); pointer-events: none; display: none;"></div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; font-size:12px; color:var(--text-muted);">
+            <span>Page 1 of 1</span>
+            <div style="display:flex; gap:8px;">
+                <a href="#" class="btn-ghost-link">Prev</a>
+                <a href="#" class="btn-ghost-link">Next</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right panel: Extracted Fields form -->
+    <div class="ocr-fields-panel">
+        <form id="ocrVerifyForm" action="/applications/{{ app_id }}/ocr-review?doc={{ doc_type }}" method="POST">
+            
+            <!-- Dynamic Fields row entries -->
+            <div class="ocr-field-row" onfocusin="highlightField('name', 50, 40, 180, 30)">
+                <div class="ocr-meta-line">
+                    <label class="field-label" style="margin-bottom:0;">Applicant Full Name</label>
+                    <span class="source-pill ocr">OCR</span>
+                </div>
+                <input type="text" name="full_name" class="field-input" value="Grace Omowunmi" oninput="markCorrected(this)">
+                <div class="confidence-bar-bg">
+                    <div class="confidence-bar-fill high" style="width: 98%;"></div>
+                </div>
+                <span style="font-size: 12px; color: var(--text-muted);">OCR confidence: 98% · <span style="color:var(--accent-warning);">Critical field — manual review required</span></span>
+            </div>
+
+            <div class="ocr-field-row" style="border-left: 2px solid var(--accent-warning); padding-left: 8px;" onfocusin="highlightField('amount', 50, 100, 120, 30)">
+                <div class="ocr-meta-line">
+                    <label class="field-label" style="margin-bottom:0;">Loan Amount</label>
+                    <span class="source-pill corrected">CORRECTED</span>
+                </div>
+                <input type="text" name="amount" class="field-input" value="500,000" oninput="markCorrected(this)">
+                <div class="confidence-bar-bg">
+                    <div class="confidence-bar-fill mid" style="width: 61%;"></div>
+                </div>
+                <span style="font-size: 12px; color: var(--accent-warning);">Low confidence (61%) — verify against original. Critical field — manual review required</span>
+            </div>
+
+            <div class="ocr-field-row" style="border-left: 2px solid var(--accent-danger); padding-left: 8px;" onfocusin="highlightField('sig', 80, 200, 150, 50)">
+                <div class="ocr-meta-line">
+                    <label class="field-label" style="margin-bottom:0;">Guarantor Signature</label>
+                    <span class="source-pill" style="background-color:rgba(160,26,26,0.1); color:var(--accent-danger);">Missing</span>
+                </div>
+                <input type="text" name="signature" class="field-input" value="Unreadable" oninput="markCorrected(this)">
+                <div class="confidence-bar-bg">
+                    <div class="confidence-bar-fill low" style="width: 22%;"></div>
+                </div>
+                <span style="font-size: 12px; color: var(--accent-danger);">OCR Confidence: 22% · Bounding Box unreadable</span>
+            </div>
+
+            <div class="ocr-field-row" onfocusin="highlightField('bvn', 50, 150, 140, 30)">
+                <div class="ocr-meta-line">
+                    <label class="field-label" style="margin-bottom:0;">Bank Verification Number (BVN)</label>
+                    <span class="source-pill ocr">OCR</span>
+                </div>
+                <input type="text" name="bvn" class="field-input" value="22233344455" oninput="markCorrected(this)">
+                <div class="confidence-bar-bg">
+                    <div class="confidence-bar-fill high" style="width: 95%;"></div>
+                </div>
+                <span style="font-size: 12px; color: var(--text-muted);">OCR confidence: 95% · <span style="color:var(--accent-warning);">Critical field — manual review required</span></span>
+            </div>
+
+            <!-- Page actions footer sticky bar -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:32px; border-top:0.5px solid var(--color-divider); padding-top:16px;">
+                <a href="/applications/{{ app_id }}/return?doc={{ doc_type }}" style="color: var(--accent-danger); font-size:12px; font-weight:500; text-decoration:none;">Return Document for Re-upload</a>
+                
+                <div style="display:flex; gap:12px;">
+                    <button type="submit" name="action" value="save" class="btn-ghost-link" style="border:0.5px solid var(--border-color); border-radius:8px; padding:0 16px; height:36px;">Save All Corrections</button>
+                    <button type="submit" name="action" value="verify" class="btn-primary-filled" style="height:36px;">Mark as Verified &rarr;</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    let scaleVal = 1.0;
+    function zoomDoc(mult) {
+        scaleVal *= mult;
+        document.getElementById('docImg').style.transform = `scale(${scaleVal})`;
+    }
+
+    function fitDoc() {
+        scaleVal = 1.0;
+        document.getElementById('docImg').style.transform = 'scale(1.0)';
+    }
+
+    function markCorrected(input) {
+        const parent = input.parentElement;
+        const pill = parent.querySelector('.source-pill');
+        if (pill) {
+            pill.textContent = 'CORRECTED';
+            pill.className = 'source-pill corrected';
+        }
+    }
+
+    // Highlight bounding boxes on document image when fields are focused
+    function highlightField(fieldName, left, top, width, height) {
+        const box = document.getElementById('highlightBox');
+        if (!box) return;
+        
+        box.style.display = 'block';
+        box.style.left = left + 'px';
+        box.style.top = top + 'px';
+        box.style.width = width + 'px';
+        box.style.height = height + 'px';
+    }
+</script>
+{% endblock %}

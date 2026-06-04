@@ -1,0 +1,65 @@
+{% set mobile_title_text = "My Queue" %}
+{% if device == 'mobile' %}
+{% extends "base/mobile_shell.html" %}
+{% else %}
+{% extends "base/desktop_shell.html" %}
+{% endif %}
+
+{% block title %}My Queue - FieldCRM{% endblock %}
+{% block mobile_title %}My Queue{% endblock %}
+{% block page_title %}My Queue{% endblock %}
+{% block breadcrumb %}Loans -> My Queue{% endblock %}
+
+{% block content %}
+<div class="queue-page-header">
+    <div>
+        <div class="dashboard-date">{{ today_label }}</div>
+        <h1 class="page-card-title">My Queue</h1>
+    </div>
+    <a class="btn-primary-filled queue-new-link" href="/applications/new">New Application</a>
+</div>
+
+<div class="queue-cards">
+    {% for app in queue %}
+    <a href="/applications/{{ app.id }}" class="queue-card">
+        <span class="queue-card-name">{{ app.applicant_name }}</span>
+        <span class="queue-card-meta">{{ app.ref_no }} - {{ app.stage|replace('_', ' ')|title }}</span>
+        <span class="queue-card-amount">{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}No amount{% endif %}</span>
+        <span class="status-badge queue-card-badge {{ 'returned' if app.stage == 'returned' else 'needs-review' }}">{{ app.stage|replace('_', ' ')|title }}</span>
+    </a>
+    {% else %}
+    <div class="lo-empty-state">No active applications in your queue.</div>
+    {% endfor %}
+</div>
+
+<div class="custom-table-container queue-table-wrap page-card">
+    <table class="custom-table">
+        <thead>
+            <tr>
+                <th>Applicant</th>
+                <th>Ref</th>
+                <th>Stage</th>
+                <th>Amount</th>
+                <th>Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for app in queue %}
+            <tr onclick="window.location.href='/applications/{{ app.id }}'">
+                <td>{{ app.applicant_name }}</td>
+                <td>{{ app.ref_no }}</td>
+                <td>{{ app.stage|replace('_', ' ')|title }}</td>
+                <td>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}-{% endif %}</td>
+                <td>{{ app.updated_at.strftime('%d %b') if app.updated_at else '' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No active applications in your queue.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block fab %}
+<a href="/applications/new" class="fab" aria-label="New Application"><span class="fab-icon">&#x2795;</span></a>
+{% endblock %}

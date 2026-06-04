@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Document | FieldCRM{% endblock %}
+
+{% block breadcrumb %}Loans &rarr; Application {{ app_id }} &rarr; Upload Document{% endblock %}
+{% block page_title %}Upload Supporting Document{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:center; padding:20px 0;">
+    <div class="page-card no-shadow" style="max-width: 640px; width: 100%;">
+        <div class="page-card-header">
+            <h2 class="page-card-title">Upload Document</h2>
+            <p class="page-card-subtitle">Upload the requested document for borrower {{ borrower_name }}. Category: <strong style="color:var(--color-brand-shield);">{{ doc_type|upper }}</strong></p>
+        </div>
+
+        <form action="/applications/{{ app_id }}/documents/upload?type={{ doc_type }}" method="POST" enctype="multipart/form-data">
+            <!-- File dropzone -->
+            <div class="upload-dragzone" onclick="document.getElementById('fileInput').click()">
+                <span style="font-size:32px; color: var(--color-brand-shield);">&#x1F4E4;</span>
+                <span style="font-weight:500; margin-top:8px;">Drag and drop file here, or click to browse</span>
+                <span style="font-size: 12px; color:var(--text-muted); margin-top:4px;">Supports PDF, JPG, JPEG, PNG up to 5MB</span>
+                <input type="file" name="file" id="fileInput" style="display:none;" onchange="handleFileSelected(this)">
+            </div>
+
+            <!-- Upload Feedback Box (Hidden initially) -->
+            <div id="uploadFeedbackSlot" style="display:none; margin-top:20px; border:0.5px solid var(--border-color); border-radius:8px; padding:16px; background-color: var(--bg-secondary);">
+                <div style="display:flex; align-items:center; gap:16px;">
+                    <div style="font-size:24px; color:var(--color-brand-shield);" id="fileIcon">&#x1F4C4;</div>
+                    <div style="flex:1;">
+                        <div style="font-size:13px; font-weight:500;" id="fileNameVal">document_filename.pdf</div>
+                        <div style="font-size: 12px; color:var(--text-muted);" id="fileSizeVal">1.2 MB</div>
+                    </div>
+                </div>
+                <div style="margin-top:16px; display:flex; align-items:center; gap:12px;">
+                    <label class="field-label" style="margin-bottom:0;" for="catSelect">Selected Category</label>
+                    <select name="category" id="catSelect" class="field-select" style="min-height:30px; width:180px;">
+                        <option value="payslip" {% if doc_type == 'payslip' %}selected{% endif %}>Payslip</option>
+                        <option value="id" {% if doc_type == 'id' %}selected{% endif %}>Identity Document</option>
+                        <option value="statement" {% if doc_type == 'bank_statement' or doc_type == 'statement' %}selected{% endif %}>Bank Statement</option>
+                        <option value="guarantor" {% if 'guarantor' in doc_type %}selected{% endif %}>Guarantor Document</option>
+                        <option value="other" {% if doc_type == 'other' %}selected{% endif %}>Other Supporting</option>
+                    </select>
+                    <span style="font-size: 12px; color:var(--color-brand-shield); cursor:pointer;" onclick="clearFileSelection()">Upload Another</span>
+                </div>
+            </div>
+
+            <!-- Form actions -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:32px; border-top:0.5px solid var(--color-divider); padding-top:16px;">
+                <!-- Simple javascript referrer redirect to go back if possible -->
+                <button type="button" class="btn-ghost-link" onclick="window.history.back()">&larr; Cancel & Go Back</button>
+                <button type="submit" class="btn-primary-filled" id="saveDocBtn" disabled>Save Document &rarr;</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function handleFileSelected(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            document.getElementById('fileNameVal').textContent = file.name;
+            
+            // Format size
+            let sz = file.size / (1024 * 1024);
+            document.getElementById('fileSizeVal').textContent = sz.toFixed(2) + " MB";
+            
+            // Show icon by type
+            const icon = document.getElementById('fileIcon');
+            if (file.type.includes('image')) {
+                icon.innerHTML = '&#x1F5BC;';
+            } else {
+                icon.innerHTML = '&#x1F4C4;';
+            }
+            
+            document.getElementById('uploadFeedbackSlot').style.display = 'block';
+            document.getElementById('saveDocBtn').disabled = false;
+        }
+    }
+
+    function clearFileSelection() {
+        document.getElementById('fileInput').value = "";
+        document.getElementById('uploadFeedbackSlot').style.display = 'none';
+        document.getElementById('saveDocBtn').disabled = true;
+    }
+</script>
+{% endblock %}

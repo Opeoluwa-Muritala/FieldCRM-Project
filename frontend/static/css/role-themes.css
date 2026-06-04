@@ -1,0 +1,170 @@
+/* =============================================
+   Role-Based Theming via data-role Attribute
+   =============================================
+   Each role gets slightly different accent tones
+   while preserving the core Mainstreet brand.
+   Applied via [data-role="role_name"] on <body>.
+*/
+
+/* === LOAN OFFICER — Primary Purple (default brand) === */
+[data-role="loan_officer"] {
+    --role-accent: #6B3FA0;
+    --role-accent-hover: #8B5CC8;
+    --role-accent-tint: #F0E8FA;
+    --role-accent-light: #B794D4;
+    --role-badge-bg: #F0E8FA;
+    --role-badge-color: #6B3FA0;
+    --role-nav-active-bg: rgba(107, 63, 160, 0.12);
+    --role-nav-active-border: #8B5CC8;
+    --role-nav-active-text: #B794D4;
+}
+
+/* === CREDIT OFFICER — Forest Green tint === */
+[data-role="credit_officer"] {
+    --role-accent: #1A6B45;
+    --role-accent-hover: #238C5A;
+    --role-accent-tint: #E8FAF0;
+    --role-accent-light: #6BCF9A;
+    --role-badge-bg: #E8FAF0;
+    --role-badge-color: #1A6B45;
+    --role-nav-active-bg: rgba(26, 107, 69, 0.12);
+    --role-nav-active-border: #238C5A;
+    --role-nav-active-text: #6BCF9A;
+}
+
+/* === BRANCH MANAGER — Warm Amber === */
+[data-role="branch_manager"] {
+    --role-accent: #A05A00;
+    --role-accent-hover: #C07000;
+    --role-accent-tint: #FFF5E8;
+    --role-accent-light: #D4A46B;
+    --role-badge-bg: #FFF5E8;
+    --role-badge-color: #A05A00;
+    --role-nav-active-bg: rgba(160, 90, 0, 0.10);
+    --role-nav-active-border: #C07000;
+    --role-nav-active-text: #D4A46B;
+}
+
+/* === AUDITOR — Neutral Slate === */
+[data-role="auditor"] {
+    --role-accent: #4A5568;
+    --role-accent-hover: #636D7F;
+    --role-accent-tint: #EDF2F7;
+    --role-accent-light: #A0AEC0;
+    --role-badge-bg: #EDF2F7;
+    --role-badge-color: #4A5568;
+    --role-nav-active-bg: rgba(74, 85, 104, 0.10);
+    --role-nav-active-border: #636D7F;
+    --role-nav-active-text: #A0AEC0;
+}
+
+/* === SYSTEM ADMIN — Deep Brand === */
+[data-role="system_admin"] {
+    --role-accent: #2D1A4A;
+    --role-accent-hover: #3D2A5A;
+    --role-accent-tint: #EDE8F4;
+    --role-accent-light: #8B6BB0;
+    --role-badge-bg: #EDE8F4;
+    --role-badge-color: #2D1A4A;
+    --role-nav-active-bg: rgba(45, 26, 74, 0.12);
+    --role-nav-active-border: #3D2A5A;
+    --role-nav-active-text: #8B6BB0;
+}
+
+/* === Role Badge Component === */
+.mobile-role-badge {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 8px;
+    border-radius: 99px;
+    background-color: var(--role-badge-bg, #F0E8FA);
+    color: var(--role-badge-color, #6B3FA0);
+}
+
+/* Role-specific badge variants */
+.mobile-role-badge.role-loan_officer {
+    background-color: #F0E8FA;
+    color: #6B3FA0;
+}
+
+.mobile-role-badge.role-credit_officer {
+    background-color: #E8FAF0;
+    color: #1A6B45;
+}
+
+.mobile-role-badge.role-branch_manager {
+    background-color: #FFF5E8;
+    color: #A05A00;
+}
+
+.mobile-role-badge.role-auditor {
+    background-color: #EDF2F7;
+    color: #4A5568;
+}
+
+.mobile-role-badge.role-system_admin {
+    background-color: #EDE8F4;
+    color: #2D1A4A;
+}
+
+/* === Sidebar badge variants for danger/warning === */
+.sidebar-badge-danger {
+    background-color: var(--accent-danger) !important;
+}
+
+.sidebar-badge-warning {
+    background-color: var(--accent-warning) !important;
+}
+
+/* === Role-aware overrides === */
+
+/* Active sidebar link uses role accent */
+[data-role] .sidebar-nav-link.active {
+    border-left-color: var(--role-nav-active-border, var(--color-brand-mid));
+    background-color: var(--role-nav-active-bg, rgba(107, 63, 160, 0.12));
+    color: var(--role-nav-active-text, var(--color-brand-light));
+}
+
+/* Primary button uses role accent */
+[data-role] .btn-primary-filled {
+    background-color: var(--role-accent, var(--color-brand-shield));
+}
+
+[data-role] .btn-primary-filled:hover {
+    background-color: var(--role-accent-hover, var(--color-brand-mid));
+}
+
+/* Focus rings use role accent */
+[data-role] .field-input:focus,
+[data-role] .field-select:focus,
+[data-role] .field-textarea:focus {
+    outline-color: var(--role-accent-hover, var(--color-brand-mid));
+    border-color: var(--role-accent-hover, var(--color-brand-mid));
+}
+
+/* Mobile tabbar active state */
+[data-role] .tab-item.active {
+    color: var(--role-accent, var(--color-brand-shield));
+}
+
+[data-role] .tab-item.active .tab-icon {
+    color: var(--role-accent, var(--color-brand-shield));
+}
+
+/* Metric icon bg uses role accent */
+[data-role] .metric-icon-bg {
+    background-color: var(--role-accent-tint, var(--color-brand-tint));
+    color: var(--role-accent, var(--color-brand-shield));
+}
+
+.metric-icon-bg-danger {
+    background-color: rgba(160, 26, 26, 0.1) !important;
+    color: var(--accent-danger) !important;
+}
+
+.metric-delta-danger {
+    color: var(--accent-danger) !important;
+}

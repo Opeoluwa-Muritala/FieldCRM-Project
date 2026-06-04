@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FieldCRM — Mainstreet Microfinance Bank{% endblock %}</title>
+    <!-- Two-font system: Playfair Display + DM Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@400;500&display=swap&subset=latin" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% set db_role = current_user.role if current_user else "loan_officer" %}
+    {% set role_labels = {
+        "loan_officer": "Loan Officer",
+        "credit_officer": "Credit Officer",
+        "branch_manager": "Branch Manager",
+        "auditor": "Auditor",
+        "system_admin": "System Admin"
+    } %}
+    {% set role = role_labels.get(db_role, db_role) %}
+    <div class="app-shell">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
+            <div class="sidebar-logo">
+                <span class="logo-composite" role="img" aria-label="Mainstreet Microfinance Bank Logo">
+                    <img class="logo-layer logo-layer-shield" src="/static/img/logo.png" alt="" loading="lazy">
+                    <img class="logo-layer logo-layer-text" src="/static/img/logo.png" alt="" loading="lazy">
+                </span>
+                <div class="logo-fallback" style="display:none;">
+                    MAINSTREET
+                    <span>MICROFINANCE BANK</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <!-- LOANS Group -->
+                <div class="sidebar-nav-group">
+                    <div class="sidebar-nav-group-title">Loans</div>
+                    <div class="sidebar-nav-links">
+                        <a href="/dashboard" class="sidebar-nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+                            <span>Dashboard</span>
+                        </a>
+                        {% if db_role in ["branch_manager", "credit_officer", "auditor", "system_admin"] %}
+                        <a href="/borrowers" id="navBorrowers" class="sidebar-nav-link {% if active_page == 'borrowers' %}active{% endif %}">
+                            <span>Current Loans</span>
+                        </a>
+                        {% endif %}
+                        <a href="/pipeline" id="navPipeline" class="sidebar-nav-link {% if active_page == 'pipeline' %}active{% endif %}">
+                            <span>Pipeline</span>
+                        </a>
+                        {% if db_role == "loan_officer" %}
+                        <a href="/applications/new" class="sidebar-nav-link {% if active_page == 'new_application' %}active{% endif %}">
+                            <span>New Application</span>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- FIELD Group -->
+                <div class="sidebar-nav-group">
+                    <div class="sidebar-nav-group-title">Field</div>
+                    <div class="sidebar-nav-links">
+                        {% if db_role in ["loan_officer", "branch_manager"] %}
+                        <a href="/applications" class="sidebar-nav-link {% if active_page == 'visitations' %}active{% endif %}">
+                            <span>Visitations Queue</span>
+                        </a>
+                        {% else %}
+                        <div class="sidebar-nav-link" style="opacity: 0.5; cursor: not-allowed;">
+                            <span>No Field Tasks</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- REVIEW Group -->
+                {% if db_role in ["credit_officer", "branch_manager", "auditor", "system_admin"] %}
+                <div class="sidebar-nav-group">
+                    <div class="sidebar-nav-group-title">Review</div>
+                    <div class="sidebar-nav-links">
+                        <a href="/applications" class="sidebar-nav-link {% if active_page == 'applications' %}active{% endif %}">
+                            <span>Review Queue</span>
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- ADMIN Group -->
+                {% if db_role == "system_admin" %}
+                <div class="sidebar-nav-group">
+                    <div class="sidebar-nav-group-title">Admin</div>
+                    <div class="sidebar-nav-links">
+                        <a href="/audit" id="navAudit" class="sidebar-nav-link {% if active_page == 'audit' %}active{% endif %}">
+                            <span>Audit Trail</span>
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </nav>
+
+            <!-- User profile bottom block -->
+            <div class="sidebar-user">
+                {% set initials = "" %}
+                {% if current_user and current_user.name %}
+                    {% set parts = current_user.name.split() %}
+                    {% if parts|length > 1 %}
+                        {% set initials = parts[0][0] + parts[1][0] %}
+                    {% else %}
+                        {% set initials = parts[0][0] %}
+                    {% endif %}
+                {% else %}
+                    {% set initials = "BM" %}
+                {% endif %}
+                <div class="sidebar-user-avatar">{{ initials|upper }}</div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name">{{ current_user.name if current_user else "Branch Manager" }}</div>
+                    <div class="sidebar-user-role">{{ role }}</div>
+                </div>
+                <a href="/logout" style="margin-left: auto; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 18px;" title="Logout">
+                    &#x21aa;
+                </a>
+            </div>
+        </aside>
+        <button class="sidebar-overlay" type="button" aria-label="Close navigation menu" data-sidebar-close></button>
+
+        <!-- Workspace main contents -->
+        <div class="main-content">
+            <header class="topbar">
+                <button class="hamburger-btn" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sidebar" data-sidebar-toggle>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="topbar-left">
+                    <div class="topbar-breadcrumb">{% block breadcrumb %}Mainstreet{% endblock %}</div>
+                    <h2 class="topbar-title">{% block page_title %}Dashboard{% endblock %}</h2>
+                </div>
+                <div class="topbar-right">
+                    {% block topbar_actions %}{% endblock %}
+                    <button class="topbar-bell" title="Notifications">
+                        &#x1F514;
+                    </button>
+                </div>
+            </header>
+
+            <main class="content-wrapper">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    <script>
+        (() => {
+            const sidebar = document.getElementById("sidebar");
+            const toggle = document.querySelector("[data-sidebar-toggle]");
+            const closers = document.querySelectorAll("[data-sidebar-close], .sidebar-nav-link");
+            if (!sidebar || !toggle) return;
+
+            function setOpen(open) {
+                sidebar.classList.toggle("open", open);
+                document.body.classList.toggle("sidebar-open", open);
+                toggle.setAttribute("aria-expanded", String(open));
+            }
+
+            toggle.addEventListener("click", () => setOpen(!sidebar.classList.contains("open")));
+            closers.forEach((item) => item.addEventListener("click", () => setOpen(false)));
+        })();
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

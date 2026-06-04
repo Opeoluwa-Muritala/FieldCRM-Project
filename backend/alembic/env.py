@@ -8,9 +8,6 @@ from alembic import context
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.config import settings
-from app.db.session import Base
-# Import all models to ensure they register correctly in Base.metadata
-from app.db.models import *
 
 # this is the Alembic Config object, which provides access to the values within the .ini file.
 config = context.config
@@ -19,8 +16,9 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Set metadata to enable autogenerate functionality
-target_metadata = Base.metadata
+# FieldCRM uses hand-written SQL migrations. Autogenerate is intentionally
+# disabled so Alembic never infers schema changes from runtime models.
+target_metadata = None
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""

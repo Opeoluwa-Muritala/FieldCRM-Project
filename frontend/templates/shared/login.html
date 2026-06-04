@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | FieldCRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Playfair+Display:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/login.css">
+</head>
+<body>
+    <div class="login-split-container">
+        
+        <!-- Left Panel: Brand Experience -->
+        <div class="brand-panel">
+            <header class="brand-header">
+                <div class="brand-logo-wrapper">
+                    <span class="logo-composite brand-logo-img" role="img" aria-label="Mainstreet Microfinance Bank">
+                        <img class="logo-layer logo-layer-shield" src="/static/img/logo.png" alt="" loading="lazy">
+                        <img class="logo-layer logo-layer-text" src="/static/img/logo.png" alt="" loading="lazy">
+                    </span>
+                </div>
+            </header>
+            
+            <main class="brand-content">
+                <div class="brand-badge">Enterprise Core</div>
+                <h1 class="brand-title">Mainstreet Microfinance Bank</h1>
+                <p class="brand-description">
+                    Staff credit workflow for field intake, document review, visitation, approval readiness, and audit traceability.
+                </p>
+                
+                <!-- Live Stats Preview Widget -->
+                <div class="preview-widget">
+                    <div class="widget-header">
+                        <span class="widget-title">Demo Workspace</span>
+                        <span class="widget-status">
+                            <span class="widget-status-dot"></span>
+                            Systems Active
+                        </span>
+                    </div>
+                    <div class="preview-grid">
+                        <div class="preview-metric-card">
+                            <div class="preview-metric-label">OCR Confidence</div>
+                            <div class="preview-metric-value">98.4%</div>
+                        </div>
+                        <div class="preview-metric-card">
+                            <div class="preview-metric-label">Daily Audits</div>
+                            <div class="preview-metric-value">1,402</div>
+                        </div>
+                        <div class="preview-metric-card">
+                            <div class="preview-metric-label">SLA Rate</div>
+                            <div class="preview-metric-value">99.9%</div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+            
+            <footer class="brand-footer">
+                &copy; 2026 Mainstreet Microfinance Bank Limited. All rights reserved.
+            </footer>
+        </div>
+        
+        <!-- Right Panel: Login Form -->
+        <div class="form-panel">
+            <div class="form-shell">
+                
+                <!-- Mobile Logo Area (Only shows on mobile instead of left panel) -->
+                <div class="mobile-logo-area">
+                    <span class="logo-composite brand-logo-img" role="img" aria-label="Mainstreet Microfinance Bank">
+                        <img class="logo-layer logo-layer-shield" src="/static/img/logo.png" alt="" loading="lazy">
+                        <img class="logo-layer logo-layer-text" src="/static/img/logo.png" alt="" loading="lazy">
+                    </span>
+                </div>
+                
+                <div class="login-title-area">
+                    <h1 class="login-title">Staff Sign In</h1>
+                    <p class="login-subtitle">Mainstreet Microfinance Bank MVP Platform</p>
+                </div>
+                
+                {% if error %}
+                    <div class="login-error">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        <span>{{ error }}</span>
+                    </div>
+                {% endif %}
+                
+                <form method="post" action="/login">
+                    <div class="form-group">
+                        <label class="form-label" for="username">Email Address</label>
+                        <div class="input-container">
+                            <svg class="input-icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            <input class="form-input" id="username" name="username" type="email" placeholder="admin@mmfb.com" autocomplete="username" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="password">Password</label>
+                        <div class="input-container">
+                            <svg class="input-icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                            </svg>
+                            <input class="form-input" id="password" name="password" type="password" placeholder="password123" autocomplete="current-password" required>
+                        </div>
+                    </div>
+                    
+                    <button class="login-btn" type="submit">
+                        <span>Sign In</span>
+                        <svg class="login-btn-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </button>
+                </form>
+                
+                <!-- Interactive Demo Accounts Panel -->
+                <div class="demo-section">
+                    <div class="demo-section-header">
+                        <span class="demo-title">Seeded Login Accounts</span>
+                    </div>
+                    
+                    <div class="demo-grid">
+                        <button type="button" class="demo-card demo-card-full" data-email="admin@mmfb.com">
+                            <span class="demo-card-role">System Admin / MCR</span>
+                            <span class="demo-card-desc">Final approval readiness & disbursement oversight</span>
+                            <span class="demo-card-phone">admin@mmfb.com</span>
+                        </button>
+
+                        <button type="button" class="demo-card" data-email="adebayo@mmfb.com">
+                            <span class="demo-card-role">Branch Manager</span>
+                            <span class="demo-card-desc">Review & signoff</span>
+                            <span class="demo-card-phone">adebayo@mmfb.com</span>
+                        </button>
+                        
+                        <button type="button" class="demo-card" data-email="chidi@mmfb.com">
+                            <span class="demo-card-role">Loan Officer</span>
+                            <span class="demo-card-desc">Intake & verify</span>
+                            <span class="demo-card-phone">chidi@mmfb.com</span>
+                        </button>
+                        
+                        <button type="button" class="demo-card" data-email="fatima@mmfb.com">
+                            <span class="demo-card-role">Credit Officer</span>
+                            <span class="demo-card-desc">Risk assessment</span>
+                            <span class="demo-card-phone">fatima@mmfb.com</span>
+                        </button>
+                        
+                        <button type="button" class="demo-card" data-email="samuel@mmfb.com">
+                            <span class="demo-card-role">Auditor</span>
+                            <span class="demo-card-desc">Compliance trail</span>
+                            <span class="demo-card-phone">samuel@mmfb.com</span>
+                        </button>
+                    </div>
+                    
+                    <div class="demo-footer-info">
+                        Password for all seeded accounts: <strong>password123</strong>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const demoCards = document.querySelectorAll('.demo-card');
+
+            demoCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    // Remove active class from all cards
+                    demoCards.forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to clicked card
+                    card.classList.add('active');
+
+                    // Populate form fields
+                    const email = card.getAttribute('data-email');
+                    usernameInput.value = email;
+                    passwordInput.value = 'password123';
+
+                    // Subtle micro-animations for input fields on populate
+                    [usernameInput, passwordInput].forEach(input => {
+                        input.style.transform = 'scale(1.015)';
+                        input.style.borderColor = 'var(--color-brand-light)';
+                        setTimeout(() => {
+                            input.style.transform = '';
+                            input.style.borderColor = '';
+                        }, 250);
+                    });
+                    
+                    // Direct focus to login button
+                    const loginBtn = document.querySelector('.login-btn');
+                    loginBtn.focus();
+                });
+            });
+        });
+    </script>
+</body>
+</html>

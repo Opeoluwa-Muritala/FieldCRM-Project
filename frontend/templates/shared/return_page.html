@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} | FieldCRM{% endblock %}
+
+{% block breadcrumb %}Loans &rarr; Application {{ app_id }} &rarr; Return{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:center; padding: 20px 0;">
+    <div class="page-card no-shadow" style="max-width: 600px; width: 100%;">
+        <div class="page-card-header">
+            <h2 class="page-card-title">{{ title }}</h2>
+            <p class="page-card-subtitle">Specify reasons and checklist corrections for returning this workspace.</p>
+        </div>
+
+        <form action="/applications/{{ app_id }}/return" method="POST">
+            <!-- Return Reason Select option -->
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="field-label" for="returnReason">Primary Return Reason</label>
+                <select name="reason_category" id="returnReason" class="field-select" required>
+                    <option value="Missing Documents">Missing Documents</option>
+                    <option value="Incorrect Information">Incorrect Information</option>
+                    <option value="Low Confidence OCR">Low Confidence OCR</option>
+                    <option value="Unsigned Form">Unsigned Form</option>
+                    <option value="Policy Exception">Policy Exception</option>
+                    <option value="Other">Other Category</option>
+                </select>
+            </div>
+
+            <!-- Checklist of Omissions -->
+            <div style="margin-bottom: 20px;">
+                <label class="field-label">Checklist of specific items to correct</label>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" name="corrections[]" value="ID Expiry proof" id="corr_id">
+                        <label for="corr_id" style="font-size:13px; cursor:pointer;">Update ID document / Verify Expiry date</label>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" name="corrections[]" value="Spousal consent signature" id="corr_spouse">
+                        <label for="corr_spouse" style="font-size:13px; cursor:pointer;">Collect Spousal Consent Signature canvas</label>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" name="corrections[]" value="Bank Statement" id="corr_statement">
+                        <label for="corr_statement" style="font-size:13px; cursor:pointer;">Upload recent 3 months Bank Statement</label>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" name="corrections[]" value="Guarantor Cheque" id="corr_cheque">
+                        <label for="corr_cheque" style="font-size:13px; cursor:pointer;">Guarantor Cheque details validation</label>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" name="corrections[]" value="Visitation Concurrence" id="corr_visit">
+                        <label for="corr_visit" style="font-size:13px; cursor:pointer;">Concurrence signoff mismatch</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group-full" style="margin-bottom: 24px;">
+                <label class="field-label" for="returnNotes">Checklist Details / Instruction Notes <span class="required">*</span></label>
+                <textarea name="notes" id="returnNotes" class="field-textarea" placeholder="Detail precisely what the officer needs to fix or upload..." required></textarea>
+            </div>
+
+            <!-- Footer Buttons -->
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <a href="/applications/{{ app_id }}" class="btn-ghost-link">Cancel — Go Back</a>
+                <button type="submit" class="btn-primary-filled" style="background-color: var(--accent-danger);">
+                    Confirm Return &rarr;
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+{% endblock %}

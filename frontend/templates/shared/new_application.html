@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}New Application | FieldCRM{% endblock %}
+{% set active_page = "new_application" %}
+
+{% block breadcrumb %}Loans &rarr; New Application{% endblock %}
+{% block page_title %}New Loan Application{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; padding: 20px 0;">
+    <div class="page-card no-shadow" style="max-width: 640px; width: 100%;">
+        <div class="page-card-header" style="text-align: center; margin-bottom: 32px;">
+            <h2 class="page-card-title" style="font-size: 24px;">New Loan Application</h2>
+            <p class="page-card-subtitle">Select customer type and loan category to begin.</p>
+        </div>
+
+        <form id="newAppForm" action="/applications/new" method="POST">
+            <!-- Customer Type selection -->
+            <div style="margin-bottom: 32px;">
+                <label class="field-label" style="text-align: center; margin-bottom: 12px;">Customer Type</label>
+                <div style="display: flex; gap: 16px; justify-content: center;">
+                    <div class="toggle-option-card" id="custTypeNew" onclick="selectCustType('new')" style="width: 260px; text-align: center;">
+                        <input type="radio" name="customer_type" value="new" id="radioNew" style="display:none;" required>
+                        <strong style="display: block; font-size: 15px; color: var(--color-brand-shield);">New Customer</strong>
+                        <span style="font-size: 12px; color: var(--text-muted);">First-time borrower profile registration</span>
+                    </div>
+                    <div class="toggle-option-card" id="custTypeExisting" onclick="selectCustType('existing')" style="width: 260px; text-align: center;">
+                        <input type="radio" name="customer_type" value="existing" id="radioExisting" style="display:none;">
+                        <strong style="display: block; font-size: 15px; color: var(--color-brand-shield);">Existing Customer</strong>
+                        <span style="font-size: 12px; color: var(--text-muted);">Retrieve existing accounts and history</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Existing Customer Search Slot (Hidden initially) -->
+            <div id="existingSearchSlot" style="display: none; margin-bottom: 32px; padding: 16px; border: 0.5px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary);">
+                <label class="field-label" for="bvnSearch">Search by Name, BVN, or Account Number</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="bvnSearch" class="field-input" placeholder="e.g. 22233344455" oninput="mockAutoFill()">
+                    <button type="button" class="btn-primary-filled" style="height: 38px;">Search</button>
+                </div>
+                <div id="searchFeedback" style="font-size: 12px; color: var(--accent-success); margin-top: 6px; display: none;">
+                    ✓ Customer record matched: Grace Omowunmi (BVN: 222******55)
+                </div>
+            </div>
+
+            <!-- Loan Category grid -->
+            <div style="margin-bottom: 32px;">
+                <label class="field-label" style="text-align: center; margin-bottom: 12px;">Loan Category</label>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+                    <div class="toggle-option-card" id="loanEnterprise" onclick="selectLoanType('enterprise')" style="text-align: center;">
+                        <input type="radio" name="loan_type" value="enterprise" id="radioEnterprise" style="display:none;" required>
+                        <strong style="display: block; font-size: 14px;">Enterprise Loan</strong>
+                    </div>
+                    <div class="toggle-option-card" id="loanMsef" onclick="selectLoanType('msef')" style="text-align: center;">
+                        <input type="radio" name="loan_type" value="msef" id="radioMsef" style="display:none;">
+                        <strong style="display: block; font-size: 14px;">MSEF</strong>
+                    </div>
+                    <div class="toggle-option-card" id="loanPayee" onclick="selectLoanType('payee')" style="text-align: center;">
+                        <input type="radio" name="loan_type" value="payee" id="radioPayee" style="display:none;">
+                        <strong style="display: block; font-size: 14px;">PAYEE</strong>
+                    </div>
+                    <div class="toggle-option-card" id="loanOther" onclick="selectLoanType('other')" style="text-align: center;">
+                        <input type="radio" name="loan_type" value="other" id="radioOther" style="display:none;">
+                        <strong style="display: block; font-size: 14px;">Other Option</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other Loan Category Description input (Hidden initially) -->
+            <div id="otherCategorySlot" style="display: none; margin-bottom: 32px;">
+                <label class="field-label" for="otherLoanDesc">Specify Other Loan Category</label>
+                <input type="text" id="otherLoanDesc" name="other_loan_desc" class="field-input" placeholder="Specify category description">
+            </div>
+
+            <!-- Action Button -->
+            <button type="submit" id="beginAppBtn" class="btn-primary-filled" style="width: 100%; height: 42px; font-size: 14px;" disabled>
+                Begin Application &rarr;
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function selectCustType(type) {
+        document.getElementById('radioNew').checked = (type === 'new');
+        document.getElementById('radioExisting').checked = (type === 'existing');
+        
+        document.getElementById('custTypeNew').classList.toggle('selected', type === 'new');
+        document.getElementById('custTypeExisting').classList.toggle('selected', type === 'existing');
+        
+        const searchSlot = document.getElementById('existingSearchSlot');
+        if (type === 'existing') {
+            searchSlot.style.display = 'block';
+        } else {
+            searchSlot.style.display = 'none';
+            document.getElementById('searchFeedback').style.display = 'none';
+        }
+        validateForm();
+    }
+
+    function selectLoanType(type) {
+        document.getElementById('radioEnterprise').checked = (type === 'enterprise');
+        document.getElementById('radioMsef').checked = (type === 'msef');
+        document.getElementById('radioPayee').checked = (type === 'payee');
+        document.getElementById('radioOther').checked = (type === 'other');
+
+        document.getElementById('loanEnterprise').classList.toggle('selected', type === 'enterprise');
+        document.getElementById('loanMsef').classList.toggle('selected', type === 'msef');
+        document.getElementById('loanPayee').classList.toggle('selected', type === 'payee');
+        document.getElementById('loanOther').classList.toggle('selected', type === 'other');
+
+        const otherSlot = document.getElementById('otherCategorySlot');
+        if (type === 'other') {
+            otherSlot.style.display = 'block';
+            document.getElementById('otherLoanDesc').setAttribute('required', 'required');
+        } else {
+            otherSlot.style.display = 'none';
+            document.getElementById('otherLoanDesc').removeAttribute('required');
+        }
+        validateForm();
+    }
+
+    function mockAutoFill() {
+        const val = document.getElementById('bvnSearch').value;
+        if (val.length >= 5) {
+            document.getElementById('searchFeedback').style.display = 'block';
+        }
+    }
+
+    function validateForm() {
+        const custTypeChecked = document.getElementById('radioNew').checked || document.getElementById('radioExisting').checked;
+        const loanTypeChecked = document.getElementById('radioEnterprise').checked || document.getElementById('radioMsef').checked || document.getElementById('radioPayee').checked || document.getElementById('radioOther').checked;
+        
+        document.getElementById('beginAppBtn').disabled = !(custTypeChecked && loanTypeChecked);
+    }
+</script>
+{% endblock %}

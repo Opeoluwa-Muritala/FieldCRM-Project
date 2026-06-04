@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% set active_page = "audit" %}
+
+{% block title %}Audit Trail | FieldCRM{% endblock %}
+{% block breadcrumb %}Compliance &rarr; Audit Trail{% endblock %}
+{% block page_title %}Audit Trail{% endblock %}
+
+{% block content %}
+<section class="page-card">
+    <div class="page-card-header">
+        <div>
+            <h2 class="page-card-title">Workflow Events</h2>
+            <p class="page-card-subtitle">Immutable application movement and officer actions.</p>
+        </div>
+    </div>
+
+    <div class="queue-cards">
+        {% for event in events %}
+        <a class="queue-card" href="/applications/{{ event.application_id }}">
+            <div class="queue-card-name">{{ event.action|replace("_", " ")|title }}</div>
+            <span class="status-badge active"><span class="status-badge-label">{{ event.to_stage|replace("_", " ")|title if event.to_stage else "Logged" }}</span></span>
+            <div class="queue-card-meta">
+                {{ event.from_stage|replace("_", " ")|title if event.from_stage else "Start" }} &rarr;
+                {{ event.to_stage|replace("_", " ")|title if event.to_stage else "No stage change" }}
+            </div>
+            <div class="queue-card-amount">{{ event.timestamp.strftime("%Y-%m-%d %H:%M") if event.timestamp else "Timestamp unavailable" }}</div>
+        </a>
+        {% else %}
+        <div class="flat-card">No audit events have been recorded.</div>
+        {% endfor %}
+    </div>
+
+    <div class="table-scroll-wrap queue-table-wrap">
+        <table class="custom-table queue-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Application</th>
+                    <th>Action</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                <tr class="table-row-link" onclick="window.location.href='/applications/{{ event.application_id }}'">
+                    <td>{{ event.timestamp.strftime("%Y-%m-%d %H:%M") if event.timestamp else "-" }}</td>
+                    <td>REF-{{ event.application_id|string|upper|truncate(8, True, "") }}</td>
+                    <td>{{ event.action|replace("_", " ")|title }}</td>
+                    <td>{{ event.from_stage|replace("_", " ")|title if event.from_stage else "-" }}</td>
+                    <td>{{ event.to_stage|replace("_", " ")|title if event.to_stage else "-" }}</td>
+                    <td>{{ event.reason or "-" }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-muted">No audit events have been recorded.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
