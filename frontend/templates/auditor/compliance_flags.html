@@ -7,7 +7,7 @@
 
 {% block content %}
 <div class="queue-page-header"><div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">Open Compliance Flags</h1></div></div>
-<div class="queue-cards">
+<div class="role-card-list">
     {% for item in flags %}
     <a href="/applications/{{ item.loan_id }}" class="queue-card">
         <span class="queue-card-name">{{ item.applicant_name }}</span>

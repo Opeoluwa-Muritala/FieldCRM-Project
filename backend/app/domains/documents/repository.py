@@ -32,3 +32,12 @@ class DocumentRepository(BaseRepository):
             uploaded_by,
         )
         return dict(row)
+
+    async def get_by_loan(self, loan_id: UUID, org_id: UUID) -> list[dict]:
+        rows = await self.conn.fetch(
+            self.sql("get_by_loan"),
+            loan_id,
+            org_id,
+        )
+        return [dict(row) for row in rows] if rows else []
+

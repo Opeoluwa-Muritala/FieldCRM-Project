@@ -1,5 +1,5 @@
 {% set mobile_title_text = "Activity" %}
-{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+{% extends shell %}
 
 {% block title %}System Activity - FieldCRM{% endblock %}
 {% block page_title %}System Activity{% endblock %}
@@ -12,7 +12,7 @@
     <div class="role-section-head"><h2>Final Control Queue</h2></div>
     <div class="role-card-list">
         {% for item in control_queue %}
-        <a class="role-list-card" href="/applications/{{ item.id }}"><strong>{{ item.applicant_name }}</strong><span>{{ item.ref_no }} - {{ item.status }}</span><em>{{ item.branch_manager_name or item.credit_officer_name or item.officer_name or 'Unassigned' }}</em></a>
+        <a class="role-list-card" href="/applications/{{ item.id }}/approve"><strong>{{ item.applicant_name }}</strong><span>{{ item.ref_no }} - {{ item.status }}</span><em>{{ item.branch_manager_name or item.credit_officer_name or item.officer_name or 'Unassigned' }}</em></a>
         {% else %}<div class="lo-empty-state">No final-control files.</div>{% endfor %}
     </div>
 </section>

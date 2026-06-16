@@ -13,6 +13,17 @@
     <link rel="stylesheet" href="/static/css/role-themes.css">
     <link rel="stylesheet" href="/static/css/mobile.css">
     {% block extra_css %}{% endblock %}
+    <style>
+        /* Phase 9: page-level entrance on every navigation */
+        .content-wrapper,
+        .mobile-content {
+            animation: fadeSlideUp 300ms cubic-bezier(0, 0, 0.2, 1) both;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .content-wrapper,
+            .mobile-content { animation: none; }
+        }
+    </style>
 </head>
 {# Role is applied as data-attribute for CSS theming — accent colors shift per role #}
 {% set user_role = user.role|lower|replace(' ', '_') if user else 'loan_officer' %}
@@ -25,6 +36,31 @@
     {% block shell %}{% endblock %}
 
     <script src="/static/js/dashboard.js"></script>
+    <script>
+        // Global inactivity timeout handler (15 minutes)
+        (function() {
+            let timeoutTimer;
+            const TIMEOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+
+            function resetTimer() {
+                clearTimeout(timeoutTimer);
+                timeoutTimer = setTimeout(logoutDueToInactivity, TIMEOUT_DURATION);
+            }
+
+            function logoutDueToInactivity() {
+                const nextUrl = window.location.pathname + window.location.search;
+                window.location.href = `/logout?next=${encodeURIComponent(nextUrl)}`;
+            }
+
+            // User activity event triggers
+            const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+            events.forEach(event => {
+                document.addEventListener(event, resetTimer, { passive: true });
+            });
+
+            resetTimer();
+        })();
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

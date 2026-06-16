@@ -1,0 +1,217 @@
+{% extends shell %}
+
+{% block title %}Compliance Audit trail — FieldCRM{% endblock %}
+{% block page_title %}Compliance Audit Trail{% endblock %}
+{% block breadcrumb %}Compliance → Audit → {{ app.ref_no }}{% endblock %}
+
+{% block content %}
+<div class="app-detail-layout">
+    
+    {# === LEFT COLUMN: APPLICATION IDENTITY, TIMELINE & DOCUMENTS === #}
+    <div class="app-detail-sidebar">
+        
+        {# Identity Card #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <div style="font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; margin-bottom: 4px;">{{ app.ref_no }}</div>
+            <h2 class="page-card-title" style="margin-bottom: 8px; font-size: 20px;">{{ borrower_name }}</h2>
+            <div style="font-size: 14px; font-weight: 500; color: var(--role-accent); margin-bottom: 12px;">
+                {{ product_type }} · ₦{{ "{:,}".format(amount|int) }}
+            </div>
+            
+            {% set stage_class = {
+                'intake': 'needs-review',
+                'ocr_review': 'low-confidence',
+                'credit_review': 'needs-review',
+                'branch_approval': 'needs-review',
+                'disbursement_ready': 'approved',
+                'disbursed': 'verified',
+                'returned': 'returned',
+                'rejected': 'missing'
+            } %}
+            <span class="status-badge {{ stage_class.get(app.stage, '') }}">{{ app.status }}</span>
+        </div>
+        
+        {# Vertical Stage Timeline #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 16px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Application Timeline</h3>
+            <div style="display: flex; flex-direction: column; gap: 16px; position: relative; padding-left: 20px;">
+                
+                {# Vertical line element #}
+                <div style="position: absolute; left: 6px; top: 8px; bottom: 8px; width: 2px; background-color: var(--border-color);"></div>
+                
+                {# Stage 1 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 1 %}var(--role-accent, #4A5568){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 1 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 1 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 1 %}var(--text-main){% else %}var(--text-muted){% endif %};">Intake & Submission</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{{ app.created_at.strftime('%d %b %Y') if app.created_at else '' }}</div>
+                </div>
+                
+                {# Stage 2 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 2 %}var(--role-accent, #4A5568){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 2 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 2 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 2 %}var(--text-main){% else %}var(--text-muted){% endif %};">OCR Verification</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{% if app.current_stage >= 2 %}Auto-scanned{% else %}Awaiting scan{% endif %}</div>
+                </div>
+                
+                {# Stage 3 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 3 %}var(--role-accent, #4A5568){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 3 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 3 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 3 %}var(--text-main){% else %}var(--text-muted){% endif %};">Credit Risk Review</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{% if app.current_stage >= 3 %}Assigned to Fatima{% else %}Awaiting desk{% endif %}</div>
+                </div>
+                
+                {# Stage 4 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 4 %}var(--role-accent, #4A5568){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 4 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 4 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 4 %}var(--text-main){% else %}var(--text-muted){% endif %};">Branch Concurrence</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{% if app.current_stage >= 4 %}Awaiting Adebayo{% else %}Awaiting signoff{% endif %}</div>
+                </div>
+                
+                {# Stage 5 & 6 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 5 %}var(--role-accent, #4A5568){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 5 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage >= 5 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 5 %}var(--text-main){% else %}var(--text-muted){% endif %};">Disbursement Released</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">Ready for release</div>
+                </div>
+                
+            </div>
+        </div>
+        
+        {# Quick Document List #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Documents Checklist</h3>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                {% set doc_categories = [
+                    ('passport_photo', 'Passport Photograph'),
+                    ('id_card', 'Valid ID Card'),
+                    ('utility_bill', 'Utility Bill'),
+                    ('bank_statement', 'Bank Statement'),
+                    ('guarantor_form_1', 'Guarantor Form 1'),
+                    ('guarantor_form_2', 'Guarantor Form 2'),
+                    ('pledge_form', 'Pledge Agreement')
+                ] %}
+                
+                {% for cat_key, cat_name in doc_categories %}
+                    {% set doc_found = false %}
+                    {% set doc_status = 'missing' %}
+                    {% for doc in documents %}
+                        {% if doc.category == cat_key %}
+                            {% set doc_found = true %}
+                            {% set doc_status = doc.status %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+                        <span>{{ cat_name }}</span>
+                        {% if doc_status == 'verified' %}
+                            <span style="color: var(--accent-success); font-weight: bold;">✓</span>
+                        {% elif doc_status == 'needs_review' %}
+                            <span style="color: var(--accent-warning); font-weight: bold;">⚠</span>
+                        {% else %}
+                            <span style="color: var(--accent-danger); font-weight: bold;">✗</span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+    </div>
+    
+    {# === RIGHT COLUMN: AUDITOR COMPLIANCE HISTORICAL LOGS === #}
+    <div class="app-detail-main">
+        
+        {# Regulatory Status Summary #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 8px;">Compliance Evidence Log</h2>
+            <p class="page-card-subtitle" style="margin-bottom: 0;">Audit record of state changes, data entry values, and authorization overrides.</p>
+        </div>
+
+        {# Timeline Audit Trail table #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 12px;">State Transitions History</h2>
+            
+            <div class="custom-table-container">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Action / Stage Change</th>
+                            <th>Actor / Role</th>
+                            <th>Outcome / Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in audit_events %}
+                        <tr>
+                            <td>{{ event.created_at.strftime('%d %b %Y %H:%M') if event.created_at else '' }}</td>
+                            <td>
+                                <strong>{{ event.event_type }}</strong>
+                                <div style="font-size: 11px; color: var(--text-muted);">
+                                    {{ event.from_stage|title }} &rarr; {{ event.to_stage|title }}
+                                </div>
+                            </td>
+                            <td>
+                                <span>{{ event.actor_name or 'System User' }}</span>
+                                <div style="font-size: 11px; color: var(--text-muted);">{{ event.actor_role|replace('_', ' ')|title }}</div>
+                            </td>
+                            <td>{{ event.notes or 'No audit log comments provided.' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted);">No transition events logged for this application.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {# Document events history #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 12px;">Uploaded Files Verification Log</h2>
+            
+            <div class="custom-table-container">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Document</th>
+                            <th>Date Uploaded</th>
+                            <th>Verified By</th>
+                            <th>Status badge</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for doc in documents %}
+                        <tr>
+                            <td><strong>{{ doc.category|replace('_', ' ')|title }}</strong></td>
+                            <td>{{ doc.created_at.strftime('%d %b %Y %H:%M') if doc.created_at else '03 Jun 2026' }}</td>
+                            <td>Fatima Bello (Credit Officer)</td>
+                            <td>
+                                <span class="status-badge {{ 'verified' if doc.status == 'verified' else 'needs-review' }}">
+                                    {{ doc.status|replace('_', ' ')|title }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted);">No documents verified.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}

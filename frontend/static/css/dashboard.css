@@ -16,6 +16,77 @@
     --accent-warning: #A05A00;
     --accent-danger: #A01A1A;
     --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Animation tokens */
+    --transition-fast:    all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-spring:  all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    --transition-drawer:  transform 240ms cubic-bezier(0, 0, 0.2, 1),
+                          opacity   240ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-sheet:   transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    --easing-standard:    cubic-bezier(0.4, 0, 0.2, 1);
+    --easing-decelerate:  cubic-bezier(0, 0, 0.2, 1);
+    --easing-accelerate:  cubic-bezier(0.4, 0, 1, 1);
+    --easing-spring:      cubic-bezier(0.34, 1.56, 0.64, 1);
+    --anim-duration-xs:   80ms;
+    --anim-duration-sm:   150ms;
+    --anim-duration-md:   240ms;
+    --anim-duration-lg:   350ms;
+    --anim-duration-xl:   500ms;
+}
+
+/* === ANIMATION KEYFRAMES === */
+
+@keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.72); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+    from { background-position: -200% 0; }
+    to   { background-position:  200% 0; }
+}
+
+@keyframes rippleExpand {
+    from { transform: scale(0); opacity: 0.4; }
+    to   { transform: scale(4); opacity: 0; }
+}
+
+@keyframes errorShake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-6px); }
+    40%       { transform: translateX(6px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
+}
+
+@keyframes pulseRing {
+    0%   { box-shadow: 0 0 0 0   rgba(160, 90, 0, 0.35); }
+    70%  { box-shadow: 0 0 0 6px rgba(160, 90, 0, 0); }
+    100% { box-shadow: 0 0 0 0   rgba(160, 90, 0, 0); }
+}
+
+@keyframes slideInFromRight {
+    from { opacity: 0; transform: translateX(40px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInFromLeft {
+    from { opacity: 0; transform: translateX(-40px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes spin {
+    to { transform: translateY(-50%) rotate(360deg); }
 }
 
 * {
@@ -74,26 +145,9 @@ button, input, select, textarea {
 .logo-composite {
     width: 160px;
     aspect-ratio: 1 / 1;
-    display: inline-block;
-    position: relative;
-    overflow: hidden;
-}
-
-.logo-layer {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+    display: block;
     object-fit: contain;
-}
-
-.logo-layer-shield {
-    clip-path: inset(0 68% 0 0);
-}
-
-.logo-layer-text {
-    clip-path: inset(0 0 0 28%);
-    filter: grayscale(1) saturate(0) brightness(0.82);
+    filter: none;
 }
 
 .sidebar-logo .logo-fallback {
@@ -1077,7 +1131,7 @@ body.sidebar-open {
     width: 280px;
     height: 100dvh;
     transform: translateX(-100%);
-    transition: transform 200ms ease;
+    transition: transform 300ms var(--easing-spring);
     z-index: 300;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -1755,7 +1809,7 @@ textarea,
 }
 
 .desktop-sidebar {
-    min-height: 100dvh;
+    height: 100dvh;
     background: var(--color-brand-deep);
     color: #fff;
     display: flex;
@@ -1763,6 +1817,7 @@ textarea,
     position: sticky;
     top: 0;
     border-right: 0.5px solid rgba(255, 255, 255, 0.1);
+    overflow-y: auto;
 }
 
 .desktop-main {
@@ -1800,7 +1855,10 @@ textarea,
     z-index: 220;
     width: min(480px, 100vw);
     transform: translateX(100%);
-    transition: transform 180ms ease;
+    opacity: 0;
+    transition: transform 240ms var(--easing-decelerate),
+                opacity   200ms var(--easing-standard);
+    will-change: transform, opacity;
     background: #fff;
     border-left: 0.5px solid var(--border-color);
     overflow: auto;
@@ -1808,10 +1866,14 @@ textarea,
 
 .detail-drawer.open {
     transform: translateX(0);
+    opacity: 1;
 }
 
 @media (max-width: 767px) {
     .desktop-shell {
+        grid-template-columns: 1fr;
+    }
+    .desktop-sidebar {
         display: none;
     }
 }
@@ -2005,3 +2067,483 @@ textarea,
         display: none !important;
     }
 }
+
+/* === APPLICATION DETAIL WORKSTATION LAYOUT === */
+.app-detail-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    align-items: start;
+    margin-top: 16px;
+}
+
+.app-detail-sidebar {
+    position: sticky;
+    top: calc(56px + 24px);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.app-detail-main {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Responsive adjustment for detail layout */
+@media (max-width: 1023px) {
+    .app-detail-layout {
+        grid-template-columns: 1fr;
+    }
+    .app-detail-sidebar {
+        position: static;
+    }
+}
+
+/* === DETAIL DRAWER STYLING === */
+.detail-drawer {
+    position: fixed;
+    top: 56px;
+    right: 0;
+    width: 480px;
+    height: calc(100vh - 56px);
+    background: #fff;
+    border-left: 0.5px solid var(--border-color, var(--color-divider));
+    overflow-y: auto;
+    z-index: 150;
+    transform: translateX(100%);
+    opacity: 0;
+    transition: transform 240ms var(--easing-decelerate),
+                opacity   200ms var(--easing-standard);
+    will-change: transform, opacity;
+    padding: 24px;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.1);
+}
+
+.detail-drawer.open {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.detail-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 0.5px solid var(--border-color, var(--color-divider));
+    padding-bottom: 12px;
+}
+
+.detail-drawer-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+/* ============================================
+   PHASE 2: STAGGERED PAGE ENTRANCE ANIMATIONS
+   ============================================ */
+
+/* Metric cards */
+.metric-card,
+.role-stat {
+    animation: fadeSlideUp var(--anim-duration-lg) var(--easing-decelerate) both;
+}
+.metrics-row .metric-card:nth-child(1),
+.role-stat-grid .role-stat:nth-child(1) { animation-delay: 0ms; }
+.metrics-row .metric-card:nth-child(2),
+.role-stat-grid .role-stat:nth-child(2) { animation-delay: 60ms; }
+.metrics-row .metric-card:nth-child(3),
+.role-stat-grid .role-stat:nth-child(3) { animation-delay: 120ms; }
+.metrics-row .metric-card:nth-child(4),
+.role-stat-grid .role-stat:nth-child(4) { animation-delay: 180ms; }
+
+/* Page cards */
+.page-card {
+    animation: fadeSlideUp var(--anim-duration-lg) var(--easing-decelerate) both;
+}
+.content-wrapper > .page-card:nth-child(1) { animation-delay: 50ms; }
+.content-wrapper > .page-card:nth-child(2) { animation-delay: 110ms; }
+.content-wrapper > .page-card:nth-child(3) { animation-delay: 170ms; }
+.content-wrapper > .page-card:nth-child(n+4) { animation-delay: 220ms; }
+
+/* Table rows */
+.custom-table tbody tr {
+    animation: fadeSlideUp var(--anim-duration-md) var(--easing-decelerate) both;
+}
+.custom-table tbody tr:nth-child(1)  { animation-delay: 80ms; }
+.custom-table tbody tr:nth-child(2)  { animation-delay: 100ms; }
+.custom-table tbody tr:nth-child(3)  { animation-delay: 120ms; }
+.custom-table tbody tr:nth-child(4)  { animation-delay: 140ms; }
+.custom-table tbody tr:nth-child(5)  { animation-delay: 160ms; }
+.custom-table tbody tr:nth-child(6)  { animation-delay: 180ms; }
+.custom-table tbody tr:nth-child(7)  { animation-delay: 200ms; }
+.custom-table tbody tr:nth-child(8)  { animation-delay: 215ms; }
+.custom-table tbody tr:nth-child(n+9) { animation-delay: 230ms; }
+
+/* Pipeline & role cards */
+.pipeline-card,
+.role-list-card,
+.role-stage-card {
+    animation: fadeSlideUp var(--anim-duration-md) var(--easing-decelerate) both;
+}
+.pipeline-list .pipeline-card:nth-child(1),
+.role-card-list .role-list-card:nth-child(1),
+.role-pipeline-grid .role-stage-card:nth-child(1) { animation-delay: 0ms; }
+.pipeline-list .pipeline-card:nth-child(2),
+.role-card-list .role-list-card:nth-child(2),
+.role-pipeline-grid .role-stage-card:nth-child(2) { animation-delay: 50ms; }
+.pipeline-list .pipeline-card:nth-child(3),
+.role-card-list .role-list-card:nth-child(3),
+.role-pipeline-grid .role-stage-card:nth-child(3) { animation-delay: 100ms; }
+.pipeline-list .pipeline-card:nth-child(4),
+.role-card-list .role-list-card:nth-child(4),
+.role-pipeline-grid .role-stage-card:nth-child(4) { animation-delay: 150ms; }
+.pipeline-list .pipeline-card:nth-child(n+5),
+.role-card-list .role-list-card:nth-child(n+5),
+.role-pipeline-grid .role-stage-card:nth-child(n+5) { animation-delay: 180ms; }
+
+/* ============================================
+   PHASE 3: HOVER MICRO-INTERACTIONS
+   ============================================ */
+
+/* Pipeline card lift */
+.pipeline-card {
+    transition: transform var(--anim-duration-sm) var(--easing-standard),
+                box-shadow var(--anim-duration-sm) var(--easing-standard),
+                border-color var(--anim-duration-sm) var(--easing-standard),
+                background-color var(--anim-duration-sm) var(--easing-standard);
+}
+.pipeline-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(45, 26, 74, 0.10);
+}
+
+/* Table row lift */
+.custom-table tbody tr {
+    transition: background-color var(--anim-duration-sm) var(--easing-standard),
+                transform var(--anim-duration-sm) var(--easing-standard),
+                box-shadow var(--anim-duration-sm) var(--easing-standard);
+}
+.custom-table tbody tr:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(107, 63, 160, 0.08);
+}
+
+/* Role card lift */
+.role-list-card,
+.role-stage-card {
+    transition: transform var(--anim-duration-sm) var(--easing-standard),
+                box-shadow var(--anim-duration-sm) var(--easing-standard),
+                border-color var(--anim-duration-sm) var(--easing-standard),
+                background var(--anim-duration-sm) var(--easing-standard);
+}
+.role-list-card:hover,
+.role-stage-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(107, 63, 160, 0.09);
+}
+
+/* Queue card lift (desktop hover only) */
+@media (hover: hover) {
+    .queue-card {
+        transition: transform var(--anim-duration-sm) var(--easing-standard),
+                    box-shadow var(--anim-duration-sm) var(--easing-standard);
+    }
+    .queue-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 14px rgba(107, 63, 160, 0.09);
+    }
+}
+
+/* Sidebar nav active indicator: scale-in pseudo-element replaces flat border flash */
+.sidebar-nav-link {
+    position: relative;
+}
+.sidebar-nav-link::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%) scaleY(0);
+    width: 3px;
+    height: 60%;
+    border-radius: 0 2px 2px 0;
+    background: var(--role-nav-active-border, var(--color-brand-mid));
+    transition: transform var(--anim-duration-sm) var(--easing-spring),
+                opacity   var(--anim-duration-sm) var(--easing-standard);
+    opacity: 0;
+}
+.sidebar-nav-link.active::before {
+    transform: translateY(-50%) scaleY(1);
+    opacity: 1;
+}
+
+/* Tab underline: scale-in pseudo-element */
+.tab-btn {
+    position: relative;
+}
+.tab-btn::after {
+    content: '';
+    position: absolute;
+    bottom: -1.5px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--role-accent, var(--color-brand-shield));
+    transform: scaleX(0);
+    transition: transform var(--anim-duration-md) var(--easing-spring);
+    transform-origin: center;
+    border-radius: 2px 2px 0 0;
+}
+.tab-btn.active::after {
+    transform: scaleX(1);
+}
+
+/* ============================================
+   PHASE 4: DRAWER / SHEET / SIDEBAR UPGRADES
+   ============================================ */
+
+/* Detail drawer backdrop */
+.detail-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 149;
+    background: rgba(45, 26, 74, 0.15);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--anim-duration-md) var(--easing-standard);
+}
+.detail-drawer-backdrop.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Hamburger → X morph */
+.hamburger-btn span {
+    display: block;
+    transform-origin: center;
+    transition: transform var(--anim-duration-md) var(--easing-standard),
+                opacity   var(--anim-duration-sm) var(--easing-standard);
+}
+.hamburger-btn[aria-expanded="true"] span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+}
+.hamburger-btn[aria-expanded="true"] span:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+}
+.hamburger-btn[aria-expanded="true"] span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
+}
+
+/* Sidebar overlay fade */
+.sidebar-overlay {
+    opacity: 0;
+    transition: opacity var(--anim-duration-md) var(--easing-standard);
+}
+.sidebar.open + .sidebar-overlay {
+    opacity: 1;
+}
+
+/* ============================================
+   PHASE 5: BUTTONS, FORMS, STATUS BADGES
+   ============================================ */
+
+/* Button ripple */
+.btn-primary-filled,
+.btn-ghost-link {
+    position: relative;
+    overflow: hidden;
+}
+.ripple-circle {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    pointer-events: none;
+    transform: scale(0);
+    animation: rippleExpand 550ms var(--easing-accelerate) forwards;
+}
+
+/* Button loading state */
+.btn-primary-filled.is-loading {
+    pointer-events: none;
+    opacity: 0.75;
+}
+.btn-primary-filled.is-loading::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 600ms linear infinite;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* Form input focus elevation */
+.field-input,
+.field-select,
+.field-textarea {
+    transition: border-color var(--anim-duration-sm) var(--easing-standard),
+                outline      var(--anim-duration-sm) var(--easing-standard),
+                box-shadow   var(--anim-duration-sm) var(--easing-standard),
+                transform    var(--anim-duration-sm) var(--easing-standard);
+}
+.field-input:focus,
+.field-select:focus,
+.field-textarea:focus {
+    box-shadow: 0 2px 8px rgba(139, 92, 200, 0.12);
+    transform: translateY(-1px);
+}
+
+/* Field error shake */
+.field-input.field-error,
+.field-select.field-error {
+    border-color: var(--accent-danger);
+    animation: errorShake 400ms ease-in-out;
+}
+
+/* Status badge entrance */
+.status-badge {
+    animation: scaleIn var(--anim-duration-md) var(--easing-spring) both;
+}
+.status-badge.needs-review,
+.status-badge.low-confidence {
+    animation: scaleIn   var(--anim-duration-md) var(--easing-spring) both,
+               pulseRing 1.8s var(--easing-standard) 600ms infinite;
+}
+
+/* ============================================
+   PHASE 6: WIZARD DIRECTION SLIDE
+   ============================================ */
+
+[data-wizard-direction="forward"] .page-card {
+    animation: slideInFromRight var(--anim-duration-lg) var(--easing-decelerate) both;
+}
+[data-wizard-direction="back"] .page-card {
+    animation: slideInFromLeft var(--anim-duration-lg) var(--easing-decelerate) both;
+}
+
+/* Scroll reveal states */
+.reveal-pending {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity  var(--anim-duration-lg) var(--easing-decelerate),
+                transform var(--anim-duration-lg) var(--easing-decelerate);
+}
+.reveal-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ============================================
+   PHASE 7: SKELETON LOADING STATES
+   ============================================ */
+
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--bg-secondary) 25%,
+        var(--color-divider) 50%,
+        var(--bg-secondary) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+    border-radius: 4px;
+    display: block;
+}
+.skeleton-text  { height: 14px; margin-bottom: 8px; }
+.skeleton-title { height: 22px; width: 60%; margin-bottom: 12px; }
+.skeleton-badge { height: 24px; width: 80px; border-radius: 99px; }
+.skeleton-card  { height: 110px; border-radius: 12px; border: 0.5px solid var(--border-color); }
+.skeleton-row   { height: 44px; border-radius: 4px; margin-bottom: 4px; }
+
+/* === RESPONSIVE LAYOUT SHELL SYSTEM === */
+.responsive-shell {
+    min-height: 100dvh;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    background: var(--bg-secondary);
+}
+
+.responsive-main {
+    min-width: 0;
+    min-height: 100dvh;
+    display: grid;
+    grid-template-rows: 64px minmax(0, 1fr);
+}
+
+.responsive-content {
+    min-width: 0;
+    overflow: auto;
+}
+
+.responsive-shell .mobile-topbar {
+    display: none;
+}
+
+.responsive-shell .mobile-tabbar {
+    display: none;
+}
+
+@media (max-width: 767px) {
+    .responsive-shell {
+        grid-template-columns: 1fr;
+    }
+    
+    .responsive-shell .desktop-sidebar {
+        display: none;
+    }
+    
+    .responsive-shell .desktop-topbar {
+        display: none;
+    }
+    
+    .responsive-shell .mobile-topbar {
+        display: flex;
+    }
+    
+    .responsive-shell .mobile-tabbar {
+        display: grid;
+    }
+    
+    .responsive-main {
+        grid-template-rows: 56px minmax(0, 1fr);
+    }
+    
+    .responsive-shell:not(.has-no-tabbar) .responsive-main {
+        grid-template-rows: 56px minmax(0, 1fr) 64px;
+    }
+    
+    .responsive-content {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: contain;
+    }
+    
+    .responsive-shell .content-wrapper {
+        padding: 16px;
+        max-width: none;
+        margin: 0;
+    }
+}
+
+/* === REDUCED MOTION OVERRIDE — must be last === */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+

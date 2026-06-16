@@ -1,0 +1,368 @@
+{% extends shell %}
+
+{% block title %}Credit review workstation — FieldCRM{% endblock %}
+{% block page_title %}Credit Review Workstation{% endblock %}
+{% block breadcrumb %}Review → Credit Review → {{ app.ref_no }}{% endblock %}
+
+{% block content %}
+<div class="app-detail-layout">
+    
+    {# === LEFT COLUMN: APPLICATION IDENTITY, TIMELINE & DOCUMENTS === #}
+    <div class="app-detail-sidebar">
+        
+        {# Identity Card #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <div style="font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; margin-bottom: 4px;">{{ app.ref_no }}</div>
+            <h2 class="page-card-title" style="margin-bottom: 8px; font-size: 20px;">{{ borrower_name }}</h2>
+            <div style="font-size: 14px; font-weight: 500; color: var(--role-accent); margin-bottom: 12px;">
+                {{ product_type }} · ₦{{ "{:,}".format(amount|int) }}
+            </div>
+            
+            {% set stage_class = {
+                'intake': 'needs-review',
+                'ocr_review': 'low-confidence',
+                'credit_review': 'needs-review',
+                'branch_approval': 'needs-review',
+                'disbursement_ready': 'approved',
+                'disbursed': 'verified',
+                'returned': 'returned',
+                'rejected': 'missing'
+            } %}
+            <span class="status-badge {{ stage_class.get(app.stage, '') }}">{{ app.status }}</span>
+        </div>
+        
+        {# Vertical Stage Timeline #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 16px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Application Timeline</h3>
+            <div style="display: flex; flex-direction: column; gap: 16px; position: relative; padding-left: 20px;">
+                
+                {# Vertical line element #}
+                <div style="position: absolute; left: 6px; top: 8px; bottom: 8px; width: 2px; background-color: var(--border-color);</div>
+                
+                {# Stage 1 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 1 %}var(--role-accent, #1A6B45){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 1 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 1 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 1 %}var(--text-main){% else %}var(--text-muted){% endif %};">Intake & Submission</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{{ app.created_at.strftime('%d %b %Y') if app.created_at else '' }}</div>
+                </div>
+                
+                {# Stage 2 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 2 %}var(--role-accent, #1A6B45){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 2 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 2 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 2 %}var(--text-main){% else %}var(--text-muted){% endif %};">OCR Verification</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{% if app.current_stage >= 2 %}Auto-scanned{% else %}Awaiting scan{% endif %}</div>
+                </div>
+                
+                {# Stage 3 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 3 %}var(--role-accent, #1A6B45){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 3 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 3 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 3 %}var(--text-main){% else %}var(--text-muted){% endif %};">Credit Risk Review</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{% if app.current_stage >= 3 %}Assigned to Fatima{% else %}Awaiting desk{% endif %}</div>
+                </div>
+                
+                {# Stage 4 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 4 %}var(--role-accent, #1A6B45){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 4 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 4 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 4 %}var(--text-main){% else %}var(--text-muted){% endif %};">Branch Concurrence</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{% if app.current_stage >= 4 %}Awaiting Adebayo{% else %}Awaiting signoff{% endif %}</div>
+                </div>
+                
+                {# Stage 5 & 6 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 5 %}var(--role-accent, #1A6B45){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 5 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage >= 5 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 5 %}var(--text-main){% else %}var(--text-muted){% endif %};">Disbursement Released</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">Ready for release</div>
+                </div>
+                
+            </div>
+        </div>
+        
+        {# Quick Document List #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Documents Checklist</h3>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                {% set doc_categories = [
+                    ('passport_photo', 'Passport Photograph'),
+                    ('id_card', 'Valid ID Card'),
+                    ('utility_bill', 'Utility Bill'),
+                    ('bank_statement', 'Bank Statement'),
+                    ('guarantor_form_1', 'Guarantor Form 1'),
+                    ('guarantor_form_2', 'Guarantor Form 2'),
+                    ('pledge_form', 'Pledge Agreement')
+                ] %}
+                
+                {% for cat_key, cat_name in doc_categories %}
+                    {% set doc_found = false %}
+                    {% set doc_status = 'missing' %}
+                    {% for doc in documents %}
+                        {% if doc.category == cat_key %}
+                            {% set doc_found = true %}
+                            {% set doc_status = doc.status %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+                        <span>{{ cat_name }}</span>
+                        {% if doc_status == 'verified' %}
+                            <span style="color: var(--accent-success); font-weight: bold;">✓</span>
+                        {% elif doc_status == 'needs_review' %}
+                            <span style="color: var(--accent-warning); font-weight: bold;">⚠</span>
+                        {% else %}
+                            <span style="color: var(--accent-danger); font-weight: bold;">✗</span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+    </div>
+    
+    {# === RIGHT COLUMN: CREDIT RISK REVIEW WORKSTATION === #}
+    <div class="app-detail-main">
+        
+        {# Inside page tabbed navigation #}
+        <div class="tab-row" style="margin-bottom: 12px;">
+            <button type="button" class="tab-btn active" id="tabSummaryBtn" onclick="switchReviewTab('summary')">Summary</button>
+            <button type="button" class="tab-btn" id="tabAffordabilityBtn" onclick="switchReviewTab('affordability')">Affordability</button>
+            <button type="button" class="tab-btn" id="tabDocsBtn" onclick="switchReviewTab('docs')">Documents</button>
+            <button type="button" class="tab-btn" id="tabOcrBtn" onclick="switchReviewTab('ocr')">OCR Exceptions</button>
+            <button type="button" class="tab-btn" id="tabRecBtn" onclick="switchReviewTab('recommendation')">Recommendation</button>
+        </div>
+        
+        <form id="creditReviewForm" action="/applications/{{ app_id }}/credit-review" method="POST">
+            {# Prevents CSRF injection - server checks CSRF if cookie based #}
+            
+            {# Tab 1: Summary #}
+            <div id="tabSummary" class="tab-pane page-card" style="margin-bottom: 0;">
+                <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 16px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Application Summary</h3>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="field-label">Borrower Name</label>
+                        <input type="text" class="field-input" value="{{ borrower_name }}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="field-label">Requested Amount</label>
+                        <input type="text" class="field-input" value="₦{{ '{:,}'.format(amount) }}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="field-label">Loan Tenor</label>
+                        <input type="text" class="field-input" value="{{ tenure }} Months" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="field-label">Product Type</label>
+                        <input type="text" class="field-input" value="{{ product_type }}" readonly>
+                    </div>
+                    <div class="form-group-full">
+                        <label class="field-label">Collateral Pledged</label>
+                        <textarea class="field-textarea" readonly>{{ collateral_desc or 'Shop Stock, Household Appliances, Market Pledge' }}</textarea>
+                    </div>
+                </div>
+            </div>
+            
+            {# Tab 2: Affordability #}
+            <div id="tabAffordability" class="tab-pane page-card" style="display: none; margin-bottom: 0;">
+                <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 16px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">DSR & Affordability Table</h3>
+                
+                <div class="custom-table-container" style="margin-bottom: 16px;">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Declared Value</th>
+                                <th>Bank Statement Verified</th>
+                                <th>Variance (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Monthly Income / Business Sales</td>
+                                <td>₦650,000</td>
+                                <td>₦610,000</td>
+                                <td style="color: var(--accent-warning); font-weight: 500;">-6.1%</td>
+                            </tr>
+                            <tr>
+                                <td>Proposed Monthly Repayment</td>
+                                <td>₦55,000</td>
+                                <td>₦55,000</td>
+                                <td>0%</td>
+                            </tr>
+                            <tr>
+                                <td>Debt-to-Income (DTI) Ratio</td>
+                                <td>8.4%</td>
+                                <td>9.0%</td>
+                                <td style="color: var(--accent-success);">+0.6%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="form-group-full">
+                    <label class="field-label">Credit Officer Override Notes</label>
+                    <textarea name="affordability_notes" class="field-textarea" placeholder="Detail any variance explanations or cashflow strengths...">DSR remains well within regulatory limits (<33.3%). Statement turnover verifies cashflow capability.</textarea>
+                </div>
+            </div>
+            
+            {# Tab 3: Documents Checklist #}
+            <div id="tabDocs" class="tab-pane page-card" style="display: none; margin-bottom: 0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 0; border-bottom: 0; padding-bottom: 0;">Document Verification Log</h3>
+                    {# Keep it read-only for credit officers on mobile/desktop detail view #}
+                </div>
+                
+                <div class="custom-table-container">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Document Category</th>
+                                <th>Source</th>
+                                <th>Upload Date</th>
+                                <th>Verification Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doc in documents %}
+                            <tr>
+                                <td>{{ doc.category|replace('_', ' ')|title }}</td>
+                                <td>Loan Officer Upload</td>
+                                <td>{{ doc.created_at.strftime('%d %b %Y') if doc.created_at else '03 Jun 2026' }}</td>
+                                <td>
+                                    <span class="status-badge {{ 'verified' if doc.status == 'verified' else 'needs-review' }}">
+                                        {{ doc.status|replace('_', ' ')|title }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" style="text-align: center; color: var(--text-muted);">No documents uploaded yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            {# Tab 4: OCR Exceptions #}
+            <div id="tabOcr" class="tab-pane page-card" style="display: none; margin-bottom: 0;">
+                <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 16px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Low-Confidence and Critical Field Exceptions</h3>
+                
+                <div class="custom-table-container">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Field Name</th>
+                                <th>Extracted OCR Value</th>
+                                <th>Confidence</th>
+                                <th>Status Tag</th>
+                                <th>Override Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background-color:rgba(160,90,0,0.03);">
+                                <td>Facility Amount figures</td>
+                                <td>₦500,000?</td>
+                                <td style="color: var(--accent-warning); font-weight: 500;">61%</td>
+                                <td><span class="source-pill corrected">Corrected</span></td>
+                                <td>
+                                    <select name="ocr_override_1" class="field-select" style="min-height:30px; padding:2px 8px; font-size:12px; height:30px;">
+                                        <option>Accept Correction</option>
+                                        <option>Return for Correction</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr style="background-color:rgba(160,26,26,0.03);">
+                                <td>Guarantors Form 1 -> Guarantor Phone</td>
+                                <td>Unreadable</td>
+                                <td style="color: var(--accent-danger); font-weight: 500;">22%</td>
+                                <td><span class="source-pill" style="background-color:rgba(160,26,26,0.1); color:var(--accent-danger);">Missing</span></td>
+                                <td>
+                                    <select name="ocr_override_2" class="field-select" style="min-height:30px; padding:2px 8px; font-size:12px; height:30px;">
+                                        <option>Return for Correction</option>
+                                        <option>Accept Correction</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            {# Tab 5: Recommendation #}
+            <div id="tabRecommendation" class="tab-pane page-card" style="display: none; margin-bottom: 0;">
+                <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 16px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Risk Verdict Decision</h3>
+                
+                <div class="form-grid-2">
+                    <div class="form-group-full">
+                        <label class="field-label">Risk Verdict Decision <span class="required">*</span></label>
+                        <div class="pill-radio-group">
+                            <div class="pill-radio-btn">
+                                <input type="radio" name="recommendation_decision" value="Recommend Approval" id="rec_approve" checked onchange="toggleRecommendationNotes()">
+                                <label for="rec_approve">Recommend Approval</label>
+                            </div>
+                            <div class="pill-radio-btn">
+                                <input type="radio" name="recommendation_decision" value="Recommend Rejection" id="rec_reject" onchange="toggleRecommendationNotes()">
+                                <label for="rec_reject">Recommend Rejection</label>
+                            </div>
+                            <div class="pill-radio-btn">
+                                <input type="radio" name="recommendation_decision" value="Return for Correction" id="rec_return" onchange="toggleRecommendationNotes()">
+                                <label for="rec_return">Return for Correction</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group-full" id="recommendationNotesSlot">
+                        <label class="field-label" id="notesLabel">Decision Reason / Notes <span class="required">*</span></label>
+                        <textarea name="recommendation_notes" class="field-textarea" placeholder="Provide comprehensive credit underwriting justification..." required>Applicant possesses adequate cashflow capacity. Guarantor strength and DSR parameters align with risk thresholds. Highly recommended for approval.</textarea>
+                    </div>
+                </div>
+                
+                <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+                    <button type="submit" class="btn-primary-filled">Submit Recommendation &rarr;</button>
+                </div>
+            </div>
+            
+        </form>
+        
+    </div>
+</div>
+
+<script>
+    function switchReviewTab(tab) {
+        document.getElementById('tabSummaryBtn').classList.toggle('active', tab === 'summary');
+        document.getElementById('tabAffordabilityBtn').classList.toggle('active', tab === 'affordability');
+        document.getElementById('tabDocsBtn').classList.toggle('active', tab === 'docs');
+        document.getElementById('tabOcrBtn').classList.toggle('active', tab === 'ocr');
+        document.getElementById('tabRecBtn').classList.toggle('active', tab === 'recommendation');
+
+        document.getElementById('tabSummary').style.display = (tab === 'summary') ? 'block' : 'none';
+        document.getElementById('tabAffordability').style.display = (tab === 'affordability') ? 'block' : 'none';
+        document.getElementById('tabDocs').style.display = (tab === 'docs') ? 'block' : 'none';
+        document.getElementById('tabOcr').style.display = (tab === 'ocr') ? 'block' : 'none';
+        document.getElementById('tabRecommendation').style.display = (tab === 'recommendation') ? 'block' : 'none';
+    }
+
+    function toggleRecommendationNotes() {
+        const radApp = document.getElementById('rec_approve');
+        const radRej = document.getElementById('rec_reject');
+        const radRet = document.getElementById('rec_return');
+        const label = document.getElementById('notesLabel');
+        
+        if (radApp.checked) {
+            label.innerHTML = 'Decision Reason / Notes <span class="required">*</span>';
+        } else if (radRej.checked) {
+            label.innerHTML = 'Rejection Reason Explanation <span class="required">*</span>';
+        } else if (radRet.checked) {
+            label.innerHTML = 'Return Checklist Omissions <span class="required">*</span>';
+        }
+    }
+</script>
+{% endblock %}

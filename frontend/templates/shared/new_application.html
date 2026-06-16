@@ -1,16 +1,19 @@
-{% extends "base.html" %}
+{% extends shell %}
+{% set mobile_title_text = "➕ New Application" %}
 
 {% block title %}New Application | FieldCRM{% endblock %}
 {% set active_page = "new_application" %}
 
 {% block breadcrumb %}Loans &rarr; New Application{% endblock %}
-{% block page_title %}New Loan Application{% endblock %}
+{% block page_title %}➕ New Loan Application{% endblock %}
 
 {% block content %}
 <div style="display: flex; justify-content: center; padding: 20px 0;">
     <div class="page-card no-shadow" style="max-width: 640px; width: 100%;">
         <div class="page-card-header" style="text-align: center; margin-bottom: 32px;">
-            <h2 class="page-card-title" style="font-size: 24px;">New Loan Application</h2>
+            <h2 class="page-card-title" style="font-size: 24px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <span>➕</span> New Loan Application
+            </h2>
             <p class="page-card-subtitle">Select customer type and loan category to begin.</p>
         </div>
 

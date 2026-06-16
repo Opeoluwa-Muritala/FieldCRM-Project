@@ -1,5 +1,5 @@
 {% set mobile_title_text = "Admin" %}
-{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+{% extends shell %}
 
 {% block title %}System Admin - FieldCRM{% endblock %}
 {% block page_title %}System Admin Dashboard{% endblock %}
@@ -18,7 +18,7 @@
     <div class="role-grid-main">
         <section class="page-card"><div class="role-section-head"><h2>Final Control Queue</h2><a href="/system-activity">Open</a></div><div class="role-card-list">
             {% for item in data.control_queue %}
-            <a class="role-list-card" href="/applications/{{ item.id }}"><strong>{{ item.applicant_name }}</strong><span>{{ item.ref_no }} - {{ item.status }}</span><em>{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% endif %}</em></a>
+            <a class="role-list-card" href="/applications/{{ item.id }}/approve"><strong>{{ item.applicant_name }}</strong><span>{{ item.ref_no }} - {{ item.status }}</span><em>{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% endif %}</em></a>
             {% else %}<div class="lo-empty-state">No final-control files.</div>{% endfor %}
         </div></section>
         <section class="page-card"><div class="role-section-head"><h2>User Roles</h2><a href="/users">Manage</a></div><div class="role-pipeline-list">

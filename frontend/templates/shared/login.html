@@ -14,10 +14,7 @@
         <div class="brand-panel">
             <header class="brand-header">
                 <div class="brand-logo-wrapper">
-                    <span class="logo-composite brand-logo-img" role="img" aria-label="Mainstreet Microfinance Bank">
-                        <img class="logo-layer logo-layer-shield" src="/static/img/logo.png" alt="" loading="lazy">
-                        <img class="logo-layer logo-layer-text" src="/static/img/logo.png" alt="" loading="lazy">
-                    </span>
+                    <img class="brand-logo-img" src="/static/img/logo.png" alt="Mainstreet Microfinance Bank" loading="lazy">
                 </div>
             </header>
             
@@ -65,10 +62,7 @@
                 
                 <!-- Mobile Logo Area (Only shows on mobile instead of left panel) -->
                 <div class="mobile-logo-area">
-                    <span class="logo-composite brand-logo-img" role="img" aria-label="Mainstreet Microfinance Bank">
-                        <img class="logo-layer logo-layer-shield" src="/static/img/logo.png" alt="" loading="lazy">
-                        <img class="logo-layer logo-layer-text" src="/static/img/logo.png" alt="" loading="lazy">
-                    </span>
+                    <img class="brand-logo-img" src="/static/img/logo.png" alt="Mainstreet Microfinance Bank" loading="lazy">
                 </div>
                 
                 <div class="login-title-area">
@@ -86,6 +80,9 @@
                 {% endif %}
                 
                 <form method="post" action="/login">
+                    {% if next_url %}
+                    <input type="hidden" name="next" value="{{ next_url }}">
+                    {% endif %}
                     <div class="form-group">
                         <label class="form-label" for="username">Email Address</label>
                         <div class="input-container">

@@ -1,0 +1,218 @@
+{% extends shell %}
+
+{% block title %}Approval Readiness Review — FieldCRM{% endblock %}
+{% block page_title %}Approval Workstation{% endblock %}
+{% block breadcrumb %}Loans → Approval → {{ app.ref_no }}{% endblock %}
+
+{% block content %}
+<div class="app-detail-layout">
+    
+    {# === LEFT COLUMN: APPLICATION IDENTITY, TIMELINE & DOCUMENTS === #}
+    <div class="app-detail-sidebar">
+        
+        {# Identity Card #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <div style="font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; margin-bottom: 4px;">{{ app.ref_no }}</div>
+            <h2 class="page-card-title" style="margin-bottom: 8px; font-size: 20px;">{{ borrower_name }}</h2>
+            <div style="font-size: 14px; font-weight: 500; color: var(--role-accent); margin-bottom: 12px;">
+                {{ product_type }} · ₦{{ "{:,}".format(amount|int) }}
+            </div>
+            
+            {% set stage_class = {
+                'intake': 'needs-review',
+                'ocr_review': 'low-confidence',
+                'credit_review': 'needs-review',
+                'branch_approval': 'needs-review',
+                'disbursement_ready': 'approved',
+                'disbursed': 'verified',
+                'returned': 'returned',
+                'rejected': 'missing'
+            } %}
+            <span class="status-badge {{ stage_class.get(app.stage, '') }}">{{ app.status }}</span>
+        </div>
+        
+        {# Vertical Stage Timeline #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 16px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Application Timeline</h3>
+            <div style="display: flex; flex-direction: column; gap: 16px; position: relative; padding-left: 20px;">
+                
+                {# Vertical line element #}
+                <div style="position: absolute; left: 6px; top: 8px; bottom: 8px; width: 2px; background-color: var(--border-color);"></div>
+                
+                {# Stage 1 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 1 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 1 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 1 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 1 %}var(--text-main){% else %}var(--text-muted){% endif %};">Intake & Submission</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{{ app.created_at.strftime('%d %b %Y') if app.created_at else '' }}</div>
+                </div>
+                
+                {# Stage 2 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 2 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 2 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 2 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 2 %}var(--text-main){% else %}var(--text-muted){% endif %};">OCR Verification</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{% if app.current_stage >= 2 %}Auto-scanned{% else %}Awaiting scan{% endif %}</div>
+                </div>
+                
+                {# Stage 3 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 3 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 3 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 3 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 3 %}var(--text-main){% else %}var(--text-muted){% endif %};">Credit Risk Review</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{% if app.current_stage >= 3 %}Assigned to Fatima{% else %}Awaiting desk{% endif %}</div>
+                </div>
+                
+                {# Stage 4 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 4 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 4 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 4 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 4 %}var(--text-main){% else %}var(--text-muted){% endif %};">Branch Concurrence</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{% if app.current_stage >= 4 %}Awaiting Adebayo{% else %}Awaiting signoff{% endif %}</div>
+                </div>
+                
+                {# Stage 5 & 6 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 5 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 5 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage >= 5 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 5 %}var(--text-main){% else %}var(--text-muted){% endif %};">Disbursement Released</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">Ready for release</div>
+                </div>
+                
+            </div>
+        </div>
+        
+        {# Quick Document List #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Documents Checklist</h3>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                {% set doc_categories = [
+                    ('passport_photo', 'Passport Photograph'),
+                    ('id_card', 'Valid ID Card'),
+                    ('utility_bill', 'Utility Bill'),
+                    ('bank_statement', 'Bank Statement'),
+                    ('guarantor_form_1', 'Guarantor Form 1'),
+                    ('guarantor_form_2', 'Guarantor Form 2'),
+                    ('pledge_form', 'Pledge Agreement')
+                ] %}
+                
+                {% for cat_key, cat_name in doc_categories %}
+                    {% set doc_found = false %}
+                    {% set doc_status = 'missing' %}
+                    {% for doc in documents %}
+                        {% if doc.category == cat_key %}
+                            {% set doc_found = true %}
+                            {% set doc_status = doc.status %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+                        <span>{{ cat_name }}</span>
+                        {% if doc_status == 'verified' %}
+                            <span style="color: var(--accent-success); font-weight: bold;">✓</span>
+                        {% elif doc_status == 'needs_review' %}
+                            <span style="color: var(--accent-warning); font-weight: bold;">⚠</span>
+                        {% else %}
+                            <span style="color: var(--accent-danger); font-weight: bold;">✗</span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+    </div>
+    
+    {# === RIGHT COLUMN: BRANCH MANAGER CONCURRENCE WORKSPACE === #}
+    <div class="app-detail-main">
+        
+        {# Checklist Readiness Summary #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 8px;">Structural Checklist Verification</h2>
+            <div style="background-color: var(--bg-secondary); border-radius: 8px; padding: 16px; border: 0.5px solid var(--border-color);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; font-weight:500;">
+                    <span>Checklist Status: 18 of 22 items ready</span>
+                    <span style="color: var(--role-accent);">81% Complete</span>
+                </div>
+                <div style="height: 6px; background-color: var(--border-color); border-radius: 3px; overflow: hidden; margin-bottom: 8px;">
+                    <div style="width: 81%; height: 100%; background-color: var(--role-accent);"></div>
+                </div>
+                <div style="font-size:12px; color: var(--accent-danger); font-weight:500;">
+                    ⚠ 4 critical checklist items still require attention.
+                </div>
+            </div>
+        </div>
+
+        {# Credit Underwriter Recommendation Card #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 12px;">Credit Risk Recommendation</h2>
+            <div style="border: 0.5px solid var(--border-color); border-radius: 8px; padding: 16px; background-color: rgba(26, 107, 69, 0.03);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 13px; font-weight: 500; color: var(--text-main);">Verdict:</span>
+                    <span class="status-badge approved">Recommend Approval</span>
+                </div>
+                <div style="font-size: 13px; color: var(--text-main); font-style: italic; margin-bottom: 8px;">
+                    "Applicant possesses adequate cashflow capacity. Guarantor strength and DSR parameters align with risk thresholds. Highly recommended for approval."
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); text-align: right;">
+                    — Fatima Bello (Credit Officer)
+                </div>
+            </div>
+        </div>
+
+        {# Forms & Documents Verification checklist groups #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 12px;">Verification Audit Groups</h2>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">
+                    <span>Loan Application Form (MMFB/CRM/01)</span>
+                    <span class="status-badge verified">Verified</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">
+                    <span>Guarantor Form 1</span>
+                    <span class="status-badge verified">Verified</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">
+                    <span>Guarantor Form 2</span>
+                    <span class="status-badge returned">Missing</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">
+                    <span>Pledge and Trust Receipt (MMFB/CRM/02)</span>
+                    <span class="status-badge verified">Verified</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">
+                    <span>BVN Verification</span>
+                    <span class="status-badge verified">Verified</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">
+                    <span>Field Visitation Report</span>
+                    <span class="status-badge verified">Verified</span>
+                </div>
+            </div>
+        </div>
+
+        {# Concur / Return Action Bar #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; gap:16px;">
+                    <a href="/applications/{{ app_id }}/return?type=officer" style="color: var(--accent-danger); font-size:13px; font-weight:500; text-decoration:none; display: flex; align-items: center;">Return to Loan Officer</a>
+                    <a href="/applications/{{ app_id }}/return?type=credit" style="color: var(--accent-warning); font-size:13px; font-weight:500; text-decoration:none; display: flex; align-items: center;">Return to Credit Officer</a>
+                </div>
+                
+                <form action="/applications/{{ app_id }}/approve" method="POST" style="display:flex; flex-direction:column; align-items:flex-end;">
+                    <input type="hidden" name="force_approve" value="1">
+                    <button type="submit" class="btn-primary-filled" id="approveBtn">
+                        Concur & Approve Disbursement &rarr;
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}

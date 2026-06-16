@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Response, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from app.core.database import db_conn
 from app.domains.auth.repository import AuthRepository
 from app.domains.auth.service import AuthService
 from app.domains.auth.schemas import Token
+from app.config import settings
 
 router = APIRouter()
 
@@ -13,18 +14,20 @@ def get_auth_service(conn = Depends(db_conn)) -> AuthService:
 
 @router.post("/login", response_model=Token)
 async def login_cookie(
+    request: Request,
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     service: AuthService = Depends(get_auth_service)
 ):
     token = await service.authenticate_user(form_data.username, form_data.password)
     
+    is_secure = settings.COOKIE_SECURE or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
     # Configure HttpOnly cookie for session tracking
     response.set_cookie(
         key="session",
         value=token,
         httponly=True,
-        secure=False,
+        secure=is_secure,
         samesite="strict",
         max_age=30 * 60,
         path="/"

@@ -1,0 +1,240 @@
+{% extends shell %}
+
+{% block title %}Application Detail — FieldCRM{% endblock %}
+{% block page_title %}Application Workstation{% endblock %}
+{% block breadcrumb %}Loans → Detail → {{ app.ref_no }}{% endblock %}
+
+{% block content %}
+<div class="app-detail-layout">
+    
+    {# === LEFT COLUMN: APPLICATION IDENTITY, TIMELINE & DOCUMENTS === #}
+    <div class="app-detail-sidebar">
+        
+        {# Identity Card #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <div style="font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; margin-bottom: 4px;">{{ app.ref_no }}</div>
+            <h2 class="page-card-title" style="margin-bottom: 8px; font-size: 20px;">{{ borrower_name }}</h2>
+            <div style="font-size: 14px; font-weight: 500; color: var(--role-accent); margin-bottom: 12px;">
+                {{ product_type }} · ₦{{ "{:,}".format(amount|int) }}
+            </div>
+            
+            {% set stage_class = {
+                'intake': 'needs-review',
+                'ocr_review': 'low-confidence',
+                'credit_review': 'needs-review',
+                'branch_approval': 'needs-review',
+                'disbursement_ready': 'approved',
+                'disbursed': 'verified',
+                'returned': 'returned',
+                'rejected': 'missing'
+            } %}
+            <span class="status-badge {{ stage_class.get(app.stage, '') }}">{{ app.status }}</span>
+        </div>
+        
+        {# Vertical Stage Timeline #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 16px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Application Timeline</h3>
+            <div style="display: flex; flex-direction: column; gap: 16px; position: relative; padding-left: 20px;">
+                
+                {# Vertical line element #}
+                <div style="position: absolute; left: 6px; top: 8px; bottom: 8px; width: 2px; background-color: var(--border-color);"></div>
+                
+                {# Stage 1 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 1 %}var(--role-accent, #6B3FA0){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 1 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 1 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 1 %}var(--text-main){% else %}var(--text-muted){% endif %};">Intake & Submission</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{{ app.created_at.strftime('%d %b %Y') if app.created_at else '' }}</div>
+                </div>
+                
+                {# Stage 2 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 2 %}var(--role-accent, #6B3FA0){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 2 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 2 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 2 %}var(--text-main){% else %}var(--text-muted){% endif %};">OCR Verification</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{% if app.current_stage >= 2 %}Auto-scanned{% else %}Awaiting scan{% endif %}</div>
+                </div>
+                
+                {# Stage 3 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 3 %}var(--role-accent, #6B3FA0){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 3 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 3 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 3 %}var(--text-main){% else %}var(--text-muted){% endif %};">Credit Risk Review</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{% if app.current_stage >= 3 %}Assigned to Fatima{% else %}Awaiting desk{% endif %}</div>
+                </div>
+                
+                {# Stage 4 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 4 %}var(--role-accent, #6B3FA0){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 4 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 4 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 4 %}var(--text-main){% else %}var(--text-muted){% endif %};">Branch Concurrence</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">{% if app.current_stage >= 4 %}Awaiting Adebayo{% else %}Awaiting signoff{% endif %}</div>
+                </div>
+                
+                {# Stage 5 & 6 #}
+                <div style="position: relative;">
+                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 5 %}var(--role-accent, #6B3FA0){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                        {% if app.current_stage > 5 %}✓{% endif %}
+                    </div>
+                    <div style="font-size: 13px; font-weight: {% if app.current_stage >= 5 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 5 %}var(--text-main){% else %}var(--text-muted){% endif %};">Disbursement Released</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">Ready for release</div>
+                </div>
+                
+            </div>
+        </div>
+        
+        {# Quick Document List #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Documents Checklist</h3>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                {% set doc_categories = [
+                    ('passport_photo', 'Passport Photograph'),
+                    ('id_card', 'Valid ID Card'),
+                    ('utility_bill', 'Utility Bill'),
+                    ('bank_statement', 'Bank Statement'),
+                    ('guarantor_form_1', 'Guarantor Form 1'),
+                    ('guarantor_form_2', 'Guarantor Form 2'),
+                    ('pledge_form', 'Pledge Agreement')
+                ] %}
+                
+                {% for cat_key, cat_name in doc_categories %}
+                    {% set doc_found = false %}
+                    {% set doc_status = 'missing' %}
+                    {% for doc in documents %}
+                        {% if doc.category == cat_key %}
+                            {% set doc_found = true %}
+                            {% set doc_status = doc.status %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+                        <span>{{ cat_name }}</span>
+                        {% if doc_status == 'verified' %}
+                            <span style="color: var(--accent-success); font-weight: bold;">✓</span>
+                        {% elif doc_status == 'needs_review' %}
+                            <span style="color: var(--accent-warning); font-weight: bold;">⚠</span>
+                        {% else %}
+                            <span style="color: var(--accent-danger); font-weight: bold;">✗</span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+    </div>
+    
+    {# === RIGHT COLUMN: LOAN OFFICER WORKSPACE === #}
+    <div class="app-detail-main">
+        
+        {# Active Alerts Banner (e.g. Returned) #}
+        {% if app.stage == 'returned' %}
+        <div class="flat-card danger" style="margin-bottom: 0;">
+            <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">⚠ Application Returned for Correction</div>
+            <div style="font-size: 13px;">{{ app.return_notes or 'Check file details and re-upload missing documentation.' }}</div>
+        </div>
+        {% endif %}
+
+        {# Checklist of what needs to be done #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 12px;">Tasks Pending Submission</h2>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                {% set checklist = [] %}
+                {% if not wizard_data.full_name %}
+                    {% set _ = checklist.append('Applicant Details form section needs completion') %}
+                {% endif %}
+                {% if not wizard_data.bvn %}
+                    {% set _ = checklist.append('Critical: 11-digit BVN required for background check') %}
+                {% endif %}
+                {% if not visitation_data or not visitation_data.premises_description %}
+                    {% set _ = checklist.append('Visitations queue: Submit Field visitation report') %}
+                {% endif %}
+                
+                {% for item in checklist %}
+                <div style="display: flex; gap: 8px; font-size: 13px; color: var(--text-main); align-items: flex-start;">
+                    <span style="color: var(--accent-danger); font-weight: bold;">▪</span>
+                    <span>{{ item }}</span>
+                </div>
+                {% else %}
+                <div style="display: flex; gap: 8px; font-size: 13px; color: var(--accent-success); align-items: center;">
+                    <span>✔</span>
+                    <span>All intake requirements complete. Ready for OCR auto-scan review.</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        {# Form Wizard Steps Grid #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 12px;">Intake Wizard Progress</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;">
+                
+                {% set step_names = [
+                    (1, "Applicant Details"),
+                    (2, "Spousal Consent"),
+                    (3, "Guarantors List"),
+                    (4, "Employment Details"),
+                    (5, "Existing Facilities"),
+                    (6, "Loan Request Details"),
+                    (7, "Disbursement Account"),
+                    (8, "Collateral Pledge"),
+                    (9, "Declarations & Consents")
+                ] %}
+                
+                {% for step_num, step_title in step_names %}
+                    {# Check if step is completed (simply checking if data is present or mock) #}
+                    {% set is_step_done = false %}
+                    {% if step_num == 1 and wizard_data.full_name %}
+                        {% set is_step_done = true %}
+                    {% elif step_num == 2 and wizard_data.marital_status %}
+                        {% set is_step_done = true %}
+                    {% elif step_num == 3 and wizard_data.guarantor_1_name %}
+                        {% set is_step_done = true %}
+                    {% elif step_num == 4 and wizard_data.employer_name %}
+                        {% set is_step_done = true %}
+                    {% elif step_num == 6 and wizard_data.loan_amount %}
+                        {% set is_step_done = true %}
+                    {% endif %}
+                    
+                    <div style="border: 0.5px solid var(--border-color); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-primary);">
+                        <div>
+                            <div style="font-size: 11px; color: var(--text-muted);">Step {{ step_num }}</div>
+                            <div style="font-size: 13px; font-weight: 500; color: var(--text-main);">{{ step_title }}</div>
+                        </div>
+                        <a href="/applications/{{ app_id }}/step/{{ step_num }}" class="btn-primary-filled" style="height: 28px; font-size: 11px; padding: 0 10px;">
+                            Edit
+                        </a>
+                    </div>
+                {% endfor %}
+                
+            </div>
+        </div>
+
+        {# Upload zones #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 0;">Supporting Document Intake</h2>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                <a href="/applications/{{ app_id }}/documents/upload?type=passport_photo" style="text-decoration: none; border: 1px dashed var(--color-brand-light); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: var(--text-main); background-color: var(--bg-secondary);">
+                    <span style="font-size: 20px;">📷</span>
+                    <span style="font-size: 12px; font-weight: 500;">Passport Photo</span>
+                </a>
+                <a href="/applications/{{ app_id }}/documents/upload?type=id_card" style="text-decoration: none; border: 1px dashed var(--color-brand-light); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: var(--text-main); background-color: var(--bg-secondary);">
+                    <span style="font-size: 20px;">🗂️</span>
+                    <span style="font-size: 12px; font-weight: 500;">Valid ID Card</span>
+                </a>
+                <a href="/applications/{{ app_id }}/documents/upload?type=utility_bill" style="text-decoration: none; border: 1px dashed var(--color-brand-light); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: var(--text-main); background-color: var(--bg-secondary);">
+                    <span style="font-size: 20px;">📋</span>
+                    <span style="font-size: 12px; font-weight: 500;">Utility Bill</span>
+                </a>
+            </div>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}

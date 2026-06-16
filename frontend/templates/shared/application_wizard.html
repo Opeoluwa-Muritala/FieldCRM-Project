@@ -1,4 +1,6 @@
-{% extends "base.html" %}
+{% extends shell %}
+{% set hide_tabbar = true %}
+{% set mobile_title_text = "Application: Step " ~ step %}
 
 {% block title %}Application Wizard - Step {{ step }} | FieldCRM{% endblock %}
 
@@ -788,6 +790,21 @@
 
         document.getElementById('pledgeFillSection').style.display = (tab === 'fill') ? 'block' : 'none';
         document.getElementById('pledgeUploadSection').style.display = (tab === 'upload') ? 'block' : 'none';
+
+        // Toggle required attributes on hidden inputs to avoid browser validation blockers
+        const fillInputs = document.querySelectorAll('#pledgeFillSection input, #pledgeFillSection select, #pledgeFillSection textarea');
+        fillInputs.forEach(input => {
+            if (tab === 'upload') {
+                if (input.hasAttribute('required')) {
+                    input.removeAttribute('required');
+                    input.dataset.wasRequired = 'true';
+                }
+            } else {
+                if (input.dataset.wasRequired === 'true') {
+                    input.setAttribute('required', 'required');
+                }
+            }
+        });
     }
 
     function checkPledgeAmountMismatch() {
@@ -959,5 +976,23 @@
         initSignature('witness_pledge_canvas', 'witness_pledge_sig_val');
         initSignature('applicant_sig_canvas', 'applicant_sig_val');
     });
+
+    // Wizard step slide-direction tracking
+    (function() {
+        const currentStep = {{ step }};
+        const stored = parseInt(sessionStorage.getItem('wizardPrevStep') || '0', 10);
+        const direction = (stored > 0 && currentStep > stored) ? 'forward'
+                        : (stored > 0 && currentStep < stored) ? 'back'
+                        : 'forward';
+        document.documentElement.dataset.wizardDirection = direction;
+        sessionStorage.setItem('wizardPrevStep', String(currentStep));
+
+        document.querySelector('.wizard-footer a')?.addEventListener('click', () => {
+            sessionStorage.setItem('wizardPrevStep', String(currentStep + 1));
+        });
+        document.getElementById('continueBtn')?.addEventListener('click', () => {
+            sessionStorage.setItem('wizardPrevStep', String(currentStep - 1));
+        });
+    })();
 </script>
 {% endblock %}

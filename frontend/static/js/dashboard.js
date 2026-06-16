@@ -5,6 +5,9 @@ document.addEventListener("DOMContentLoaded", () => {
     bindTourStart();
     startGuideOnce();
     startBadgePolling();
+    initRipples();
+    initDrawerBackdrop();
+    initScrollReveals();
 });
 
 let currentTourStep = 0;
@@ -605,6 +608,125 @@ function initializeRoleShell() {
         node.textContent = getCurrentRole();
     });
 }
+
+/* === PHASE 5: RIPPLE, FORM INTERACTIONS, DRAWER BACKDROP === */
+
+function initRipples() {
+    document.querySelectorAll('.btn-primary-filled').forEach(btn => {
+        if (btn.dataset.rippleInit) return;
+        btn.dataset.rippleInit = '1';
+        btn.addEventListener('pointerdown', function(e) {
+            const rect = btn.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height) * 2;
+            const x = e.clientX - rect.left - size / 2;
+            const y = e.clientY - rect.top  - size / 2;
+            const circle = document.createElement('span');
+            circle.className = 'ripple-circle';
+            circle.style.cssText = `width:${size}px;height:${size}px;left:${x}px;top:${y}px`;
+            btn.appendChild(circle);
+            circle.addEventListener('animationend', () => circle.remove());
+        });
+    });
+}
+
+function setButtonLoading(btn, isLoading) {
+    btn.classList.toggle('is-loading', isLoading);
+    btn.disabled = isLoading;
+}
+window.setButtonLoading = setButtonLoading;
+
+function markFieldError(inputEl) {
+    inputEl.classList.remove('field-error');
+    void inputEl.offsetWidth;
+    inputEl.classList.add('field-error');
+    inputEl.addEventListener('input', () => inputEl.classList.remove('field-error'), { once: true });
+}
+window.markFieldError = markFieldError;
+
+function initDrawerBackdrop() {
+    const drawers = document.querySelectorAll('.detail-drawer');
+    if (!drawers.length) return;
+
+    let backdrop = document.querySelector('.detail-drawer-backdrop');
+    if (!backdrop) {
+        backdrop = document.createElement('div');
+        backdrop.className = 'detail-drawer-backdrop';
+        document.body.appendChild(backdrop);
+    }
+
+    drawers.forEach(drawer => {
+        const observer = new MutationObserver(() => {
+            const isOpen = drawer.classList.contains('open');
+            backdrop.classList.toggle('visible', isOpen);
+        });
+        observer.observe(drawer, { attributes: true, attributeFilter: ['class'] });
+    });
+
+    backdrop.addEventListener('click', () => {
+        document.querySelectorAll('.detail-drawer.open').forEach(d => d.classList.remove('open'));
+    });
+}
+
+/* === PHASE 6: SCROLL REVEALS === */
+
+function initScrollReveals() {
+    if (!('IntersectionObserver' in window)) return;
+
+    const revealTargets = document.querySelectorAll(
+        '.role-list-card, .role-stage-card, .pipeline-card, .queue-card, ' +
+        '.lo-task-card, .lo-stat-chip, .lo-activity-item, ' +
+        '.flat-card, .role-pipeline-row'
+    );
+    if (!revealTargets.length) return;
+
+    revealTargets.forEach(el => el.classList.add('reveal-pending'));
+
+    /* Stagger siblings within list containers */
+    document.querySelectorAll(
+        '.role-card-list, .role-pipeline-list, .pipeline-list, ' +
+        '.lo-task-list, .queue-cards, .lo-activity-list'
+    ).forEach(container => {
+        container.querySelectorAll('.reveal-pending').forEach((child, index) => {
+            child.style.transitionDelay = `${index * 55}ms`;
+        });
+    });
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.remove('reveal-pending');
+                entry.target.classList.add('reveal-visible');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.12, rootMargin: '0px 0px -32px 0px' });
+
+    revealTargets.forEach(el => observer.observe(el));
+}
+
+/* === PHASE 7: SKELETON HELPERS === */
+
+function createSkeletonCard() {
+    const card = document.createElement('div');
+    card.className = 'metric-card';
+    card.innerHTML = `
+        <div class="skeleton skeleton-text" style="width:55%"></div>
+        <div class="skeleton skeleton-title"></div>
+    `;
+    return card;
+}
+
+function createSkeletonRows(count = 5) {
+    const fragment = document.createDocumentFragment();
+    for (let i = 0; i < count; i++) {
+        const row = document.createElement('div');
+        row.className = 'skeleton skeleton-row';
+        fragment.appendChild(row);
+    }
+    return fragment;
+}
+window.createSkeletonCard = createSkeletonCard;
+window.createSkeletonRows = createSkeletonRows;
 
 function startBadgePolling() {
     const badgeTargets = document.querySelectorAll("[data-badge-url]");

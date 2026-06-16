@@ -1,4 +1,6 @@
-{% extends "base.html" %}
+{% extends shell %}
+{% set hide_tabbar = true %}
+{% set mobile_title_text = "Guarantor: Step " ~ step %}
 
 {% block title %}Guarantor Wizard - Step {{ step }} | FieldCRM{% endblock %}
 
@@ -324,5 +326,16 @@
         initSignature('guarantor_sig_canvas', 'guarantor_sig_val');
         initSignature('witness_sig_canvas', 'witness_sig_val');
     });
+
+    // Wizard step slide-direction tracking
+    (function() {
+        const currentStep = {{ step }};
+        const stored = parseInt(sessionStorage.getItem('guarantorWizardPrevStep') || '0', 10);
+        const direction = (stored > 0 && currentStep > stored) ? 'forward'
+                        : (stored > 0 && currentStep < stored) ? 'back'
+                        : 'forward';
+        document.documentElement.dataset.wizardDirection = direction;
+        sessionStorage.setItem('guarantorWizardPrevStep', String(currentStep));
+    })();
 </script>
 {% endblock %}
