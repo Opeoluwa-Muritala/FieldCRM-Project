@@ -75,6 +75,7 @@ class Settings(BaseSettings):
     
     # Security / CORS
     CORS_ORIGINS: List[str] = ["http://localhost:8000", "http://127.0.0.1:8000"]
+    COOKIE_SECURE: bool = os.getenv("COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
 
     @model_validator(mode="after")
     def normalize_database_url(self):

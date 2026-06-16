@@ -74,8 +74,7 @@ async def render_dashboard(
     conn = Depends(db_conn),
     current_user = Depends(get_current_user)
 ):
-    """Renders the role-specific dashboard.
-
+    """
     Each role gets a genuinely different template and data set.
     Mobile and desktop share the same template but extend different
     base shells via the 'shell' context variable.
@@ -102,12 +101,7 @@ async def render_dashboard(
         today_label=datetime.now().strftime("%A, %d %B %Y"),
     )
 
-    # Try role-specific template; fall back to shared dashboard
-    try:
-        return templates.TemplateResponse(request, template_name, ctx)
-    except Exception:
-        # Fallback to the existing dashboard.html during migration
-        return templates.TemplateResponse(request, "dashboard.html", ctx)
+    return templates.TemplateResponse(request, template_name, ctx)
 
 @router.get("/my-queue")
 async def render_my_queue(
@@ -362,6 +356,7 @@ async def render_applications_list(
         except ValueError:
             db_stage = stage
 
+
     repo = LoanRepository(conn)
     applications, total = await repo.list_by_stage(
         org_id=current_user.org_id,
@@ -370,19 +365,19 @@ async def render_applications_list(
         page=1,
         size=100
     )
-    return templates.TemplateResponse(
+    ctx = build_template_context(
         request,
-            "shared/applications.html",
-        {
-            "current_user": current_user,
-            "applications": applications,
-            "current_stage": stage,
-            "current_loan_type": loan_type,
-            "search_query": q,
-            "from_date": from_date,
-            "to_date": to_date
-        }
+        current_user,
+        applications=applications,
+        current_stage=stage,
+        current_loan_type=loan_type,
+        search_query=q,
+        from_date=from_date,
+        to_date=to_date,
+        active_tab="applications",
+        active_page="applications",
     )
+    return templates.TemplateResponse(request, "shared/applications.html", ctx)
 
 @router.get("/applications/new")
 async def render_new_application(
@@ -390,11 +385,13 @@ async def render_new_application(
     current_user = Depends(RoleChecker(["System Admin", "Loan Officer"]))
 ):
     """Renders Page 3 customer selection page."""
-    return templates.TemplateResponse(
+    ctx = build_template_context(
         request,
-        "shared/new_application.html",
-        {"current_user": current_user}
+        current_user,
+        active_tab="new_application",
+        active_page="new_application",
     )
+    return templates.TemplateResponse(request, "shared/new_application.html", ctx)
 
 @router.post("/applications/new")
 async def process_new_application(
@@ -415,25 +412,68 @@ async def process_new_application(
     return RedirectResponse(url=f"/applications/{app.id}/step/1", status_code=status.HTTP_303_SEE_OTHER)
 
 @router.get("/applications/{application_id}")
-async def redirect_application_detail(
+async def render_application_detail(
+    request: Request,
     application_id: str,
     conn = Depends(db_conn),
     current_user = Depends(get_current_user)
 ):
-    """Routes detail request to correct wizard step or review page depending on current owner/stage."""
+    """
+    On mobile: redirects to the correct wizard step or review page depending on current owner/stage.
+    On desktop: renders the role-specific detail workstation layout page.
+    """
     repo = LoanRepository(conn)
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
-    if app.current_stage == 1:
-        return RedirectResponse(url=f"/applications/{application_id}/step/1", status_code=status.HTTP_303_SEE_OTHER)
-    elif app.current_stage == 2:
-        return RedirectResponse(url=f"/applications/{application_id}/ocr-review", status_code=status.HTTP_303_SEE_OTHER)
-    elif app.current_stage == 3:
-        return RedirectResponse(url=f"/applications/{application_id}/credit-review", status_code=status.HTTP_303_SEE_OTHER)
-    else:
-        return RedirectResponse(url=f"/applications/{application_id}/approve", status_code=status.HTTP_303_SEE_OTHER)
+    device = detect_device_type(request)
+    if device == "mobile":
+        if app.current_stage == 1:
+            return RedirectResponse(url=f"/applications/{application_id}/step/1", status_code=status.HTTP_303_SEE_OTHER)
+        elif app.current_stage == 2:
+            return RedirectResponse(url=f"/applications/{application_id}/ocr-review", status_code=status.HTTP_303_SEE_OTHER)
+        elif app.current_stage == 3:
+            return RedirectResponse(url=f"/applications/{application_id}/credit-review", status_code=status.HTTP_303_SEE_OTHER)
+        else:
+            return RedirectResponse(url=f"/applications/{application_id}/approve", status_code=status.HTTP_303_SEE_OTHER)
+
+    # On desktop, render role-specific detail workstation
+    role = current_user.role.lower().replace(" ", "_")
+    template_name = get_role_template(role, "application_detail.html")
+    
+    # Load all data needed for the detail view
+    loan_svc = get_loan_service(conn)
+    doc_svc = get_document_service(conn)
+    visitation_repo = VisitationRepository(conn)
+    
+    wizard_data = await loan_svc.get_wizard_data(UUID(application_id))
+    documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
+    visitation_data = await visitation_repo.get_by_loan(UUID(application_id), current_user.org_id) or {}
+    readiness_summary = await repo.get_readiness_summary(UUID(application_id), current_user.org_id)
+    
+    # Load and filter audit events
+    all_audit_events = await repo.list_workflow_events(current_user.org_id)
+    audit_events = [e for e in all_audit_events if str(e.get("loan_id")) == application_id]
+
+    ctx = build_template_context(
+        request,
+        current_user,
+        app=app,
+        app_id=application_id,
+        borrower_name=app.applicant_name,
+        amount=app.amount or 500000,
+        tenure=app.tenure or 12,
+        product_type=app.product_type or "MSEF",
+        wizard_data=wizard_data,
+        documents=documents,
+        visitation_data=visitation_data,
+        summary=readiness_summary,
+        audit_events=audit_events,
+        active_tab="applications",
+        active_page="applications",
+    )
+    return templates.TemplateResponse(request, template_name, ctx)
 
 @router.get("/applications/{application_id}/step/{step}")
 async def render_wizard_step(
@@ -450,21 +490,24 @@ async def render_wizard_step(
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
-    data = await service.get_wizard_data(UUID(application_id))
-    
-    if step == 2 and data.get("marital_status") == "Single":
-        return RedirectResponse(url=f"/applications/{application_id}/step/3", status_code=status.HTTP_303_SEE_OTHER)
+    user_role = current_user.role.lower().replace(" ", "_")
+    if user_role not in ("system_admin", "loan_officer"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions for this action")
+    if user_role == "loan_officer" and app.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not have permission to view/modify this application")
 
-    return templates.TemplateResponse(
+    data = await service.get_wizard_data(UUID(application_id))
+
+    ctx = build_template_context(
         request,
-        "shared/application_wizard.html",
-        {
-            "current_user": current_user,
-            "app_id": application_id,
-            "step": step,
-            "data": data
-        }
+        current_user,
+        app_id=application_id,
+        step=step,
+        data=data,
+        active_tab="queue",
+        active_page="queue",
     )
+    return templates.TemplateResponse(request, "shared/application_wizard.html", ctx)
 
 @router.post("/applications/{application_id}/step/{step}")
 async def process_wizard_step(
@@ -472,9 +515,20 @@ async def process_wizard_step(
     application_id: str,
     step: int,
     service: LoanService = Depends(get_loan_service),
+    conn = Depends(db_conn),
     current_user = Depends(get_current_user)
 ):
     """POST handler to persist wizard values and advance flow."""
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+        
+    user_role = current_user.role.lower().replace(" ", "_")
+    if user_role not in ("system_admin", "loan_officer"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions for this action")
+    if user_role == "loan_officer" and app.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not have permission to view/modify this application")
     form_data = await request.form()
     data_dict = form_data_to_jsonable_dict(form_data)
     await service.save_wizard_step(UUID(application_id), step, data_dict, current_user.id, current_user.org_id)
@@ -491,9 +545,11 @@ async def render_guarantor_step(
     application_id: str,
     guarantor_index: int,
     step: int,
+    service: GuarantorService = Depends(get_guarantor_service),
     current_user = Depends(get_current_user)
 ):
     """GET handler for Guarantor intake flow steps 1 to 8."""
+    data = await service.get_wizard_data(UUID(application_id), guarantor_index)
     return templates.TemplateResponse(
         request,
         "shared/guarantor_wizard.html",
@@ -502,7 +558,9 @@ async def render_guarantor_step(
             "app_id": application_id,
             "guarantor_index": guarantor_index,
             "step": step,
-            "data": {}
+            "data": data,
+            "hide_tabbar": True,
+            "mobile_title_text": f"Guarantor: Step {step}"
         }
     )
 
@@ -516,6 +574,10 @@ async def process_guarantor_step(
     current_user = Depends(get_current_user)
 ):
     """POST handler for Guarantor flow."""
+    form_data = await request.form()
+    data_dict = form_data_to_jsonable_dict(form_data)
+    await service.save_wizard_step(UUID(application_id), guarantor_index, step, data_dict, current_user.id)
+
     if step < 8:
         return RedirectResponse(url=f"/applications/{application_id}/guarantors/{guarantor_index}/step/{step + 1}", status_code=status.HTTP_303_SEE_OTHER)
     else:
@@ -537,19 +599,16 @@ async def render_document_upload(
     current_user = Depends(get_current_user)
 ):
     """Page 13 Document Upload page."""
-    repo = LoanRepository(conn)
-    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
-    borrower_name = app.applicant_name if app else "Borrower"
-    return templates.TemplateResponse(
+    ctx = build_template_context(
         request,
-        "shared/upload_document.html",
-        {
-            "current_user": current_user,
-            "app_id": application_id,
-            "doc_type": type,
-            "borrower_name": borrower_name
-        }
+        current_user,
+        app_id=application_id,
+        doc_type=type,
+        borrower_name=borrower_name,
+        active_tab="upload",
+        active_page="upload",
     )
+    return templates.TemplateResponse(request, "shared/upload_document.html", ctx)
 
 @router.post("/applications/{application_id}/documents/upload")
 async def process_document_upload(
@@ -577,16 +636,16 @@ async def render_ocr_review(
     current_user = Depends(get_current_user)
 ):
     """Page 14 OCR Review Page."""
-    return templates.TemplateResponse(
+    ctx = build_template_context(
         request,
-        "shared/ocr_review.html",
-        {
-            "current_user": current_user,
-            "app_id": application_id,
-            "doc_type": doc,
-            "doc_name": "Loan Application Form" if doc == 'loan' else "Pledge Receipt Form"
-        }
+        current_user,
+        app_id=application_id,
+        doc_type=doc,
+        doc_name="Loan Application Form" if doc == 'loan' else "Pledge Receipt Form",
+        active_tab="ocr",
+        active_page="ocr",
     )
+    return templates.TemplateResponse(request, "shared/ocr_review.html", ctx)
 
 @router.post("/applications/{application_id}/ocr-review")
 async def process_ocr_review(
@@ -633,16 +692,16 @@ async def render_visitation_report(
     visitation_repo = VisitationRepository(conn)
     data = await visitation_repo.get_by_loan(loan_id=UUID(application_id), org_id=current_user.org_id) or {}
     
-    return templates.TemplateResponse(
+    ctx = build_template_context(
         request,
-        "shared/visitation.html",
-        {
-            "current_user": current_user,
-            "app_id": application_id,
-            "borrower_name": borrower_name,
-            "data": data
-        }
+        current_user,
+        app_id=application_id,
+        borrower_name=borrower_name,
+        data=data,
+        active_tab="visits",
+        active_page="visits",
     )
+    return templates.TemplateResponse(request, "shared/visitation.html", ctx)
 
 @router.post("/applications/{application_id}/visitation")
 async def process_visitation_report(
@@ -689,18 +748,18 @@ async def render_credit_review(
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     borrower_name = app.applicant_name if app else "Borrower"
     
-    return templates.TemplateResponse(
+    ctx = build_template_context(
         request,
-        "shared/credit_review.html",
-        {
-            "current_user": current_user,
-            "app_id": application_id,
-            "borrower_name": borrower_name,
-            "amount": app.amount if app else 500000,
-            "tenure": app.tenure if app else 12,
-            "product_type": app.product_type if app else "MSEF"
-        }
+        current_user,
+        app_id=application_id,
+        borrower_name=borrower_name,
+        amount=app.amount if app else 500000,
+        tenure=app.tenure if app else 12,
+        product_type=app.product_type if app else "MSEF",
+        active_tab="reviews",
+        active_page="reviews",
     )
+    return templates.TemplateResponse(request, "shared/credit_review.html", ctx)
 
 @router.post("/applications/{application_id}/credit-review")
 async def process_credit_review(
@@ -753,16 +812,16 @@ async def render_approval_readiness(
     
     summary = await repo.get_readiness_summary(UUID(application_id), current_user.org_id)
     
-    return templates.TemplateResponse(
+    ctx = build_template_context(
         request,
-        "shared/approve.html",
-        {
-            "current_user": current_user,
-            "app_id": application_id,
-            "borrower_name": borrower_name,
-            "summary": summary
-        }
+        current_user,
+        app_id=application_id,
+        borrower_name=borrower_name,
+        summary=summary,
+        active_tab="awaiting",
+        active_page="awaiting",
     )
+    return templates.TemplateResponse(request, "shared/approve.html", ctx)
 
 @router.post("/applications/{application_id}/approve")
 async def process_approval_readiness(
@@ -796,15 +855,15 @@ async def render_return_page(
     current_user = Depends(get_current_user)
 ):
     """Page 20 Return Reason Page."""
-    return templates.TemplateResponse(
+    ctx = build_template_context(
         request,
-        "shared/return_page.html",
-        {
-            "current_user": current_user,
-            "app_id": application_id,
-            "title": "Return Loan Application"
-        }
+        current_user,
+        app_id=application_id,
+        title="Return Loan Application",
+        active_tab="awaiting",
+        active_page="awaiting",
     )
+    return templates.TemplateResponse(request, "shared/return_page.html", ctx)
 
 @router.post("/applications/{application_id}/return")
 async def process_return_page(
@@ -894,15 +953,15 @@ async def render_loan_pipeline(
 
     applications = await repo.list_recent(current_user.org_id, limit=500)
 
-    return templates.TemplateResponse(
+    ctx = build_template_context(
         request,
-        "shared/pipeline.html", 
-        {
-            "applications": applications, 
-            "stage_counts": stage_counts,
-            "current_user": current_user
-        }
+        current_user,
+        applications=applications,
+        stage_counts=stage_counts,
+        active_tab="pipeline",
+        active_page="pipeline",
     )
+    return templates.TemplateResponse(request, "shared/pipeline.html", ctx)
 
 @router.get("/borrowers")
 async def render_current_loans(
@@ -920,15 +979,15 @@ async def render_current_loans(
         "approved": sum(1 for app in applications if app.current_stage == 6),
         "active": sum(1 for app in applications if app.stage == "disbursed"),
     }
-    return templates.TemplateResponse(
+    ctx = build_template_context(
         request,
-        "shared/borrowers.html",
-        {
-            "applications": applications,
-            "state_counts": state_counts,
-            "current_user": current_user
-        }
+        current_user,
+        applications=applications,
+        state_counts=state_counts,
+        active_tab="borrowers",
+        active_page="borrowers",
     )
+    return templates.TemplateResponse(request, "shared/borrowers.html", ctx)
 
 @router.get("/audit")
 async def render_compliance_audit(
@@ -955,8 +1014,11 @@ async def render_compliance_audit(
                 self.actor = MockActor()
         events.append(MockEvent(r))
         
-    return templates.TemplateResponse(
+    ctx = build_template_context(
         request,
-        "shared/audit.html", 
-        {"events": events, "current_user": current_user}
+        current_user,
+        events=events,
+        active_tab="audit",
+        active_page="audit",
     )
+    return templates.TemplateResponse(request, "shared/audit.html", ctx)

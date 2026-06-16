@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends shell %}
 
 {% set active_page = "pipeline" %}
 
@@ -7,7 +7,7 @@
 {% block page_title %}Loan Pipeline{% endblock %}
 
 {% block topbar_actions %}
-<a class="btn-primary-filled" href="/applications/new">New Application</a>
+<a class="btn-primary-filled queue-new-link" href="/applications/new">New Application</a>
 {% endblock %}
 
 {% block content %}

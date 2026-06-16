@@ -58,10 +58,15 @@ async def add_security_headers(request: Request, call_next):
         "frame-ancestors 'none'; "
         "object-src 'none';"
     )
-    # TODO(security): Replace 'unsafe-inline' in script-src with nonce-based CSP
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    
+    is_secure = settings.COOKIE_SECURE or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
+    if is_secure:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        
     return response
 
 # Exception handlers
@@ -84,6 +89,29 @@ app.include_router(loans_router)
 
 logger = logging.getLogger("FieldCRMMain")
 
+from fastapi.responses import JSONResponse
+import urllib.parse
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    # Only redirect page requests (non-API) to login on 401/403
+    is_api = request.url.path.startswith("/api/")
+    if exc.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN) and not is_api:
+        next_url = str(request.url.path)
+        if request.url.query:
+            next_url += f"?{request.url.query}"
+        encoded_next = urllib.parse.quote(next_url)
+        return RedirectResponse(
+            url=f"/login?next={encoded_next}",
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+
+    request_id = getattr(request.state, "request_id", "unknown")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail, "request_id": request_id}
+    )
+
 def raise_login_redirect():
     raise HTTPException(
         status_code=status.HTTP_303_SEE_OTHER,
@@ -96,8 +124,24 @@ async def root_view(request: Request):
     return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/login")
-async def render_login(request: Request):
-    return templates.TemplateResponse(request, "shared/login.html", {"error": None})
+async def render_login(request: Request, conn=Depends(db_conn)):
+    token = request.cookies.get("session") or request.cookies.get("__Host-session")
+    if token:
+        try:
+            from app.core.dependencies import get_current_user_from_token
+            await get_current_user_from_token(token, conn)
+            # User is already logged in, redirect to next URL or dashboard
+            next_url = request.query_params.get("next", "")
+            redirect_url = "/dashboard"
+            if next_url and next_url.strip() and next_url.startswith("/") and not next_url.startswith("//"):
+                redirect_url = next_url.strip()
+            return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+        except Exception:
+            # Token invalid, allow login page to render
+            pass
+
+    next_url = request.query_params.get("next", "")
+    return templates.TemplateResponse(request, "shared/login.html", {"error": None, "next_url": next_url})
 
 @app.post("/login")
 async def login_web(
@@ -105,6 +149,7 @@ async def login_web(
     response: Response,
     username: str = Form(...),
     password: str = Form(...),
+    next: str = Form(None),
     conn=Depends(db_conn),
 ):
     """Authenticate user by email and password, set session cookie."""
@@ -117,19 +162,27 @@ async def login_web(
         token = await service.authenticate_user(username, password)
     except Exception as exc:
         logger.error("Login authentication failed for email: [REDACTED]")
+        next_url = next or ""
         return templates.TemplateResponse(
             request,
             "shared/login.html",
-            {"error": "Incorrect email or password."},
+            {"error": "Incorrect email or password.", "next_url": next_url},
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
-    redirect = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    is_secure = settings.COOKIE_SECURE or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
+    
+    # Safe redirect validation: prevent open redirect to external domains
+    redirect_url = "/dashboard"
+    if next and next.strip() and next.startswith("/") and not next.startswith("//"):
+        redirect_url = next.strip()
+
+    redirect = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
     redirect.set_cookie(
         key="session",
         value=token,
         httponly=True,
-        secure=False,  # TODO(security): Set True in production with HTTPS
+        secure=is_secure,
         samesite="strict",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
@@ -137,8 +190,12 @@ async def login_web(
     return redirect
 
 @app.get("/logout")
-async def logout_web():
-    redirect = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+async def logout_web(next: str = None):
+    redirect_url = "/login"
+    if next and next.strip() and next.startswith("/") and not next.startswith("//"):
+        redirect_url += f"?next={urllib.parse.quote(next.strip())}"
+        
+    redirect = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
     redirect.delete_cookie(key="session", path="/")
     redirect.delete_cookie(key="__Host-session", path="/")
     return redirect

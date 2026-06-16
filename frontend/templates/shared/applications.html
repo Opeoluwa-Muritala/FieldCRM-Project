@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends shell %}
 
 {% block title %}Application Queue | FieldCRM{% endblock %}
 {% set active_page = "applications" %}
@@ -14,7 +14,7 @@
             <h2 class="page-card-title">Applications List</h2>
             <p class="page-card-subtitle">Manage and filter loans through intake, OCR review, and approval pipelines.</p>
         </div>
-        <a href="/applications/new" class="btn-primary-filled queue-new-link">+ New Loan Application</a>
+        <a href="/applications/new" class="btn-primary-filled queue-new-link">New Loan Application</a>
     </div>
 
     <!-- Filter Bar below header -->

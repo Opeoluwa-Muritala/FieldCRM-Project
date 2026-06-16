@@ -9,29 +9,18 @@
     'auditor': 'Auditor',
     'system_admin': 'System Admin'
 } %}
-<div class="desktop-shell">
-    {# === DESKTOP SIDEBAR — role-specific, always visible, never collapses === #}
-    <aside class="desktop-sidebar" id="desktopSidebar" aria-label="Primary navigation">
-        {# Logo block #}
-        <div class="sidebar-logo">
-            <span class="logo-composite" role="img" aria-label="Mainstreet Microfinance Bank Logo">
-                <img class="logo-layer logo-layer-shield" src="/static/img/logo.png" alt="" loading="lazy">
-                <img class="logo-layer logo-layer-text" src="/static/img/logo.png" alt="" loading="lazy">
-            </span>
-            <div class="logo-fallback" style="display:none;">
-                MAINSTREET
-                <span>MICROFINANCE BANK</span>
-            </div>
-        </div>
 
-        {# Role-specific sidebar navigation — genuinely different per role #}
+<div class="responsive-shell {% if hide_tabbar %}has-no-tabbar{% endif %}">
+    {# === DESKTOP SIDEBAR — visible on desktop, hidden on mobile === #}
+    <aside class="desktop-sidebar" id="desktopSidebar" aria-label="Primary navigation">
+        <div class="sidebar-logo">
+            <img class="logo-composite" src="/static/img/logo.png" alt="Mainstreet Microfinance Bank Logo" loading="lazy">
+        </div>
         <nav class="sidebar-nav">
             {% block sidebar_nav %}
             {% include sidebar_component ignore missing %}
             {% endblock %}
         </nav>
-
-        {# User profile block at bottom #}
         <div class="sidebar-user">
             {% set initials = "" %}
             {% if user and user.name %}
@@ -56,8 +45,11 @@
     </aside>
 
     {# === MAIN WORKSPACE === #}
-    <div class="desktop-main">
-        {# === DESKTOP TOPBAR === #}
+    <div class="responsive-main">
+        {# === MOBILE TOPBAR — visible on mobile, hidden on desktop === #}
+        {% include "components/mobile_topbar.html" %}
+
+        {# === DESKTOP TOPBAR — visible on desktop, hidden on mobile === #}
         <header class="desktop-topbar">
             <div class="topbar-left">
                 <div class="topbar-breadcrumb">{% block breadcrumb %}Mainstreet{% endblock %}</div>
@@ -72,14 +64,31 @@
         </header>
 
         {# === CONTENT AREA === #}
-        <main class="desktop-content">
+        <main class="responsive-content" id="responsiveContent">
+            {# Pull-to-refresh sentinel for mobile #}
+            <div class="ptr-sentinel" id="ptrSentinel"></div>
+            
             <div class="content-wrapper">
                 {% block content %}{% endblock %}
             </div>
         </main>
+
+        {# === MOBILE BOTTOM TAB BAR === #}
+        {% if not hide_tabbar %}
+        <nav class="mobile-tabbar" id="mobileTabbar" aria-label="Primary navigation">
+            {% block tabbar %}
+            {% include tabbar_component ignore missing %}
+            {% endblock %}
+        </nav>
+        {% endif %}
     </div>
 
-    {# === DETAIL DRAWER (branch manager + credit officer desktop only) === #}
+    {# === FLOATING ACTION BUTTON (mobile only, optional) === #}
+    {% block fab %}{% endblock %}
+
+    {# === DETAIL DRAWER (desktop only, optional) === #}
     {% block detail_drawer %}{% endblock %}
 </div>
+
+<script src="/static/js/mobile.js"></script>
 {% endblock %}

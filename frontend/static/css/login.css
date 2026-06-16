@@ -52,26 +52,9 @@ input {
 .logo-composite {
     width: 180px;
     aspect-ratio: 1 / 1;
-    display: inline-block;
-    position: relative;
-    overflow: hidden;
-}
-
-.logo-layer {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+    display: block;
     object-fit: contain;
-}
-
-.logo-layer-shield {
-    clip-path: inset(0 68% 0 0);
-}
-
-.logo-layer-text {
-    clip-path: inset(0 0 0 28%);
-    filter: grayscale(1) saturate(0) brightness(0.82);
+    filter: none;
 }
 
 .brand-content {
