@@ -3,40 +3,22 @@ package com.fieldcrm.android
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.fieldcrm.android.ui.screens.*
+import com.fieldcrm.android.ui.viewmodel.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    LoginScreen()
+                Surface {
+                    FieldCRMApp()
                 }
             }
         }
@@ -44,57 +26,115 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun LoginScreen() {
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+fun FieldCRMApp() {
+    val appViewModel: AppViewModel = viewModel()
+    val loginViewModel: LoginViewModel = viewModel()
+    val borrowerViewModel: BorrowerViewModel = viewModel()
+    val applicationViewModel: ApplicationViewModel = viewModel()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "FieldCRM",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            text = "Lending Operations CRM",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.secondary
-        )
-        
-        Spacer(modifier = Modifier.height(48.dp))
-        
-        OutlinedTextField(
-            value = username,
-            onValueChange = { username = it },
-            label = { Text("Phone Number or BVN") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
-        )
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        Button(
-            onClick = { /* Secure auth transition logic */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
-        ) {
-            Text("Login Securely")
+    when (appViewModel.currentScreen.value) {
+        Screen.Login -> {
+            LoginScreenView(
+                viewModel = loginViewModel,
+                onLoginSuccess = {
+                    appViewModel.setAuthToken(it)
+                    appViewModel.navigateTo(Screen.Dashboard)
+                }
+            )
+        }
+        Screen.Dashboard -> {
+            DashboardScreenView(
+                onNavigateToBorrowers = {
+                    appViewModel.navigateTo(Screen.BorrowerList)
+                },
+                onNavigateToApplications = {
+                    appViewModel.navigateTo(Screen.ApplicationList)
+                },
+                onLogout = {
+                    appViewModel.logout()
+                }
+            )
+        }
+        Screen.BorrowerList -> {
+            BorrowerListScreenView(
+                viewModel = borrowerViewModel,
+                onBorrowerSelected = { borrower ->
+                    appViewModel.setSelectedBorrower(borrower)
+                    appViewModel.navigateTo(Screen.BorrowerDetail)
+                },
+                onAddBorrower = {
+                    appViewModel.navigateTo(Screen.CreateBorrower)
+                },
+                onBackClick = {
+                    appViewModel.navigateTo(Screen.Dashboard)
+                }
+            )
+        }
+        Screen.BorrowerDetail -> {
+            appViewModel.selectedBorrower.value?.let { borrower ->
+                BorrowerDetailScreenView(
+                    borrower = borrower,
+                    onBackClick = {
+                        appViewModel.setSelectedBorrower(null)
+                        appViewModel.navigateTo(Screen.BorrowerList)
+                    },
+                    onCreateApplication = {
+                        applicationViewModel.setSelectedBorrowerForApp(borrower)
+                        appViewModel.navigateTo(Screen.CreateApplication)
+                    }
+                )
+            }
+        }
+        Screen.CreateBorrower -> {
+            CreateBorrowerScreenView(
+                viewModel = borrowerViewModel,
+                onBorrowerCreated = { newBorrower ->
+                    appViewModel.navigateTo(Screen.BorrowerList)
+                },
+                onBackClick = {
+                    appViewModel.navigateTo(Screen.BorrowerList)
+                }
+            )
+        }
+        Screen.ApplicationList -> {
+            ApplicationListScreenView(
+                viewModel = applicationViewModel,
+                borrowers = borrowerViewModel.borrowers.value,
+                onApplicationSelected = { app ->
+                    appViewModel.setSelectedApplication(app)
+                    appViewModel.navigateTo(Screen.ApplicationDetail)
+                },
+                onAddApplication = {
+                    appViewModel.navigateTo(Screen.CreateApplication)
+                },
+                onBackClick = {
+                    appViewModel.navigateTo(Screen.Dashboard)
+                }
+            )
+        }
+        Screen.ApplicationDetail -> {
+            appViewModel.selectedApplication.value?.let { app ->
+                ApplicationDetailScreenView(
+                    application = app,
+                    borrower = borrowerViewModel.borrowers.value.find { it.id == app.borrower_id },
+                    onBackClick = {
+                        appViewModel.setSelectedApplication(null)
+                        appViewModel.navigateTo(Screen.ApplicationList)
+                    }
+                )
+            }
+        }
+        Screen.CreateApplication -> {
+            CreateApplicationScreenView(
+                viewModel = applicationViewModel,
+                borrowers = borrowerViewModel.borrowers.value,
+                onApplicationCreated = { newApp ->
+                    appViewModel.navigateTo(Screen.ApplicationList)
+                },
+                onBackClick = {
+                    appViewModel.navigateTo(Screen.ApplicationList)
+                }
+            )
         }
     }
 }
