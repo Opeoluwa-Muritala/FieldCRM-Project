@@ -18,6 +18,7 @@ venv/
 
 .vscode/
 .idea/
+local.properties
 
 .gradle/
 **/build/

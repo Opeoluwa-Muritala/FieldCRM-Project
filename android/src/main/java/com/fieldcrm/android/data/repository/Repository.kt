@@ -60,7 +60,7 @@ class ApplicationRepository(
 
     suspend fun getAllApplications(): List<LoanApplicationModel> {
         return try {
-            emptyList() // Mock - implement actual API call
+            client.fetchApplications()
         } catch (e: Exception) {
             emptyList()
         }
@@ -82,7 +82,7 @@ class ApplicationRepository(
 
     suspend fun getApplicationById(id: String): LoanApplicationModel? {
         return try {
-            emptyList<LoanApplicationModel>().find { it.id == id }
+            client.fetchApplications().find { it.id == id }
         } catch (e: Exception) {
             null
         }

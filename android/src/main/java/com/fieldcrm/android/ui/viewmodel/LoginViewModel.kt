@@ -1,47 +1,54 @@
 package com.fieldcrm.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.State
+import androidx.compose.runtime.Immutable
+import com.fieldcrm.android.core.session.UserRole
+import com.fieldcrm.android.core.session.UserSession
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import java.util.UUID
 
+@Immutable
+data class LoginUiState(
+    val email: String = "",
+    val password: String = "",
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
+
 class LoginViewModel : ViewModel() {
-    private val _username = mutableStateOf("")
-    val username: State<String> = _username
+    private val _uiState = MutableStateFlow(LoginUiState())
+    val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
-    private val _password = mutableStateOf("")
-    val password: State<String> = _password
-
-    private val _isLoading = mutableStateOf(false)
-    val isLoading: State<Boolean> = _isLoading
-
-    private val _errorMessage = mutableStateOf<String?>(null)
-    val errorMessage: State<String?> = _errorMessage
-
-    fun setUsername(value: String) {
-        _username.value = value
-        _errorMessage.value = null
+    fun setEmail(value: String) {
+        _uiState.update { it.copy(email = value, error = null) }
     }
 
     fun setPassword(value: String) {
-        _password.value = value
-        _errorMessage.value = null
+        _uiState.update { it.copy(password = value, error = null) }
     }
 
-    fun login(onSuccess: (String) -> Unit) {
-        if (_username.value.isEmpty() || _password.value.isEmpty()) {
-            _errorMessage.value = "Please fill in all fields"
+    fun login(onSuccess: (UserSession) -> Unit) {
+        val state = _uiState.value
+        if (state.email.isBlank() || state.password.isBlank()) {
+            _uiState.update { it.copy(error = "Please fill in all fields") }
             return
         }
 
-        _isLoading.value = true
-        // Simulate authentication delay
-        val token = "token_${UUID.randomUUID()}"
-        _isLoading.value = false
-        onSuccess(token)
+        _uiState.update { it.copy(isLoading = true) }
+        val session = UserSession(
+            token = "token_${UUID.randomUUID()}",
+            role = UserRole.fromLoginIdentifier(state.email),
+            orgId = "org_1",
+            userEmail = state.email
+        )
+        _uiState.update { it.copy(isLoading = false) }
+        onSuccess(session)
     }
 
     fun clearError() {
-        _errorMessage.value = null
+        _uiState.update { it.copy(error = null) }
     }
 }
