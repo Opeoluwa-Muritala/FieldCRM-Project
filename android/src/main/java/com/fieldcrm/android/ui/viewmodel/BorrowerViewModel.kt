@@ -1,116 +1,131 @@
 package com.fieldcrm.android.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.State
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.compose.runtime.Immutable
+import app.cash.sqldelight.driver.android.AndroidSqliteDriver
+import com.fieldcrm.android.data.repository.BorrowerRepository
+import com.fieldcrm.shared.api.FieldCRMClient
+import com.fieldcrm.shared.db.AppDatabase
 import com.fieldcrm.shared.model.BorrowerModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.util.UUID
 
-class BorrowerViewModel : ViewModel() {
-    private val _borrowers = mutableStateOf<List<BorrowerModel>>(emptyList())
-    val borrowers: State<List<BorrowerModel>> = _borrowers
+@Immutable
+data class BorrowerUiState(
+    val borrowers: List<BorrowerModel> = emptyList(),
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val newBorrowerName: String = "",
+    val newBorrowerPhone: String = "",
+    val newBorrowerBvn: String = "",
+    val newBorrowerNin: String = ""
+)
 
-    private val _isLoading = mutableStateOf(false)
-    val isLoading: State<Boolean> = _isLoading
+class BorrowerViewModel(application: Application) : AndroidViewModel(application) {
+    private val _uiState = MutableStateFlow(BorrowerUiState())
+    val uiState: StateFlow<BorrowerUiState> = _uiState.asStateFlow()
 
-    private val _errorMessage = mutableStateOf<String?>(null)
-    val errorMessage: State<String?> = _errorMessage
-
-    private val _newBorrowerName = mutableStateOf("")
-    val newBorrowerName: State<String> = _newBorrowerName
-
-    private val _newBorrowerPhone = mutableStateOf("")
-    val newBorrowerPhone: State<String> = _newBorrowerPhone
-
-    private val _newBorrowerBvn = mutableStateOf("")
-    val newBorrowerBvn: State<String> = _newBorrowerBvn
-
-    private val _newBorrowerNin = mutableStateOf("")
-    val newBorrowerNin: State<String> = _newBorrowerNin
+    private val database: AppDatabase
+    private val client: FieldCRMClient
+    private val repository: BorrowerRepository
 
     init {
+        val driver = AndroidSqliteDriver(
+            schema = AppDatabase.Schema,
+            context = application,
+            name = "fieldcrm_offline.db"
+        )
+        database = AppDatabase(driver)
+
+        // Device IP resolution: uses loopback for physical USB device with adb reverse,
+        // and 10.0.2.2 loopback for Android SDK emulator.
+        val isEmulator = android.os.Build.FINGERPRINT.startsWith("generic")
+            || android.os.Build.MODEL.contains("google_sdk")
+            || android.os.Build.MODEL.contains("Emulator")
+            || android.os.Build.MODEL.contains("Android SDK built for x86")
+        val baseUrl = if (isEmulator) "http://10.0.2.2:8000" else "http://localhost:8000"
+
+        client = FieldCRMClient(baseUrl)
+        repository = BorrowerRepository(database, client)
+
         loadBorrowers()
     }
 
     private fun loadBorrowers() {
-        _isLoading.value = true
-        // Mock data - replace with actual API call
-        _borrowers.value = listOf(
-            BorrowerModel(
-                id = UUID.randomUUID().toString(),
-                org_id = "org_1",
-                loan_officer_id = "lo_1",
-                name = "John Doe",
-                phone = "+2348012345678",
-                bvn = "12345678901",
-                nin = "11223344556",
-                status = "ACTIVE",
-                created_at = "2024-01-15"
-            ),
-            BorrowerModel(
-                id = UUID.randomUUID().toString(),
-                org_id = "org_1",
-                loan_officer_id = "lo_1",
-                name = "Jane Smith",
-                phone = "+2348087654321",
-                bvn = "98765432109",
-                nin = "99887766554",
-                status = "ACTIVE",
-                created_at = "2024-01-16"
-            )
-        )
-        _isLoading.value = false
+        _uiState.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            val list = repository.getAllBorrowers()
+            _uiState.update { it.copy(borrowers = list, isLoading = false) }
+        }
     }
 
     fun setNewBorrowerName(value: String) {
-        _newBorrowerName.value = value
+        _uiState.update { it.copy(newBorrowerName = value, errorMessage = null) }
     }
 
     fun setNewBorrowerPhone(value: String) {
-        _newBorrowerPhone.value = value
+        _uiState.update { it.copy(newBorrowerPhone = value, errorMessage = null) }
     }
 
     fun setNewBorrowerBvn(value: String) {
-        _newBorrowerBvn.value = value
+        _uiState.update { it.copy(newBorrowerBvn = value, errorMessage = null) }
     }
 
     fun setNewBorrowerNin(value: String) {
-        _newBorrowerNin.value = value
+        _uiState.update { it.copy(newBorrowerNin = value, errorMessage = null) }
     }
 
     fun createBorrower(onSuccess: (BorrowerModel) -> Unit) {
-        if (_newBorrowerName.value.isEmpty() || _newBorrowerPhone.value.isEmpty() ||
-            _newBorrowerBvn.value.isEmpty() || _newBorrowerNin.value.isEmpty()
+        val state = _uiState.value
+        if (state.newBorrowerName.isBlank() || state.newBorrowerPhone.isBlank() ||
+            state.newBorrowerBvn.isBlank() || state.newBorrowerNin.isBlank()
         ) {
-            _errorMessage.value = "Please fill in all fields"
+            _uiState.update { it.copy(errorMessage = "Please fill in all fields") }
             return
         }
 
-        _isLoading.value = true
+        _uiState.update { it.copy(isLoading = true) }
         val newBorrower = BorrowerModel(
             id = UUID.randomUUID().toString(),
             org_id = "org_1",
             loan_officer_id = "lo_1",
-            name = _newBorrowerName.value,
-            phone = _newBorrowerPhone.value,
-            bvn = _newBorrowerBvn.value,
-            nin = _newBorrowerNin.value,
+            name = state.newBorrowerName,
+            phone = state.newBorrowerPhone,
+            bvn = state.newBorrowerBvn,
+            nin = state.newBorrowerNin,
             status = "ACTIVE",
             created_at = System.currentTimeMillis().toString()
         )
 
-        _borrowers.value = _borrowers.value + newBorrower
-        clearNewBorrowerFields()
-        _isLoading.value = false
-        onSuccess(newBorrower)
+        viewModelScope.launch {
+            val success = repository.createBorrower(newBorrower)
+            if (success) {
+                _uiState.update { it.copy(borrowers = it.borrowers + newBorrower) }
+                clearNewBorrowerFields()
+                _uiState.update { it.copy(isLoading = false) }
+                onSuccess(newBorrower)
+            } else {
+                _uiState.update { it.copy(errorMessage = "Network error. Queued for offline sync.", isLoading = false) }
+            }
+        }
     }
 
     private fun clearNewBorrowerFields() {
-        _newBorrowerName.value = ""
-        _newBorrowerPhone.value = ""
-        _newBorrowerBvn.value = ""
-        _newBorrowerNin.value = ""
-        _errorMessage.value = null
+        _uiState.update {
+            it.copy(
+                newBorrowerName = "",
+                newBorrowerPhone = "",
+                newBorrowerBvn = "",
+                newBorrowerNin = "",
+                errorMessage = null
+            )
+        }
     }
 
     fun refreshBorrowers() {

@@ -1,117 +1,89 @@
 # FieldCRM
 
-FieldCRM is a loan workflow, document review, and field-operations CRM for microfinance teams. It combines a FastAPI web application, role-aware server-rendered dashboards, an Android Jetpack Compose app, and a Kotlin Multiplatform shared module for mobile data models, API access, and offline sync foundations.
+FieldCRM is a loan origination and processing CRM for microfinance and retail lending teams. It manages the loan workflow from borrower intake through document review, OCR checks, credit review, branch approval, disbursement readiness, and audit.
 
-## What It Does
+The project contains:
 
-FieldCRM supports the operational path of a microfinance loan from intake through review, approval, and audit:
+- A FastAPI backend with REST endpoints and server-rendered Jinja pages
+- Role-aware web dashboards for field and back-office staff
+- A native Android app built with Kotlin and Jetpack Compose
+- A Kotlin Multiplatform `shared` module for mobile models, API access, local storage, and sync foundations
 
-- Borrower and loan application intake
-- Role-based dashboards for system admins, branch managers, loan officers, credit officers, and auditors
-- Loan pipeline tracking across intake, OCR review, credit review, branch approval, disbursement readiness, disbursed, returned, and rejected stages
-- Guarantor, visitation, document upload, OCR review, credit review, approval, return, and audit workflows
-- Device-aware web rendering with separate desktop shells and mobile shells
-- Android screens for login, dashboard, borrowers, and applications
-- Shared Kotlin models and API client scaffolding for mobile sync
+## What This App Does
+
+FieldCRM tracks applications through a controlled lending workflow:
+
+1. Loan officers create borrowers and start loan applications.
+2. Required borrower, guarantor, pledge, visitation, and document information is collected.
+3. Uploaded documents can move through OCR review and correction.
+4. Credit officers review risk, documents, and recommendations.
+5. Branch managers review and approve or return applications.
+6. Auditors and system admins review compliance, audit history, and operational activity.
+
+The web app is role-aware and device-aware. The same backend renders different dashboard pages and navigation for loan officers, branch managers, credit officers, auditors, and system admins. Mobile web users receive mobile shells and tab bars; desktop users receive desktop shells and sidebars.
 
 ## Repository Layout
 
 ```text
 FieldCRM/
-|-- backend/                  FastAPI app, domain services, raw SQL repositories, migrations
+|-- backend/                  FastAPI app, domain routers, services, repositories, migrations
 |-- frontend/                 Jinja templates, static CSS, JavaScript, and images
-|-- android/                  Native Android app built with Jetpack Compose
-|-- shared/                   Kotlin Multiplatform module used by Android and future clients
+|-- android/                  Android Jetpack Compose app
+|-- shared/                   Kotlin Multiplatform module used by Android
 |-- gradle/                   Gradle wrapper files
 |-- build.gradle.kts          Root Gradle plugin configuration
-|-- settings.gradle.kts       Gradle modules: :shared and :android
+|-- settings.gradle.kts       Gradle module includes
 |-- test_imports.py           Backend import smoke test
-`-- run_scans.py              Optional external security scanner helper
+`-- README.md
 ```
 
-## Architecture
+## Main Technologies
 
-### Backend
+Backend:
 
-The backend is a FastAPI application under `backend/app`.
+- Python
+- FastAPI
+- Jinja2
+- asyncpg / psycopg2
+- SQL files grouped by domain
+- Pydantic settings and schemas
 
-Key backend areas:
+Web frontend:
 
-- `backend/app/main.py` wires the FastAPI app, static files, templates, CORS, security headers, login/logout routes, and mounted routers.
-- `backend/app/core/` contains configuration, security, database access, middleware, audit helpers, pagination, and template utilities.
-- `backend/app/domains/*/` contains feature domains. Each domain typically has:
-  - `router.py` for HTTP routes
-  - `service.py` for business logic
-  - `repository.py` for data access
-  - `queries/*.sql` for raw SQL statements
-- `backend/migrations/` contains PostgreSQL schema and seed SQL.
-- `frontend/templates/` contains the server-rendered web UI.
+- Server-rendered Jinja templates
+- Vanilla CSS and JavaScript
+- Separate desktop and mobile shells
+- Role-specific dashboards and navigation
 
-The backend is intentionally domain-oriented. Keep route handling, business rules, and SQL access separated.
+Android:
 
-### Web UI
-
-The web app is rendered with Jinja templates and static assets from `frontend/`.
-
-Important template groups:
-
-- `frontend/templates/base/` contains desktop and mobile shells.
-- `frontend/templates/components/` contains role-specific navigation components.
-- `frontend/templates/shared/` contains reusable workflow pages.
-- `frontend/templates/{role}/` contains role-specific dashboards and application detail pages.
-
-The backend detects device type and role to choose the right shell/template combination.
-
-### Android App
-
-The Android app lives in `android/` and uses Jetpack Compose.
-
-Important Android areas:
-
-- `android/src/main/java/com/fieldcrm/android/MainActivity.kt` contains app-level screen routing.
-- `android/src/main/java/com/fieldcrm/android/ui/screens/` contains one file per Compose screen.
-- `android/src/main/java/com/fieldcrm/android/ui/viewmodel/` contains app, login, borrower, and application view models.
-- `android/src/main/java/com/fieldcrm/android/data/repository/` contains mobile repository scaffolding.
-- `android/src/main/java/com/fieldcrm/android/sync/` contains WorkManager sync scaffolding.
-
-### Shared Kotlin Module
-
-The shared module lives in `shared/` and is configured as a Kotlin Multiplatform library.
-
-It currently includes:
-
-- Shared borrower and loan application models
-- Ktor API client scaffolding
-- SQLDelight database schema
-- Sync repository foundations
-- Android and iOS targets
-
-## Prerequisites
-
-Install these before running the project:
-
-- Python 3.11 or newer
-- Java Development Kit compatible with Android Gradle Plugin 8.2.x
-- Android Studio for Android development
-- PostgreSQL for the seeded backend workflow data
-- PowerShell or a POSIX-compatible shell for local commands
-
-Gradle is provided through the wrapper scripts:
-
-- Windows: `gradlew.bat`
-- macOS/Linux: `./gradlew`
-
-The first Gradle run downloads the configured Gradle distribution.
+- Kotlin
+- Jetpack Compose
+- Material 3
+- ViewModels
+- WorkManager
+- Kotlin Multiplatform shared module
+- SQLDelight in the shared module
+- Ktor client scaffolding in the shared module
 
 ## Backend Setup
 
-From the repository root:
+Run these commands from the repository root.
+
+### 1. Create And Activate A Virtual Environment
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+```
+
+### 2. Install Backend Dependencies
+
+```powershell
 pip install -r backend\requirements.txt
 ```
+
+### 3. Configure Environment Variables
 
 Create `backend/.env`:
 
@@ -121,13 +93,21 @@ JWT_SECRET_KEY=replace-with-a-long-random-secret
 COOKIE_SECURE=false
 ```
 
-Then run the PostgreSQL migrations and seed data:
+The app can fall back to a local SQLite path if no database URL is provided, but the bundled migration and seed scripts are PostgreSQL-oriented. Use PostgreSQL for the full demo dataset.
+
+### 4. Run Migrations And Seed Data
 
 ```powershell
 python backend\migrations\run_migration.py
 ```
 
-Start the backend:
+This runs:
+
+- `001_full_schema.sql`
+- `002_ref_no_sequence.sql`
+- `003_seed_demo.sql`
+
+### 5. Start The Web App And API
 
 ```powershell
 uvicorn app.main:app --app-dir backend --reload
@@ -137,11 +117,16 @@ Open:
 
 - Web app: `http://127.0.0.1:8000/login`
 - API docs: `http://127.0.0.1:8000/api/docs`
+- ReDoc: `http://127.0.0.1:8000/api/redoc`
 - Health check: `http://127.0.0.1:8000/api/v1/health`
 
-## Demo Users
+## Demo Login Accounts
 
-The seed data creates one organization, demo loan applications, and these users. All seeded users use the password `password123`.
+Seeded users all use this password:
+
+```text
+password123
+```
 
 | Role | Email |
 | --- | --- |
@@ -151,15 +136,98 @@ The seed data creates one organization, demo loan applications, and these users.
 | Credit Officer | `fatima@mmfb.com` |
 | Auditor | `samuel@mmfb.com` |
 
-## Database Notes
+## Web Routes To Try
 
-`backend/app/core/config.py` can fall back to a local `fieldcrm.db` SQLite URL when no PostgreSQL settings are supplied. That fallback is useful for lightweight local experiments, but the provided migration runner and seed SQL are PostgreSQL-oriented.
+After logging in, useful routes include:
 
-For the full seeded workflow, use PostgreSQL and set `DATABASE_URL` in `backend/.env`.
+- `/dashboard`
+- `/applications`
+- `/applications/new`
+- `/pipeline`
+- `/borrowers`
+- `/audit`
+- `/audit-trail`
+- `/compliance-flags`
+- `/users`
+- `/system-activity`
 
-Local database files and secrets should not be committed.
+Some routes are role-gated. If a user does not have the required role, the backend redirects or returns an authorization error.
 
-## Running Tests And Checks
+## Android Setup
+
+The Android app is in the `android` module and depends on the `shared` Kotlin Multiplatform module.
+
+Recommended local tools:
+
+- Android Studio
+- Android SDK installed locally
+- JDK 17
+- Gradle wrapper from this repository
+
+Create a local `local.properties` file if Android Studio has not already created one:
+
+```properties
+sdk.dir=C\:\\Users\\YOUR_USER\\AppData\\Local\\Android\\Sdk
+```
+
+Do not commit `local.properties`; it is machine-specific.
+
+### Compile The Android App
+
+On Windows:
+
+```powershell
+.\gradlew.bat :android:compileDebugKotlin
+```
+
+Build a debug APK:
+
+```powershell
+.\gradlew.bat :android:assembleDebug
+```
+
+Open the project in Android Studio if you want to run it on an emulator or physical device.
+
+## Android App Structure
+
+```text
+android/src/main/java/com/fieldcrm/android/
+|-- MainActivity.kt
+|-- core/
+|   |-- network/
+|   `-- session/
+|-- data/repository/
+|-- sync/
+`-- ui/
+    |-- screens/
+    `-- viewmodel/
+```
+
+Current mobile screens include:
+
+- Login
+- Dashboard
+- Borrower list
+- Borrower details
+- Create borrower
+- Application list
+- Application details
+- Create application
+
+The Android implementation is still a work in progress. Some repositories, sync paths, and authentication flows are scaffolded or mocked while the backend API contract is being aligned.
+
+## Shared Module
+
+The `shared` module contains cross-platform pieces used by the Android app:
+
+- Borrower and loan application models
+- Ktor API client scaffolding
+- SQLDelight schema for local/offline storage
+- Sync repository foundations
+
+The module is configured for Android and has iOS target scaffolding for future use.
+
+## Running Checks
 
 Backend import smoke test:
 
@@ -167,136 +235,62 @@ Backend import smoke test:
 python test_imports.py
 ```
 
-Basic HTTP connectivity check, after starting the backend:
+HTTP check after starting the backend:
 
 ```powershell
 python backend\test_http.py
 ```
 
-Role and mobile/desktop render checks, after starting the backend with seeded data:
+Role and mobile/desktop render check after starting the backend with seeded data:
 
 ```powershell
 python backend\test_routes_render.py
 ```
 
-Compile the Android Kotlin sources:
+Android Kotlin compile:
 
 ```powershell
 .\gradlew.bat :android:compileDebugKotlin
 ```
 
-Build all Gradle modules:
+## Configuration Reference
+
+Common backend variables:
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Full database connection string |
+| `POSTGRES_SERVER` | PostgreSQL server used when building a default URL |
+| `POSTGRES_USER` | PostgreSQL username |
+| `POSTGRES_PASSWORD` | PostgreSQL password |
+| `POSTGRES_DB` | PostgreSQL database name |
+| `JWT_SECRET_KEY` | JWT signing secret |
+| `COOKIE_SECURE` | Set to `true` for secure HTTPS cookies |
+
+For production or shared environments, always set a stable `JWT_SECRET_KEY`. If no key is provided, the app can generate an ephemeral development fallback, which invalidates sessions after restart.
+
+## Development Notes
+
+- Backend routes should stay thin and delegate business rules to services.
+- Runtime data access should go through repositories and domain SQL files.
+- Templates are split by role and by shared workflow pages.
+- Android screens should stay in separate files under `ui/screens`.
+- Android state should live in ViewModels, repositories, or workers, not directly in composables.
+- Local database files, build outputs, virtual environments, `.env`, and `local.properties` should not be committed.
+
+## Troubleshooting
+
+If backend imports fail, make sure the virtual environment is active and dependencies are installed:
 
 ```powershell
-.\gradlew.bat build
+.\.venv\Scripts\Activate.ps1
+pip install -r backend\requirements.txt
 ```
 
-## Android Development
+If migrations fail, check that `backend/.env` exists and `DATABASE_URL` points to a reachable PostgreSQL database.
 
-Open the repository in Android Studio and use the `android` run configuration, or run Gradle from the command line:
+If Android builds cannot find the SDK, create or fix `local.properties` with the correct `sdk.dir`.
 
-```powershell
-.\gradlew.bat :android:assembleDebug
-```
+If Gradle uses the wrong Java version, run it from a shell where `JAVA_HOME` points to JDK 17.
 
-The mobile app currently uses a simple in-memory screen router in `AppViewModel`. Compose screens are separated by concern:
-
-- `LoginScreen.kt`
-- `DashboardScreen.kt`
-- `BorrowerListScreen.kt`
-- `BorrowerDetailScreen.kt`
-- `CreateBorrowerScreen.kt`
-- `ApplicationListScreen.kt`
-- `ApplicationDetailScreen.kt`
-- `CreateApplicationScreen.kt`
-- `DetailField.kt`
-
-Keep new screens in their own files under `ui/screens/`, and keep business or data-fetching logic in view models or repositories.
-
-## Configuration
-
-Common backend environment variables:
-
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `DATABASE_URL` | Full database connection URL | Local SQLite path if unset |
-| `POSTGRES_SERVER` | PostgreSQL host used to build a URL when `DATABASE_URL` is unset | Empty |
-| `POSTGRES_USER` | PostgreSQL username | `postgres` |
-| `POSTGRES_PASSWORD` | PostgreSQL password | `postgres` |
-| `POSTGRES_DB` | PostgreSQL database name | `fieldcrm` |
-| `JWT_SECRET_KEY` | JWT signing secret | Generated ephemeral fallback |
-| `COOKIE_SECURE` | Marks cookies secure for HTTPS deployments | `false` |
-
-Use a stable `JWT_SECRET_KEY` in any environment where sessions should survive a restart.
-
-## Development Guidelines
-
-- Keep backend code organized by domain.
-- Put reusable business logic in services, not routers.
-- Keep raw SQL in `queries/*.sql` when adding repository queries.
-- Avoid committing generated local database files, secrets, or build outputs.
-- Keep web templates role-aware and device-aware.
-- Keep Android screens focused on UI composition.
-- Keep Android state and side effects in view models, repositories, or workers.
-- Prefer shared Kotlin models when data crosses mobile boundaries.
-
-## Common Workflows
-
-### Add A Backend Domain Route
-
-1. Add or update SQL in `backend/app/domains/<domain>/queries/`.
-2. Add repository methods in `repository.py`.
-3. Add business rules in `service.py`.
-4. Add request/response handling in `router.py`.
-5. Mount the router in `backend/app/main.py` if it is a new domain.
-6. Add or update tests/check scripts.
-
-### Add A Web Page
-
-1. Add a route in the relevant domain router.
-2. Build the context with `build_template_context`.
-3. Add the template under the matching role or shared folder.
-4. Reuse base shells and navigation components.
-5. Verify desktop and mobile rendering paths.
-
-### Add An Android Screen
-
-1. Create a new file in `android/src/main/java/com/fieldcrm/android/ui/screens/`.
-2. Add view state and actions to the appropriate view model.
-3. Add the screen route to `Screen` in `AppViewModel.kt`.
-4. Wire navigation in `MainActivity.kt`.
-5. Compile with `.\gradlew.bat :android:compileDebugKotlin`.
-
-## Security Notes
-
-The backend sets several response headers by default, including frame protection, content security policy, content type sniffing protection, referrer policy, and cache-control headers. Session cookies are HTTP-only and can be marked secure with `COOKIE_SECURE=true`.
-
-For production:
-
-- Set a strong `JWT_SECRET_KEY`.
-- Use HTTPS and set `COOKIE_SECURE=true`.
-- Restrict CORS origins to trusted hosts.
-- Store secrets outside source control.
-- Use a managed PostgreSQL instance or a properly backed-up database.
-
-## Current Limitations
-
-- The Android repositories and authentication are partially scaffolded and still contain mock behavior.
-- The provided migration runner targets PostgreSQL.
-- Some mobile API client routes are scaffolded ahead of full backend API coverage.
-- File upload and OCR behavior currently includes demo/mock paths in parts of the workflow.
-
-## Useful URLs
-
-When running locally on port `8000`:
-
-- `/login`
-- `/dashboard`
-- `/applications`
-- `/applications/new`
-- `/pipeline`
-- `/borrowers`
-- `/audit`
-- `/api/docs`
-- `/api/redoc`
-- `/api/v1/health`
+If the first Android build is slow, Gradle may be downloading the wrapper distribution, Android Gradle Plugin, Kotlin dependencies, and Compose dependencies.

@@ -8,7 +8,6 @@ import com.fieldcrm.shared.model.SyncPayload
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.uuid.Serializer
 
 class SyncRepository(
     private val database: AppDatabase,

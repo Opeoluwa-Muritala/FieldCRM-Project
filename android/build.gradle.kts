@@ -37,6 +37,9 @@ android {
     
     kotlinOptions {
         jvmTarget = "1.8"
+        freeCompilerArgs = freeCompilerArgs + listOf(
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api"
+        )
     }
     
     buildFeatures {
@@ -57,6 +60,10 @@ android {
 dependencies {
     // Import shared Kotlin Multiplatform library
     implementation(project(":shared"))
+    
+    // Ktor Client & SQLDelight Android Driver
+    implementation("io.ktor:ktor-client-core:2.3.8")
+    implementation("app.cash.sqldelight:android-driver:2.0.1")
     
     // Jetpack Compose Standard
     implementation("androidx.activity:activity-compose:1.8.2")

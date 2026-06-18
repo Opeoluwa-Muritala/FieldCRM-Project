@@ -59,4 +59,15 @@ class FieldCRMClient(private val baseUrl: String) {
             emptyList()
         }
     }
+
+    suspend fun fetchApplications(): List<LoanApplicationModel> {
+        val response = client.get("$baseUrl/api/v1/applications/") {
+            secureHeaders()
+        }
+        return if (response.status == HttpStatusCode.OK) {
+            Json.decodeFromString(response.bodyAsText())
+        } else {
+            emptyList()
+        }
+    }
 }

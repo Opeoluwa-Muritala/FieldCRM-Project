@@ -1,35 +1,27 @@
 package com.fieldcrm.android.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fieldcrm.android.ui.components.*
+import com.fieldcrm.android.ui.theme.FieldCRMTheme
+import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.ui.viewmodel.ApplicationUiState
 import com.fieldcrm.android.ui.viewmodel.ApplicationViewModel
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
@@ -41,111 +33,209 @@ fun CreateApplicationScreenView(
     onApplicationCreated: (LoanApplicationModel) -> Unit,
     onBackClick: () -> Unit
 ) {
-    var expandedBorrower by remember { mutableStateOf(false) }
+    val state by viewModel.uiState.collectAsState()
 
+    CreateApplicationContent(
+        isLoading = state.isLoading,
+        errorMessage = state.errorMessage,
+        newAppAmount = state.newAppAmount,
+        newAppTenure = state.newAppTenure,
+        newAppInterestRate = state.newAppInterestRate,
+        selectedBorrower = state.selectedBorrowerForApp,
+        borrowers = borrowers,
+        onAmountChange = { viewModel.setNewAppAmount(it) },
+        onTenureChange = { viewModel.setNewAppTenure(it) },
+        onInterestChange = { viewModel.setNewAppInterestRate(it) },
+        onBorrowerSelected = { viewModel.setSelectedBorrowerForApp(it) },
+        onCreateClick = {
+            viewModel.createApplication { newApp ->
+                onApplicationCreated(newApp)
+            }
+        },
+        onBackClick = onBackClick
+    )
+}
+
+@Composable
+fun CreateApplicationContent(
+    isLoading: Boolean,
+    errorMessage: String?,
+    newAppAmount: String,
+    newAppTenure: String,
+    newAppInterestRate: String,
+    selectedBorrower: BorrowerModel?,
+    borrowers: List<BorrowerModel>,
+    onAmountChange: (String) -> Unit,
+    onTenureChange: (String) -> Unit,
+    onInterestChange: (String) -> Unit,
+    onBorrowerSelected: (BorrowerModel) -> Unit,
+    onCreateClick: () -> Unit,
+    onBackClick: () -> Unit
+) {
     Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(FieldTheme.colors.gray950),
         topBar = {
-            TopAppBar(
-                title = { Text("New Application") },
+            FieldTopAppBar(
+                title = "New Lending intake",
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = FieldTheme.colors.gray400
+                        )
                     }
                 }
             )
-        }
+        },
+        containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
-        LazyColumn(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
+                .padding(paddingValues),
+            contentAlignment = Alignment.TopCenter
         ) {
-            item {
-                Box {
-                    OutlinedTextField(
-                        value = viewModel.selectedBorrowerForApp.value?.name ?: "",
-                        onValueChange = {},
-                        label = { Text("Select Borrower") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { expandedBorrower = true },
-                        readOnly = true
-                    )
-                    DropdownMenu(
-                        expanded = expandedBorrower,
-                        onDismissRequest = { expandedBorrower = false },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        borrowers.forEach { borrower ->
-                            DropdownMenuItem(
-                                text = { Text(borrower.name) },
-                                onClick = {
-                                    viewModel.setSelectedBorrowerForApp(borrower)
-                                    expandedBorrower = false
-                                }
+            val isWide = maxWidth >= 600.dp
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .widthIn(max = 480.dp)
+                        .fillMaxWidth()
+                ) {
+                    FieldCard {
+                        Text(
+                            text = "Intake Form",
+                            style = FieldTheme.typography.title,
+                            color = FieldTheme.colors.gray100
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "START NEW LOAN VERIFICATION SEQUENCE",
+                            style = FieldTheme.typography.label.copy(color = FieldTheme.colors.purple400)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        // Select Borrower Dropdown
+                        val borrowerNames = borrowers.map { it.name }
+                        val selectedName = selectedBorrower?.name ?: ""
+                        
+                        FieldDropdown(
+                            value = selectedName,
+                            options = borrowerNames,
+                            onOptionSelected = { name ->
+                                borrowers.find { it.name == name }?.let { onBorrowerSelected(it) }
+                            },
+                            label = "Select Borrower Profile",
+                            isRequired = true
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Loan Amount (₦ currency specific field)
+                        FieldAmountField(
+                            value = newAppAmount,
+                            onValueChange = onAmountChange,
+                            label = "Principal Amount",
+                            isRequired = true
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                FieldTextField(
+                                    value = newAppTenure,
+                                    onValueChange = onTenureChange,
+                                    label = "Tenure",
+                                    placeholder = "Months",
+                                    isRequired = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                FieldTextField(
+                                    value = newAppInterestRate,
+                                    onValueChange = onInterestChange,
+                                    label = "Interest Rate",
+                                    placeholder = "% / year",
+                                    isRequired = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                                )
+                            }
+                        }
+                        
+                        if (errorMessage != null) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = errorMessage,
+                                style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                                color = FieldTheme.colors.statusDanger
                             )
                         }
-                    }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = viewModel.newAppAmount.value,
-                    onValueChange = { viewModel.setNewAppAmount(it) },
-                    label = { Text("Loan Amount (NGN)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = viewModel.newAppTenure.value,
-                    onValueChange = { viewModel.setNewAppTenure(it) },
-                    label = { Text("Tenure (months)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = viewModel.newAppInterestRate.value,
-                    onValueChange = { viewModel.setNewAppInterestRate(it) },
-                    label = { Text("Interest Rate (%)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-
-                if (viewModel.errorMessage.value != null) {
-                    Text(
-                        text = viewModel.errorMessage.value!!,
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 12.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                Button(
-                    onClick = {
-                        viewModel.createApplication { newApp ->
-                            onApplicationCreated(newApp)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = viewModel.selectedBorrowerForApp.value != null &&
-                        viewModel.newAppAmount.value.isNotEmpty() &&
-                        viewModel.newAppTenure.value.isNotEmpty() &&
-                        !viewModel.isLoading.value
-                ) {
-                    if (viewModel.isLoading.value) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
+                        
+                        Spacer(modifier = Modifier.height(32.dp))
+                        
+                        PrimaryButton(
+                            text = if (isLoading) "Saving Intake..." else "Create Application",
+                            onClick = onCreateClick,
+                            enabled = !isLoading && selectedBorrower != null && newAppAmount.isNotEmpty() && newAppTenure.isNotEmpty()
                         )
-                    } else {
-                        Text("Create Application")
                     }
                 }
             }
         }
+    }
+}
+
+// ==========================================
+// PREVIEWS
+// ==========================================
+
+@Preview(name = "Compact Phone Form", widthDp = 411, heightDp = 850)
+@Composable
+fun PreviewCreateAppCompact() {
+    val demoBorrowers = listOf(
+        BorrowerModel(
+            id = "1", org_id = "org_1", loan_officer_id = "LO_1",
+            name = "Adaeze Okonkwo", phone = "08012345678", bvn = "222333444", nin = "111222333",
+            status = "Active", created_at = "2026-06-18"
+        ),
+        BorrowerModel(
+            id = "2", org_id = "org_1", loan_officer_id = "LO_1",
+            name = "Emeka Chukwu", phone = "08087654321", bvn = "555666777", nin = "999888777",
+            status = "Active", created_at = "2026-06-18"
+        )
+    )
+
+    FieldCRMTheme {
+        CreateApplicationContent(
+            isLoading = false,
+            errorMessage = null,
+            newAppAmount = "250000",
+            newAppTenure = "6",
+            newAppInterestRate = "15.0",
+            selectedBorrower = demoBorrowers[0],
+            borrowers = demoBorrowers,
+            onAmountChange = {},
+            onTenureChange = {},
+            onInterestChange = {},
+            onBorrowerSelected = {},
+            onCreateClick = {},
+            onBackClick = {}
+        )
     }
 }

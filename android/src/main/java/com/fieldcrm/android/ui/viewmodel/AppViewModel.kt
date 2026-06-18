@@ -1,10 +1,14 @@
 package com.fieldcrm.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.State
+import androidx.compose.runtime.Immutable
+import com.fieldcrm.android.core.session.UserSession
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 sealed class Screen {
     data object Login : Screen()
@@ -15,39 +19,50 @@ sealed class Screen {
     data object ApplicationList : Screen()
     data object ApplicationDetail : Screen()
     data object CreateApplication : Screen()
+    data object LoanApplicationForm : Screen()
+    data object DocumentUpload : Screen()
+    data object GuarantorsForm : Screen()
+    data object PledgeTrust : Screen()
+    data object VisitationReport : Screen()
+    data object BranchManagerReview : Screen()
+    data object CreditOfficerReview : Screen()
+    data object AuditorCompliance : Screen()
+    data object AdminMcrApproval : Screen()
+    data object DocumentViewer : Screen()
+    data object WorkflowEventAudit : Screen()
+    data object Settings : Screen()
+    data object OfflineQueue : Screen()
 }
 
+@Immutable
+data class AppUiState(
+    val currentScreen: Screen = Screen.Login,
+    val session: UserSession? = null,
+    val selectedBorrower: BorrowerModel? = null,
+    val selectedApplication: LoanApplicationModel? = null
+)
+
 class AppViewModel : ViewModel() {
-    private val _currentScreen = mutableStateOf<Screen>(Screen.Login)
-    val currentScreen: State<Screen> = _currentScreen
-
-    private val _authToken = mutableStateOf<String?>(null)
-    val authToken: State<String?> = _authToken
-
-    private val _selectedBorrower = mutableStateOf<BorrowerModel?>(null)
-    val selectedBorrower: State<BorrowerModel?> = _selectedBorrower
-
-    private val _selectedApplication = mutableStateOf<LoanApplicationModel?>(null)
-    val selectedApplication: State<LoanApplicationModel?> = _selectedApplication
+    private val _uiState = MutableStateFlow(AppUiState())
+    val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
 
     fun navigateTo(screen: Screen) {
-        _currentScreen.value = screen
+        _uiState.update { it.copy(currentScreen = screen) }
     }
 
-    fun setAuthToken(token: String) {
-        _authToken.value = token
+    fun setSession(session: UserSession) {
+        _uiState.update { it.copy(session = session) }
     }
 
     fun setSelectedBorrower(borrower: BorrowerModel?) {
-        _selectedBorrower.value = borrower
+        _uiState.update { it.copy(selectedBorrower = borrower) }
     }
 
     fun setSelectedApplication(application: LoanApplicationModel?) {
-        _selectedApplication.value = application
+        _uiState.update { it.copy(selectedApplication = application) }
     }
 
     fun logout() {
-        _authToken.value = null
-        _currentScreen.value = Screen.Login
+        _uiState.value = AppUiState()
     }
 }
