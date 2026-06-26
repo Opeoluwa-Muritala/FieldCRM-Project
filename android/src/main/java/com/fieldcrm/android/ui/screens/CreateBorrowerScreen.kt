@@ -7,7 +7,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Phone
+import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -76,7 +80,7 @@ fun CreateBorrowerContent(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = "Back",
                             tint = FieldTheme.colors.gray400
                         )
@@ -126,7 +130,14 @@ fun CreateBorrowerContent(
                             label = "Full Name",
                             placeholder = "Adaeze Okonkwo",
                             isRequired = true,
-                            enabled = !isLoading
+                            enabled = !isLoading,
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Person,
+                                    contentDescription = "Name",
+                                    tint = FieldTheme.colors.gray500
+                                )
+                            }
                         )
                         
                         Spacer(modifier = Modifier.height(16.dp))
@@ -138,7 +149,14 @@ fun CreateBorrowerContent(
                             placeholder = "e.g. +234 80...",
                             isRequired = true,
                             enabled = !isLoading,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Phone,
+                                    contentDescription = "Phone",
+                                    tint = FieldTheme.colors.gray500
+                                )
+                            }
                         )
                         
                         Spacer(modifier = Modifier.height(16.dp))
@@ -150,7 +168,14 @@ fun CreateBorrowerContent(
                             placeholder = "11-digit numeric code",
                             isRequired = true,
                             enabled = !isLoading,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Fingerprint,
+                                    contentDescription = "BVN",
+                                    tint = FieldTheme.colors.gray500
+                                )
+                            }
                         )
                         
                         Spacer(modifier = Modifier.height(16.dp))
@@ -162,7 +187,14 @@ fun CreateBorrowerContent(
                             placeholder = "11-digit numeric code",
                             isRequired = true,
                             enabled = !isLoading,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Badge,
+                                    contentDescription = "NIN",
+                                    tint = FieldTheme.colors.gray500
+                                )
+                            }
                         )
                         
                         if (errorMessage != null) {

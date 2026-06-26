@@ -8,13 +8,27 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.Face
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.SupportAgent
+import androidx.compose.material.icons.outlined.Report
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -121,7 +135,7 @@ fun SettingsScreen(
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                                 contentDescription = "Back",
                                 tint = FieldTheme.colors.gray400
                             )
@@ -190,7 +204,6 @@ fun SettingsScreen(
                                     }
                                 }
                             }
-
                             // Account Section
                             FieldCard {
                                 Text(
@@ -200,13 +213,13 @@ fun SettingsScreen(
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 
-                                SettingsRow(label = "Change Password") {}
+                                SettingsRow(label = "Change Password", leadingIcon = Icons.Outlined.Lock) {}
                                 FieldDivider()
-                                SettingsRow(label = "Update Phone Number") {}
+                                SettingsRow(label = "Update Phone Number", leadingIcon = Icons.Outlined.Call) {}
                                 FieldDivider()
-                                SettingsRow(label = "Offline Sync Queue") { onNavigateToOfflineQueue() }
+                                SettingsRow(label = "Offline Sync Queue", leadingIcon = Icons.Outlined.Payments) { onNavigateToOfflineQueue() }
                             }
-
+ 
                             // Preferences Section
                             FieldCard {
                                 Text(
@@ -215,80 +228,29 @@ fun SettingsScreen(
                                     color = FieldTheme.colors.gray500
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "Enable Face ID",
-                                        style = FieldTheme.typography.bodyStrong,
-                                        color = FieldTheme.colors.gray300
-                                    )
-                                    Switch(
-                                        checked = faceIdEnabled,
-                                        onCheckedChange = { faceIdEnabled = it },
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = Color.White,
-                                            checkedTrackColor = FieldTheme.colors.purple600,
-                                            uncheckedThumbColor = FieldTheme.colors.gray500,
-                                            uncheckedTrackColor = FieldTheme.colors.gray800
-                                        )
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
+ 
+                                SettingsToggleRow(
+                                    label = "Enable Face ID",
+                                    leadingIcon = Icons.Outlined.Face,
+                                    checked = faceIdEnabled,
+                                    onCheckedChange = { faceIdEnabled = it }
+                                )
                                 FieldDivider()
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "Push Notifications",
-                                        style = FieldTheme.typography.bodyStrong,
-                                        color = FieldTheme.colors.gray300
-                                    )
-                                    Switch(
-                                        checked = pushEnabled,
-                                        onCheckedChange = { pushEnabled = it },
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = Color.White,
-                                            checkedTrackColor = FieldTheme.colors.purple600,
-                                            uncheckedThumbColor = FieldTheme.colors.gray500,
-                                            uncheckedTrackColor = FieldTheme.colors.gray800
-                                        )
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
+                                SettingsToggleRow(
+                                    label = "Push Notifications",
+                                    leadingIcon = Icons.Outlined.NotificationsActive,
+                                    checked = pushEnabled,
+                                    onCheckedChange = { pushEnabled = it }
+                                )
                                 FieldDivider()
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "Dark Mode",
-                                        style = FieldTheme.typography.bodyStrong,
-                                        color = FieldTheme.colors.gray300
-                                    )
-                                    Switch(
-                                        checked = darkModeEnabled,
-                                        onCheckedChange = { darkModeEnabled = it },
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = Color.White,
-                                            checkedTrackColor = FieldTheme.colors.purple600,
-                                            uncheckedThumbColor = FieldTheme.colors.gray500,
-                                            uncheckedTrackColor = FieldTheme.colors.gray800
-                                        )
-                                    )
-                                }
+                                SettingsToggleRow(
+                                    label = "Dark Mode",
+                                    leadingIcon = Icons.Outlined.DarkMode,
+                                    checked = darkModeEnabled,
+                                    onCheckedChange = { darkModeEnabled = it }
+                                )
                             }
-
+ 
                             // Support Section
                             FieldCard {
                                 Text(
@@ -297,14 +259,14 @@ fun SettingsScreen(
                                     color = FieldTheme.colors.gray500
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
-
-                                SettingsRow(label = "Help Center") {}
+ 
+                                SettingsRow(label = "Help Center", leadingIcon = Icons.Outlined.HelpOutline) {}
                                 FieldDivider()
-                                SettingsRow(label = "Contact IT Support") {}
+                                SettingsRow(label = "Contact IT Support", leadingIcon = Icons.Outlined.SupportAgent) {}
                                 FieldDivider()
-                                SettingsRow(label = "Report a Problem") {}
+                                SettingsRow(label = "Report a Problem", leadingIcon = Icons.Outlined.Report) {}
                             }
-
+ 
                             // Version Label
                             Text(
                                 text = "App Version 2.4.1",
@@ -315,7 +277,7 @@ fun SettingsScreen(
                                     .padding(vertical = 4.dp),
                                 textAlign = TextAlign.Center
                             )
-
+ 
                             // Sign Out Button (Danger-tinted ghost button)
                             Button(
                                 onClick = { showSignOutConfirmation = true },
@@ -342,27 +304,81 @@ fun SettingsScreen(
         }
     }
 }
-
+ 
 @Composable
-fun SettingsRow(label: String, onClick: () -> Unit) {
+fun SettingsRow(
+    label: String,
+    leadingIcon: ImageVector,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(vertical = 16.dp), // 8-point grid padding
+            .padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = label,
-            style = FieldTheme.typography.bodyStrong,
-            color = FieldTheme.colors.gray300
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                tint = FieldTheme.colors.gray400,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = label,
+                style = FieldTheme.typography.bodyStrong,
+                color = FieldTheme.colors.gray300
+            )
+        }
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
             contentDescription = "Navigate",
             tint = FieldTheme.colors.gray500,
-            modifier = Modifier.size(24.dp) // 24dp size target
+            modifier = Modifier.size(24.dp)
         )
     }
 }
+ 
+@Composable
+fun SettingsToggleRow(
+    label: String,
+    leadingIcon: ImageVector,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                tint = FieldTheme.colors.gray400,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = label,
+                style = FieldTheme.typography.bodyStrong,
+                color = FieldTheme.colors.gray300
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = FieldTheme.colors.purple600,
+                uncheckedThumbColor = FieldTheme.colors.gray500,
+                uncheckedTrackColor = FieldTheme.colors.gray800
+            )
+        )
+    }
+}}

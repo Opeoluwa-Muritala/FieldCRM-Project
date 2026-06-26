@@ -2,17 +2,25 @@ package com.fieldcrm.android.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.core.session.UserRole
 import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.PrimaryButton
+import com.fieldcrm.android.ui.components.SecondaryButton
 import com.fieldcrm.android.ui.theme.FieldTheme
 
 @Composable
@@ -23,28 +31,27 @@ fun PermissionsPrimerScreen(
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
 
-    // Determine which permissions are required based on user role
     val currentRole = role ?: UserRole.LOAN_OFFICER
     val needsCamera = currentRole == UserRole.LOAN_OFFICER
     val needsLocation = currentRole == UserRole.LOAN_OFFICER || currentRole == UserRole.BRANCH_MANAGER
-    val needsNotifications = true // all roles need notifications
+    val needsNotifications = true
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(FieldTheme.colors.gray950),
+            .background(FieldTheme.colors.background),
         contentAlignment = Alignment.Center
     ) {
         if (isTablet) {
             // Tablet Layout: Centered Card
             Box(
                 modifier = Modifier
-                    .widthIn(max = 420.dp)
+                    .widthIn(max = 480.dp)
                     .fillMaxWidth()
                     .padding(24.dp)
             ) {
                 FieldCard {
-                    PermissionsList(
+                    PermissionsContent(
                         needsCamera = needsCamera,
                         needsLocation = needsLocation,
                         needsNotifications = needsNotifications,
@@ -61,7 +68,7 @@ fun PermissionsPrimerScreen(
                     .padding(24.dp)
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
-                PermissionsList(
+                PermissionsContent(
                     needsCamera = needsCamera,
                     needsLocation = needsLocation,
                     needsNotifications = needsNotifications,
@@ -74,7 +81,7 @@ fun PermissionsPrimerScreen(
 }
 
 @Composable
-fun PermissionsList(
+fun PermissionsContent(
     needsCamera: Boolean,
     needsLocation: Boolean,
     needsNotifications: Boolean,
@@ -82,6 +89,23 @@ fun PermissionsList(
     isTablet: Boolean
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
+        // Brand Mark
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .background(FieldTheme.colors.purple900, RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Shield,
+                contentDescription = "Brand Mark",
+                tint = FieldTheme.colors.purple600,
+                modifier = Modifier.size(32.dp)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
         Text(
             text = "Before we start",
             style = FieldTheme.typography.display,
@@ -89,7 +113,7 @@ fun PermissionsList(
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "To allow FieldCRM to perform credit operations properly, we require the following permissions:",
+            text = "FieldCRM needs a few permissions to help you manage your daily operations securely and efficiently.",
             style = FieldTheme.typography.body,
             color = FieldTheme.colors.gray400
         )
@@ -97,27 +121,27 @@ fun PermissionsList(
 
         if (needsCamera) {
             PermissionRow(
-                emoji = "📷",
-                title = "Camera",
-                description = "To photograph loan applications and guarantor forms"
+                icon = Icons.Outlined.PhotoCamera,
+                title = "Camera Access",
+                description = "Required for secure document scanning and client identity verification in the field."
             )
             Spacer(modifier = Modifier.height(24.dp))
         }
 
         if (needsLocation) {
             PermissionRow(
-                emoji = "📍",
-                title = "Location",
-                description = "To log field visit coordinates accurately for verification"
+                icon = Icons.Outlined.LocationOn,
+                title = "Location Services",
+                description = "Enables accurate field verification, geotagging visits, and optimizing your daily route."
             )
             Spacer(modifier = Modifier.height(24.dp))
         }
 
         if (needsNotifications) {
             PermissionRow(
-                emoji = "🔔",
-                title = "Notifications",
-                description = "To alert you instantly when a loan application requires your action"
+                icon = Icons.Outlined.NotificationsActive,
+                title = "Push Notifications",
+                description = "Stay updated with real-time task assignments, crucial alerts, and schedule changes."
             )
             Spacer(modifier = Modifier.height(32.dp))
         }
@@ -129,24 +153,37 @@ fun PermissionsList(
         PrimaryButton(
             text = "Continue",
             onClick = onContinueClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp)
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        SecondaryButton(
+            text = "Skip for now",
+            onClick = onContinueClick,
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
 
 @Composable
-fun PermissionRow(emoji: String, title: String, description: String) {
+fun PermissionRow(icon: ImageVector, title: String, description: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top
     ) {
-        Text(
-            text = emoji,
-            fontSize = 24.sp,
-            modifier = Modifier.padding(end = 16.dp, top = 2.dp)
-        )
+        Box(
+            modifier = Modifier
+                .padding(end = 16.dp)
+                .size(48.dp)
+                .background(FieldTheme.colors.purple900, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = FieldTheme.colors.purple600,
+                modifier = Modifier.size(24.dp)
+            )
+        }
         Column {
             Text(
                 text = title,
@@ -162,3 +199,4 @@ fun PermissionRow(emoji: String, title: String, description: String) {
         }
     }
 }
+

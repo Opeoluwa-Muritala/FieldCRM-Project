@@ -8,9 +8,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -76,7 +76,7 @@ fun BorrowerListContent(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = "Back",
                             tint = FieldTheme.colors.gray400
                         )
@@ -85,8 +85,8 @@ fun BorrowerListContent(
                 actions = {
                     Box(
                         modifier = Modifier
-                            .background(FieldTheme.colors.gray800, RoundedCornerShape(12.dp))
-                            .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(12.dp))
+                            .background(FieldTheme.colors.gray800, RoundedCornerShape(FieldTheme.shapes.cardRadius))
+                            .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(FieldTheme.shapes.cardRadius))
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
@@ -103,9 +103,9 @@ fun BorrowerListContent(
                 onClick = onAddBorrower,
                 containerColor = FieldTheme.colors.purple600,
                 contentColor = Color.White,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(8.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Borrower")
+                Icon(Icons.Outlined.Add, contentDescription = "Add Borrower")
             }
         },
         containerColor = FieldTheme.colors.gray950
@@ -118,7 +118,6 @@ fun BorrowerListContent(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Search Input field
             FieldTextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
@@ -126,7 +125,7 @@ fun BorrowerListContent(
                 placeholder = "Search Emeka, Adaeze, or BVN...",
                 trailingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Search,
+                        imageVector = Icons.Outlined.Search,
                         contentDescription = "Search",
                         tint = FieldTheme.colors.gray500
                     )
@@ -141,15 +140,15 @@ fun BorrowerListContent(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(5) {
-                        Box(
+                        FieldCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(64.dp)
-                                .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp))
-                                .background(FieldTheme.colors.gray850)
-                                .padding(12.dp)
+                                .height(72.dp)
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     LoadingSkeleton(height = 14.dp, width = 120.dp)
                                     Spacer(modifier = Modifier.height(6.dp))
@@ -172,13 +171,10 @@ fun BorrowerListContent(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(filteredBorrowers) { borrower ->
-                        Box(
+                        FieldCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp))
-                                .background(FieldTheme.colors.gray850)
                                 .clickable { onBorrowerSelected(borrower) }
-                                .padding(12.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),

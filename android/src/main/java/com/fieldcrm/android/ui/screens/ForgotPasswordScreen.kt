@@ -6,9 +6,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.LockReset
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +24,7 @@ import com.fieldcrm.android.ui.components.AnimatedSuccessCheckmark
 import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.FieldTextField
 import com.fieldcrm.android.ui.components.PrimaryButton
+import com.fieldcrm.android.ui.components.SecondaryButton
 import com.fieldcrm.android.ui.theme.FieldTheme
 import kotlinx.coroutines.delay
 
@@ -105,7 +109,7 @@ fun ForgotPasswordScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                                 contentDescription = "Back",
                                 tint = FieldTheme.colors.purple600
                             )
@@ -117,6 +121,23 @@ fun ForgotPasswordScreen(
                             )
                         }
                         Spacer(modifier = Modifier.height(32.dp))
+
+                        // Circular lock reset icon
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .background(FieldTheme.colors.purple900.copy(alpha = 0.1f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.LockReset,
+                                contentDescription = null,
+                                tint = FieldTheme.colors.purple600,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
                             text = "Reset your password",
@@ -154,6 +175,12 @@ fun ForgotPasswordScreen(
                                 }
                             },
                             enabled = !isLoading && email.isNotEmpty(),
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                                    contentDescription = null
+                                )
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(52.dp)
@@ -190,7 +217,7 @@ fun ForgotPasswordScreen(
                         Spacer(modifier = Modifier.weight(1f))
                         Spacer(modifier = Modifier.height(32.dp))
 
-                        PrimaryButton(
+                        SecondaryButton(
                             text = "Back to Sign In",
                             onClick = onNavigateToLogin,
                             modifier = Modifier
@@ -263,7 +290,7 @@ fun ForgotPasswordForm(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                 contentDescription = "Back",
                 tint = FieldTheme.colors.purple600
             )
@@ -274,6 +301,23 @@ fun ForgotPasswordForm(
                 color = FieldTheme.colors.purple600
             )
         }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Circular lock reset icon
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .background(FieldTheme.colors.purple900.copy(alpha = 0.1f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.LockReset,
+                contentDescription = null,
+                tint = FieldTheme.colors.purple600,
+                modifier = Modifier.size(32.dp)
+            )
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
@@ -301,7 +345,13 @@ fun ForgotPasswordForm(
         PrimaryButton(
             text = if (isLoading) "Sending..." else "Send Reset Link",
             onClick = onSubmit,
-            enabled = !isLoading && email.isNotEmpty()
+            enabled = !isLoading && email.isNotEmpty(),
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                    contentDescription = null
+                )
+            }
         )
     }
 }
@@ -337,7 +387,7 @@ fun ForgotPasswordSuccess(
         )
         Spacer(modifier = Modifier.height(32.dp))
 
-        PrimaryButton(
+        SecondaryButton(
             text = "Back to Sign In",
             onClick = onNavigateToLogin
         )

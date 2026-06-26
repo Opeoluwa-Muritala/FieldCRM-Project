@@ -6,6 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.core.session.UserRole
 import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.PrimaryButton
+import com.fieldcrm.android.ui.components.SecondaryButton
 import com.fieldcrm.android.ui.theme.FieldTheme
 
 data class OnboardingSlide(
@@ -130,23 +134,55 @@ fun OnboardingContent(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Progress dots at top
+        // Brand Header with progress dots
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(bottom = 24.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            slides.forEachIndexed { index, _ ->
+            // Brand Mark Area
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Box(
                     modifier = Modifier
-                        .size(8.dp)
-                        .background(
-                            color = if (index == currentSlideIndex) FieldTheme.colors.purple600 else FieldTheme.colors.gray800,
-                            shape = CircleShape
-                        )
+                        .size(40.dp)
+                        .background(FieldTheme.colors.gray850, RoundedCornerShape(8.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Shield,
+                        contentDescription = null,
+                        tint = FieldTheme.colors.purple600,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Text(
+                    text = "FieldCRM",
+                    style = FieldTheme.typography.title.copy(fontSize = 16.sp),
+                    color = FieldTheme.colors.purple600,
+                    fontWeight = FontWeight.Bold
                 )
             }
+            
+            // Progress dots
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                slides.forEachIndexed { index, _ ->
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(
+                                color = if (index == currentSlideIndex) FieldTheme.colors.purple600 else FieldTheme.colors.gray850,
+                                shape = CircleShape
+                            )
+                    )
+                }
+            }
         }
-
+ 
         // Crossfade animation for swiping slides
         Crossfade(
             targetState = currentSlideIndex,
@@ -175,7 +211,7 @@ fun OnboardingContent(
                     )
                 }
                 Spacer(modifier = Modifier.height(24.dp))
-
+ 
                 Text(
                     text = slide.title,
                     style = FieldTheme.typography.display,
@@ -191,34 +227,25 @@ fun OnboardingContent(
                 )
             }
         }
-
+ 
         if (!isTablet) {
             Spacer(modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.height(32.dp))
         } else {
             Spacer(modifier = Modifier.height(32.dp))
         }
-
-        // Next, Skip or Done bottom navigation actions (at least 48dp height)
+ 
+        // Next, Skip or Done bottom navigation actions
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Skip target height 48dp
-            Box(
-                modifier = Modifier
-                    .height(48.dp)
-                    .clickable { onDismiss() }
-                    .padding(horizontal = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Skip",
-                    style = FieldTheme.typography.bodyStrong,
-                    color = FieldTheme.colors.gray500
-                )
-            }
+            SecondaryButton(
+                text = "Skip",
+                onClick = onDismiss,
+                modifier = Modifier.weight(1f)
+            )
             
             val isLastSlide = currentSlideIndex == slides.size - 1
             PrimaryButton(
@@ -230,9 +257,15 @@ fun OnboardingContent(
                         onSlideIndexChange(currentSlideIndex + 1)
                     }
                 },
-                modifier = Modifier
-                    .width(140.dp)
-                    .height(48.dp)
+                trailingIcon = if (!isLastSlide) {
+                    {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                            contentDescription = null
+                        )
+                    }
+                } else null,
+                modifier = Modifier.weight(2f)
             )
         }
     }

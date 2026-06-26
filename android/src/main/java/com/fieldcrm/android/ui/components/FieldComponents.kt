@@ -283,6 +283,7 @@ fun FieldTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     errorText: String? = null,
     helperText: String? = null,
+    leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -329,6 +330,7 @@ fun FieldTextField(
             readOnly = readOnly,
             visualTransformation = visualTransformation,
             keyboardOptions = keyboardOptions,
+            leadingIcon = leadingIcon,
             trailingIcon = trailingIcon,
             textStyle = FieldTheme.typography.bodyStrong.copy(color = FieldTheme.colors.gray100),
             colors = OutlinedTextFieldDefaults.colors(
@@ -717,7 +719,9 @@ fun PrimaryButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    leadingIcon: @Composable (() -> Unit)? = null,
+    trailingIcon: @Composable (() -> Unit)? = null
 ) {
     Button(
         onClick = onClick,
@@ -733,11 +737,24 @@ fun PrimaryButton(
             .fillMaxWidth()
             .height(52.dp)
     ) {
-        Text(
-            text = text,
-            style = FieldTheme.typography.bodyStrong,
-            fontWeight = FontWeight.W600
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            if (leadingIcon != null) {
+                leadingIcon()
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(
+                text = text,
+                style = FieldTheme.typography.bodyStrong,
+                fontWeight = FontWeight.W600
+            )
+            if (trailingIcon != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                trailingIcon()
+            }
+        }
     }
 }
 
@@ -746,7 +763,9 @@ fun SecondaryButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    leadingIcon: @Composable (() -> Unit)? = null,
+    trailingIcon: @Composable (() -> Unit)? = null
 ) {
     OutlinedButton(
         onClick = onClick,
@@ -761,10 +780,23 @@ fun SecondaryButton(
             .fillMaxWidth()
             .height(52.dp)
     ) {
-        Text(
-            text = text,
-            style = FieldTheme.typography.bodyStrong
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            if (leadingIcon != null) {
+                leadingIcon()
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(
+                text = text,
+                style = FieldTheme.typography.bodyStrong
+            )
+            if (trailingIcon != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                trailingIcon()
+            }
+        }
     }
 }
 
