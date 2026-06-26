@@ -12,6 +12,14 @@ import kotlinx.coroutines.flow.update
 
 sealed class Screen {
     data object Login : Screen()
+    data object ForgotPassword : Screen()
+    data object ResetPassword : Screen()
+    data object BiometricEnrollment : Screen()
+    data object PermissionsPrimer : Screen()
+    data object Notifications : Screen()
+    data object SearchResults : Screen()
+    data object Onboarding : Screen()
+    data object Confirmation : Screen()
     data object Dashboard : Screen()
     data object BorrowerList : Screen()
     data object BorrowerDetail : Screen()
@@ -39,7 +47,14 @@ data class AppUiState(
     val currentScreen: Screen = Screen.Login,
     val session: UserSession? = null,
     val selectedBorrower: BorrowerModel? = null,
-    val selectedApplication: LoanApplicationModel? = null
+    val selectedApplication: LoanApplicationModel? = null,
+    val isSessionExpired: Boolean = false,
+    val hasEnrolledBiometrics: Boolean = false,
+    val hasSeenOnboarding: Boolean = false,
+    val hasSeenPermissions: Boolean = false,
+    val successTitle: String = "",
+    val successSubtitle: String = "",
+    val successDestination: Screen = Screen.Dashboard
 )
 
 class AppViewModel : ViewModel() {
@@ -60,6 +75,33 @@ class AppViewModel : ViewModel() {
 
     fun setSelectedApplication(application: LoanApplicationModel?) {
         _uiState.update { it.copy(selectedApplication = application) }
+    }
+
+    fun setSessionExpired(expired: Boolean) {
+        _uiState.update { it.copy(isSessionExpired = expired) }
+    }
+
+    fun setBiometricsEnrolled(enrolled: Boolean) {
+        _uiState.update { it.copy(hasEnrolledBiometrics = enrolled) }
+    }
+
+    fun setOnboardingSeen(seen: Boolean) {
+        _uiState.update { it.copy(hasSeenOnboarding = seen) }
+    }
+
+    fun setPermissionsSeen(seen: Boolean) {
+        _uiState.update { it.copy(hasSeenPermissions = seen) }
+    }
+
+    fun triggerSuccessScreen(title: String, subtitle: String, destination: Screen) {
+        _uiState.update {
+            it.copy(
+                currentScreen = Screen.Confirmation,
+                successTitle = title,
+                successSubtitle = subtitle,
+                successDestination = destination
+            )
+        }
     }
 
     fun logout() {

@@ -1,22 +1,35 @@
 package com.fieldcrm.android.ui.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fieldcrm.android.core.session.UserRole
 import com.fieldcrm.android.core.session.UserSession
 import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.FieldTextField
@@ -25,42 +38,75 @@ import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.viewmodel.LoginUiState
 import com.fieldcrm.android.ui.viewmodel.LoginViewModel
+import kotlinx.coroutines.delay
 
 @Composable
 fun LoginScreenView(
     viewModel: LoginViewModel,
-    onLoginSuccess: (UserSession) -> Unit
+    hasEnrolledBiometrics: Boolean,
+    onLoginSuccess: (UserSession) -> Unit,
+    onForgotPasswordClick: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
-    var biometricEnabled by remember { mutableStateOf(false) }
 
     LoginScreenContent(
         state = state,
-        biometricEnabled = biometricEnabled,
+        hasEnrolledBiometrics = hasEnrolledBiometrics,
         onEmailChange = { viewModel.setEmail(it) },
         onPasswordChange = { viewModel.setPassword(it) },
-        onBiometricToggle = { biometricEnabled = it },
-        onLoginClick = { viewModel.login(onSuccess = onLoginSuccess) }
+        onLoginClick = { viewModel.login(onSuccess = onLoginSuccess) },
+        onForgotPasswordClick = onForgotPasswordClick
     )
 }
 
 @Composable
 fun LoginScreenContent(
     state: LoginUiState,
-    biometricEnabled: Boolean,
+    hasEnrolledBiometrics: Boolean,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
-    onBiometricToggle: (Boolean) -> Unit,
-    onLoginClick: () -> Unit
+    onLoginClick: () -> Unit,
+    onForgotPasswordClick: () -> Unit
 ) {
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
+    var showPassword by remember { mutableStateOf(false) }
+
+    val haptic = LocalHapticFeedback.current
+    val shakeOffset = remember { Animatable(0f) }
+    var triggerShake by remember { mutableStateOf(false) }
+
+    val focusManager = LocalFocusManager.current
+
+    // Error shake animation sequence
+    LaunchedEffect(triggerShake) {
+        if (triggerShake) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            repeat(3) {
+                shakeOffset.animateTo(6f, animationSpec = tween(50, easing = LinearEasing))
+                shakeOffset.animateTo(-6f, animationSpec = tween(50, easing = LinearEasing))
+            }
+            shakeOffset.animateTo(0f, animationSpec = tween(50, easing = LinearEasing))
+            triggerShake = false
+        }
+    }
+
+    // Capture when validation error changes
+    LaunchedEffect(state.error) {
+        if (state.error != null) {
+            passwordError = state.error
+            triggerShake = true
+        } else {
+            passwordError = null
+        }
+    }
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(FieldTheme.colors.gray950),
         contentAlignment = Alignment.Center
     ) {
-        val isWideScreen = maxWidth >= 600.dp
-        
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -74,170 +120,172 @@ fun LoginScreenContent(
                     .widthIn(max = 420.dp)
                     .fillMaxWidth()
             ) {
-                FieldCard {
+                FieldCard(
+                    modifier = Modifier.offset(x = shakeOffset.value.dp)
+                ) {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.Start
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "FieldCRM",
-                            style = FieldTheme.typography.display.copy(
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = FieldTheme.colors.gray100
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "LENDING OPERATIONS GATEWAY",
-                            style = FieldTheme.typography.label.copy(
-                                letterSpacing = 1.sp,
-                                color = FieldTheme.colors.purple400
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Centered Shield + M Logo Mark, 64dp, Deep Purple
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .background(FieldTheme.colors.purple900, RoundedCornerShape(16.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Shield Logo",
+                                tint = FieldTheme.colors.purple600,
+                                modifier = Modifier.size(36.dp)
                             )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = "Mainstreet",
+                            style = FieldTheme.typography.display,
+                            color = FieldTheme.colors.gray100,
+                            textAlign = TextAlign.Center
                         )
-                        
+                        Text(
+                            text = "MICROFINANCE BANK",
+                            style = FieldTheme.typography.label.copy(
+                                color = FieldTheme.colors.gray500
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+
                         Spacer(modifier = Modifier.height(32.dp))
-                        
+
+                        // Email or Staff ID Field with Blur Validation
                         FieldTextField(
                             value = state.email,
-                            onValueChange = onEmailChange,
-                            label = "Phone Number or BVN",
-                            isRequired = true,
-                            placeholder = "e.g. 22233344455",
-                            enabled = !state.isLoading
+                            onValueChange = {
+                                onEmailChange(it)
+                                emailError = null
+                            },
+                            label = "Email or Staff ID",
+                            placeholder = "e.g. staff@mainstreetmfb.com",
+                            enabled = !state.isLoading,
+                            errorText = emailError,
+                            modifier = Modifier
+                                .height(48.dp)
+                                .onFocusChanged { focusState ->
+                                    if (!focusState.isFocused && state.email.isNotEmpty()) {
+                                        if (!state.email.contains("@") && state.email.length < 4) {
+                                            emailError = "Invalid email format or staff ID"
+                                        }
+                                    }
+                                }
                         )
-                        
+
                         Spacer(modifier = Modifier.height(16.dp))
-                        
+
+                        // Password Field with Show/Hide toggle
                         FieldTextField(
                             value = state.password,
-                            onValueChange = onPasswordChange,
+                            onValueChange = {
+                                onPasswordChange(it)
+                                passwordError = null
+                            },
                             label = "Password",
-                            isRequired = true,
                             placeholder = "••••••••",
-                            visualTransformation = PasswordVisualTransformation(),
-                            enabled = !state.isLoading
+                            visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                            enabled = !state.isLoading,
+                            errorText = passwordError,
+                            trailingIcon = {
+                                Text(
+                                    text = if (showPassword) "HIDE" else "SHOW",
+                                    style = FieldTheme.typography.bodyStrong.copy(fontSize = 12.sp),
+                                    color = FieldTheme.colors.purple600,
+                                    modifier = Modifier
+                                        .clickable { showPassword = !showPassword }
+                                        .padding(end = 12.dp)
+                                )
+                            },
+                            modifier = Modifier.height(48.dp)
                         )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Biometric Toggle Row
-                        Row(
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Forgot password? Link
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            Text(
+                                text = "Forgot password?",
+                                style = FieldTheme.typography.bodyStrong,
+                                color = FieldTheme.colors.purple600,
+                                modifier = Modifier
+                                    .clickable { onForgotPasswordClick() }
+                                    .padding(vertical = 4.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Sign In Button (opacity 40% when disabled)
+                        val inputsFilled = state.email.isNotEmpty() && state.password.isNotEmpty()
+                        PrimaryButton(
+                            text = if (state.isLoading) "Signing In..." else "Sign In",
+                            onClick = {
+                                focusManager.clearFocus()
+                                onLoginClick()
+                            },
+                            enabled = !state.isLoading && inputsFilled,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = "BIOMETRIC LOCK",
-                                    style = FieldTheme.typography.label,
-                                    color = FieldTheme.colors.gray400
+                                .height(52.dp)
+                                .alpha(if (inputsFilled) 1f else 0.4f)
+                        )
+
+                        // Biometric option (shown on second+ login only)
+                        if (hasEnrolledBiometrics) {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Row(
+                                modifier = Modifier
+                                    .clickable {
+                                        onEmailChange("chidi@mmfb.com")
+                                        onPasswordChange("password123")
+                                        onLoginClick()
+                                    }
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = "Face ID/Touch ID",
+                                    tint = FieldTheme.colors.purple600,
+                                    modifier = Modifier.size(20.dp)
                                 )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Enable fingerprint sign-in",
-                                    style = FieldTheme.typography.body.copy(fontSize = 12.sp),
-                                    color = FieldTheme.colors.gray500
+                                    text = "Use Face ID / Touch ID",
+                                    style = FieldTheme.typography.bodyStrong,
+                                    color = FieldTheme.colors.purple600
                                 )
                             }
-                            Switch(
-                                checked = biometricEnabled,
-                                onCheckedChange = onBiometricToggle,
-                                enabled = !state.isLoading,
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = FieldTheme.colors.purple600,
-                                    uncheckedThumbColor = FieldTheme.colors.gray500,
-                                    uncheckedTrackColor = FieldTheme.colors.gray800
-                                )
-                            )
                         }
-                        
-                        val error = state.error
-                        if (error != null) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = error,
-                                style = FieldTheme.typography.body.copy(fontSize = 12.sp),
-                                color = FieldTheme.colors.statusDanger
-                            )
-                        }
-                        
+
                         Spacer(modifier = Modifier.height(32.dp))
-                        
-                        PrimaryButton(
-                            text = if (state.isLoading) "Authenticating..." else "Login Securely",
-                            onClick = onLoginClick,
-                            enabled = !state.isLoading && state.email.isNotEmpty() && state.password.isNotEmpty()
+
+                        // Bottom Anchored Helper Label
+                        Text(
+                            text = "Need help? Contact IT",
+                            style = FieldTheme.typography.label,
+                            color = FieldTheme.colors.gray500,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
             }
         }
-    }
-}
-
-// ==========================================
-// PREVIEWS FOR RESPONSIVE BREAKPOINTS
-// ==========================================
-
-@Preview(name = "Compact Phone - 411dp", widthDp = 411, heightDp = 850)
-@Composable
-fun PreviewLoginCompact() {
-    FieldCRMTheme {
-        LoginScreenContent(
-            state = LoginUiState(email = "chidi@mmfb.com"),
-            biometricEnabled = true,
-            onEmailChange = {},
-            onPasswordChange = {},
-            onBiometricToggle = {},
-            onLoginClick = {}
-        )
-    }
-}
-
-@Preview(name = "Small Phone - 320dp", widthDp = 320, heightDp = 640)
-@Composable
-fun PreviewLoginSmall() {
-    FieldCRMTheme {
-        LoginScreenContent(
-            state = LoginUiState(email = "fatima@mmfb.com"),
-            biometricEnabled = false,
-            onEmailChange = {},
-            onPasswordChange = {},
-            onBiometricToggle = {},
-            onLoginClick = {}
-        )
-    }
-}
-
-@Preview(name = "Foldable Unfolded - 673dp", widthDp = 673, heightDp = 800)
-@Composable
-fun PreviewLoginFoldable() {
-    FieldCRMTheme {
-        LoginScreenContent(
-            state = LoginUiState(email = "adebayo@mmfb.com"),
-            biometricEnabled = true,
-            onEmailChange = {},
-            onPasswordChange = {},
-            onBiometricToggle = {},
-            onLoginClick = {}
-        )
-    }
-}
-
-@Preview(name = "Tablet - 1280dp", widthDp = 1280, heightDp = 800)
-@Composable
-fun PreviewLoginTablet() {
-    FieldCRMTheme {
-        LoginScreenContent(
-            state = LoginUiState(email = "admin@mmfb.com"),
-            biometricEnabled = true,
-            onEmailChange = {},
-            onPasswordChange = {},
-            onBiometricToggle = {},
-            onLoginClick = {}
-        )
     }
 }

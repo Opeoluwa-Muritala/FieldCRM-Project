@@ -1,34 +1,37 @@
 package com.fieldcrm.android.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
 import com.fieldcrm.android.core.session.UserRole
 import com.fieldcrm.android.ui.components.*
-import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
 import java.util.Locale
 
@@ -38,325 +41,1374 @@ fun DashboardScreenView(
     onNavigateToBorrowers: () -> Unit,
     onNavigateToApplications: () -> Unit,
     onNavigateToOfflineQueue: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onNavigateToNotifications: () -> Unit = {},
+    onNavigateToSearchResults: () -> Unit = {}
 ) {
-    var selectedTab by remember { mutableStateOf(0) }
-    
-    val navigationItems = listOf(
-        NavigationItem("Dashboard", Icons.Outlined.Home),
-        NavigationItem("Borrowers", Icons.Outlined.Person),
-        NavigationItem("Applications", Icons.Outlined.List),
-        NavigationItem("Settings", Icons.Outlined.Settings)
-    )
+    val resolvedRole = role ?: UserRole.LOAN_OFFICER
+    val configuration = LocalConfiguration.current
+    val isTablet = configuration.screenWidthDp >= 600
 
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(FieldTheme.colors.gray950)
-    ) {
-        val isWide = maxWidth >= 600.dp
-        
-        Row(modifier = Modifier.fillMaxSize()) {
-            if (isWide) {
-                // Expanded/Medium width strategy: Navigation Rail on the left
-                FieldNavigationRail(
-                    items = navigationItems,
-                    selectedItemIndex = selectedTab,
-                    onItemSelect = { selectedTab = it }
-                )
-            }
-            
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-            ) {
-                // Header Top Bar
-                FieldTopAppBar(
-                    title = "FieldCRM Operational Console",
-                    actions = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RoleBadge(role = role?.displayName ?: "Loan Officer")
-                            Spacer(modifier = Modifier.width(12.dp))
-                            IconButton(onClick = onLogout) {
-                                Icon(
-                                    imageVector = Icons.Outlined.ExitToApp,
-                                    contentDescription = "Logout",
-                                    tint = FieldTheme.colors.gray400
-                                )
-                            }
-                        }
-                    }
-                )
-                
-                // Screen content
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                ) {
-                    when (selectedTab) {
-                        0 -> DashboardHomeContent(
-                            role = role ?: UserRole.LOAN_OFFICER,
-                            onNavigateToBorrowers = onNavigateToBorrowers,
-                            onNavigateToApplications = onNavigateToApplications
-                        )
-                        1 -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            PrimaryButton(
-                                text = "View Borrowers Queue",
-                                onClick = onNavigateToBorrowers,
-                                modifier = Modifier.width(200.dp)
-                            )
-                        }
-                        2 -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            PrimaryButton(
-                                text = "View Applications Queue",
-                                onClick = onNavigateToApplications,
-                                modifier = Modifier.width(200.dp)
-                            )
-                        }
-                        else -> SettingsScreen(
-                            onBackClick = { selectedTab = 0 },
-                            onNavigateToOfflineQueue = onNavigateToOfflineQueue
-                        )
-                    }
-                }
-                
-                if (!isWide) {
-                    // Compact width strategy: Bottom Bar
-                    FieldBottomBar(
-                        items = navigationItems,
-                        selectedItemIndex = selectedTab,
-                        onItemSelect = { selectedTab = it }
-                    )
-                }
-            }
+    if (isTablet) {
+        when (resolvedRole) {
+            UserRole.LOAN_OFFICER -> LoanOfficerTabletDashboard(onLogout, onNavigateToOfflineQueue, onNavigateToNotifications, onNavigateToSearchResults)
+            UserRole.BRANCH_MANAGER -> BranchManagerTabletDashboard(onLogout, onNavigateToOfflineQueue, onNavigateToNotifications, onNavigateToSearchResults)
+            UserRole.CREDIT_OFFICER -> CreditOfficerTabletDashboard(onLogout, onNavigateToOfflineQueue, onNavigateToNotifications, onNavigateToSearchResults)
+            UserRole.AUDITOR -> AuditorTabletDashboard(onLogout, onNavigateToOfflineQueue, onNavigateToNotifications, onNavigateToSearchResults)
+            UserRole.ADMIN_MCR -> AdminTabletDashboard(onLogout, onNavigateToOfflineQueue, onNavigateToNotifications, onNavigateToSearchResults)
+        }
+    } else {
+        when (resolvedRole) {
+            UserRole.LOAN_OFFICER -> LoanOfficerPhoneDashboard(onLogout, onNavigateToOfflineQueue, onNavigateToNotifications, onNavigateToSearchResults, onNavigateToBorrowers, onNavigateToApplications)
+            UserRole.BRANCH_MANAGER -> BranchManagerPhoneDashboard(onLogout, onNavigateToOfflineQueue, onNavigateToNotifications, onNavigateToSearchResults, onNavigateToApplications)
+            UserRole.CREDIT_OFFICER -> CreditOfficerPhoneDashboard(onLogout, onNavigateToOfflineQueue, onNavigateToNotifications, onNavigateToSearchResults, onNavigateToApplications)
+            UserRole.AUDITOR -> AuditorPhoneDashboard(onLogout, onNavigateToOfflineQueue, onNavigateToNotifications, onNavigateToSearchResults, onNavigateToApplications)
+            UserRole.ADMIN_MCR -> AdminPhoneDashboard(onLogout, onNavigateToOfflineQueue, onNavigateToNotifications, onNavigateToSearchResults, onNavigateToBorrowers)
         }
     }
 }
 
+// =========================================================================
+// 1. LOAN OFFICER SCREEN GRAPHICS
+// =========================================================================
+
 @Composable
-fun DashboardHomeContent(
-    role: UserRole,
+fun LoanOfficerPhoneDashboard(
+    onLogout: () -> Unit,
+    onNavigateToOfflineQueue: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    onNavigateToSearchResults: () -> Unit,
     onNavigateToBorrowers: () -> Unit,
     onNavigateToApplications: () -> Unit
 ) {
-    // Generate role specific statistics
-    val colors = FieldTheme.colors
-    val stats = remember(role, colors) { getStatsForRole(role, colors) }
-    val modules = remember(role) { getModulesForRole(role) }
-    val recentItems = remember(role) { getRecentItemsForRole(role) }
+    var selectedTab by remember { mutableStateOf(0) }
+    var showSettingsInline by remember { mutableStateOf(false) }
+    var showNewBottomSheet by remember { mutableStateOf(false) }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        // Welcoming Card
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Good day, Field Agent",
-                        style = FieldTheme.typography.display,
-                        color = FieldTheme.colors.gray100
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Organizational Unit: Lagos West MMFB",
-                        style = FieldTheme.typography.body,
-                        color = FieldTheme.colors.gray400
-                    )
-                }
-                
-                // Server Sync Trigger
-                Box(
-                    modifier = Modifier
-                        .border(0.5.dp, FieldTheme.colors.purple500.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-                        .background(FieldTheme.colors.purple950)
-                        .clickable {
-                            // Run server sync via context
+    val navigationItems = listOf(
+        NavigationItem("Home", Icons.Outlined.Home),
+        NavigationItem("Queue", Icons.AutoMirrored.Outlined.List),
+        NavigationItem("New", Icons.Outlined.Add), // Center distinct FAB
+        NavigationItem("Upload", Icons.AutoMirrored.Outlined.Send),
+        NavigationItem("Visits", Icons.Outlined.LocationOn)
+    )
+
+    Scaffold(
+        bottomBar = {
+            if (!showSettingsInline) {
+                FieldBottomBar(
+                    items = navigationItems,
+                    selectedItemIndex = selectedTab,
+                    onItemSelect = {
+                        if (it == 2) {
+                            showNewBottomSheet = true
+                        } else {
+                            selectedTab = it
+                            showSettingsInline = false
                         }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Outlined.Refresh,
-                            contentDescription = "Sync",
-                            tint = FieldTheme.colors.purple400,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "SYNC NOW",
-                            style = FieldTheme.typography.label,
-                            color = FieldTheme.colors.purple200
-                        )
                     }
-                }
-            }
-        }
-
-        // Stats Row (Compact reflow: horizontal scroll or grids)
-        item {
-            Column {
-                Text(
-                    text = "LENDING STATS",
-                    style = FieldTheme.typography.label,
-                    color = FieldTheme.colors.gray500
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    stats.forEach { stat ->
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp))
-                                .background(FieldTheme.colors.gray850)
-                                .padding(12.dp)
-                        ) {
-                            Column {
-                                Text(
-                                    text = stat.title.uppercase(Locale.getDefault()),
-                                    style = FieldTheme.typography.label.copy(fontSize = 9.sp),
-                                    color = FieldTheme.colors.gray400
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = stat.value,
-                                    style = FieldTheme.typography.mono.copy(
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold
-                                    ),
-                                    color = stat.color
-                                )
+            }
+        },
+        containerColor = FieldTheme.colors.gray950
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            if (showSettingsInline) {
+                SettingsScreen(
+                    userName = "Chidi Okafor",
+                    userEmail = "chidi@mmfb.com",
+                    role = UserRole.LOAN_OFFICER,
+                    onBackClick = { showSettingsInline = false },
+                    onNavigateToOfflineQueue = onNavigateToOfflineQueue,
+                    onSignOutClick = onLogout
+                )
+            } else {
+                when (selectedTab) {
+                    0 -> {
+                        // Home Screen Layout
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            // Deep Purple greeting band (full-bleed, 110dp tall)
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(110.dp)
+                                        .background(FieldTheme.colors.purple900) // Deep Purple
+                                        .padding(horizontal = 24.dp),
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = "Good morning, Chidi",
+                                        style = FieldTheme.typography.display.copy(fontSize = 22.sp),
+                                        color = Color.White
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Loan Officer · Ikeja Branch",
+                                        style = FieldTheme.typography.body,
+                                        color = FieldTheme.colors.gray400
+                                    )
+                                }
+                            }
+
+                            // Content padding
+                            item { Spacer(modifier = Modifier.height(16.dp)) }
+
+                            // 2×2 metric grid (white chips, purple accent)
+                            item {
+                                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            MiniMetricCard("My Apps Today", "12", FieldTheme.colors.purple600)
+                                        }
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            MiniMetricCard("Pending Upload", "2", FieldTheme.colors.purple600)
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            MiniMetricCard("Visits Due", "4", FieldTheme.colors.purple600)
+                                        }
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            MiniMetricCard("Missing Docs", "3", FieldTheme.colors.purple600)
+                                        }
+                                    }
+                                }
+                            }
+
+                            // TODAY'S TASKS (priority list: Missing Doc -> Pending Upload -> Visit Due -> Draft App)
+                            item {
+                                Column(modifier = Modifier.padding(24.dp)) {
+                                    Text("TODAY'S TASKS", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    TaskRow("Missing Doc: Adaeze Kalu · MMFB-041", true) { onNavigateToApplications() }
+                                    TaskRow("Pending Upload: CRM-01 Loan Form", false) { selectedTab = 3 }
+                                    TaskRow("Visit Due: guarantor verification", false) { selectedTab = 4 }
+                                    TaskRow("Draft App: MMFB-052", false) { onNavigateToApplications() }
+                                }
+                            }
+
+                            // RECENT ACTIVITY (last 3)
+                            item {
+                                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                                    Text("RECENT ACTIVITY", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    RecentActivityCard("MMFB-041 (Adaeze Kalu) - Verified match with original land title.")
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    RecentActivityCard("MMFB-039 (Bola T.) - Application returned for guarantor signature.")
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    RecentActivityCard("MMFB-052 (Chidi Okafor) - Local database synched with server.")
+                                    Spacer(modifier = Modifier.height(24.dp))
+                                }
+                            }
+                        }
+                    }
+                    1 -> {
+                        // Queue screen: Sticky search + horizontal filter chips
+                        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                            OutlinedTextField(
+                                value = "",
+                                onValueChange = {},
+                                placeholder = { Text("Search Loan Officer Queue...") },
+                                leadingIcon = { Icon(Icons.Outlined.Search, null) },
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilterChip(selected = true, onClick = {}, label = { Text("All") })
+                                FilterChip(selected = false, onClick = {}, label = { Text("Intake") })
+                                FilterChip(selected = false, onClick = {}, label = { Text("OCR Review") })
+                                FilterChip(selected = false, onClick = {}, label = { Text("Returned") })
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            // Swipeable cards simulation
+                            Text("Swipeable queue cards: Swipe Right to Upload Doc, Swipe Left to Return.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray500)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(listOf("Adaeze Kalu · MMFB-041", "Bola T. · MMFB-039", "Chioma Eze · MMFB-022")) { app ->
+                                    FieldCard {
+                                        Text(app, style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray100)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text("Swipe to take action inline", style = FieldTheme.typography.label, color = FieldTheme.colors.purple600)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    3 -> {
+                        // Upload Screen: Camera-first, 4 large tiles
+                        Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text("UPLOAD DOCUMENTS", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
+                            Text("Camera-first documents submission queue.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(modifier = Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                    LargeTile("Take Photo", Icons.Outlined.AddCircle) {}
+                                }
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                    LargeTile("Choose File", Icons.Outlined.Search) {}
+                                }
+                            }
+                            Row(modifier = Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                    LargeTile("CRM-01 Form", Icons.Outlined.Info) {}
+                                }
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                    LargeTile("CRM-03 Guarantor", Icons.Outlined.Person) {}
+                                }
+                            }
+                        }
+                    }
+                    4 -> {
+                        // Visits screen: List of visits due, opening one-question survey
+                        Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                            Text("VISITS DUE SURVEYS", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            FieldCard {
+                                Text("Visits due: guarantor verification", style = FieldTheme.typography.bodyStrong)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                PrimaryButton(text = "Start One-Question Survey", onClick = {
+                                    // Simulated survey wizard
+                                })
                             }
                         }
                     }
                 }
             }
-        }
 
-        // Modules Matrix / Grid (Grid flow based on space)
-        item {
-            Column {
-                Text(
-                    text = "WORKFLOW ENGINES",
-                    style = FieldTheme.typography.label,
-                    color = FieldTheme.colors.gray500
+            // Topbar icons
+            Row(
+                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                IconButton(onClick = onNavigateToSearchResults) {
+                    Icon(Icons.Outlined.Search, "Search", tint = FieldTheme.colors.gray400)
+                }
+                IconButton(onClick = onNavigateToNotifications) {
+                    Icon(Icons.Outlined.Notifications, "Notifications", tint = FieldTheme.colors.gray400)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(modifier = Modifier.clickable { showSettingsInline = !showSettingsInline }) {
+                    RoleBadge(role = "LO")
+                }
+            }
+
+            // Wizard bottom sheet for "New" tab
+            if (showNewBottomSheet) {
+                AlertDialog(
+                    onDismissRequest = { showNewBottomSheet = false },
+                    title = { Text("New Application", style = FieldTheme.typography.title) },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Choose the intake mode to proceed:")
+                            PrimaryButton(text = "Fill Form on Phone", onClick = {
+                                showNewBottomSheet = false
+                                onNavigateToApplications()
+                            })
+                            SecondaryButton(text = "Upload Completed Form Scan", onClick = {
+                                showNewBottomSheet = false
+                                selectedTab = 3
+                            })
+                        }
+                    },
+                    confirmButton = {},
+                    dismissButton = {
+                        TextButton(onClick = { showNewBottomSheet = false }) { Text("Cancel") }
+                    },
+                    containerColor = FieldTheme.colors.gray900
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    modules.chunked(2).forEach { chunk ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            chunk.forEach { module ->
-                                val clickAction = if (module.targetScreen == "borrowers") onNavigateToBorrowers else onNavigateToApplications
+            }
+        }
+    }
+}
+
+@Composable
+fun LoanOfficerTabletDashboard(
+    onLogout: () -> Unit,
+    onNavigateToOfflineQueue: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    onNavigateToSearchResults: () -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var selectedQueueIndex by remember { mutableStateOf(0) }
+    val sideRailItems = listOf(
+        NavigationItem("Home", Icons.Outlined.Home),
+        NavigationItem("Queue", Icons.AutoMirrored.Outlined.List),
+        NavigationItem("New App", Icons.Outlined.AddCircle),
+        NavigationItem("Upload", Icons.AutoMirrored.Outlined.Send),
+        NavigationItem("Visits", Icons.Outlined.LocationOn),
+        NavigationItem("Settings", Icons.Outlined.Settings)
+    )
+
+    Row(modifier = Modifier.fillMaxSize().background(FieldTheme.colors.gray950)) {
+        // Persistent 72pt Deep Purple sidebar
+        FieldNavigationRail(
+            items = sideRailItems,
+            selectedItemIndex = selectedTab,
+            onItemSelect = { selectedTab = it }
+        )
+
+        if (selectedTab == 5) {
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                SettingsScreen(
+                    userName = "Chidi Okafor",
+                    userEmail = "chidi@mmfb.com",
+                    role = UserRole.LOAN_OFFICER,
+                    onBackClick = { selectedTab = 0 },
+                    onNavigateToOfflineQueue = onNavigateToOfflineQueue,
+                    onSignOutClick = onLogout
+                )
+            }
+        } else {
+            // Split view layout: Master list on Left (340dp), Details on Right
+            Row(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                // 340dp Master Queue list
+                Column(
+                    modifier = Modifier
+                        .width(340.dp)
+                        .fillMaxHeight()
+                        .background(FieldTheme.colors.gray900)
+                        .border(0.5.dp, FieldTheme.colors.gray800, RoundedCornerShape(0.dp))
+                        .padding(16.dp)
+                ) {
+                    Text("LOAN QUEUE", style = FieldTheme.typography.title, color = Color.White)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val itemsList = listOf("Adaeze Kalu", "Bola T. (Pending)", "Chioma Eze", "David Okoro")
+                        itemsIndexed(itemsList) { idx, name ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(if (idx == selectedQueueIndex) FieldTheme.colors.purple950 else Color.Transparent, RoundedCornerShape(8.dp))
+                                    .clickable { selectedQueueIndex = idx }
+                                    .padding(12.dp)
+                            ) {
+                                Text(name, style = FieldTheme.typography.bodyStrong, color = if (idx == selectedQueueIndex) Color.White else FieldTheme.colors.gray300)
+                            }
+                        }
+                    }
+                }
+
+                // Application Detail: fluid right pane (forms, docs, visit, logs)
+                Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(24.dp).verticalScroll(rememberScrollState())) {
+                    Text("APPLICATION DETAIL", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Adaeze Kalu · ₦500,000", style = FieldTheme.typography.display, color = Color.White)
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Detail Form fields 2-up in a grid (tablet feature)
+                    Text("APPLICANT INFO", style = FieldTheme.typography.label, color = FieldTheme.colors.purple400)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            FieldTextField(value = "Adaeze Kalu", onValueChange = {}, label = "Full Name")
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            FieldTextField(value = "Lagos", onValueChange = {}, label = "Branch")
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Side-by-side scanned document and OCR review
+                    Text("SIDE-BY-SIDE OCR VERIFICATION", style = FieldTheme.typography.label, color = FieldTheme.colors.purple400)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(240.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Scan preview Left
+                        Box(modifier = Modifier.weight(1f).fillMaxHeight().background(FieldTheme.colors.gray850, RoundedCornerShape(8.dp)).border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                            Text("Scanned Form image", color = FieldTheme.colors.gray400)
+                        }
+                        // OCR fields Right
+                        Column(modifier = Modifier.weight(1f).fillMaxHeight().background(FieldTheme.colors.gray900).padding(12.dp), verticalArrangement = Arrangement.Center) {
+                            Text("BVN Match Confidence: 99%", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.statusSuccess)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Full Name OCR Match: 94%", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.statusSuccess)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Signature pad (200dp tall vs phone's 120dp/180dp)
+                    Text("SIGNATURE pad (tablet size)", style = FieldTheme.typography.label, color = FieldTheme.colors.purple400)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldSignaturePad(modifier = Modifier.height(200.dp), onConfirm = {}, onClear = {})
+                }
+            }
+        }
+    }
+}
+
+// =========================================================================
+// 2. BRANCH MANAGER SCREEN GRAPHICS
+// =========================================================================
+
+@Composable
+fun BranchManagerPhoneDashboard(
+    onLogout: () -> Unit,
+    onNavigateToOfflineQueue: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    onNavigateToSearchResults: () -> Unit,
+    onNavigateToApplications: () -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var showSettingsInline by remember { mutableStateOf(false) }
+
+    val navigationItems = listOf(
+        NavigationItem("Home", Icons.Outlined.Home),
+        NavigationItem("Awaiting Me", Icons.Outlined.Info), // clock-pending
+        NavigationItem("Pipeline", Icons.AutoMirrored.Outlined.List),
+        NavigationItem("Visits", Icons.Outlined.LocationOn),
+        NavigationItem("Reports", Icons.Outlined.AccountBox)
+    )
+
+    Scaffold(
+        bottomBar = {
+            if (!showSettingsInline) {
+                FieldBottomBar(
+                    items = navigationItems,
+                    selectedItemIndex = selectedTab,
+                    onItemSelect = {
+                        selectedTab = it
+                        showSettingsInline = false
+                    }
+                )
+            }
+        },
+        containerColor = FieldTheme.colors.gray950
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            if (showSettingsInline) {
+                SettingsScreen(
+                    userName = "Amaka Obi",
+                    userEmail = "amaka@mmfb.com",
+                    role = UserRole.BRANCH_MANAGER,
+                    onBackClick = { showSettingsInline = false },
+                    onNavigateToOfflineQueue = onNavigateToOfflineQueue,
+                    onSignOutClick = onLogout
+                )
+            } else {
+                when (selectedTab) {
+                    0 -> {
+                        // Home screen: Action Required sits ABOVE greeting
+                        LazyColumn(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            // 1. Action Required Card (red-bordered, above greeting)
+                            item {
                                 Box(
                                     modifier = Modifier
-                                        .weight(1f)
-                                        .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp))
-                                        .background(FieldTheme.colors.gray850)
-                                        .clickable(onClick = clickAction)
-                                        .padding(14.dp)
+                                        .fillMaxWidth()
+                                        .border(1.5.dp, FieldTheme.colors.statusDanger, RoundedCornerShape(8.dp))
+                                        .background(FieldTheme.colors.statusDanger.copy(alpha = 0.05f))
+                                        .clickable { selectedTab = 1 }
+                                        .padding(16.dp)
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(36.dp)
-                                                .background(FieldTheme.colors.purple950, RoundedCornerShape(6.dp)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = module.icon,
-                                                contentDescription = module.title,
-                                                tint = FieldTheme.colors.purple400,
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text("ACTION REQUIRED", style = FieldTheme.typography.label, color = FieldTheme.colors.statusDanger)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text("3 applications awaiting your concurrence", style = FieldTheme.typography.bodyStrong, color = Color.White)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text("Review Now →", style = FieldTheme.typography.label, color = FieldTheme.colors.purple600)
+                                    }
+                                }
+                            }
+
+                            // 2. Greeting
+                            item {
+                                Text("Welcome back, Amaka", style = FieldTheme.typography.display, color = Color.White)
+                                Text("Branch Manager · Lagos West", style = FieldTheme.typography.body, color = FieldTheme.colors.gray500)
+                            }
+
+                            // 3. Visitation Signoffs Pending card with button inline
+                            item {
+                                FieldCard {
+                                    Text("VISITATION SIGNOFFS PENDING", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
                                         Column {
-                                            Text(
-                                                text = module.title,
-                                                style = FieldTheme.typography.bodyStrong,
-                                                color = FieldTheme.colors.gray100
-                                            )
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Text(
-                                                text = module.desc,
-                                                style = FieldTheme.typography.body.copy(fontSize = 11.sp),
-                                                color = FieldTheme.colors.gray500
-                                            )
+                                            Text("Officer: Chidi Okafor", style = FieldTheme.typography.bodyStrong)
+                                            Text("Applicant: Adaeze Kalu", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+                                        }
+                                        Button(
+                                            onClick = {},
+                                            shape = RoundedCornerShape(8.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = FieldTheme.colors.purple600),
+                                            modifier = Modifier.height(36.dp)
+                                        ) {
+                                            Text("Sign Off", style = FieldTheme.typography.label)
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 4. Branch Pipeline (condensed chip row)
+                            item {
+                                Text("BRANCH PIPELINE", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Box(modifier = Modifier.background(FieldTheme.colors.gray900, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 6.dp)) {
+                                        Text("Intake: 8", style = FieldTheme.typography.label, color = Color.White)
+                                    }
+                                    Box(modifier = Modifier.background(FieldTheme.colors.gray900, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 6.dp)) {
+                                        Text("OCR: 4", style = FieldTheme.typography.label, color = Color.White)
+                                    }
+                                    Box(modifier = Modifier.background(FieldTheme.colors.gray900, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 6.dp)) {
+                                        Text("Credit: 6", style = FieldTheme.typography.label, color = Color.White)
+                                    }
+                                }
+                            }
+
+                            // 5. Recent Approvals (last 5)
+                            item {
+                                Text("RECENT APPROVALS", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    listOf("Adaeze Okonkwo - Approved", "Emeka Chukwu - Approved", "Fatima Al-Hassan - Approved").forEach { app ->
+                                        Box(modifier = Modifier.fillMaxWidth().background(FieldTheme.colors.gray900).padding(12.dp)) {
+                                            Text(app, style = FieldTheme.typography.body, color = FieldTheme.colors.gray300)
                                         }
                                     }
                                 }
                             }
                         }
                     }
+                    1 -> {
+                        // Awaiting Me screen: Inline buttons concur/return
+                        Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text("AWAITING MY CONCURRENCE", style = FieldTheme.typography.title, color = Color.White)
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                items(listOf("MMFB-041 (Adaeze Kalu)", "MMFB-039 (Bola T.)")) { doc ->
+                                    FieldCard {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column {
+                                                Text(doc, style = FieldTheme.typography.bodyStrong)
+                                                Text("Credit Recommendation: Approve", style = FieldTheme.typography.body, color = FieldTheme.colors.statusSuccess)
+                                            }
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Button(
+                                                    onClick = {},
+                                                    colors = ButtonDefaults.buttonColors(containerColor = FieldTheme.colors.statusSuccess),
+                                                    modifier = Modifier.height(36.dp),
+                                                    shape = RoundedCornerShape(6.dp)
+                                                ) {
+                                                    Text("Concur", style = FieldTheme.typography.label)
+                                                }
+                                                OutlinedButton(
+                                                    onClick = {},
+                                                    modifier = Modifier.height(36.dp),
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    border = BorderStroke(1.dp, FieldTheme.colors.statusDanger),
+                                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = FieldTheme.colors.statusDanger)
+                                                ) {
+                                                    Text("Return", style = FieldTheme.typography.label)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Manager operational utility screen", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+                        }
+                    }
+                }
+            }
+
+            // Topbar icons
+            Row(
+                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                IconButton(onClick = onNavigateToSearchResults) {
+                    Icon(Icons.Outlined.Search, "Search", tint = FieldTheme.colors.gray400)
+                }
+                IconButton(onClick = onNavigateToNotifications) {
+                    Icon(Icons.Outlined.Notifications, "Notifications", tint = FieldTheme.colors.gray400)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(modifier = Modifier.clickable { showSettingsInline = !showSettingsInline }) {
+                    RoleBadge(role = "BM")
                 }
             }
         }
+    }
+}
 
-        // Recent Activity / Queue items
-        item {
-            Column {
-                Text(
-                    text = "RECENT DOSSIERS IN QUEUE",
-                    style = FieldTheme.typography.label,
-                    color = FieldTheme.colors.gray500
+@Composable
+fun BranchManagerTabletDashboard(
+    onLogout: () -> Unit,
+    onNavigateToOfflineQueue: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    onNavigateToSearchResults: () -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var selectedQueueIndex by remember { mutableStateOf(0) }
+
+    val sideRailItems = listOf(
+        NavigationItem("Home", Icons.Outlined.Home),
+        NavigationItem("Awaiting Me", Icons.Outlined.Info),
+        NavigationItem("Pipeline", Icons.AutoMirrored.Outlined.List),
+        NavigationItem("Visits", Icons.Outlined.LocationOn),
+        NavigationItem("Reports", Icons.Outlined.AccountBox),
+        NavigationItem("Settings", Icons.Outlined.Settings)
+    )
+
+    Row(modifier = Modifier.fillMaxSize().background(FieldTheme.colors.gray950)) {
+        // Persistent side rail warning amber accent tint
+        FieldNavigationRail(
+            items = sideRailItems,
+            selectedItemIndex = selectedTab,
+            onItemSelect = { selectedTab = it }
+        )
+
+        if (selectedTab == 5) {
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                SettingsScreen(
+                    userName = "Amaka Obi",
+                    userEmail = "amaka@mmfb.com",
+                    role = UserRole.BRANCH_MANAGER,
+                    onBackClick = { selectedTab = 0 },
+                    onNavigateToOfflineQueue = onNavigateToOfflineQueue,
+                    onSignOutClick = onLogout
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    recentItems.forEach { item ->
+            }
+        } else {
+            Row(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                // 340dp pipeline master list
+                Column(
+                    modifier = Modifier
+                        .width(340.dp)
+                        .fillMaxHeight()
+                        .background(FieldTheme.colors.gray900)
+                        .border(0.5.dp, FieldTheme.colors.gray800, RoundedCornerShape(0.dp))
+                        .padding(16.dp)
+                ) {
+                    Text("FULL PIPELINE", style = FieldTheme.typography.title, color = Color.White)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val pipelineSteps = listOf("Intake (8)", "OCR Review (4)", "Credit Review (6)", "Branch Appr (3)", "Disbursed (2)")
+                        itemsIndexed(pipelineSteps) { idx, name ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(if (idx == selectedQueueIndex) FieldTheme.colors.purple950 else Color.Transparent, RoundedCornerShape(8.dp))
+                                    .clickable { selectedQueueIndex = idx }
+                                    .padding(12.dp)
+                            ) {
+                                Text(name, style = FieldTheme.typography.bodyStrong, color = if (idx == selectedQueueIndex) Color.White else FieldTheme.colors.gray300)
+                            }
+                        }
+                    }
+                }
+
+                // Application Detail
+                Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(24.dp)) {
+                    Text("CONCURRENCE STAGE", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Credit Recommendation: Approve (Verified GSI)", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.statusSuccess)
+                    Text("Readiness: 18/22 gates verified", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // Buttons live in detail pane, always visible
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Button(
+                            onClick = {},
+                            modifier = Modifier.width(180.dp).height(44.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = FieldTheme.colors.statusSuccess)
+                        ) {
+                            Text("Concur Approval", style = FieldTheme.typography.bodyStrong)
+                        }
+                        OutlinedButton(
+                            onClick = {},
+                            modifier = Modifier.width(180.dp).height(44.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, FieldTheme.colors.statusDanger),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = FieldTheme.colors.statusDanger)
+                        ) {
+                            Text("Return Application", style = FieldTheme.typography.bodyStrong)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// =========================================================================
+// 3. CREDIT OFFICER SCREEN GRAPHICS
+// =========================================================================
+
+@Composable
+fun CreditOfficerPhoneDashboard(
+    onLogout: () -> Unit,
+    onNavigateToOfflineQueue: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    onNavigateToSearchResults: () -> Unit,
+    onNavigateToApplications: () -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var showSettingsInline by remember { mutableStateOf(false) }
+
+    val navigationItems = listOf(
+        NavigationItem("Home", Icons.Outlined.Home),
+        NavigationItem("My Reviews", Icons.AutoMirrored.Outlined.List),
+        NavigationItem("OCR Queue", Icons.Outlined.Search),
+        NavigationItem("Flags", Icons.Outlined.Warning),
+        NavigationItem("Search", Icons.Outlined.Search)
+    )
+
+    Scaffold(
+        bottomBar = {
+            if (!showSettingsInline) {
+                FieldBottomBar(
+                    items = navigationItems,
+                    selectedItemIndex = selectedTab,
+                    onItemSelect = {
+                        selectedTab = it
+                        showSettingsInline = false
+                    }
+                )
+            }
+        },
+        containerColor = FieldTheme.colors.gray950
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            if (showSettingsInline) {
+                SettingsScreen(
+                    userName = "Kemi Ade",
+                    userEmail = "kemi@mmfb.com",
+                    role = UserRole.CREDIT_OFFICER,
+                    onBackClick = { showSettingsInline = false },
+                    onNavigateToOfflineQueue = onNavigateToOfflineQueue,
+                    onSignOutClick = onLogout
+                )
+            } else {
+                when (selectedTab) {
+                    0 -> {
+                        // Home screen layout: Metric strip, list of overdue, exceptions list, upsell banner
+                        LazyColumn(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            // 1. Metric strip
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().background(FieldTheme.colors.gray900).padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Reviews: 7", style = FieldTheme.typography.label, color = Color.White)
+                                    Text("High Risk: 3", style = FieldTheme.typography.label, color = FieldTheme.colors.statusDanger)
+                                    Text("OCR Exceptions: 2", style = FieldTheme.typography.label, color = FieldTheme.colors.statusWarning)
+                                }
+                            }
+
+                            // 2. Overdue Reviews list (age-sorted, amber/red urgency)
+                            item {
+                                Text("OVERDUE REVIEWS", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    DossierCard("Adaeze Okonkwo (Age: 5 days)", FieldTheme.colors.statusDanger)
+                                    DossierCard("Emeka Chukwu (Age: 2 days)", FieldTheme.colors.statusWarning)
+                                }
+                            }
+
+                            // 3. OCR Exceptions list: field + confidence + Flag/Accept inline (the ONLY edit action on phone)
+                            item {
+                                Text("OCR EXCEPTIONS (INLINE ACTIONS)", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                FieldCard {
+                                    Column {
+                                        Text("Field: guarantor_bvn", style = FieldTheme.typography.bodyStrong)
+                                        Text("Confidence: 54%", style = FieldTheme.typography.body, color = FieldTheme.colors.statusWarning)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Button(onClick = {}, modifier = Modifier.height(32.dp), colors = ButtonDefaults.buttonColors(containerColor = FieldTheme.colors.statusSuccess)) {
+                                                Text("Accept", style = FieldTheme.typography.label)
+                                            }
+                                            OutlinedButton(onClick = {}, modifier = Modifier.height(32.dp), border = BorderStroke(1.dp, FieldTheme.colors.statusDanger), colors = ButtonDefaults.outlinedButtonColors(contentColor = FieldTheme.colors.statusDanger)) {
+                                                Text("Flag", style = FieldTheme.typography.label)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 4. Desktop/Tablet upsell banner
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(FieldTheme.colors.purple950)
+                                        .border(0.5.dp, FieldTheme.colors.purple600, RoundedCornerShape(8.dp))
+                                        .padding(16.dp)
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text("Desktop / Tablet Upsell", style = FieldTheme.typography.label, color = FieldTheme.colors.purple400)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Full credit review is best done on a larger screen.",
+                                            style = FieldTheme.typography.body,
+                                            color = Color.White,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                            PrimaryButton(text = "Continue Anyway", onClick = { onNavigateToApplications() }, modifier = Modifier.weight(1f))
+                                            SecondaryButton(text = "Switch Device", onClick = {}, modifier = Modifier.weight(1f))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Credit Officer Reviews List", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+                        }
+                    }
+                }
+            }
+
+            // Topbar icons
+            Row(
+                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                IconButton(onClick = onNavigateToSearchResults) {
+                    Icon(Icons.Outlined.Search, "Search", tint = FieldTheme.colors.gray400)
+                }
+                IconButton(onClick = onNavigateToNotifications) {
+                    Icon(Icons.Outlined.Notifications, "Notifications", tint = FieldTheme.colors.gray400)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(modifier = Modifier.clickable { showSettingsInline = !showSettingsInline }) {
+                    RoleBadge(role = "CO")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CreditOfficerTabletDashboard(
+    onLogout: () -> Unit,
+    onNavigateToOfflineQueue: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    onNavigateToSearchResults: () -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var selectedReviewIndex by remember { mutableStateOf(0) }
+
+    val sideRailItems = listOf(
+        NavigationItem("Home", Icons.Outlined.Home),
+        NavigationItem("My Reviews", Icons.AutoMirrored.Outlined.List),
+        NavigationItem("OCR Exceptions", Icons.Outlined.Search),
+        NavigationItem("Affordability", Icons.Outlined.Info),
+        NavigationItem("Flags", Icons.Outlined.Warning),
+        NavigationItem("Settings", Icons.Outlined.Settings)
+    )
+
+    Row(modifier = Modifier.fillMaxSize().background(FieldTheme.colors.gray950)) {
+        // Persistent rail success green active tint
+        FieldNavigationRail(
+            items = sideRailItems,
+            selectedItemIndex = selectedTab,
+            onItemSelect = { selectedTab = it }
+        )
+
+        if (selectedTab == 5) {
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                SettingsScreen(
+                    userName = "Kemi Ade",
+                    userEmail = "kemi@mmfb.com",
+                    role = UserRole.CREDIT_OFFICER,
+                    onBackClick = { selectedTab = 0 },
+                    onNavigateToOfflineQueue = onNavigateToOfflineQueue,
+                    onSignOutClick = onLogout
+                )
+            }
+        } else {
+            // True 3-pane split view
+            Row(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                // Column 1: Queue (280dp)
+                Column(
+                    modifier = Modifier
+                        .width(280.dp)
+                        .fillMaxHeight()
+                        .background(FieldTheme.colors.gray900)
+                        .border(0.5.dp, FieldTheme.colors.gray800, RoundedCornerShape(0.dp))
+                        .padding(16.dp)
+                ) {
+                    Text("REVIEWS DUE", style = FieldTheme.typography.title, color = Color.White)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val reviewsList = listOf("Adaeze Kalu (3d)", "Chioma Eze (1d)", "David Adio (5d)")
+                        itemsIndexed(reviewsList) { idx, name ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(if (idx == selectedReviewIndex) FieldTheme.colors.purple950 else Color.Transparent, RoundedCornerShape(8.dp))
+                                    .clickable { selectedReviewIndex = idx }
+                                    .padding(12.dp)
+                            ) {
+                                Text(name, style = FieldTheme.typography.bodyStrong, color = if (idx == selectedReviewIndex) Color.White else FieldTheme.colors.gray300)
+                            }
+                        }
+                    }
+                }
+
+                // Column 2: Scanned Document view image (fluid middle)
+                Box(
+                    modifier = Modifier
+                        .weight(1.2f)
+                        .fillMaxHeight()
+                        .padding(16.dp)
+                        .background(FieldTheme.colors.gray850, RoundedCornerShape(8.dp))
+                        .border(0.5.dp, FieldTheme.colors.gray800, RoundedCornerShape(8.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("[ Scanned land deed document scan view. Pinch to zoom ]", color = FieldTheme.colors.gray400)
+                }
+
+                // Column 3: Extracted OCR fields list (fluid right)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(FieldTheme.colors.gray900)
+                        .border(0.5.dp, FieldTheme.colors.gray800, RoundedCornerShape(0.dp))
+                        .padding(16.dp)
+                ) {
+                    Text("EXTRACTED FIELDS", style = FieldTheme.typography.label, color = FieldTheme.colors.purple400)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Full Name Match", style = FieldTheme.typography.bodyStrong, color = Color.White)
+                    Text("Adaeze Kalu - 94% confidence [OCR]", style = FieldTheme.typography.body, color = FieldTheme.colors.statusSuccess)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("BVN Status Match", style = FieldTheme.typography.bodyStrong, color = Color.White)
+                    Text("22109841890 - 99% confidence [CRIT]", style = FieldTheme.typography.body, color = FieldTheme.colors.statusSuccess)
+                }
+            }
+        }
+    }
+}
+
+// =========================================================================
+// 4. AUDITOR SCREEN GRAPHICS
+// =========================================================================
+
+@Composable
+fun AuditorPhoneDashboard(
+    onLogout: () -> Unit,
+    onNavigateToOfflineQueue: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    onNavigateToSearchResults: () -> Unit,
+    onNavigateToApplications: () -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var showSettingsInline by remember { mutableStateOf(false) }
+
+    val navigationItems = listOf(
+        NavigationItem("Home", Icons.Outlined.Home),
+        NavigationItem("Audit Trail", Icons.Outlined.Info),
+        NavigationItem("Applications", Icons.AutoMirrored.Outlined.List),
+        NavigationItem("Flags", Icons.Outlined.Warning),
+        NavigationItem("Export", Icons.Outlined.Share)
+    )
+
+    Scaffold(
+        bottomBar = {
+            if (!showSettingsInline) {
+                FieldBottomBar(
+                    items = navigationItems,
+                    selectedItemIndex = selectedTab,
+                    onItemSelect = {
+                        selectedTab = it
+                        showSettingsInline = false
+                    }
+                )
+            }
+        },
+        containerColor = FieldTheme.colors.gray950
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            if (showSettingsInline) {
+                SettingsScreen(
+                    userName = "Amadi Okafor",
+                    userEmail = "amadi@mmfb.com",
+                    role = UserRole.AUDITOR,
+                    onBackClick = { showSettingsInline = false },
+                    onNavigateToOfflineQueue = onNavigateToOfflineQueue,
+                    onSignOutClick = onLogout
+                )
+            } else {
+                when (selectedTab) {
+                    0 -> {
+                        // Home screen layout: Exception count category, quick search, read-only list, export shortcut
+                        LazyColumn(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            // 1. Exception count cards
+                            item {
+                                Text("COMPLIANCE EXCEPTIONS BY CATEGORY", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Box(modifier = Modifier.weight(1f).background(FieldTheme.colors.gray900).clickable { selectedTab = 1 }.padding(8.dp)) {
+                                        Text("Expired ID: 3", color = FieldTheme.colors.statusDanger, style = FieldTheme.typography.label)
+                                    }
+                                    Box(modifier = Modifier.weight(1f).background(FieldTheme.colors.gray900).clickable { selectedTab = 1 }.padding(8.dp)) {
+                                        Text("Unsigned: 2", color = FieldTheme.colors.statusDanger, style = FieldTheme.typography.label)
+                                    }
+                                    Box(modifier = Modifier.weight(1f).background(FieldTheme.colors.gray900).clickable { selectedTab = 1 }.padding(8.dp)) {
+                                        Text("Missing GSI: 1", color = FieldTheme.colors.statusDanger, style = FieldTheme.typography.label)
+                                    }
+                                }
+                            }
+
+                            // 2. Quick search by reference
+                            item {
+                                OutlinedTextField(
+                                    value = "",
+                                    onValueChange = {},
+                                    placeholder = { Text("Quick Reference Search...") },
+                                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+
+                            // 3. Read-only application cards (compliance status only, no swipe actions)
+                            item {
+                                Text("COMPLIANCE STATUS DOSSIERS", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    listOf("Adaeze Okonkwo - Approved", "Emeka Chukwu - Needs Review").forEach { app ->
+                                        Box(modifier = Modifier.fillMaxWidth().background(FieldTheme.colors.gray900).padding(12.dp)) {
+                                            Text(app, style = FieldTheme.typography.bodyStrong)
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 4. Export shortcut: Last 7 Days
+                            item {
+                                PrimaryButton(text = "Export Logs (Last 7 Days)", onClick = {})
+                            }
+                        }
+                    }
+                    else -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Auditor Trial View Logs", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+                        }
+                    }
+                }
+            }
+
+            // Topbar icons
+            Row(
+                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                IconButton(onClick = onNavigateToSearchResults) {
+                    Icon(Icons.Outlined.Search, "Search", tint = FieldTheme.colors.gray400)
+                }
+                IconButton(onClick = onNavigateToNotifications) {
+                    Icon(Icons.Outlined.Notifications, "Notifications", tint = FieldTheme.colors.gray400)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(modifier = Modifier.clickable { showSettingsInline = !showSettingsInline }) {
+                    RoleBadge(role = "AUD")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AuditorTabletDashboard(
+    onLogout: () -> Unit,
+    onNavigateToOfflineQueue: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    onNavigateToSearchResults: () -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var selectedAuditIndex by remember { mutableStateOf(0) }
+
+    val sideRailItems = listOf(
+        NavigationItem("Home", Icons.Outlined.Home),
+        NavigationItem("Audit Trail", Icons.Outlined.Info),
+        NavigationItem("Applications", Icons.AutoMirrored.Outlined.List),
+        NavigationItem("Compliance Flags", Icons.Outlined.Warning),
+        NavigationItem("Settings", Icons.Outlined.Settings)
+    )
+
+    Row(modifier = Modifier.fillMaxSize().background(FieldTheme.colors.gray950)) {
+        // Persistent slate active state side rail
+        FieldNavigationRail(
+            items = sideRailItems,
+            selectedItemIndex = selectedTab,
+            onItemSelect = { selectedTab = it }
+        )
+
+        if (selectedTab == 4) {
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                SettingsScreen(
+                    userName = "Amadi Okafor",
+                    userEmail = "amadi@mmfb.com",
+                    role = UserRole.AUDITOR,
+                    onBackClick = { selectedTab = 0 },
+                    onNavigateToOfflineQueue = onNavigateToOfflineQueue,
+                    onSignOutClick = onLogout
+                )
+            }
+        } else {
+            Row(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                // 340dp master list of audit trail events
+                Column(
+                    modifier = Modifier
+                        .width(340.dp)
+                        .fillMaxHeight()
+                        .background(FieldTheme.colors.gray900)
+                        .border(0.5.dp, FieldTheme.colors.gray800, RoundedCornerShape(0.dp))
+                        .padding(16.dp)
+                ) {
+                    Text("AUDIT TRAIL EVENTS", style = FieldTheme.typography.title, color = Color.White)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val auditList = listOf("guarantor_bvn changed by Chidi Okafor", "loan_amount approved by Amaka Obi")
+                        itemsIndexed(auditList) { idx, name ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(if (idx == selectedAuditIndex) FieldTheme.colors.purple950 else Color.Transparent, RoundedCornerShape(8.dp))
+                                    .clickable { selectedAuditIndex = idx }
+                                    .padding(12.dp)
+                            ) {
+                                Text(name, style = FieldTheme.typography.bodyStrong, color = if (idx == selectedAuditIndex) Color.White else FieldTheme.colors.gray300)
+                            }
+                        }
+                    }
+                }
+
+                // Detail event pane: before/after diffs
+                Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(24.dp)) {
+                    Text("EVENT DETAILS & COMPLIANCE DIFFS", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    FieldCard {
+                        Text("Field: guarantor_bvn", style = FieldTheme.typography.bodyStrong)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Before: 2210•••••89", style = FieldTheme.typography.mono, color = FieldTheme.colors.statusDanger)
+                        Text("After: 2210984••••89", style = FieldTheme.typography.mono, color = FieldTheme.colors.statusSuccess)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Actor Source: corrected by Chidi Okafor", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    PrimaryButton(text = "Export compliance reports CSV", onClick = {}, modifier = Modifier.width(280.dp))
+                }
+            }
+        }
+    }
+}
+
+// =========================================================================
+// 5. SYSTEM ADMIN SCREEN GRAPHICS
+// =========================================================================
+
+@Composable
+fun AdminPhoneDashboard(
+    onLogout: () -> Unit,
+    onNavigateToOfflineQueue: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    onNavigateToSearchResults: () -> Unit,
+    onNavigateToBorrowers: () -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var showSettingsInline by remember { mutableStateOf(false) }
+
+    val navigationItems = listOf(
+        NavigationItem("Home", Icons.Outlined.Home),
+        NavigationItem("Users", Icons.Outlined.Person),
+        NavigationItem("System", Icons.Outlined.Settings)
+    )
+
+    Scaffold(
+        bottomBar = {
+            if (!showSettingsInline) {
+                FieldBottomBar(
+                    items = navigationItems,
+                    selectedItemIndex = selectedTab,
+                    onItemSelect = {
+                        selectedTab = it
+                        showSettingsInline = false
+                    }
+                )
+            }
+        },
+        containerColor = FieldTheme.colors.gray950
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            if (showSettingsInline) {
+                SettingsScreen(
+                    userName = "Root Admin",
+                    userEmail = "admin@mainstreet.com",
+                    role = UserRole.ADMIN_MCR,
+                    onBackClick = { showSettingsInline = false },
+                    onNavigateToOfflineQueue = onNavigateToOfflineQueue,
+                    onSignOutClick = onLogout
+                )
+            } else {
+                when (selectedTab) {
+                    0 -> {
+                        // Home screen layout: System health, upsell banner, users read-only
+                        Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text("SYSTEM OPERATIONS STATUS", style = FieldTheme.typography.title, color = Color.White)
+                            FieldCard {
+                                Text("Database Node Syncing: Online", color = FieldTheme.colors.statusSuccess)
+                                Text("Local SQLite Conflicts: 0", color = FieldTheme.colors.gray300)
+                                Text("Active Connected Devices: 128", color = FieldTheme.colors.gray300)
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(FieldTheme.colors.purple950)
+                                    .padding(16.dp)
+                            ) {
+                                Text(
+                                    text = "User and configuration management is available on tablet and desktop.",
+                                    style = FieldTheme.typography.body,
+                                    color = Color.White,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                    1 -> {
+                        // Users tab: Read-only users list
+                        Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                            Text("USER REGISTRY (READ-ONLY ON PHONE)", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(listOf("Chidi Okafor - Loan Officer", "Amaka Obi - Branch Manager", "Kemi Ade - Credit Officer")) { user ->
+                                    Box(modifier = Modifier.fillMaxWidth().background(FieldTheme.colors.gray900).padding(12.dp)) {
+                                        Text(user, style = FieldTheme.typography.bodyStrong)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else -> {
+                        Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                            PrimaryButton(text = "Manage configurations", onClick = {}, enabled = false)
+                        }
+                    }
+                }
+            }
+
+            // Topbar icons
+            Row(
+                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                IconButton(onClick = onNavigateToSearchResults) {
+                    Icon(Icons.Outlined.Search, "Search", tint = FieldTheme.colors.gray400)
+                }
+                IconButton(onClick = onNavigateToNotifications) {
+                    Icon(Icons.Outlined.Notifications, "Notifications", tint = FieldTheme.colors.gray400)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(modifier = Modifier.clickable { showSettingsInline = !showSettingsInline }) {
+                    RoleBadge(role = "ADM")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AdminTabletDashboard(
+    onLogout: () -> Unit,
+    onNavigateToOfflineQueue: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    onNavigateToSearchResults: () -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var selectedUserIndex by remember { mutableStateOf(0) }
+
+    var userNameInput by remember { mutableStateOf("Chidi Okafor") }
+    var roleInput by remember { mutableStateOf("Loan Officer") }
+
+    val sideRailItems = listOf(
+        NavigationItem("Home", Icons.Outlined.Home),
+        NavigationItem("Users", Icons.Outlined.Person),
+        NavigationItem("Organisation", Icons.Outlined.Home),
+        NavigationItem("System", Icons.Outlined.Settings),
+        NavigationItem("Audit", Icons.Outlined.Info)
+    )
+
+    Row(modifier = Modifier.fillMaxSize().background(FieldTheme.colors.gray950)) {
+        // Persistent structural deep purple active active side rail
+        FieldNavigationRail(
+            items = sideRailItems,
+            selectedItemIndex = selectedTab,
+            onItemSelect = { selectedTab = it }
+        )
+
+        Row(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            // 340dp User List master
+            Column(
+                modifier = Modifier
+                    .width(340.dp)
+                    .fillMaxHeight()
+                    .background(FieldTheme.colors.gray900)
+                    .border(0.5.dp, FieldTheme.colors.gray800, RoundedCornerShape(0.dp))
+                    .padding(16.dp)
+            ) {
+                Text("ALL OPERATIONAL USERS", style = FieldTheme.typography.title, color = Color.White)
+                Spacer(modifier = Modifier.height(16.dp))
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val userList = listOf("Chidi Okafor (Loan Officer)", "Amaka Obi (Branch Manager)")
+                    itemsIndexed(userList) { idx, name ->
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp))
-                                .background(FieldTheme.colors.gray850)
-                                .clickable { onNavigateToApplications() }
-                                .padding(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = item.borrowerName,
-                                        style = FieldTheme.typography.bodyStrong,
-                                        color = FieldTheme.colors.gray100
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = item.amount,
-                                            style = FieldTheme.typography.mono.copy(fontSize = 12.sp),
-                                            color = FieldTheme.colors.gray400
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = "•  ${item.lga}",
-                                            style = FieldTheme.typography.body.copy(fontSize = 12.sp),
-                                            color = FieldTheme.colors.gray500
-                                        )
+                                .background(if (idx == selectedUserIndex) FieldTheme.colors.purple950 else Color.Transparent, RoundedCornerShape(8.dp))
+                                .clickable {
+                                    selectedUserIndex = idx
+                                    if (idx == 0) {
+                                        userNameInput = "Chidi Okafor"
+                                        roleInput = "Loan Officer"
+                                    } else {
+                                        userNameInput = "Amaka Obi"
+                                        roleInput = "Branch Manager"
                                     }
                                 }
-                                StatusChip(variant = item.status)
-                            }
+                                .padding(12.dp)
+                        ) {
+                            Text(name, style = FieldTheme.typography.bodyStrong, color = if (idx == selectedUserIndex) Color.White else FieldTheme.colors.gray300)
                         }
+                    }
+                }
+            }
+
+            // Edit User details form
+            Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(24.dp)) {
+                Text("EDIT USER OPERATIONAL ACCOUNT", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                Spacer(modifier = Modifier.height(16.dp))
+                FieldTextField(value = userNameInput, onValueChange = { userNameInput = it }, label = "Full Name")
+                Spacer(modifier = Modifier.height(12.dp))
+                FieldTextField(value = roleInput, onValueChange = { roleInput = it }, label = "User Role")
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PrimaryButton(text = "Save changes", onClick = {}, modifier = Modifier.width(160.dp))
+                    OutlinedButton(onClick = {}, colors = ButtonDefaults.outlinedButtonColors(contentColor = FieldTheme.colors.statusDanger), border = BorderStroke(1.dp, FieldTheme.colors.statusDanger), shape = RoundedCornerShape(8.dp), modifier = Modifier.width(160.dp).height(44.dp)) {
+                        Text("Deactivate User", style = FieldTheme.typography.bodyStrong)
                     }
                 }
             }
@@ -364,141 +1416,83 @@ fun DashboardHomeContent(
     }
 }
 
-// ==========================================
-// ROLE BASED DEMO GENERATION
-// ==========================================
+// =========================================================================
+// WIDGET HELPERS FOR COMPACT VIEW LAYOUT
+// =========================================================================
 
-data class StatItem(val title: String, val value: String, val color: Color)
-data class ModuleItem(val title: String, val desc: String, val icon: ImageVector, val targetScreen: String)
-data class RecentDossier(val borrowerName: String, val amount: String, val lga: String, val status: StatusChipVariant)
-
-private fun getStatsForRole(role: UserRole, colors: com.fieldcrm.android.ui.theme.FieldColors): List<StatItem> {
-    val success = colors.statusSuccess
-    val warning = colors.statusWarning
-    val primary = colors.purple400
-
-    return when (role) {
-        UserRole.LOAN_OFFICER -> listOf(
-            StatItem("Pending Visitations", "4", warning),
-            StatItem("Intake Queue", "12", primary),
-            StatItem("Disbursed Total", "₦2.4M", success)
-        )
-        UserRole.BRANCH_MANAGER -> listOf(
-            StatItem("Approvals Queue", "3", warning),
-            StatItem("Active Officers", "8", primary),
-            StatItem("Monthly Target", "84%", success)
-        )
-        UserRole.CREDIT_OFFICER -> listOf(
-            StatItem("Pending Scores", "7", warning),
-            StatItem("Calculations Done", "41", primary),
-            StatItem("Avg Risk Confidence", "92%", success)
-        )
-        UserRole.AUDITOR -> listOf(
-            StatItem("Gates Checklists", "18", primary),
-            StatItem("Returned Files", "2", warning),
-            StatItem("Compliance Rate", "98%", success)
-        )
-        UserRole.ADMIN_MCR -> listOf(
-            StatItem("Active Sync Syncing", "Online", success),
-            StatItem("Failed Retries", "0", primary),
-            StatItem("Org Nodes", "12", primary)
-        )
-    }
-}
-
-private fun getModulesForRole(role: UserRole): List<ModuleItem> {
-    return when (role) {
-        UserRole.LOAN_OFFICER -> listOf(
-            ModuleItem("Borrower Intake", "Register profiles", Icons.Outlined.Person, "borrowers"),
-            ModuleItem("Visitation Report", "Capture GPS and Photo", Icons.Outlined.LocationOn, "applications"),
-            ModuleItem("Guarantors Upload", "Collapsible verification", Icons.Outlined.Share, "applications"),
-            ModuleItem("Pledges & Trusts", "Signature pads", Icons.Outlined.Edit, "applications")
-        )
-        UserRole.BRANCH_MANAGER -> listOf(
-            ModuleItem("Review Queue", "Dossier audit & decision", Icons.Outlined.List, "applications"),
-            ModuleItem("Active Sync Status", "WorkManager state", Icons.Outlined.Refresh, "applications"),
-            ModuleItem("Team Operations", "Branch analytics", Icons.Outlined.AccountBox, "borrowers"),
-            ModuleItem("Disbursements", "Disbursement ready gates", Icons.Outlined.ThumbUp, "applications")
-        )
-        UserRole.CREDIT_OFFICER -> listOf(
-            ModuleItem("Credit Scores", "DTI & bureau matrices", Icons.Outlined.Create, "applications"),
-            ModuleItem("OCR Checks", "Verify extracted NIN/BVN", Icons.Outlined.Search, "applications"),
-            ModuleItem("Risk Analytics", "Borrower scoring ratios", Icons.Outlined.Star, "applications"),
-            ModuleItem("Compliance Gates", "Organization checklists", Icons.Outlined.Done, "applications")
-        )
-        UserRole.AUDITOR -> listOf(
-            ModuleItem("Compliance Log", "Tick checklists & verification", Icons.Outlined.Done, "applications"),
-            ModuleItem("Immutable Audit Log", "Actor action trail", Icons.Outlined.Info, "applications"),
-            ModuleItem("OCR Mismatch Checks", "Manual corrections list", Icons.Outlined.Warning, "applications"),
-            ModuleItem("Dossier Exporters", "Download bank certs", Icons.Outlined.List, "applications")
-        )
-        UserRole.ADMIN_MCR -> listOf(
-            ModuleItem("Certificate Pinning", "HTTPS security settings", Icons.Outlined.Lock, "applications"),
-            ModuleItem("Queue Monitor", "Offline cache mutations", Icons.Outlined.ShoppingCart, "applications"),
-            ModuleItem("System Logging", "Organization audit trails", Icons.Outlined.Info, "applications"),
-            ModuleItem("Sync Conflicts", "Resolve sqlite conflicts", Icons.Outlined.Warning, "applications")
-        )
-    }
-}
-
-private fun getRecentItemsForRole(role: UserRole): List<RecentDossier> {
-    return when (role) {
-        UserRole.LOAN_OFFICER -> listOf(
-            RecentDossier("Adaeze Okonkwo", "₦250,000", "Ikeja", StatusChipVariant.Verified),
-            RecentDossier("Emeka Chukwu", "₦1,200,000", "Gwale", StatusChipVariant.NeedsReview),
-            RecentDossier("Fatima Al-Hassan", "₦450,000", "Enugu North", StatusChipVariant.LowConfidence)
-        )
-        UserRole.BRANCH_MANAGER -> listOf(
-            RecentDossier("Emeka Chukwu", "₦1,200,000", "Gwale", StatusChipVariant.NeedsReview),
-            RecentDossier("Babatunde Olatunji", "₦600,000", "Surulere", StatusChipVariant.Returned),
-            RecentDossier("Chinedu Eze", "₦350,000", "Onitsha", StatusChipVariant.Approved)
-        )
-        UserRole.CREDIT_OFFICER -> listOf(
-            RecentDossier("Adaeze Okonkwo", "₦250,000", "Ikeja", StatusChipVariant.Verified),
-            RecentDossier("Fatima Al-Hassan", "₦450,000", "Enugu North", StatusChipVariant.LowConfidence),
-            RecentDossier("Tunde Bakare", "₦900,000", "Ibadan", StatusChipVariant.Missing)
-        )
-        UserRole.AUDITOR -> listOf(
-            RecentDossier("Chinedu Eze", "₦350,000", "Onitsha", StatusChipVariant.Signed),
-            RecentDossier("Babatunde Olatunji", "₦600,000", "Surulere", StatusChipVariant.Returned),
-            RecentDossier("Adaeze Okonkwo", "₦250,000", "Ikeja", StatusChipVariant.Approved)
-        )
-        UserRole.ADMIN_MCR -> listOf(
-            RecentDossier("Emeka Chukwu", "₦1,200,000", "Gwale", StatusChipVariant.NeedsReview),
-            RecentDossier("Adaeze Okonkwo", "₦250,000", "Ikeja", StatusChipVariant.Verified),
-            RecentDossier("Tunde Bakare", "₦900,000", "Ibadan", StatusChipVariant.Missing)
-        )
-    }
-}
-
-// ==========================================
-// PREVIEWS
-// ==========================================
-
-@Preview(name = "Loan Officer - Compact", widthDp = 411, heightDp = 850)
 @Composable
-fun PreviewDashboardLO() {
-    FieldCRMTheme {
-        DashboardScreenView(
-            role = UserRole.LOAN_OFFICER,
-            onNavigateToBorrowers = {},
-            onNavigateToApplications = {},
-            onNavigateToOfflineQueue = {},
-            onLogout = {}
-        )
+fun MiniMetricCard(title: String, value: String, accent: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White, RoundedCornerShape(8.dp))
+            .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp))
+            .padding(12.dp)
+    ) {
+        Column {
+            Text(title.uppercase(Locale.getDefault()), style = FieldTheme.typography.label.copy(fontSize = 9.sp), color = FieldTheme.colors.gray500)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(value, style = FieldTheme.typography.mono.copy(fontSize = 20.sp, fontWeight = FontWeight.Bold), color = accent)
+        }
     }
 }
 
-@Preview(name = "Branch Manager - Tablet", widthDp = 1280, heightDp = 800)
 @Composable
-fun PreviewDashboardBM() {
-    FieldCRMTheme {
-        DashboardScreenView(
-            role = UserRole.BRANCH_MANAGER,
-            onNavigateToBorrowers = {},
-            onNavigateToApplications = {},
-            onNavigateToOfflineQueue = {},
-            onLogout = {}
-        )
+fun TaskRow(text: String, isPriority: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (isPriority) FieldTheme.colors.purple950 else FieldTheme.colors.gray900, RoundedCornerShape(8.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text, style = FieldTheme.typography.bodyStrong, color = Color.White)
+        Text("➔", color = FieldTheme.colors.purple400)
+    }
+    Spacer(modifier = Modifier.height(8.dp))
+}
+
+@Composable
+fun RecentActivityCard(text: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(FieldTheme.colors.gray900, RoundedCornerShape(8.dp))
+            .padding(12.dp)
+    ) {
+        Text(text, style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+    }
+}
+
+@Composable
+fun DossierCard(text: String, color: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(FieldTheme.colors.gray900, RoundedCornerShape(8.dp))
+            .border(0.5.dp, color, RoundedCornerShape(8.dp))
+            .padding(12.dp)
+    ) {
+        Text(text, style = FieldTheme.typography.bodyStrong, color = Color.White)
+    }
+}
+
+@Composable
+fun LargeTile(label: String, icon: ImageVector, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(FieldTheme.colors.gray900, RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(imageVector = icon, contentDescription = label, tint = FieldTheme.colors.purple400, modifier = Modifier.size(36.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(label, style = FieldTheme.typography.bodyStrong, color = Color.White)
+        }
     }
 }

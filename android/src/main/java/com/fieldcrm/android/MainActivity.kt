@@ -47,219 +47,332 @@ fun FieldCRMApp(appViewModel: AppViewModel = viewModel()) {
     val borrowerUiState by borrowerViewModel.uiState.collectAsState()
     val applicationUiState by applicationViewModel.uiState.collectAsState()
 
-    when (appUiState.currentScreen) {
-        Screen.Login -> {
-            LoginScreenView(
-                viewModel = loginViewModel,
-                onLoginSuccess = { session ->
-                    appViewModel.setSession(session)
-                    appViewModel.navigateTo(Screen.Dashboard)
-                }
-            )
-        }
-        Screen.Dashboard -> {
-            DashboardScreenView(
-                role = appUiState.session?.role,
-                onNavigateToBorrowers = {
-                    appViewModel.navigateTo(Screen.BorrowerList)
-                },
-                onNavigateToApplications = {
-                    appViewModel.navigateTo(Screen.ApplicationList)
-                },
-                onNavigateToOfflineQueue = {
-                    appViewModel.navigateTo(Screen.OfflineQueue)
-                },
-                onLogout = {
-                    appViewModel.logout()
-                }
-            )
-        }
-        Screen.BorrowerList -> {
-            BorrowerListScreenView(
-                viewModel = borrowerViewModel,
-                onBorrowerSelected = { borrower ->
-                    appViewModel.setSelectedBorrower(borrower)
-                    appViewModel.navigateTo(Screen.BorrowerDetail)
-                },
-                onAddBorrower = {
-                    appViewModel.navigateTo(Screen.CreateBorrower)
-                },
-                onBackClick = {
-                    appViewModel.navigateTo(Screen.Dashboard)
-                }
-            )
-        }
-        Screen.BorrowerDetail -> {
-            appUiState.selectedBorrower?.let { borrower ->
-                BorrowerDetailScreenView(
-                    borrower = borrower,
-                    onBackClick = {
-                        appViewModel.setSelectedBorrower(null)
-                        appViewModel.navigateTo(Screen.BorrowerList)
+    if (appUiState.isSessionExpired) {
+        SessionExpiredScreen(
+            userEmail = appUiState.session?.userEmail ?: "chidi@mmfb.com",
+            onReauthSuccess = {
+                appViewModel.setSessionExpired(false)
+            }
+        )
+    } else {
+        when (appUiState.currentScreen) {
+            Screen.Login -> {
+                LoginScreenView(
+                    viewModel = loginViewModel,
+                    hasEnrolledBiometrics = appUiState.hasEnrolledBiometrics,
+                    onLoginSuccess = { session ->
+                        appViewModel.setSession(session)
+                        val next = when {
+                            !appUiState.hasEnrolledBiometrics -> Screen.BiometricEnrollment
+                            !appUiState.hasSeenPermissions -> Screen.PermissionsPrimer
+                            !appUiState.hasSeenOnboarding -> Screen.Onboarding
+                            else -> Screen.Dashboard
+                        }
+                        appViewModel.navigateTo(next)
                     },
-                    onCreateApplication = {
-                        applicationViewModel.setSelectedBorrowerForApp(borrower)
-                        appViewModel.navigateTo(Screen.CreateApplication)
+                    onForgotPasswordClick = {
+                        appViewModel.navigateTo(Screen.ForgotPassword)
                     }
                 )
             }
-        }
-        Screen.CreateBorrower -> {
-            CreateBorrowerScreenView(
-                viewModel = borrowerViewModel,
-                onBorrowerCreated = { newBorrower ->
-                    appViewModel.navigateTo(Screen.BorrowerList)
-                },
-                onBackClick = {
-                    appViewModel.navigateTo(Screen.BorrowerList)
-                }
-            )
-        }
-        Screen.ApplicationList -> {
-            ApplicationListScreenView(
-                viewModel = applicationViewModel,
-                borrowers = borrowerUiState.borrowers,
-                onApplicationSelected = { app ->
-                    appViewModel.setSelectedApplication(app)
-                    appViewModel.navigateTo(Screen.ApplicationDetail)
-                },
-                onAddApplication = {
-                    appViewModel.navigateTo(Screen.CreateApplication)
-                },
-                onBackClick = {
-                    appViewModel.navigateTo(Screen.Dashboard)
-                }
-            )
-        }
-        Screen.ApplicationDetail -> {
-            appUiState.selectedApplication?.let { app ->
-                ApplicationDetailScreenView(
-                    application = app,
-                    borrower = borrowerUiState.borrowers.find { it.id == app.borrower_id },
-                    onBackClick = {
-                        appViewModel.setSelectedApplication(null)
-                        appViewModel.navigateTo(Screen.ApplicationList)
-                    },
-                    onNavigateToDocumentUpload = {
-                        appViewModel.navigateTo(Screen.DocumentUpload)
-                    },
-                    onNavigateToPledgeTrust = {
-                        appViewModel.navigateTo(Screen.PledgeTrust)
-                    },
-                    onNavigateToVisitationReport = {
-                        appViewModel.navigateTo(Screen.VisitationReport)
-                    },
-                    onNavigateToGuarantorsForm = {
-                        appViewModel.navigateTo(Screen.GuarantorsForm)
-                    },
-                    onNavigateToReview = {
-                        val reviewScreen = when (appUiState.session?.role) {
-                            UserRole.BRANCH_MANAGER -> Screen.BranchManagerReview
-                            UserRole.CREDIT_OFFICER -> Screen.CreditOfficerReview
-                            UserRole.AUDITOR -> Screen.AuditorCompliance
-                            UserRole.ADMIN_MCR -> Screen.AdminMcrApproval
-                            else -> Screen.CreditOfficerReview
+            Screen.ForgotPassword -> {
+                ForgotPasswordScreen(
+                    onBackClick = { appViewModel.navigateTo(Screen.Login) },
+                    onNavigateToLogin = { appViewModel.navigateTo(Screen.Login) }
+                )
+            }
+            Screen.ResetPassword -> {
+                ResetPasswordScreen(
+                    onNavigateToLogin = { _, _ -> appViewModel.navigateTo(Screen.Login) }
+                )
+            }
+            Screen.BiometricEnrollment -> {
+                BiometricEnrollmentScreen(
+                    onEnableClick = {
+                        appViewModel.setBiometricsEnrolled(true)
+                        val next = when {
+                            !appUiState.hasSeenPermissions -> Screen.PermissionsPrimer
+                            !appUiState.hasSeenOnboarding -> Screen.Onboarding
+                            else -> Screen.Dashboard
                         }
-                        appViewModel.navigateTo(reviewScreen)
+                        appViewModel.navigateTo(next)
                     },
-                    onNavigateToAuditTrail = {
-                        appViewModel.navigateTo(Screen.WorkflowEventAudit)
-                    },
-                    onNavigateToFormWizard = {
-                        appViewModel.navigateTo(Screen.LoanApplicationForm)
-                    },
-                    onNavigateToDocumentViewer = {
-                        appViewModel.navigateTo(Screen.DocumentViewer)
+                    onNotNowClick = {
+                        val next = when {
+                            !appUiState.hasSeenPermissions -> Screen.PermissionsPrimer
+                            !appUiState.hasSeenOnboarding -> Screen.Onboarding
+                            else -> Screen.Dashboard
+                        }
+                        appViewModel.navigateTo(next)
                     }
                 )
-            }   
-        }
-        Screen.CreateApplication -> {
-            CreateApplicationScreenView(
-                viewModel = applicationViewModel,
-                borrowers = borrowerUiState.borrowers,
-                onApplicationCreated = { newApp ->
-                    appViewModel.navigateTo(Screen.ApplicationList)
-                },
-                onBackClick = {
-                    appViewModel.navigateTo(Screen.ApplicationList)
+            }
+            Screen.PermissionsPrimer -> {
+                PermissionsPrimerScreen(
+                    role = appUiState.session?.role,
+                    onContinueClick = {
+                        appViewModel.setPermissionsSeen(true)
+                        val next = when {
+                            !appUiState.hasSeenOnboarding -> Screen.Onboarding
+                            else -> Screen.Dashboard
+                        }
+                        appViewModel.navigateTo(next)
+                    }
+                )
+            }
+            Screen.Notifications -> {
+                NotificationsScreen(
+                    onBackClick = { appViewModel.navigateTo(Screen.Dashboard) },
+                    onNavigateTo = { screen -> appViewModel.navigateTo(screen) }
+                )
+            }
+            Screen.SearchResults -> {
+                SearchResultsScreen(
+                    onBackClick = { appViewModel.navigateTo(Screen.Dashboard) },
+                    onNavigateToApplication = { refNo ->
+                        // Simulate selecting application detail from search results
+                        val app = applicationUiState.applications.find { it.id == refNo }
+                        if (app != null) {
+                            appViewModel.setSelectedApplication(app)
+                        }
+                        appViewModel.navigateTo(Screen.ApplicationDetail)
+                    }
+                )
+            }
+            Screen.Onboarding -> {
+                OnboardingScreen(
+                    role = appUiState.session?.role,
+                    onDismiss = {
+                        appViewModel.setOnboardingSeen(true)
+                        appViewModel.navigateTo(Screen.Dashboard)
+                    }
+                )
+            }
+            Screen.Confirmation -> {
+                ConfirmationScreen(
+                    title = appUiState.successTitle,
+                    subtitle = appUiState.successSubtitle,
+                    onPrimaryClick = {
+                        appViewModel.navigateTo(Screen.ApplicationDetail)
+                    },
+                    onSecondaryClick = {
+                        appViewModel.navigateTo(appUiState.successDestination)
+                    }
+                )
+            }
+            Screen.Dashboard -> {
+                DashboardScreenView(
+                    role = appUiState.session?.role,
+                    onNavigateToBorrowers = {
+                        appViewModel.navigateTo(Screen.BorrowerList)
+                    },
+                    onNavigateToApplications = {
+                        appViewModel.navigateTo(Screen.ApplicationList)
+                    },
+                    onNavigateToOfflineQueue = {
+                        appViewModel.navigateTo(Screen.OfflineQueue)
+                    },
+                    onLogout = {
+                        appViewModel.logout()
+                    },
+                    onNavigateToNotifications = {
+                        appViewModel.navigateTo(Screen.Notifications)
+                    },
+                    onNavigateToSearchResults = {
+                        appViewModel.navigateTo(Screen.SearchResults)
+                    }
+                )
+            }
+            Screen.BorrowerList -> {
+                BorrowerListScreenView(
+                    viewModel = borrowerViewModel,
+                    onBorrowerSelected = { borrower ->
+                        appViewModel.setSelectedBorrower(borrower)
+                        appViewModel.navigateTo(Screen.BorrowerDetail)
+                    },
+                    onAddBorrower = {
+                        appViewModel.navigateTo(Screen.CreateBorrower)
+                    },
+                    onBackClick = {
+                        appViewModel.navigateTo(Screen.Dashboard)
+                    }
+                )
+            }
+            Screen.BorrowerDetail -> {
+                appUiState.selectedBorrower?.let { borrower ->
+                    BorrowerDetailScreenView(
+                        borrower = borrower,
+                        onBackClick = {
+                            appViewModel.setSelectedBorrower(null)
+                            appViewModel.navigateTo(Screen.BorrowerList)
+                        },
+                        onCreateApplication = {
+                            applicationViewModel.setSelectedBorrowerForApp(borrower)
+                            appViewModel.navigateTo(Screen.CreateApplication)
+                        }
+                    )
                 }
-            )
-        }
-        Screen.LoanApplicationForm -> {
-            LoanApplicationFormScreen(
-                onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                onFinish = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-            )
-        }
-        Screen.DocumentUpload -> {
-            DocumentUploadScreen(
-                onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                onComplete = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-            )
-        }
-        Screen.GuarantorsForm -> {
-            GuarantorsFormScreen(
-                onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                onSave = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-            )
-        }
-        Screen.PledgeTrust -> {
-            PledgeTrustScreen(
-                onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                onSignComplete = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-            )
-        }
-        Screen.VisitationReport -> {
-            VisitationReportScreen(
-                onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                onSubmit = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-            )
-        }
-        Screen.BranchManagerReview -> {
-            BranchManagerReviewScreen(
-                onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                onDecisionSubmitted = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-            )
-        }
-        Screen.CreditOfficerReview -> {
-            CreditOfficerReviewScreen(
-                onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                onCompleteReview = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-            )
-        }
-        Screen.AuditorCompliance -> {
-            AuditorComplianceScreen(
-                onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                onAuditComplete = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-            )
-        }
-        Screen.AdminMcrApproval -> {
-            AdminMcrApprovalScreen(
-                onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                onDisburseTriggered = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-            )
-        }
-        Screen.DocumentViewer -> {
-            DocumentViewerScreen(
-                onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-            )
-        }
-        Screen.WorkflowEventAudit -> {
-            WorkflowEventAuditScreen(
-                onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-            )
-        }
-        Screen.Settings -> {
-            SettingsScreen(
-                onBackClick = { appViewModel.navigateTo(Screen.Dashboard) },
-                onNavigateToOfflineQueue = { appViewModel.navigateTo(Screen.OfflineQueue) }
-            )
-        }
-        Screen.OfflineQueue -> {
-            OfflineQueueScreen(
-                onBackClick = { appViewModel.navigateTo(Screen.Dashboard) }
-            )
+            }
+            Screen.CreateBorrower -> {
+                CreateBorrowerScreenView(
+                    viewModel = borrowerViewModel,
+                    onBorrowerCreated = { newBorrower ->
+                        appViewModel.navigateTo(Screen.BorrowerList)
+                    },
+                    onBackClick = {
+                        appViewModel.navigateTo(Screen.BorrowerList)
+                    }
+                )
+            }
+            Screen.ApplicationList -> {
+                ApplicationListScreenView(
+                    viewModel = applicationViewModel,
+                    borrowers = borrowerUiState.borrowers,
+                    onApplicationSelected = { app ->
+                        appViewModel.setSelectedApplication(app)
+                        appViewModel.navigateTo(Screen.ApplicationDetail)
+                    },
+                    onAddApplication = {
+                        appViewModel.navigateTo(Screen.CreateApplication)
+                    },
+                    onBackClick = {
+                        appViewModel.navigateTo(Screen.Dashboard)
+                    }
+                )
+            }
+            Screen.ApplicationDetail -> {
+                appUiState.selectedApplication?.let { app ->
+                    ApplicationDetailScreenView(
+                        application = app,
+                        borrower = borrowerUiState.borrowers.find { it.id == app.borrower_id },
+                        onBackClick = {
+                            appViewModel.setSelectedApplication(null)
+                            appViewModel.navigateTo(Screen.ApplicationList)
+                        },
+                        onNavigateToDocumentUpload = {
+                            appViewModel.navigateTo(Screen.DocumentUpload)
+                        },
+                        onNavigateToPledgeTrust = {
+                            appViewModel.navigateTo(Screen.PledgeTrust)
+                        },
+                        onNavigateToVisitationReport = {
+                            appViewModel.navigateTo(Screen.VisitationReport)
+                        },
+                        onNavigateToGuarantorsForm = {
+                            appViewModel.navigateTo(Screen.GuarantorsForm)
+                        },
+                        onNavigateToReview = {
+                            val reviewScreen = when (appUiState.session?.role) {
+                                UserRole.BRANCH_MANAGER -> Screen.BranchManagerReview
+                                UserRole.CREDIT_OFFICER -> Screen.CreditOfficerReview
+                                UserRole.AUDITOR -> Screen.AuditorCompliance
+                                UserRole.ADMIN_MCR -> Screen.AdminMcrApproval
+                                else -> Screen.CreditOfficerReview
+                            }
+                            appViewModel.navigateTo(reviewScreen)
+                        },
+                        onNavigateToAuditTrail = {
+                            appViewModel.navigateTo(Screen.WorkflowEventAudit)
+                        },
+                        onNavigateToFormWizard = {
+                            appViewModel.navigateTo(Screen.LoanApplicationForm)
+                        },
+                        onNavigateToDocumentViewer = {
+                            appViewModel.navigateTo(Screen.DocumentViewer)
+                        }
+                    )
+                }   
+            }
+            Screen.CreateApplication -> {
+                CreateApplicationScreenView(
+                    viewModel = applicationViewModel,
+                    borrowers = borrowerUiState.borrowers,
+                    onApplicationCreated = { newApp ->
+                        appViewModel.navigateTo(Screen.ApplicationList)
+                    },
+                    onBackClick = {
+                        appViewModel.navigateTo(Screen.ApplicationList)
+                    }
+                )
+            }
+            Screen.LoanApplicationForm -> {
+                LoanApplicationFormScreen(
+                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
+                    onFinish = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                )
+            }
+            Screen.DocumentUpload -> {
+                DocumentUploadScreen(
+                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
+                    onComplete = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                )
+            }
+            Screen.GuarantorsForm -> {
+                GuarantorsFormScreen(
+                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
+                    onSave = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                )
+            }
+            Screen.PledgeTrust -> {
+                PledgeTrustScreen(
+                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
+                    onSignComplete = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                )
+            }
+            Screen.VisitationReport -> {
+                VisitationReportScreen(
+                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
+                    onSubmit = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                )
+            }
+            Screen.BranchManagerReview -> {
+                BranchManagerReviewScreen(
+                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
+                    onDecisionSubmitted = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                )
+            }
+            Screen.CreditOfficerReview -> {
+                CreditOfficerReviewScreen(
+                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
+                    onCompleteReview = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                )
+            }
+            Screen.AuditorCompliance -> {
+                AuditorComplianceScreen(
+                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
+                    onAuditComplete = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                )
+            }
+            Screen.AdminMcrApproval -> {
+                AdminMcrApprovalScreen(
+                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
+                    onDisburseTriggered = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                )
+            }
+            Screen.DocumentViewer -> {
+                DocumentViewerScreen(
+                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                )
+            }
+            Screen.WorkflowEventAudit -> {
+                WorkflowEventAuditScreen(
+                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                )
+            }
+            Screen.Settings -> {
+                SettingsScreen(
+                    userName = appUiState.session?.userEmail?.substringBefore("@")?.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } ?: "Chidi Okafor",
+                    userEmail = appUiState.session?.userEmail ?: "chidi@mmfb.com",
+                    role = appUiState.session?.role,
+                    onBackClick = { appViewModel.navigateTo(Screen.Dashboard) },
+                    onSignOutClick = { appViewModel.logout() }
+                )
+            }
+            Screen.OfflineQueue -> {
+                OfflineQueueScreen(
+                    onBackClick = { appViewModel.navigateTo(Screen.Dashboard) }
+                )
+            }
         }
     }
 }
