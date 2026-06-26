@@ -89,30 +89,30 @@ val DarkFieldColors = FieldColors(
 val LightFieldColors = FieldColors(
     isLight = true,
     
-    gray950 = Color(0xFFF6F4F1), // Warm cream background
-    gray900 = Color(0xFFFFFFFF), // Pure white cards
-    gray850 = Color(0xFFFBFBFA), // Secondary card surfaces
-    gray800 = Color(0xFFE3DFE7), // Light dividers
-    gray700 = Color(0xFFCDC7D5), // Input borders
-    gray600 = Color(0xFFB4ABC1),
-    gray500 = Color(0xFF867D95), // Muted labels
-    gray400 = Color(0xFF635973), // Medium text
-    gray300 = Color(0xFF423753), // Secondary body text
-    gray100 = Color(0xFF281C3D), // Deep brand primary text
+    gray950 = Color(0xFFF7F9FB), // surface background
+    gray900 = Color(0xFFFFFFFF), // card surface, lowest container
+    gray850 = Color(0xFFF2F4F6), // secondary card surface, low container
+    gray800 = Color(0xFFCEC3D3), // outline-variant (dividers)
+    gray700 = Color(0xFF7D7483), // outline (input borders)
+    gray600 = Color(0xFF4C4451),
+    gray500 = Color(0xFF4C4451), // on-surface-variant (muted labels)
+    gray400 = Color(0xFF4C4451), // on-surface-variant (medium text)
+    gray300 = Color(0xFF1E293B), // on-background (secondary body text)
+    gray100 = Color(0xFF191C1E), // on-surface (primary title text)
 
-    purple950 = Color(0xFFF9F6FC),
-    purple900 = Color(0xFFEDE5FA),
-    purple700 = Color(0xFFCBB6F2),
-    purple600 = Color(0xFF6B3FA0), // Primary LO accent
-    purple500 = Color(0xFF7E4FBA),
-    purple400 = Color(0xFF986CD1),
-    purple200 = Color(0xFFF0E8FA),
-    purple100 = Color(0xFFF8F4FD),
+    purple950 = Color(0xFFF0DBFF),
+    purple900 = Color(0xFF4B0082), // primary container
+    purple700 = Color(0xFF622599), // primary hover
+    purple600 = Color(0xFF2E0052), // primary brand color (Shield Purple)
+    purple500 = Color(0xFF4B0082),
+    purple400 = Color(0xFFDDB7FF),
+    purple200 = Color(0xFFBA7EF4),
+    purple100 = Color(0xFFF0DBFF),
 
-    statusSuccess = Color(0xFF2A7C4C),
-    statusWarning = Color(0xFFB87820),
-    statusDanger = Color(0xFFAD3333),
-    statusInfo = Color(0xFF265A96)
+    statusSuccess = Color(0xFF10B981), // success-green
+    statusWarning = Color(0xFFF59E0B), // warning-amber
+    statusDanger = Color(0xFFEF4444), // danger-red
+    statusInfo = Color(0xFF54647A)
 )
 
 // ==========================================
@@ -131,46 +131,46 @@ data class FieldTypography(
 
 val FieldTypo = FieldTypography(
     display = TextStyle(
-        fontFamily = FontFamily.Serif, // Premium serif displays
+        fontFamily = FontFamily.Serif, // Playfair Display Serif displays
         fontWeight = FontWeight.Bold,
-        fontSize = 24.sp,
+        fontSize = 32.sp, // headline-lg
         letterSpacing = (-0.5).sp,
-        lineHeight = 32.sp
+        lineHeight = 40.sp
     ),
     title = TextStyle(
-        fontFamily = FontFamily.Serif,
+        fontFamily = FontFamily.Serif, // Playfair Display Serif
         fontWeight = FontWeight.SemiBold,
-        fontSize = 18.sp,
+        fontSize = 20.sp, // headline-sm
         letterSpacing = (-0.3).sp,
-        lineHeight = 24.sp
+        lineHeight = 28.sp
     ),
     body = TextStyle(
-        fontFamily = FontFamily.SansSerif, // Refined sans-serif body
+        fontFamily = FontFamily.SansSerif, // DM Sans SansSerif body
         fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
+        fontSize = 16.sp, // body-md
         letterSpacing = 0.sp,
-        lineHeight = 22.sp
+        lineHeight = 24.sp
     ),
     bodyStrong = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
-        fontSize = 14.sp,
+        fontSize = 16.sp, // body-md bold
         letterSpacing = 0.sp,
-        lineHeight = 22.sp
+        lineHeight = 24.sp
     ),
     label = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 11.sp,
-        letterSpacing = 1.sp,
+        fontSize = 12.sp, // label-md
+        letterSpacing = 0.5.sp,
         lineHeight = 16.sp
     ),
     mono = TextStyle(
         fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Normal,
-        fontSize = 13.sp,
+        fontSize = 12.sp,
         letterSpacing = 0.sp,
-        lineHeight = 18.sp
+        lineHeight = 16.sp
     )
 )
 
@@ -180,9 +180,9 @@ val FieldTypo = FieldTypography(
 
 @Immutable
 data class FieldShapes(
-    val inputRadius: Dp = 8.dp,
-    val cardRadius: Dp = 12.dp,
-    val sheetRadius: Dp = 18.dp
+    val inputRadius: Dp = 4.dp, // 4px / 0.25rem corner radius for standard elements
+    val cardRadius: Dp = 8.dp,  // 8px / 0.5rem corner radius for containers
+    val sheetRadius: Dp = 8.dp
 )
 
 val LocalFieldColors = staticCompositionLocalOf { DarkFieldColors }
@@ -191,35 +191,12 @@ val LocalFieldShapes = staticCompositionLocalOf { FieldShapes() }
 
 // Dynamic theme resolution base on user role and system mode
 fun getRoleColors(role: UserRole?, darkTheme: Boolean): FieldColors {
-    val baseUrl = "http://127.0.0.1:8000"
     val base = if (darkTheme) DarkFieldColors else LightFieldColors
     
-    val (primaryColor, primaryHover, primaryLight, primaryTint) = when (role) {
-        UserRole.CREDIT_OFFICER -> if (darkTheme) {
-            listOf(Color(0xFF287C52), Color(0xFF389264), Color(0xFF6BCF9A), Color(0xFF1E2F26))
-        } else {
-            listOf(Color(0xFF1A6B45), Color(0xFF238C5A), Color(0xFF6BCF9A), Color(0xFFE8FAF0))
-        }
-        UserRole.BRANCH_MANAGER -> if (darkTheme) {
-            listOf(Color(0xFFC07B1E), Color(0xFFD38D30), Color(0xFFD4A46B), Color(0xFF2E2417))
-        } else {
-            listOf(Color(0xFFA05A00), Color(0xFFC07000), Color(0xFFD4A46B), Color(0xFFFFF5E8))
-        }
-        UserRole.AUDITOR -> if (darkTheme) {
-            listOf(Color(0xFF6C7C96), Color(0xFF7E8EAA), Color(0xFFBAC5D6), Color(0xFF22262E))
-        } else {
-            listOf(Color(0xFF4A5568), Color(0xFF636D7F), Color(0xFFA0AEC0), Color(0xFFEDF2F7))
-        }
-        UserRole.ADMIN_MCR -> if (darkTheme) {
-            listOf(Color(0xFF4E2C80), Color(0xFF633D9E), Color(0xFF9E7BD6), Color(0xFF241933))
-        } else {
-            listOf(Color(0xFF2D1A4A), Color(0xFF3D2A5A), Color(0xFF8B6BB0), Color(0xFFEDE8F4))
-        }
-        else -> if (darkTheme) {
-            listOf(Color(0xFF7B52B3), Color(0xFF8E63C7), Color(0xFFA67EDB), Color(0xFF1E152A))
-        } else {
-            listOf(Color(0xFF6B3FA0), Color(0xFF7E4FBA), Color(0xFF986CD1), Color(0xFFF0E8FA))
-        }
+    val (primaryColor, primaryHover, primaryLight, primaryTint) = if (darkTheme) {
+        listOf(Color(0xFF7B52B3), Color(0xFF8E63C7), Color(0xFFA67EDB), Color(0xFF1E152A))
+    } else {
+        listOf(Color(0xFF2E0052), Color(0xFF622599), Color(0xFFDDB7FF), Color(0xFFF0DBFF))
     }
     
     return base.copy(

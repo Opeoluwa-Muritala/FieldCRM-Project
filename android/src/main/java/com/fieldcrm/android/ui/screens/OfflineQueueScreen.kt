@@ -1,38 +1,93 @@
 package com.fieldcrm.android.ui.screens
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.fieldcrm.android.ui.components.*
-import com.fieldcrm.android.ui.theme.FieldCRMTheme
+import com.fieldcrm.android.ui.components.FieldCard
+import com.fieldcrm.android.ui.components.FieldTopAppBar
+import com.fieldcrm.android.ui.components.PrimaryButton
 import com.fieldcrm.android.ui.theme.FieldTheme
-import java.util.Locale
+import kotlinx.coroutines.delay
 
+enum class SyncItemStatus {
+    SYNCED,
+    PENDING,
+    FAILED
+}
+
+data class SyncItem(
+    val id: String,
+    val name: String,
+    val status: SyncItemStatus,
+    val errorMsg: String? = null
+)
+
+@Composable
+fun ShieldPulseSpinner(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val opacity by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "opacity"
+    )
+    Icon(
+        imageVector = Icons.Default.Lock, // Shield mark substitute
+        contentDescription = "Pulsing Shield Logo",
+        tint = FieldTheme.colors.purple600,
+        modifier = modifier
+            .size(16.dp)
+            .graphicsLayer(alpha = opacity)
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OfflineQueueScreen(
     onBackClick: () -> Unit
 ) {
-    var syncRetrying by remember { mutableStateOf(false) }
-    var mockQueueSize by remember { mutableIntStateOf(2) }
+    var isSyncing by remember { mutableStateOf(false) }
+    var syncItems by remember {
+        mutableStateOf(
+            listOf(
+                SyncItem("1", "Loan MMFB-052", SyncItemStatus.SYNCED),
+                SyncItem("2", "Document upload", SyncItemStatus.PENDING),
+                SyncItem("3", "Visit report", SyncItemStatus.FAILED, "Server unavailable — will retry automatically")
+            )
+        )
+    }
 
     Scaffold(
         topBar = {
             FieldTopAppBar(
-                title = "Offline Cache Mutations Queue",
+                title = "Sync Status",
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(
+                        onClick = onBackClick,
+                        modifier = Modifier.size(48.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -44,123 +99,153 @@ fun OfflineQueueScreen(
         },
         containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
-        BoxWithConstraints(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
             contentAlignment = Alignment.TopCenter
         ) {
-            val isWide = maxWidth >= 600.dp
-            
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
+                    .padding(24.dp), // 8-point grid layout padding
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .widthIn(max = 600.dp)
-                        .fillMaxWidth()
-                        .align(Alignment.CenterHorizontally)
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text(
-                            text = "SQLite Local Outbox Storage",
-                            style = FieldTheme.typography.title,
-                            color = FieldTheme.colors.gray100
-                        )
-                        
-                        Text(
-                            text = "These records were captured while network connectivity was disconnected. The WorkManager scheduler will automatically synchronise them when network drops end.",
-                            style = FieldTheme.typography.body,
-                            color = FieldTheme.colors.gray400
-                        )
-                        
-                        if (mockQueueSize > 0) {
-                            // Mutated element 1
-                            FieldCard {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("CREATE BORROWER PROFILE", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
-                                    StatusChip(variant = StatusChipVariant.NeedsReview)
-                                }
-                                Spacer(modifier = Modifier.height(12.dp))
-                                DetailItem(label = "Applicant", value = "Babatunde Olatunji")
-                                DetailItem(label = "LGA Region Node", value = "Surulere, Lagos")
-                            }
-                            
-                            // Mutated element 2 with conflict
-                            FieldCard {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("CREATE LOAN DOSSIER", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
-                                    StatusChip(variant = StatusChipVariant.Returned)
-                                }
-                                Spacer(modifier = Modifier.height(12.dp))
-                                DetailItem(label = "Target Borrower ID", value = "borrower_84", isMono = true)
-                                DetailItem(label = "Amount", value = "₦ 600,000", isMono = true)
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
-                                FieldDivider()
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                Text("SYNC DATABASE CONFLICT DETECTED", style = FieldTheme.typography.label, color = FieldTheme.colors.statusDanger)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text("A borrower dossier with ID borrower_84 has newer edits on Mainstreet server.", style = FieldTheme.typography.body.copy(fontSize = 12.sp), color = FieldTheme.colors.gray400)
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    PrimaryButton(
-                                        text = "Keep Local",
-                                        onClick = { mockQueueSize-- },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    SecondaryButton(
-                                        text = "Merge Server",
-                                        onClick = { mockQueueSize-- },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-                            }
-                        } else {
-                            EmptyState(text = "No pending sync mutation operations in local SQLite outbox.")
+                // Sync status header card
+                FieldCard {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = if (isSyncing) "Syncing items..." else "All Synced & Cached",
+                                style = FieldTheme.typography.title,
+                                color = FieldTheme.colors.gray100
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = if (isSyncing) "Syncing 2 items..." else "Local SQLite database matches Mainstreet server.",
+                                style = FieldTheme.typography.body,
+                                color = if (isSyncing) FieldTheme.colors.purple600 else FieldTheme.colors.gray400
+                            )
                         }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        PrimaryButton(
-                            text = if (syncRetrying) "Syncing ledgers..." else "Force Synchronisation Check",
-                            onClick = {
-                                syncRetrying = true
-                                // Simulate retry
-                            },
-                            enabled = !syncRetrying && mockQueueSize > 0
-                        )
+                        if (isSyncing) {
+                            ShieldPulseSpinner() // Custom shield-pulse spinner
+                        }
                     }
                 }
+
+                // Sync Queue Header
+                Text(
+                    text = "SYNC QUEUE",
+                    style = FieldTheme.typography.label,
+                    color = FieldTheme.colors.gray500
+                )
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(syncItems) { item ->
+                        FieldCard {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = item.status == SyncItemStatus.FAILED) {
+                                        // Tap to retry action
+                                        isSyncing = true
+                                        syncItems = syncItems.map {
+                                            if (it.id == item.id) it.copy(status = SyncItemStatus.PENDING) else it
+                                        }
+                                    }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Status Indicator Icon matching the B6 wireframe details
+                                Icon(
+                                    imageVector = when (item.status) {
+                                        SyncItemStatus.SYNCED -> Icons.Default.CheckCircle
+                                        SyncItemStatus.PENDING -> Icons.Default.Refresh
+                                        SyncItemStatus.FAILED -> Icons.Default.Close // Red X for failure
+                                    },
+                                    contentDescription = item.status.name,
+                                    tint = when (item.status) {
+                                        SyncItemStatus.SYNCED -> FieldTheme.colors.statusSuccess
+                                        SyncItemStatus.PENDING -> FieldTheme.colors.statusWarning
+                                        SyncItemStatus.FAILED -> FieldTheme.colors.statusDanger
+                                    },
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    val statusSuffix = when (item.status) {
+                                        SyncItemStatus.SYNCED -> "synced"
+                                        SyncItemStatus.PENDING -> "pending"
+                                        SyncItemStatus.FAILED -> "failed"
+                                    }
+                                    Text(
+                                        text = "${item.name} — $statusSuffix",
+                                        style = FieldTheme.typography.bodyStrong,
+                                        color = FieldTheme.colors.gray100
+                                    )
+                                    if (item.status == SyncItemStatus.FAILED && item.errorMsg != null) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = item.errorMsg,
+                                            style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                                            color = FieldTheme.colors.gray500 // Slate helper text
+                                        )
+                                    }
+                                }
+
+                                if (item.status == SyncItemStatus.FAILED) {
+                                    TextButton(
+                                        onClick = {
+                                            isSyncing = true
+                                            syncItems = syncItems.map {
+                                                if (it.id == item.id) it.copy(status = SyncItemStatus.PENDING) else it
+                                            }
+                                        },
+                                        modifier = Modifier.minimumInteractiveComponentSize()
+                                    ) {
+                                        Text(
+                                            text = "Retry Now",
+                                            style = FieldTheme.typography.bodyStrong,
+                                            color = FieldTheme.colors.purple600
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                PrimaryButton(
+                    text = if (isSyncing) "Syncing ledgers..." else "Force Synchronisation Check",
+                    onClick = {
+                        isSyncing = true
+                    },
+                    enabled = !isSyncing,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                )
             }
         }
     }
-}
 
-// ==========================================
-// PREVIEWS
-// ==========================================
-
-@Preview(name = "Compact Phone Offline Queue", widthDp = 411, heightDp = 850)
-@Composable
-fun PreviewOfflineQueueCompact() {
-    FieldCRMTheme {
-        OfflineQueueScreen(onBackClick = {})
+    LaunchedEffect(isSyncing) {
+        if (isSyncing) {
+            delay(2000)
+            syncItems = syncItems.map {
+                if (it.status == SyncItemStatus.PENDING) it.copy(status = SyncItemStatus.SYNCED) else it
+            }
+            isSyncing = false
+        }
     }
 }

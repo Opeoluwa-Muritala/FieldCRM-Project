@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -58,11 +59,11 @@ fun FieldBottomBar(
         Row(
             modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Bottom
         ) {
             items.forEachIndexed { index, item ->
                 val isSelected = index == selectedItemIndex
-                val contentColor = if (isSelected) FieldTheme.colors.purple500 else FieldTheme.colors.gray400
+                val isNewTab = item.label == "New"
                 
                 Box(
                     modifier = Modifier
@@ -73,37 +74,59 @@ fun FieldBottomBar(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = item.icon,
-                            contentDescription = item.label,
-                            tint = contentColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = item.label,
-                            style = FieldTheme.typography.label.copy(
-                                fontSize = 10.sp,
-                                letterSpacing = 0.sp
-                            ),
-                            color = contentColor
-                        )
-                        
-                        // Active item indicator pill (3dp tall, only fade in/out)
-                        if (isSelected) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Box(
-                                modifier = Modifier
-                                    .width(16.dp)
-                                    .height(3.dp)
-                                    .background(FieldTheme.colors.purple600, RoundedCornerShape(1.5.dp))
+                    if (isNewTab) {
+                        // Center FAB style (56dp circular icon raised above the bar line)
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .offset(y = (-10).dp)
+                                .background(
+                                    color = if (isSelected) FieldTheme.colors.purple700 else FieldTheme.colors.purple600,
+                                    shape = CircleShape
+                                )
+                                .border(2.dp, FieldTheme.colors.gray900, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = item.label,
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
                             )
-                        } else {
-                            Spacer(modifier = Modifier.height(7.dp))
+                        }
+                    } else {
+                        val contentColor = if (isSelected) FieldTheme.colors.purple600 else FieldTheme.colors.gray400
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = item.label,
+                                tint = contentColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = item.label,
+                                style = FieldTheme.typography.label.copy(
+                                    fontSize = 10.sp,
+                                    letterSpacing = 0.sp
+                                ),
+                                color = contentColor
+                            )
+                            
+                            // Active item indicator pill
+                            if (isSelected) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .width(12.dp)
+                                        .height(3.dp)
+                                        .background(FieldTheme.colors.purple600, RoundedCornerShape(1.5.dp))
+                                )
+                            }
                         }
                     }
                 }
@@ -121,9 +144,9 @@ fun FieldNavigationRail(
 ) {
     Box(
         modifier = modifier
-            .width(60.dp)
+            .width(72.dp) // 72pt wide
             .fillMaxHeight()
-            .background(FieldTheme.colors.gray900)
+            .background(FieldTheme.colors.purple900) // Deep Purple side rail background
             .borderRight(0.5.dp, FieldTheme.colors.gray700.copy(alpha = 0.4f))
     ) {
         Column(
@@ -138,34 +161,20 @@ fun FieldNavigationRail(
                 
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .size(56.dp) // Icon-only shape
+                        .clip(RoundedCornerShape(8.dp))
                         .background(if (isSelected) FieldTheme.colors.purple950 else Color.Transparent)
                         .clickable { onItemSelect(index) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = item.icon,
-                            contentDescription = item.label,
-                            tint = contentColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = item.label,
-                            style = FieldTheme.typography.label.copy(
-                                fontSize = 9.sp,
-                                letterSpacing = 0.sp
-                            ),
-                            color = contentColor
-                        )
-                    }
+                    Icon(
+                        imageVector = item.icon,
+                        contentDescription = item.label,
+                        tint = contentColor,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
@@ -332,6 +341,7 @@ fun FieldTextField(
             ),
             modifier = Modifier
                 .fillMaxWidth()
+                .height(48.dp)
                 .border(borderThickness, borderColor, RoundedCornerShape(FieldTheme.shapes.inputRadius))
                 .clip(RoundedCornerShape(FieldTheme.shapes.inputRadius))
         )
@@ -721,7 +731,7 @@ fun PrimaryButton(
         ),
         modifier = modifier
             .fillMaxWidth()
-            .height(44.dp)
+            .height(52.dp)
     ) {
         Text(
             text = text,
@@ -742,14 +752,14 @@ fun SecondaryButton(
         onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(FieldTheme.shapes.inputRadius),
-        border = BorderStroke(1.dp, FieldTheme.colors.gray700),
+        border = BorderStroke(1.dp, FieldTheme.colors.purple600), // Shield Purple border (1px)
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = Color.Transparent,
-            contentColor = FieldTheme.colors.gray300
+            contentColor = FieldTheme.colors.purple600 // Shield Purple text
         ),
         modifier = modifier
             .fillMaxWidth()
-            .height(44.dp)
+            .height(52.dp)
     ) {
         Text(
             text = text,
@@ -775,7 +785,7 @@ fun DangerButton(
         ),
         modifier = modifier
             .fillMaxWidth()
-            .height(44.dp)
+            .height(52.dp)
     ) {
         Text(
             text = text,
@@ -1271,4 +1281,70 @@ fun Modifier.dashedBorder(
         cornerRadius = CornerRadius(cornerRadius.toPx()),
         style = stroke
     )
+}
+
+@Composable
+fun AnimatedSuccessCheckmark(
+    modifier: Modifier = Modifier,
+    color: Color = FieldTheme.colors.statusSuccess,
+    onAnimationEnd: () -> Unit = {}
+) {
+    var animProgress = remember { Animatable(0f) }
+    
+    LaunchedEffect(Unit) {
+        // Celebratory checkmark animation: 400ms draw + 600ms pop
+        animProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)
+        )
+        onAnimationEnd()
+    }
+    
+    Canvas(modifier = modifier.size(64.dp)) {
+        val width = size.width
+        val height = size.height
+        
+        // Circle background
+        drawCircle(color = color, radius = width / 2f)
+        
+        val p = animProgress.value
+        
+        val startX1 = width * 0.28f
+        val startY1 = height * 0.5f
+        val endX1 = width * 0.45f
+        val endY1 = height * 0.67f
+        
+        val startX2 = endX1
+        val startY2 = endY1
+        val endX2 = width * 0.72f
+        val endY2 = height * 0.35f
+        
+        if (p > 0f) {
+            val p1 = (p / 0.4f).coerceAtMost(1f)
+            val currentEndX1 = startX1 + (endX1 - startX1) * p1
+            val currentEndY1 = startY1 + (endY1 - startY1) * p1
+            
+            drawLine(
+                color = Color.White,
+                start = Offset(startX1, startY1),
+                end = Offset(currentEndX1, currentEndY1),
+                strokeWidth = 4.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+            
+            if (p > 0.4f) {
+                val p2 = ((p - 0.4f) / 0.6f).coerceAtMost(1f)
+                val currentEndX2 = startX2 + (endX2 - startX2) * p2
+                val currentEndY2 = startY2 + (endY2 - startY2) * p2
+                
+                drawLine(
+                    color = Color.White,
+                    start = Offset(startX2, startY2),
+                    end = Offset(currentEndX2, currentEndY2),
+                    strokeWidth = 4.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
+        }
+    }
 }
