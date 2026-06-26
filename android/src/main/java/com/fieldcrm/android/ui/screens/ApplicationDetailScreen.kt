@@ -7,11 +7,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -61,7 +61,7 @@ fun ApplicationDetailScreenView(
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                                 contentDescription = "Back",
                                 tint = FieldTheme.colors.gray400
                             )
@@ -245,7 +245,7 @@ fun ApplicationDetailScreenView(
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Icon(
-                                                imageVector = if (gate.second != StatusChipVariant.Missing) Icons.Default.Check else Icons.Default.Close,
+                                                imageVector = if (gate.second != StatusChipVariant.Missing) Icons.Outlined.Check else Icons.Outlined.Close,
                                                 contentDescription = gate.first,
                                                 tint = if (gate.second != StatusChipVariant.Missing) FieldTheme.colors.statusSuccess else FieldTheme.colors.statusDanger,
                                                 modifier = Modifier.size(16.dp)
@@ -397,7 +397,7 @@ fun AccordionHeader(
             color = FieldTheme.colors.gray400
         )
         Icon(
-            imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+            imageVector = if (isExpanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
             contentDescription = "Toggle Section",
             tint = FieldTheme.colors.gray500
         )

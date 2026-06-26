@@ -8,20 +8,21 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.viewmodel.Screen
+import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.theme.FieldTheme
 
 data class NotificationModel(
@@ -73,12 +74,11 @@ fun NotificationsScreen(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(FieldTheme.colors.gray950)
+            .background(FieldTheme.colors.background)
     ) {
         val isTablet = maxWidth >= 600.dp
 
         if (isTablet) {
-            // Tablet Layout: Drawer-style panel overlay
             Row(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
@@ -91,7 +91,7 @@ fun NotificationsScreen(
                     modifier = Modifier
                         .width(380.dp)
                         .fillMaxHeight()
-                        .background(FieldTheme.colors.gray900)
+                        .background(FieldTheme.colors.background)
                 ) {
                     NotificationsContent(
                         notifications = notifications,
@@ -111,7 +111,6 @@ fun NotificationsScreen(
                 }
             }
         } else {
-            // Phone Layout: Full Screen
             NotificationsContent(
                 notifications = notifications,
                 onBackClick = onBackClick,
@@ -157,7 +156,7 @@ fun NotificationsContent(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = if (isTablet) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = if (isTablet) Icons.Outlined.Close else Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = "Close",
                             tint = FieldTheme.colors.gray400
                         )
@@ -170,7 +169,7 @@ fun NotificationsContent(
                             modifier = Modifier.heightIn(min = 48.dp)
                         ) {
                             Text(
-                                text = "Clear All",
+                                text = "Clear",
                                 style = FieldTheme.typography.bodyStrong,
                                 color = FieldTheme.colors.purple600
                             )
@@ -178,111 +177,126 @@ fun NotificationsContent(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = FieldTheme.colors.gray900
+                    containerColor = FieldTheme.colors.background
                 )
             )
         },
-        containerColor = FieldTheme.colors.gray950
+        containerColor = FieldTheme.colors.background
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.TopCenter
         ) {
             if (notifications.isEmpty()) {
-                // Empty state conforming to SKILL rules: Shield mark + caught up text
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(32.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = "No Notifications",
-                        tint = FieldTheme.colors.gray500,
+                        imageVector = Icons.Outlined.Shield,
+                        contentDescription = "All Caught Up",
+                        tint = FieldTheme.colors.primary,
                         modifier = Modifier
-                            .size(72.dp)
+                            .size(80.dp)
                             .alpha(0.3f)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "You're all caught up",
                         style = FieldTheme.typography.display,
-                        color = FieldTheme.colors.gray300,
+                        color = FieldTheme.colors.gray100,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "No new alerts or action items waiting for you.",
+                        text = "When you have new notifications, they'll show up here.",
                         style = FieldTheme.typography.body,
-                        color = FieldTheme.colors.gray500,
+                        color = FieldTheme.colors.gray400,
                         textAlign = TextAlign.Center
                     )
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(vertical = 8.dp)
+                    contentPadding = PaddingValues(vertical = 16.dp)
                 ) {
                     items(notifications) { notif ->
                         val rowBg = if (!notif.isRead) {
-                            FieldTheme.colors.purple950.copy(alpha = 0.2f)
+                            FieldTheme.colors.purple900
                         } else {
                             FieldTheme.colors.gray900
                         }
+                        
+                        val borderStroke = if (!notif.isRead) {
+                            androidx.compose.foundation.BorderStroke(1.dp, FieldTheme.colors.purple600)
+                        } else {
+                            androidx.compose.foundation.BorderStroke(0.5.dp, FieldTheme.colors.gray800)
+                        }
 
-                        Row(
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(rowBg)
-                                .clickable { onNotificationClick(notif) }
-                                .padding(horizontal = 16.dp, vertical = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .clickable { onNotificationClick(notif) },
+                            colors = CardDefaults.cardColors(containerColor = rowBg),
+                            border = borderStroke,
+                            shape = RoundedCornerShape(FieldTheme.shapes.cardRadius)
                         ) {
-                            // Unread status indicator
-                            Box(
+                            Row(
                                 modifier = Modifier
-                                    .size(8.dp)
-                                    .background(
-                                        color = if (!notif.isRead) FieldTheme.colors.purple600 else Color.Transparent,
-                                        shape = CircleShape
-                                    )
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = notif.title,
-                                    style = if (!notif.isRead) FieldTheme.typography.bodyStrong else FieldTheme.typography.body,
-                                    color = FieldTheme.colors.gray100
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = notif.message,
-                                    style = FieldTheme.typography.body,
-                                    color = FieldTheme.colors.gray400
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = notif.time,
-                                    style = FieldTheme.typography.label,
-                                    color = FieldTheme.colors.gray500
-                                )
-                            }
-                            
-                            // Dismiss action button (minimum 48dp tap target area)
-                            IconButton(
-                                onClick = { onDismissNotification(notif) },
-                                modifier = Modifier.size(48.dp)
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.Top
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Dismiss",
-                                    tint = FieldTheme.colors.gray500,
-                                    modifier = Modifier.size(20.dp)
+                                // Dot unread status indicator
+                                Box(
+                                    modifier = Modifier
+                                        .padding(top = 4.dp, end = 12.dp)
+                                        .size(8.dp)
+                                        .background(
+                                            color = if (!notif.isRead) FieldTheme.colors.purple600 else FieldTheme.colors.gray600,
+                                            shape = CircleShape
+                                        )
                                 )
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = notif.title,
+                                        style = if (!notif.isRead) FieldTheme.typography.bodyStrong else FieldTheme.typography.body,
+                                        color = FieldTheme.colors.gray100
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = notif.message,
+                                        style = FieldTheme.typography.body.copy(fontSize = 14.sp),
+                                        color = FieldTheme.colors.gray400
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = notif.time,
+                                        style = FieldTheme.typography.label,
+                                        color = FieldTheme.colors.gray500
+                                    )
+                                }
+                                
+                                IconButton(
+                                    onClick = { onDismissNotification(notif) },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Close,
+                                        contentDescription = "Dismiss",
+                                        tint = FieldTheme.colors.gray500,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -291,3 +305,4 @@ fun NotificationsContent(
         }
     }
 }
+

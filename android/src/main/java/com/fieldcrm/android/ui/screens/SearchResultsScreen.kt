@@ -7,10 +7,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.AssignmentInd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -92,7 +95,7 @@ fun SearchResultsScreen(
                         },
                         leadingIcon = {
                             Icon(
-                                imageVector = Icons.Default.Search,
+                                imageVector = Icons.Outlined.Search,
                                 contentDescription = "Search",
                                 tint = FieldTheme.colors.gray500
                             )
@@ -104,7 +107,7 @@ fun SearchResultsScreen(
                                     modifier = Modifier.size(48.dp) // Minimum touch target
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Close,
+                                        imageVector = Icons.Outlined.Close,
                                         contentDescription = "Clear",
                                         tint = FieldTheme.colors.gray400
                                     )
@@ -132,7 +135,7 @@ fun SearchResultsScreen(
                         modifier = Modifier.size(48.dp) // Minimum touch target
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = "Back",
                             tint = FieldTheme.colors.gray400
                         )
@@ -198,7 +201,7 @@ fun SearchResultsScreen(
                         .padding(32.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Lock, // Shield brand mark substitute
+                        imageVector = Icons.Outlined.Shield, // Shield brand mark substitute
                         contentDescription = "No Results",
                         tint = FieldTheme.colors.purple600,
                         modifier = Modifier
@@ -252,47 +255,66 @@ fun SearchResultsScreen(
                         
                         if (filteredApps.isNotEmpty()) {
                             items(filteredApps) { app ->
-                                Column(
+                                Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(FieldTheme.colors.gray900)
-                                        .clickable { onNavigateToApplication(app.refNo) }
-                                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                                        .clickable { onNavigateToApplication(app.refNo) },
+                                    colors = CardDefaults.cardColors(containerColor = FieldTheme.colors.gray900),
+                                    shape = RoundedCornerShape(FieldTheme.shapes.cardRadius)
                                 ) {
-                                    // Adaeze Kalu · MMFB-041 formatted on single line as requested
-                                    Text(
-                                        text = "${app.name} · ${app.refNo}",
-                                        style = FieldTheme.typography.bodyStrong,
-                                        color = FieldTheme.colors.gray100
-                                    )
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.AssignmentInd,
+                                            contentDescription = "Application",
+                                            tint = FieldTheme.colors.purple400,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = app.name,
+                                                style = FieldTheme.typography.bodyStrong,
+                                                color = FieldTheme.colors.gray100
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = app.refNo,
+                                                style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                                                color = FieldTheme.colors.gray400
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                                            contentDescription = "Go",
+                                            tint = FieldTheme.colors.gray500,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
                                 }
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(1.dp)
-                                        .background(FieldTheme.colors.gray800)
-                                )
                             }
                         } else {
                             item {
-                                Box(
+                                Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(FieldTheme.colors.gray900)
-                                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                                    colors = CardDefaults.cardColors(containerColor = FieldTheme.colors.gray900.copy(alpha = 0.5f)),
+                                    shape = RoundedCornerShape(FieldTheme.shapes.cardRadius)
                                 ) {
-                                    Text(
-                                        text = "No matching applications",
-                                        style = FieldTheme.typography.body,
-                                        color = FieldTheme.colors.gray500 // shown in muted Slate, not hidden
-                                    )
+                                    Box(
+                                        modifier = Modifier.padding(16.dp)
+                                    ) {
+                                        Text(
+                                            text = "No matching applications",
+                                            style = FieldTheme.typography.body,
+                                            color = FieldTheme.colors.gray500
+                                        )
+                                    }
                                 }
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(1.dp)
-                                        .background(FieldTheme.colors.gray800)
-                                )
                             }
                         }
 
@@ -314,52 +336,66 @@ fun SearchResultsScreen(
                         
                         if (filteredDocs.isNotEmpty()) {
                             items(filteredDocs) { doc ->
-                                Column(
+                                Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(FieldTheme.colors.gray900)
-                                        .clickable { /* preview document */ }
-                                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                                        .clickable { /* preview document */ },
+                                    colors = CardDefaults.cardColors(containerColor = FieldTheme.colors.gray900),
+                                    shape = RoundedCornerShape(FieldTheme.shapes.cardRadius)
                                 ) {
-                                    Text(
-                                        text = doc.title,
-                                        style = FieldTheme.typography.bodyStrong,
-                                        color = FieldTheme.colors.gray100
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = doc.type,
-                                        style = FieldTheme.typography.mono.copy(fontSize = 11.sp),
-                                        color = FieldTheme.colors.gray500
-                                    )
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Description,
+                                            contentDescription = "Document",
+                                            tint = FieldTheme.colors.purple400,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = doc.title,
+                                                style = FieldTheme.typography.bodyStrong,
+                                                color = FieldTheme.colors.gray100
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = doc.type,
+                                                style = FieldTheme.typography.mono.copy(fontSize = 11.sp),
+                                                color = FieldTheme.colors.gray500
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                                            contentDescription = "Go",
+                                            tint = FieldTheme.colors.gray500,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
                                 }
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(1.dp)
-                                        .background(FieldTheme.colors.gray800)
-                                )
                             }
                         } else {
                             item {
-                                Box(
+                                Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(FieldTheme.colors.gray900)
-                                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                                    colors = CardDefaults.cardColors(containerColor = FieldTheme.colors.gray900.copy(alpha = 0.5f)),
+                                    shape = RoundedCornerShape(FieldTheme.shapes.cardRadius)
                                 ) {
-                                    Text(
-                                        text = "No matching documents",
-                                        style = FieldTheme.typography.body,
-                                        color = FieldTheme.colors.gray500 // empty sub-section shown in muted Slate, not hidden
-                                    )
+                                    Box(
+                                        modifier = Modifier.padding(16.dp)
+                                    ) {
+                                        Text(
+                                            text = "No matching documents",
+                                            style = FieldTheme.typography.body,
+                                            color = FieldTheme.colors.gray500
+                                        )
+                                    }
                                 }
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(1.dp)
-                                        .background(FieldTheme.colors.gray800)
-                                )
                             }
                         }
                     }

@@ -1425,7 +1425,7 @@ fun MiniMetricCard(title: String, value: String, accent: Color) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(8.dp))
+            .background(FieldTheme.colors.gray900, RoundedCornerShape(8.dp))
             .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp))
             .padding(12.dp)
     ) {
@@ -1484,7 +1484,7 @@ fun LargeTile(label: String, icon: ImageVector, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(FieldTheme.colors.gray900, RoundedCornerShape(12.dp))
+            .background(FieldTheme.colors.gray900, RoundedCornerShape(8.dp))
             .clickable { onClick() }
             .padding(16.dp),
         contentAlignment = Alignment.Center

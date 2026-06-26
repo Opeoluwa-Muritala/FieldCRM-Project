@@ -8,9 +8,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -92,7 +92,7 @@ fun ApplicationListContent(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = "Back",
                             tint = FieldTheme.colors.gray400
                         )
@@ -102,8 +102,8 @@ fun ApplicationListContent(
                     // Quick stats pill
                     Box(
                         modifier = Modifier
-                            .background(FieldTheme.colors.gray800, RoundedCornerShape(12.dp))
-                            .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(12.dp))
+                            .background(FieldTheme.colors.gray800, RoundedCornerShape(FieldTheme.shapes.cardRadius))
+                            .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(FieldTheme.shapes.cardRadius))
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
@@ -120,9 +120,9 @@ fun ApplicationListContent(
                 onClick = onAddApplication,
                 containerColor = FieldTheme.colors.purple600,
                 contentColor = Color.White,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(8.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Create Application")
+                Icon(Icons.Outlined.Add, contentDescription = "Create Application")
             }
         },
         containerColor = FieldTheme.colors.gray950
@@ -143,7 +143,7 @@ fun ApplicationListContent(
                 placeholder = "Search Emeka, Adaeze, or ref...",
                 trailingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Search,
+                        imageVector = Icons.Outlined.Search,
                         contentDescription = "Search",
                         tint = FieldTheme.colors.gray500
                     )
@@ -190,15 +190,15 @@ fun ApplicationListContent(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(6) {
-                        Box(
+                        FieldCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(72.dp)
-                                .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp))
-                                .background(FieldTheme.colors.gray850)
-                                .padding(12.dp)
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     LoadingSkeleton(height = 16.dp, width = 140.dp)
                                     Spacer(modifier = Modifier.height(6.dp))
@@ -232,13 +232,10 @@ fun ApplicationListContent(
                             else -> StatusChipVariant.NeedsReview
                         }
 
-                        Box(
+                        FieldCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp))
-                                .background(FieldTheme.colors.gray850)
                                 .clickable { onApplicationSelected(app) }
-                                .padding(12.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
