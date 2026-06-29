@@ -1,4 +1,4 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.onboarding
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -28,7 +28,7 @@ fun BiometricEnrollmentScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(FieldTheme.colors.background),
+            .background(FieldTheme.colors.gray950),
         contentAlignment = Alignment.Center
     ) {
         Box(
@@ -49,7 +49,7 @@ fun BiometricEnrollmentScreen(
                     Box(
                         modifier = Modifier
                             .size(64.dp)
-                            .background(FieldTheme.colors.purple900, CircleShape),
+                            .background(FieldTheme.colors.purple900.copy(alpha = 0.1f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(

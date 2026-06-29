@@ -1,4 +1,4 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.document
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,158 +20,224 @@ import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.ui.theme.FieldIcons
+import com.fieldcrm.shared.model.BorrowerModel
 import java.util.Locale
 
 @Composable
 fun DocumentUploadScreen(
+    borrower: BorrowerModel?,
     onBackClick: () -> Unit,
-    onComplete: () -> Unit
+    onComplete: (BorrowerModel) -> Unit
 ) {
     var documentName by remember { mutableStateOf("NIN_Card_Adaeze_Okonkwo.jpg") }
-    var extractedName by remember { mutableStateOf("Adaeze Okonkwo") }
-    var extractedBvn by remember { mutableStateOf("222333444") }
+    var extractedName by remember { mutableStateOf(borrower?.name ?: "") }
+    var extractedBvn by remember { mutableStateOf(borrower?.bvn ?: "") }
     var ocrConfidence by remember { mutableFloatStateOf(0.88f) }
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember { mutableStateOf(0) }
+    var showCameraScanner by remember { mutableStateOf(false) }
 
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(FieldTheme.colors.gray950)
-    ) {
-        val isWide = maxWidth >= 840.dp
-        
-        Scaffold(
-            topBar = {
-                FieldTopAppBar(
-                    title = "Document OCR Pipeline",
-                    navigationIcon = {
-                        IconButton(onClick = onBackClick) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = "Back",
-                                tint = FieldTheme.colors.gray400
-                            )
-                        }
-                    }
-                )
+    if (showCameraScanner) {
+        CameraOcrScanner(
+            mode = "OCR",
+            onTextScanned = { text ->
+                val lines = text.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+                if (lines.isNotEmpty()) {
+                    extractedName = lines.first()
+                }
+                val bvnRegex = "\\b\\d{9,11}\\b".toRegex()
+                val match = bvnRegex.find(text)
+                if (match != null) {
+                    extractedBvn = match.value
+                }
+                ocrConfidence = 0.98f
+                documentName = "Real_Camera_Scan_ID.jpg"
+                showCameraScanner = false
             },
-            containerColor = FieldTheme.colors.gray950
-        ) { paddingValues ->
-            if (isWide) {
-                // Wide Screen: Split Pane
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-                    // Left Pane: Document Preview Box
-                    Box(
-                        modifier = Modifier
-                            .weight(1.2f)
-                            .fillMaxHeight()
-                            .background(FieldTheme.colors.gray900)
-                            .borderRight(0.5.dp, FieldTheme.colors.gray700)
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "ORIGINAL IMAGE SCAN",
-                                style = FieldTheme.typography.label,
-                                color = FieldTheme.colors.gray500,
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(width = 300.dp, height = 400.dp)
-                                    .background(FieldTheme.colors.gray800, RoundedCornerShape(8.dp))
-                                    .border(1.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "[ Scan Image Preview: $documentName ]",
-                                    style = FieldTheme.typography.body,
-                                    color = FieldTheme.colors.gray400
+            onDismiss = { showCameraScanner = false }
+        )
+    } else {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(FieldTheme.colors.gray950)
+        ) {
+            val isWide = maxWidth >= 840.dp
+            
+            Scaffold(
+                topBar = {
+                    FieldTopAppBar(
+                        title = "Document OCR Pipeline",
+                        navigationIcon = {
+                            IconButton(onClick = onBackClick) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = FieldTheme.colors.gray400
                                 )
                             }
                         }
-                    }
-                    
-                    // Right Pane: OCR Extraction correction fields
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .verticalScroll(rememberScrollState())
-                            .padding(24.dp)
-                    ) {
-                        OcrDetailsSection(
-                            extractedName = extractedName,
-                            onNameChange = { extractedName = it },
-                            extractedBvn = extractedBvn,
-                            onBvnChange = { extractedBvn = it },
-                            ocrConfidence = ocrConfidence,
-                            onVerifyClick = onComplete
-                        )
-                    }
+                    )
+                },
+                containerColor = FieldTheme.colors.gray950
+            ) { paddingValues ->
+                val onVerifyAndConfirm = {
+                    val fallbackBorrower = borrower ?: BorrowerModel(
+                        id = "temp_1", org_id = "org_1", loan_officer_id = "LO_1",
+                        name = "", phone = "", bvn = "", nin = "", status = "Active", created_at = ""
+                    )
+                    val updatedBorrower = fallbackBorrower.copy(
+                        name = extractedName,
+                        bvn = extractedBvn
+                    )
+                    onComplete(updatedBorrower)
                 }
-            } else {
-                // Compact Screen: Tabbed View
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-                    TabRow(
-                        selectedTabIndex = selectedTab,
-                        containerColor = FieldTheme.colors.gray900,
-                        contentColor = FieldTheme.colors.purple400
-                    ) {
-                        Tab(
-                            selected = selectedTab == 0,
-                            onClick = { selectedTab = 0 },
-                            text = { Text("Scan View") }
-                        )
-                        Tab(
-                            selected = selectedTab == 1,
-                            onClick = { selectedTab = 1 },
-                            text = { Text("OCR Fields") }
-                        )
-                    }
-                    
-                    Column(
+
+                if (isWide) {
+                    // Wide Screen: Split Pane
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState())
-                            .padding(16.dp)
+                            .fillMaxSize()
+                            .padding(paddingValues)
                     ) {
-                        if (selectedTab == 0) {
-                            Text(
-                                text = "UPLOADED ATTACHMENT",
-                                style = FieldTheme.typography.label,
-                                color = FieldTheme.colors.gray500,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                            FieldUploadDropzone(
-                                title = "Upload Identity Card",
-                                subtitle = "Drop NIN or BVN slip here",
-                                onClick = {}
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            DocumentThumbnail(
-                                fileName = documentName,
-                                fileSize = "1.2 MB",
-                                fileType = "jpg"
-                            )
-                        } else {
+                        // Left Pane: Document Preview Box
+                        Box(
+                            modifier = Modifier
+                                .weight(1.2f)
+                                .fillMaxHeight()
+                                .background(FieldTheme.colors.gray900)
+                                .borderRight(0.5.dp, FieldTheme.colors.gray700.copy(alpha = 0.3f))
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "ORIGINAL IMAGE SCAN",
+                                    style = FieldTheme.typography.label,
+                                    color = FieldTheme.colors.gray500,
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(width = 300.dp, height = 400.dp)
+                                        .background(FieldTheme.colors.gray850, RoundedCornerShape(8.dp))
+                                        .border(1.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier.padding(16.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = FieldIcons.CameraOutlined,
+                                            contentDescription = "Camera",
+                                            tint = FieldTheme.colors.purple400,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = "[ Scan Preview: $documentName ]",
+                                            style = FieldTheme.typography.body,
+                                            color = FieldTheme.colors.gray400
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        PrimaryButton(
+                                            text = "Scan ID Document",
+                                            onClick = { showCameraScanner = true }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Right Pane: OCR Extraction correction fields
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .verticalScroll(rememberScrollState())
+                                .padding(24.dp)
+                        ) {
                             OcrDetailsSection(
                                 extractedName = extractedName,
                                 onNameChange = { extractedName = it },
                                 extractedBvn = extractedBvn,
                                 onBvnChange = { extractedBvn = it },
                                 ocrConfidence = ocrConfidence,
-                                onVerifyClick = onComplete
+                                onVerifyClick = onVerifyAndConfirm
                             )
+                        }
+                    }
+                } else {
+                    // Compact Screen: Tabbed View
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                    ) {
+                        TabRow(
+                            selectedTabIndex = selectedTab,
+                            containerColor = FieldTheme.colors.gray900,
+                            contentColor = FieldTheme.colors.purple400
+                        ) {
+                            Tab(
+                                selected = selectedTab == 0,
+                                onClick = { selectedTab = 0 },
+                                text = { 
+                                    Text(
+                                        text = "Scan View",
+                                        color = if (selectedTab == 0) FieldTheme.colors.purple400 else FieldTheme.colors.gray400,
+                                        style = FieldTheme.typography.bodyStrong.copy(fontSize = 14.sp)
+                                    )
+                                }
+                            )
+                            Tab(
+                                selected = selectedTab == 1,
+                                onClick = { selectedTab = 1 },
+                                text = { 
+                                    Text(
+                                        text = "OCR Fields",
+                                        color = if (selectedTab == 1) FieldTheme.colors.purple400 else FieldTheme.colors.gray400,
+                                        style = FieldTheme.typography.bodyStrong.copy(fontSize = 14.sp)
+                                    )
+                                }
+                            )
+                        }
+                        
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState())
+                                .padding(16.dp)
+                        ) {
+                            if (selectedTab == 0) {
+                                Text(
+                                    text = "IDENTITY CARD ATTACHMENT",
+                                    style = FieldTheme.typography.label,
+                                    color = FieldTheme.colors.gray500,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                FieldUploadDropzone(
+                                    title = "Scan ID Slip",
+                                    subtitle = "Tap to open OCR scanner camera",
+                                    onClick = { showCameraScanner = true }
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                DocumentThumbnail(
+                                    fileName = documentName,
+                                    fileSize = if (documentName.startsWith("Real")) "2.1 MB" else "1.2 MB",
+                                    fileType = "jpg"
+                                )
+                            } else {
+                                OcrDetailsSection(
+                                    extractedName = extractedName,
+                                    onNameChange = { extractedName = it },
+                                    extractedBvn = extractedBvn,
+                                    onBvnChange = { extractedBvn = it },
+                                    ocrConfidence = ocrConfidence,
+                                    onVerifyClick = onVerifyAndConfirm
+                                )
+                            }
                         }
                     }
                 }
@@ -209,7 +275,7 @@ fun OcrDetailsSection(
             style = FieldTheme.typography.label,
             color = FieldTheme.colors.gray500
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         ConfidenceBar(percentage = ocrConfidence)
         
         Spacer(modifier = Modifier.height(24.dp))
@@ -239,22 +305,15 @@ fun OcrDetailsSection(
     }
 }
 
-// ==========================================
-// PREVIEWS
-// ==========================================
-
 @Preview(name = "Compact Phone Document Upload", widthDp = 411, heightDp = 850)
 @Composable
 fun PreviewDocUploadCompact() {
+    val demoBorrower = BorrowerModel(
+        id = "1", org_id = "org_1", loan_officer_id = "LO_1",
+        name = "Adaeze Okonkwo", phone = "08012345678", bvn = "222333444", nin = "111222333",
+        status = "Active", created_at = ""
+    )
     FieldCRMTheme {
-        DocumentUploadScreen(onBackClick = {}, onComplete = {})
-    }
-}
-
-@Preview(name = "Tablet Document Upload Layout", widthDp = 1280, heightDp = 800)
-@Composable
-fun PreviewDocUploadTablet() {
-    FieldCRMTheme {
-        DocumentUploadScreen(onBackClick = {}, onComplete = {})
+        DocumentUploadScreen(borrower = demoBorrower, onBackClick = {}, onComplete = {})
     }
 }

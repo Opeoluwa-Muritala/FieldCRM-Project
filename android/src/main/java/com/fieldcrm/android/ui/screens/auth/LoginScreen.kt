@@ -1,4 +1,4 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.auth
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -20,6 +20,10 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import android.hardware.biometrics.BiometricPrompt
+import android.os.CancellationSignal
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -276,12 +280,34 @@ fun LoginScreenContent(
                         // Biometric option (shown on second+ login only)
                         if (hasEnrolledBiometrics) {
                             Spacer(modifier = Modifier.height(12.dp))
+                            val context = LocalContext.current
                             SecondaryButton(
                                 text = "Use Face ID / Touch ID",
                                 onClick = {
-                                    onEmailChange("chidi@mmfb.com")
-                                    onPasswordChange("password123")
-                                    onLoginClick()
+                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                                        val executor = ContextCompat.getMainExecutor(context)
+                                        val biometricPrompt = BiometricPrompt.Builder(context)
+                                            .setTitle("Biometric Login")
+                                            .setSubtitle("Sign in to your FieldCRM staff account")
+                                            .setNegativeButton("Cancel", executor) { _, _ -> }
+                                            .build()
+
+                                        biometricPrompt.authenticate(
+                                            CancellationSignal(),
+                                            executor,
+                                            object : BiometricPrompt.AuthenticationCallback() {
+                                                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult?) {
+                                                    onEmailChange("chidi@mmfb.com")
+                                                    onPasswordChange("password123")
+                                                    onLoginClick()
+                                                }
+                                            }
+                                        )
+                                    } else {
+                                        onEmailChange("chidi@mmfb.com")
+                                        onPasswordChange("password123")
+                                        onLoginClick()
+                                    }
                                 },
                                 leadingIcon = {
                                     Icon(

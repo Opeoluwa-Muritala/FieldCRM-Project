@@ -1,4 +1,4 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.application
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,23 +17,55 @@ import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.ui.viewmodel.BorrowerViewModel
+import com.fieldcrm.shared.model.BorrowerModel
 import java.util.Locale
 
 @Composable
 fun GuarantorsFormScreen(
+    borrower: BorrowerModel,
+    borrowerViewModel: BorrowerViewModel,
     onBackClick: () -> Unit,
     onSave: () -> Unit
+) {
+    GuarantorsFormContent(
+        borrower = borrower,
+        onBackClick = onBackClick,
+        onSaveComplete = { name, phone ->
+            val updatedBorrower = borrower.copy(
+                guarantor_name = name,
+                guarantor_phone = phone
+            )
+            borrowerViewModel.updateBorrowerLocal(updatedBorrower) {
+                onSave()
+            }
+        }
+    )
+}
+
+@Composable
+fun GuarantorsFormContent(
+    borrower: BorrowerModel,
+    onBackClick: () -> Unit,
+    onSaveComplete: (name: String, phone: String) -> Unit
 ) {
     var isGuarantor1Expanded by remember { mutableStateOf(true) }
     var isGuarantor2Expanded by remember { mutableStateOf(false) }
 
-    var g1Name by remember { mutableStateOf("Tunde Bakare") }
-    var g1Bvn by remember { mutableStateOf("22244455588") }
-    var g1Phone by remember { mutableStateOf("08033344455") }
+    var g1Name by remember { mutableStateOf(borrower.guarantor_name ?: "") }
+    var g1Bvn by remember { mutableStateOf("22244455588") } // 11 digits
+    var g1Phone by remember { mutableStateOf(borrower.guarantor_phone ?: "") }
 
     var g2Name by remember { mutableStateOf("Adaeze Okonkwo") }
-    var g2Bvn by remember { mutableStateOf("22233344499") }
+    var g2Bvn by remember { mutableStateOf("22233344499") } // 11 digits
     var g2Phone by remember { mutableStateOf("08099988877") }
+
+    val g1BvnError = if (g1Bvn.isNotEmpty() && g1Bvn.length != 11) "BVN must be exactly 11 digits" else null
+    val g2BvnError = if (g2Bvn.isNotEmpty() && g2Bvn.length != 11) "BVN must be exactly 11 digits" else null
+
+    val isG1Valid = g1Name.isNotEmpty() && g1Phone.isNotEmpty() && g1Bvn.length == 11
+    val isG2Valid = g2Name.isNotEmpty() && g2Phone.isNotEmpty() && g2Bvn.length == 11
+    val isFormValid = isG1Valid && isG2Valid
 
     Scaffold(
         topBar = {
@@ -101,7 +133,7 @@ fun GuarantorsFormScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text("Identity Parameters", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray300)
-                                        StatusChip(variant = StatusChipVariant.Verified)
+                                        StatusChip(variant = if (isG1Valid) StatusChipVariant.Verified else StatusChipVariant.NeedsReview)
                                     }
                                     Spacer(modifier = Modifier.height(16.dp))
                                     FieldTextField(
@@ -122,7 +154,8 @@ fun GuarantorsFormScreen(
                                         value = g1Bvn,
                                         onValueChange = { g1Bvn = it },
                                         label = "BVN Identifier Number",
-                                        isRequired = true
+                                        isRequired = true,
+                                        errorText = g1BvnError
                                     )
                                 }
                             }
@@ -144,7 +177,7 @@ fun GuarantorsFormScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text("Identity Parameters", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray300)
-                                        StatusChip(variant = StatusChipVariant.NeedsReview)
+                                        StatusChip(variant = if (isG2Valid) StatusChipVariant.Verified else StatusChipVariant.NeedsReview)
                                     }
                                     Spacer(modifier = Modifier.height(16.dp))
                                     FieldTextField(
@@ -165,7 +198,8 @@ fun GuarantorsFormScreen(
                                         value = g2Bvn,
                                         onValueChange = { g2Bvn = it },
                                         label = "BVN Identifier Number",
-                                        isRequired = true
+                                        isRequired = true,
+                                        errorText = g2BvnError
                                     )
                                 }
                             }
@@ -175,7 +209,8 @@ fun GuarantorsFormScreen(
                         
                         PrimaryButton(
                             text = "Save Guarantors Configuration",
-                            onClick = onSave
+                            onClick = { onSaveComplete(g1Name, g1Phone) },
+                            enabled = isFormValid
                         )
                     }
                 }
@@ -184,14 +219,15 @@ fun GuarantorsFormScreen(
     }
 }
 
-// ==========================================
-// PREVIEWS
-// ==========================================
-
 @Preview(name = "Compact Phone Guarantors", widthDp = 411, heightDp = 850)
 @Composable
 fun PreviewGuarantorsCompact() {
+    val demoBorrower = BorrowerModel(
+        id = "1", org_id = "org_1", loan_officer_id = "LO_1",
+        name = "Adaeze Okonkwo", phone = "08012345678", bvn = "222333444", nin = "111222333",
+        status = "Active", created_at = "2026-06-18"
+    )
     FieldCRMTheme {
-        GuarantorsFormScreen(onBackClick = {}, onSave = {})
+        GuarantorsFormContent(borrower = demoBorrower, onBackClick = {}, onSaveComplete = { _, _ -> })
     }
 }

@@ -1,4 +1,4 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.onboarding
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -24,11 +25,13 @@ import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.PrimaryButton
 import com.fieldcrm.android.ui.components.SecondaryButton
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.ui.theme.FieldIcons
 
 data class OnboardingSlide(
     val title: String,
     val description: String,
-    val illustrationText: String
+    val illustrationText: String,
+    val icon: ImageVector? = null
 )
 
 @Composable
@@ -51,24 +54,28 @@ fun OnboardingScreen(
             OnboardingSlide(
                 title = "New: Action Shortcuts",
                 description = "Tap inline concur or return buttons directly from the application list card to speed up operations.",
-                illustrationText = "BM CONCUR / RETURN Shortcuts"
+                illustrationText = "BM CONCUR / RETURN Shortcuts",
+                icon = FieldIcons.QueueOutlined
             ),
             OnboardingSlide(
                 title = "Document Flags Overview",
                 description = "See which document files failed compliance or OCR immediately under the review tab.",
-                illustrationText = "Audit Compliance Flag view"
+                illustrationText = "Audit Compliance Flag view",
+                icon = FieldIcons.CheckOutlined
             )
         )
         else -> listOf( // Default for Loan Officer / others
             OnboardingSlide(
                 title = "New: Swipe to upload",
                 description = "Swipe any application card right to quickly upload a missing document or guarantor form.",
-                illustrationText = "📷 Swipe Right to Upload"
+                illustrationText = "Swipe Right to Upload",
+                icon = FieldIcons.CameraOutlined
             ),
             OnboardingSlide(
                 title = "Fast Search & Filter",
                 description = "Tap search results directly to jump into the loan origination form wizard steps.",
-                illustrationText = "🔍 Live reference search"
+                illustrationText = "Live reference search",
+                icon = FieldIcons.SearchOutlined
             )
         )
     }
@@ -102,7 +109,7 @@ fun OnboardingScreen(
                 }
             }
         } else {
-            // Phone Layout: Full Screen, actions pushed to the bottom thumb zone
+            // Phone Layout: Full Screen
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -203,12 +210,23 @@ fun OnboardingContent(
                         .background(FieldTheme.colors.gray850, RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = slide.illustrationText,
-                        style = FieldTheme.typography.mono,
-                        color = FieldTheme.colors.purple400,
-                        textAlign = TextAlign.Center
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        if (slide.icon != null) {
+                            Icon(
+                                imageVector = slide.icon,
+                                contentDescription = null,
+                                tint = FieldTheme.colors.purple400,
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                        Text(
+                            text = slide.illustrationText,
+                            style = FieldTheme.typography.mono,
+                            color = FieldTheme.colors.purple400,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
  

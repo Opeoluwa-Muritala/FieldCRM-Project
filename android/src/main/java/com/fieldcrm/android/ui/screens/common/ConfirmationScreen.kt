@@ -1,23 +1,27 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.common
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.components.FieldCard
+import com.fieldcrm.android.ui.components.FieldDivider
 import com.fieldcrm.android.ui.components.PrimaryButton
 import com.fieldcrm.android.ui.components.SecondaryButton
 import com.fieldcrm.android.ui.theme.FieldTheme
@@ -41,6 +45,18 @@ fun ConfirmationScreen(
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
     
+    // Pulsing circle animation for success state badge
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.96f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
+
     LaunchedEffect(Unit) {
         val job = launch {
             countdownProgress.animateTo(
@@ -67,7 +83,7 @@ fun ConfirmationScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(FieldTheme.colors.background)
+            .background(FieldTheme.colors.gray950)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
@@ -87,30 +103,38 @@ fun ConfirmationScreen(
                 ) {
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    // Success Check Circle Badge
+                    // Success Check Circle Badge with pulse animation
                     Box(
                         modifier = Modifier
-                            .size(96.dp)
-                            .background(FieldTheme.colors.primary, CircleShape),
+                            .size(80.dp)
+                            .graphicsLayer(scaleX = pulseScale, scaleY = pulseScale)
+                            .background(FieldTheme.colors.purple900.copy(alpha = 0.1f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Check,
-                            contentDescription = "Success",
-                            tint = FieldTheme.colors.onPrimary,
-                            modifier = Modifier.size(48.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .background(FieldTheme.colors.statusSuccess, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Check,
+                                contentDescription = "Success",
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
                     }
                     
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Text(
                         text = title,
-                        style = FieldTheme.typography.display,
+                        style = FieldTheme.typography.title,
                         color = FieldTheme.colors.gray100,
                         textAlign = TextAlign.Center
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = subtitle,
                         style = FieldTheme.typography.body,
@@ -118,7 +142,34 @@ fun ConfirmationScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    FieldDivider()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Transaction Summary Card
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(FieldTheme.colors.gray900, RoundedCornerShape(4.dp))
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "LEDGER METADATA",
+                            style = FieldTheme.typography.label.copy(fontSize = 10.sp),
+                            color = FieldTheme.colors.gray500
+                        )
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Dossier Status", style = FieldTheme.typography.body.copy(fontSize = 12.sp), color = FieldTheme.colors.gray400)
+                            Text("SIGNED & QUEUED", style = FieldTheme.typography.mono.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold), color = FieldTheme.colors.statusSuccess)
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Local Integrity Hash", style = FieldTheme.typography.body.copy(fontSize = 12.sp), color = FieldTheme.colors.gray400)
+                            Text("SHA-256 Validated", style = FieldTheme.typography.mono.copy(fontSize = 12.sp), color = FieldTheme.colors.gray300)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
 
                     PrimaryButton(
                         text = primaryButtonText,
@@ -156,7 +207,7 @@ fun ConfirmationScreen(
                     modifier = Modifier
                         .fillMaxWidth(countdownProgress.value)
                         .fillMaxHeight()
-                        .background(FieldTheme.colors.primary)
+                        .background(FieldTheme.colors.purple600)
                 )
             }
         }

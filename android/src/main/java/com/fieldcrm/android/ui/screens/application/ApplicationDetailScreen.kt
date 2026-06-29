@@ -1,4 +1,4 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.application
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.components.*
+import com.fieldcrm.android.ui.screens.common.DetailItem
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.shared.model.BorrowerModel
@@ -228,11 +229,16 @@ fun ApplicationDetailScreenView(
                                     .background(FieldTheme.colors.gray850, RoundedCornerShape(8.dp))
                                     .padding(12.dp)
                             ) {
+                                val hasIdentity = borrower != null && borrower.name.isNotEmpty() && borrower.bvn.isNotEmpty()
+                                val isPledgeSigned = application.collateral_desc?.contains("Pledge") == true || application.collateral_desc?.contains("Executed") == true
+                                val hasGps = borrower?.gps_coordinates?.let { it.isNotEmpty() && it.contains("Lat:") } == true
+                                val hasGuarantor = borrower?.guarantor_name?.isNotEmpty() == true
+
                                 val gatesList = listOf(
-                                    Triple("Identity Verification Passed", StatusChipVariant.Verified, onNavigateToDocumentUpload),
-                                    Triple("Pledge Document Signed", StatusChipVariant.Signed, onNavigateToPledgeTrust),
-                                    Triple("GPS Visitation Photo Stamped", StatusChipVariant.Missing, onNavigateToVisitationReport),
-                                    Triple("Guarantor Verification Logged", StatusChipVariant.Verified, onNavigateToGuarantorsForm)
+                                    Triple("Identity Verification Passed", if (hasIdentity) StatusChipVariant.Verified else StatusChipVariant.Missing, onNavigateToDocumentUpload),
+                                    Triple("Pledge Document Signed", if (isPledgeSigned) StatusChipVariant.Signed else StatusChipVariant.Missing, onNavigateToPledgeTrust),
+                                    Triple("GPS Visitation Photo Stamped", if (hasGps) StatusChipVariant.Verified else StatusChipVariant.Missing, onNavigateToVisitationReport),
+                                    Triple("Guarantor Verification Logged", if (hasGuarantor) StatusChipVariant.Verified else StatusChipVariant.Missing, onNavigateToGuarantorsForm)
                                 )
                                 gatesList.forEachIndexed { index, gate ->
                                     Row(
@@ -356,26 +362,6 @@ fun ApplicationDetailScreenView(
     }
 }
 
-@Composable
-fun DetailItem(
-    label: String,
-    value: String,
-    isMono: Boolean = false
-) {
-    Column(modifier = Modifier.padding(vertical = 6.dp)) {
-        Text(
-            text = label.uppercase(Locale.getDefault()),
-            style = FieldTheme.typography.label.copy(fontSize = 10.sp),
-            color = FieldTheme.colors.gray500
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = value,
-            style = if (isMono) FieldTheme.typography.mono else FieldTheme.typography.bodyStrong,
-            color = FieldTheme.colors.gray300
-        )
-    }
-}
 
 @Composable
 fun AccordionHeader(

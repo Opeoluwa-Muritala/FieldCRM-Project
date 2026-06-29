@@ -1,4 +1,4 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.review
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -27,6 +27,9 @@ fun AuditorComplianceScreen(
     var isConsentVerified by remember { mutableStateOf(true) }
     var isSignatureMatched by remember { mutableStateOf(true) }
     var isExhibitsVerified by remember { mutableStateOf(false) }
+    var auditComments by remember { mutableStateOf("") }
+
+    val allChecksPassed = isConsentVerified && isSignatureMatched && isExhibitsVerified
 
     Scaffold(
         topBar = {
@@ -71,6 +74,11 @@ fun AuditorComplianceScreen(
                             text = "Auditing Compliance Checklists",
                             style = FieldTheme.typography.title,
                             color = FieldTheme.colors.gray100
+                        )
+                        Text(
+                            text = "Verify legal and administrative compliance checklist items. Log observations prior to official sign-off.",
+                            style = FieldTheme.typography.body,
+                            color = FieldTheme.colors.gray400
                         )
                         
                         // Consent & Verification Check Card
@@ -135,6 +143,19 @@ fun AuditorComplianceScreen(
                             }
                         }
 
+                        // Observations comments card
+                        FieldCard {
+                            Text("AUDIT CONSOLE OBSERVATIONS", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            FieldTextField(
+                                value = auditComments,
+                                onValueChange = { auditComments = it },
+                                label = "Auditor Compliance Notes",
+                                placeholder = "Log physical address verification matches, GPS discrepancy notes, etc."
+                            )
+                        }
+
                         // Readiness gates checklist display
                         FieldCard {
                             Text("AUDIT COMPLIANCE STATUS GATES", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
@@ -154,7 +175,7 @@ fun AuditorComplianceScreen(
                         PrimaryButton(
                             text = "Log Auditor Sign-Off",
                             onClick = onAuditComplete,
-                            enabled = isConsentVerified && isSignatureMatched
+                            enabled = allChecksPassed
                         )
                     }
                 }
@@ -162,10 +183,6 @@ fun AuditorComplianceScreen(
         }
     }
 }
-
-// ==========================================
-// PREVIEWS
-// ==========================================
 
 @Preview(name = "Compact Phone Audit Board", widthDp = 411, heightDp = 850)
 @Composable

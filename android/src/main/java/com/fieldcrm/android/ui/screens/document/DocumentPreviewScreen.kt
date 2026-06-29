@@ -1,4 +1,4 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.document
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.core.session.UserRole
+import androidx.compose.ui.tooling.preview.Preview
+import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
 import kotlin.math.roundToInt
 
@@ -279,5 +281,29 @@ fun DocumentPreviewScreen(
                 }
             }
         }
+    }
+}
+
+@Preview(name = "Compact Phone Document Preview", widthDp = 411, heightDp = 850)
+@Composable
+fun PreviewDocumentPreviewCompact() {
+    FieldCRMTheme {
+        DocumentPreviewScreen(
+            documentTitle = "Utility_Bill_Adaeze.pdf",
+            role = UserRole.LOAN_OFFICER,
+            onBackClick = {}
+        )
+    }
+}
+
+@Preview(name = "Tablet Document Preview Layout", widthDp = 1280, heightDp = 800)
+@Composable
+fun PreviewDocumentPreviewTablet() {
+    FieldCRMTheme {
+        DocumentPreviewScreen(
+            documentTitle = "Utility_Bill_Adaeze.pdf",
+            role = UserRole.LOAN_OFFICER,
+            onBackClick = {}
+        )
     }
 }

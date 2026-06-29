@@ -1,5 +1,6 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.common
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -9,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -25,10 +27,22 @@ fun FullScreenErrorScreen(
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
 
+    // Pulsing circle animation for error state badge
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.95f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(FieldTheme.colors.background),
+            .background(FieldTheme.colors.gray950),
         contentAlignment = Alignment.Center
     ) {
         Box(
@@ -45,32 +59,33 @@ fun FullScreenErrorScreen(
                 ) {
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    // CloudOff Icon Circle Badge
+                    // CloudOff Icon Circle Badge with pulse animation
                     Box(
                         modifier = Modifier
-                            .size(64.dp)
-                            .background(FieldTheme.colors.gray800, CircleShape),
+                            .size(72.dp)
+                            .graphicsLayer(scaleX = pulseScale, scaleY = pulseScale)
+                            .background(FieldTheme.colors.statusDanger.copy(alpha = 0.1f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.CloudOff,
                             contentDescription = "No Connection",
-                            tint = FieldTheme.colors.gray400,
-                            modifier = Modifier.size(32.dp)
+                            tint = FieldTheme.colors.statusDanger,
+                            modifier = Modifier.size(36.dp)
                         )
                     }
                     
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Text(
-                        text = "Something went wrong",
-                        style = FieldTheme.typography.display,
+                        text = "Connection Offline",
+                        style = FieldTheme.typography.title,
                         color = FieldTheme.colors.gray100,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "We couldn't load this. Check your connection and try again.",
+                        text = "Unable to reach Mainstreet ledger network. Please confirm mobile data or WiFi status and retry.",
                         style = FieldTheme.typography.body,
                         color = FieldTheme.colors.gray400,
                         textAlign = TextAlign.Center
@@ -79,7 +94,7 @@ fun FullScreenErrorScreen(
                     Spacer(modifier = Modifier.height(32.dp))
 
                     PrimaryButton(
-                        text = if (isLoading) "CHECKING CONNECTION..." else "TRY AGAIN",
+                        text = if (isLoading) "VERIFYING LINK..." else "RETRY QUEUE",
                         onClick = { isLoading = true },
                         enabled = !isLoading,
                         modifier = Modifier.fillMaxWidth()

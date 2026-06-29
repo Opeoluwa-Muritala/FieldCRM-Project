@@ -1,4 +1,4 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.borrower
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

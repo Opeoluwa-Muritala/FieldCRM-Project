@@ -1,4 +1,4 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.application
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -27,6 +27,8 @@ import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.FieldTopAppBar
 import com.fieldcrm.android.ui.components.PrimaryButton
 import com.fieldcrm.android.ui.components.SecondaryButton
+import androidx.compose.ui.tooling.preview.Preview
+import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
 import kotlinx.coroutines.delay
 
@@ -44,7 +46,10 @@ data class SyncItem(
 )
 
 @Composable
-fun SyncingBadge(modifier: Modifier = Modifier) {
+fun SyncingBadge(
+    isSyncing: Boolean,
+    modifier: Modifier = Modifier
+) {
     val infiniteTransition = rememberInfiniteTransition(label = "rotation")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -58,16 +63,16 @@ fun SyncingBadge(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(64.dp)
-            .background(FieldTheme.colors.purple900, CircleShape),
+            .background(FieldTheme.colors.purple900.copy(alpha = 0.1f), CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = Icons.Outlined.Sync,
             contentDescription = "Syncing",
-            tint = FieldTheme.colors.purple600,
+            tint = if (isSyncing) FieldTheme.colors.purple600 else FieldTheme.colors.gray500,
             modifier = Modifier
                 .size(32.dp)
-                .graphicsLayer(rotationZ = rotation)
+                .graphicsLayer(rotationZ = if (isSyncing) rotation else 0f)
         )
     }
 }
@@ -81,11 +86,24 @@ fun OfflineQueueScreen(
     var syncItems by remember {
         mutableStateOf(
             listOf(
-                SyncItem("1", "Loan MMFB-052", SyncItemStatus.SYNCED),
-                SyncItem("2", "Document upload", SyncItemStatus.PENDING),
-                SyncItem("3", "Visit report", SyncItemStatus.FAILED, "Server unavailable — will retry automatically")
+                SyncItem("1", "Loan MMFB-052 Intake Data", SyncItemStatus.SYNCED),
+                SyncItem("2", "NIN Card Image Attachment", SyncItemStatus.PENDING),
+                SyncItem("3", "GPS Visitation Log Report", SyncItemStatus.FAILED, "Server handshake failure — will auto retry")
             )
         )
+    }
+
+    // Interactive Sync Simulation logic
+    LaunchedEffect(isSyncing) {
+        if (isSyncing) {
+            // First set all non-synced items to PENDING
+            syncItems = syncItems.map {
+                if (it.status != SyncItemStatus.SYNCED) it.copy(status = SyncItemStatus.PENDING) else it
+            }
+            delay(2000) // handshaking delay
+            syncItems = syncItems.map { it.copy(status = SyncItemStatus.SYNCED, errorMsg = null) }
+            isSyncing = false
+        }
     }
 
     Scaffold(
@@ -106,7 +124,7 @@ fun OfflineQueueScreen(
                 }
             )
         },
-        containerColor = FieldTheme.colors.background
+        containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -129,16 +147,16 @@ fun OfflineQueueScreen(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        SyncingBadge()
+                        SyncingBadge(isSyncing = isSyncing)
                         Column {
                             Text(
-                                text = if (isSyncing) "Syncing items..." else "All Synced & Cached",
+                                text = if (isSyncing) "Syncing Ledger Queues..." else "All Cache Harmonised",
                                 style = FieldTheme.typography.title,
                                 color = FieldTheme.colors.gray100
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (isSyncing) "Ensure app stays open during sync." else "Local database matches Mainstreet server.",
+                                text = if (isSyncing) "Connecting to Lagos MMFB Server node..." else "Local database matches primary bank server.",
                                 style = FieldTheme.typography.body,
                                 color = FieldTheme.colors.gray400
                             )
@@ -197,8 +215,8 @@ fun OfflineQueueScreen(
                                         )
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
-                                            text = statusSuffix,
-                                            style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                                            text = statusSuffix.uppercase(),
+                                            style = FieldTheme.typography.mono.copy(fontSize = 11.sp),
                                             color = when (item.status) {
                                                 SyncItemStatus.SYNCED -> FieldTheme.colors.statusSuccess
                                                 SyncItemStatus.PENDING -> FieldTheme.colors.statusWarning
@@ -209,7 +227,7 @@ fun OfflineQueueScreen(
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text(
                                                 text = item.errorMsg,
-                                                style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                                                style = FieldTheme.typography.body.copy(fontSize = 12.sp),
                                                 color = FieldTheme.colors.gray500
                                             )
                                         }
@@ -230,9 +248,6 @@ fun OfflineQueueScreen(
                                         },
                                         onClick = {
                                             isSyncing = true
-                                            syncItems = syncItems.map {
-                                                if (it.id == item.id) it.copy(status = SyncItemStatus.PENDING) else it
-                                            }
                                         },
                                         modifier = Modifier.fillMaxWidth()
                                     )
@@ -243,7 +258,7 @@ fun OfflineQueueScreen(
                 }
 
                 PrimaryButton(
-                    text = if (isSyncing) "Syncing ledgers..." else "Force Synchronisation Check",
+                    text = if (isSyncing) "Synchronising Ledgers..." else "Force Synchronisation Check",
                     onClick = {
                         isSyncing = true
                     },
@@ -262,6 +277,22 @@ fun OfflineQueueScreen(
             }
             isSyncing = false
         }
+    }
+}
+
+@Preview(name = "Compact Phone Offline Queue", widthDp = 411, heightDp = 850)
+@Composable
+fun PreviewOfflineQueueCompact() {
+    FieldCRMTheme {
+        OfflineQueueScreen(onBackClick = {})
+    }
+}
+
+@Preview(name = "Tablet Offline Queue Layout", widthDp = 1280, heightDp = 800)
+@Composable
+fun PreviewOfflineQueueTablet() {
+    FieldCRMTheme {
+        OfflineQueueScreen(onBackClick = {})
     }
 }
 

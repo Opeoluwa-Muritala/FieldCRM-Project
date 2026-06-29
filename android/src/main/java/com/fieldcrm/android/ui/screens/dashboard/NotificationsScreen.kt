@@ -1,4 +1,4 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.dashboard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -74,7 +74,7 @@ fun NotificationsScreen(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(FieldTheme.colors.background)
+            .background(FieldTheme.colors.gray950)
     ) {
         val isTablet = maxWidth >= 600.dp
 
@@ -91,7 +91,7 @@ fun NotificationsScreen(
                     modifier = Modifier
                         .width(380.dp)
                         .fillMaxHeight()
-                        .background(FieldTheme.colors.background)
+                        .background(FieldTheme.colors.gray950)
                 ) {
                     NotificationsContent(
                         notifications = notifications,
@@ -177,11 +177,11 @@ fun NotificationsContent(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = FieldTheme.colors.background
+                    containerColor = FieldTheme.colors.gray950
                 )
             )
         },
-        containerColor = FieldTheme.colors.background
+        containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -200,7 +200,7 @@ fun NotificationsContent(
                     Icon(
                         imageVector = Icons.Outlined.Shield,
                         contentDescription = "All Caught Up",
-                        tint = FieldTheme.colors.primary,
+                        tint = FieldTheme.colors.purple600,
                         modifier = Modifier
                             .size(80.dp)
                             .alpha(0.3f)
@@ -230,7 +230,7 @@ fun NotificationsContent(
                 ) {
                     items(notifications) { notif ->
                         val rowBg = if (!notif.isRead) {
-                            FieldTheme.colors.purple900
+                            FieldTheme.colors.purple900.copy(alpha = 0.1f)
                         } else {
                             FieldTheme.colors.gray900
                         }

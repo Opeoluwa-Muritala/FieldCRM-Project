@@ -1,7 +1,8 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.document
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,6 +32,7 @@ fun DocumentViewerScreen(
     var zoomLevel by remember { mutableFloatStateOf(1.0f) }
     var rotationAngle by remember { mutableIntStateOf(0) }
     var annotationText by remember { mutableStateOf("Verified match with original land title records at state registry.") }
+    var isAuditApproved by remember { mutableStateOf(true) }
 
     Scaffold(
         topBar = {
@@ -88,7 +90,12 @@ fun DocumentViewerScreen(
                             .padding(16.dp)
                             .verticalScroll(rememberScrollState())
                     ) {
-                        AnnotationSection(annotationText = annotationText, onAnnotationChange = { annotationText = it })
+                        AnnotationSection(
+                            annotationText = annotationText,
+                            onAnnotationChange = { annotationText = it },
+                            isAuditApproved = isAuditApproved,
+                            onToggleAudit = { isAuditApproved = !isAuditApproved }
+                        )
                     }
                 }
             } else {
@@ -107,7 +114,12 @@ fun DocumentViewerScreen(
                         onRotateClick = { rotationAngle = (rotationAngle + 90) % 360 }
                     )
                     ViewerCanvasBox(rotationAngle = rotationAngle, zoomLevel = zoomLevel)
-                    AnnotationSection(annotationText = annotationText, onAnnotationChange = { annotationText = it })
+                    AnnotationSection(
+                        annotationText = annotationText,
+                        onAnnotationChange = { annotationText = it },
+                        isAuditApproved = isAuditApproved,
+                        onToggleAudit = { isAuditApproved = !isAuditApproved }
+                    )
                 }
             }
         }
@@ -160,6 +172,24 @@ fun ControlHeader(
     }
 }
 
+// Helper extension to map Slider value change on older APIs
+@Composable
+fun RowScope.Slider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    colors: SliderColors,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.material3.Slider(
+        value = value,
+        onValueChange = onValueChange,
+        valueRange = valueRange,
+        colors = colors,
+        modifier = modifier
+    )
+}
+
 @Composable
 fun ViewerCanvasBox(rotationAngle: Int, zoomLevel: Float) {
     Box(
@@ -196,7 +226,9 @@ fun ViewerCanvasBox(rotationAngle: Int, zoomLevel: Float) {
 @Composable
 fun AnnotationSection(
     annotationText: String,
-    onAnnotationChange: (String) -> Unit
+    onAnnotationChange: (String) -> Unit,
+    isAuditApproved: Boolean,
+    onToggleAudit: () -> Unit
 ) {
     FieldCard {
         Text("AUDIT ANNOTATION LOG", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
@@ -217,22 +249,39 @@ fun AnnotationSection(
         ) {
             Box(
                 modifier = Modifier
-                    .background(FieldTheme.colors.purple950, RoundedCornerShape(6.dp))
+                    .background(
+                        if (isAuditApproved) FieldTheme.colors.statusSuccess.copy(alpha = 0.1f) else FieldTheme.colors.statusWarning.copy(alpha = 0.1f),
+                        RoundedCornerShape(6.dp)
+                    )
+                    .border(
+                        0.5.dp,
+                        if (isAuditApproved) FieldTheme.colors.statusSuccess else FieldTheme.colors.statusWarning,
+                        RoundedCornerShape(6.dp)
+                    )
+                    .clickable { onToggleAudit() }
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
-                Text("APPROVED BY AUDIT", style = FieldTheme.typography.label, color = FieldTheme.colors.purple200)
+                Text(
+                    text = if (isAuditApproved) "APPROVED BY AUDIT (CLICK TO CHANGE)" else "UNDER REVIEW BY AUDIT",
+                    style = FieldTheme.typography.label.copy(fontSize = 10.sp),
+                    color = if (isAuditApproved) FieldTheme.colors.statusSuccess else FieldTheme.colors.statusWarning
+                )
             }
         }
     }
 }
 
-// ==========================================
-// PREVIEWS
-// ==========================================
-
 @Preview(name = "Compact Phone Viewer", widthDp = 411, heightDp = 850)
 @Composable
 fun PreviewViewerCompact() {
+    FieldCRMTheme {
+        DocumentViewerScreen(onBackClick = {})
+    }
+}
+
+@Preview(name = "Tablet Viewer Layout", widthDp = 1280, heightDp = 800)
+@Composable
+fun PreviewViewerTablet() {
     FieldCRMTheme {
         DocumentViewerScreen(onBackClick = {})
     }
