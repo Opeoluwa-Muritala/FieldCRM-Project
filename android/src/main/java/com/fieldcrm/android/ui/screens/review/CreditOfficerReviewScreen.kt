@@ -24,10 +24,16 @@ import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.screens.common.DetailItem
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.ui.viewmodel.ApplicationViewModel
+import com.fieldcrm.shared.model.BorrowerModel
+import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
 
 @Composable
 fun CreditOfficerReviewScreen(
+    application: LoanApplicationModel,
+    borrower: BorrowerModel?,
+    applicationViewModel: ApplicationViewModel,
     onBackClick: () -> Unit,
     onCompleteReview: () -> Unit
 ) {
@@ -41,8 +47,11 @@ fun CreditOfficerReviewScreen(
     
     var incomeStatement by remember { mutableStateOf("Verified Bank Statement (Lagos Node)") }
     var dtiRatio by remember { mutableFloatStateOf(0.32f) } // 32%
+    var recommendationDecision by remember { mutableStateOf("Recommend Approval") } // "Recommend Approval", "Recommend Rejection", "Return for Correction"
+    var recommendationNotes by remember { mutableStateOf("Applicant leverage index fits normal limits. Strong guarantor signature match verified.") }
 
     val isDtiLimitExceeded = dtiRatio > 0.40f
+    val appState by applicationViewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -274,7 +283,7 @@ fun CreditOfficerReviewScreen(
                             
                             // Matrix rows
                             val guarantors = listOf(
-                                Triple("Tunde Bakare", "Matched", StatusChipVariant.Verified),
+                                Triple(borrower?.guarantor_name ?: "Tunde Bakare", "Matched", StatusChipVariant.Verified),
                                 Triple("Adaeze Okonkwo", "High Confidence", StatusChipVariant.Approved)
                             )
                             
@@ -308,25 +317,51 @@ fun CreditOfficerReviewScreen(
                                 }
                             }
                         }
+
+                        // Decision Card
+                        FieldCard {
+                            Text(
+                                text = "UNDERWRITING DECISION VERDICT",
+                                style = FieldTheme.typography.label,
+                                color = FieldTheme.colors.gray500
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            FieldDropdown(
+                                value = recommendationDecision,
+                                options = listOf(
+                                    "Recommend Approval",
+                                    "Recommend Rejection",
+                                    "Return for Correction"
+                                ),
+                                onOptionSelected = { recommendationDecision = it },
+                                label = "Recommendation Decision"
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            FieldTextField(
+                                value = recommendationNotes,
+                                onValueChange = { recommendationNotes = it },
+                                label = "Underwriter Review Notes",
+                                isRequired = true
+                            )
+                        }
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         PrimaryButton(
-                            text = "Submit Credit Evaluation",
-                            onClick = onCompleteReview,
-                            enabled = !isDtiLimitExceeded && creditScores[creditScoreIndex].second != StatusChipVariant.Missing
+                            text = if (appState.isLoading) "Submitting Verdict..." else "Submit Credit Evaluation",
+                            onClick = {
+                                applicationViewModel.submitCreditReview(application.id, recommendationDecision, recommendationNotes) {
+                                    onCompleteReview()
+                                }
+                            },
+                            enabled = !isDtiLimitExceeded && creditScores[creditScoreIndex].second != StatusChipVariant.Missing && recommendationNotes.isNotEmpty() && !appState.isLoading
                         )
                     }
                 }
             }
         }
-    }
-}
-
-@Preview(name = "Compact Phone Credit Review", widthDp = 411, heightDp = 850)
-@Composable
-fun PreviewCreditReviewCompact() {
-    FieldCRMTheme {
-        CreditOfficerReviewScreen(onBackClick = {}, onCompleteReview = {})
     }
 }

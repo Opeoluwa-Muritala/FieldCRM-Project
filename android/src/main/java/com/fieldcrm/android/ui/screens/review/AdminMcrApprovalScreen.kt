@@ -9,12 +9,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.HowToVote
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -22,10 +20,16 @@ import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.ui.viewmodel.ApplicationViewModel
+import com.fieldcrm.shared.model.BorrowerModel
+import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
 
 @Composable
 fun AdminMcrApprovalScreen(
+    application: LoanApplicationModel,
+    borrower: BorrowerModel?,
+    applicationViewModel: ApplicationViewModel,
     onBackClick: () -> Unit,
     onDisburseTriggered: () -> Unit
 ) {
@@ -34,6 +38,7 @@ fun AdminMcrApprovalScreen(
     var isDisbursedState by remember { mutableStateOf(false) }
 
     val hasQuorum = yesVotes >= 3
+    val appState by applicationViewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -98,46 +103,25 @@ fun AdminMcrApprovalScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             
                             // Interactive Voting Adjuster
-                            if (!isDisbursedState) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("Modify Vote Count", style = FieldTheme.typography.body.copy(fontSize = 13.sp), color = FieldTheme.colors.gray400)
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        IconButton(
-                                            onClick = { if (yesVotes > 0) yesVotes-- },
-                                            modifier = Modifier
-                                                .size(36.dp)
-                                                .background(FieldTheme.colors.gray900, RoundedCornerShape(4.dp))
-                                                .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(4.dp))
-                                        ) {
-                                            Text("-", color = FieldTheme.colors.gray100, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                                        }
-                                        Text("$yesVotes", style = FieldTheme.typography.mono.copy(fontSize = 14.sp), color = FieldTheme.colors.gray100)
-                                        IconButton(
-                                            onClick = { if (yesVotes < totalCommitteeVotes) yesVotes++ },
-                                            modifier = Modifier
-                                                .size(36.dp)
-                                                .background(FieldTheme.colors.gray900, RoundedCornerShape(4.dp))
-                                                .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(4.dp))
-                                        ) {
-                                            Text("+", color = FieldTheme.colors.gray100, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                                        }
-                                    }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Adjust Affirmative Board Count", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    SecondaryButton(
+                                        text = "-",
+                                        onClick = { if (yesVotes > 0) yesVotes-- },
+                                        modifier = Modifier.width(48.dp)
+                                    )
+                                    SecondaryButton(
+                                        text = "+",
+                                        onClick = { if (yesVotes < totalCommitteeVotes) yesVotes++ },
+                                        modifier = Modifier.width(48.dp)
+                                    )
                                 }
                             }
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Under bank constitution, minimum 3 board members must approve for asset allocation.",
-                                style = FieldTheme.typography.body.copy(fontSize = 11.sp),
-                                color = FieldTheme.colors.gray500
-                            )
                         }
                         
                         // Disbursement Readiness Checklist
@@ -186,36 +170,35 @@ fun AdminMcrApprovalScreen(
                                         }
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             Text("Disbursed Amount", style = FieldTheme.typography.body.copy(fontSize = 13.sp), color = FieldTheme.colors.gray400)
-                                            Text("₦ 250,000", style = FieldTheme.typography.mono.copy(fontWeight = FontWeight.Bold), color = FieldTheme.colors.purple400)
+                                            Text("₦ ${application.amount}", style = FieldTheme.typography.mono.copy(fontWeight = FontWeight.Bold), color = FieldTheme.colors.purple400)
                                         }
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             Text("Recipient", style = FieldTheme.typography.body.copy(fontSize = 13.sp), color = FieldTheme.colors.gray400)
-                                            Text("Adaeze Okonkwo (Access Bank)", style = FieldTheme.typography.bodyStrong.copy(fontSize = 13.sp), color = FieldTheme.colors.gray300)
+                                            Text("${borrower?.name ?: "Adaeze Okonkwo"} (${borrower?.bank_name ?: "Access Bank"})", style = FieldTheme.typography.bodyStrong.copy(fontSize = 13.sp), color = FieldTheme.colors.gray300)
                                         }
                                     }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    PrimaryButton(
+                                        text = "Complete",
+                                        onClick = onDisburseTriggered
+                                    )
                                 }
                             }
                         } else {
                             PrimaryButton(
-                                text = "Trigger Ledger Disbursement",
+                                text = if (appState.isLoading) "Transmitting..." else "Trigger Ledger Disbursement",
                                 onClick = {
-                                    isDisbursedState = true
-                                    onDisburseTriggered()
+                                    applicationViewModel.approveApplication(application.id) {
+                                        isDisbursedState = true
+                                    }
                                 },
-                                enabled = hasQuorum
+                                enabled = hasQuorum && !appState.isLoading
                             )
                         }
                     }
                 }
             }
         }
-    }
-}
-
-@Preview(name = "Compact Phone Admin Board", widthDp = 411, heightDp = 850)
-@Composable
-fun PreviewAdminBoardCompact() {
-    FieldCRMTheme {
-        AdminMcrApprovalScreen(onBackClick = {}, onDisburseTriggered = {})
     }
 }

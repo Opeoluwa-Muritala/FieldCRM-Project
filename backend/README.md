@@ -125,52 +125,37 @@ uvicorn app.main:app --app-dir backend --reload
 
 Open:
 
-- Web login: `http://127.0.0.1:8000/login`
-- OpenAPI docs: `http://127.0.0.1:8000/api/docs`
-- ReDoc: `http://127.0.0.1:8000/api/redoc`
-- Health check: `http://127.0.0.1:8000/api/v1/health`
+- Web login: `http://127.0.0.1:8000/login` (Live: `https://fieldcrm.onrender.com/login`)
+- OpenAPI docs: `http://127.0.0.1:8000/api/docs` (Live: `https://fieldcrm.onrender.com/api/docs`)
+- ReDoc: `http://127.0.0.1:8000/api/redoc` (Live: `https://fieldcrm.onrender.com/api/redoc`)
+- Health check: `http://127.0.0.1:8000/api/v1/health` (Live: `https://fieldcrm.onrender.com/api/v1/health`)
 
-## Demo Accounts
+## Live Server
+The backend is uploaded and hosted at: **`https://fieldcrm.onrender.com`**
 
-The seed migration creates these accounts with password `password123`:
+## Mobile App REST Integration
 
-| Role | Email |
-| --- | --- |
-| System Admin | `admin@mmfb.com` |
-| Branch Manager | `adebayo@mmfb.com` |
-| Loan Officer | `chidi@mmfb.com` |
-| Credit Officer | `fatima@mmfb.com` |
-| Auditor | `samuel@mmfb.com` |
+The mobile app integrates with the deployed backend API using Koin for Dependency Injection and Ktor for HTTP requests.
 
-These credentials are for local demo data only.
+### Core Endpoints
 
-## Authentication
+| Area | HTTP Method | Endpoint Path | Description |
+| --- | --- | --- | --- |
+| **Auth** | `POST` | `/api/v1/auth/login-bearer` | Staff bearer login (returns JWT token) |
+| **Dashboard** | `GET` | `/api/v1/loans/dashboard` | Fetches active metrics for the logged-in staff |
+| **Queue** | `GET` | `/api/v1/loans/my-queue` | Resolves active dossiers assigned to current officer |
+| **Borrowers** | `GET` | `/api/v1/loans/borrowers` | List all registered borrowers |
+| **Application** | `POST` | `/api/v1/loans/applications/new` | Creates a new draft loan application |
+| **Form Steps** | `POST` | `/api/v1/loans/applications/{id}/step/{step}` | Saves input fields for step (1-9) of the wizard |
+| **Guarantor** | `POST` | `/api/v1/loans/applications/{id}/guarantors/{idx}/step/{step}` | Saves guarantor step credentials |
+| **Documents** | `POST` | `/api/v1/loans/applications/{id}/documents/upload` | Uploads files and triggers OCR processing |
+| **Visitation** | `POST` | `/api/v1/loans/applications/{id}/visitation` | Logs GPS stamped site audit comments and signatures |
 
-The backend supports:
-
-- Browser login at `POST /login`, which sets an HTTP-only session cookie.
-- API cookie login at `POST /api/v1/auth/login`.
-- API bearer login at `POST /api/v1/auth/login-bearer`.
-- Logout at `/logout` or `POST /api/v1/auth/logout`.
-
-Protected browser routes redirect unauthenticated users to `/login`. Protected
-API routes return JSON errors.
-
-## Current Route Areas
-
-- Authentication and user registration under `/api/v1/auth` and
-  `/api/v1/users`
-- Role dashboards and work queues
-- Loan application creation and staged data capture
-- Guarantor forms
-- Document upload and OCR review pages
-- Visitation reports and sign-off
-- Credit review, approval, and return workflows
-- Audit, compliance, users, and system activity views
-
-Some domain router files are currently placeholders, and not every mobile
-client endpoint is mounted yet. Treat the generated OpenAPI page as the source
-of truth for currently exposed API endpoints.
+### Mobile Client Dependency Injection (Koin)
+The Android client utilizes Koin to inject:
+1. `KtorHttpClient` configured with bearer token headers, json deserializer, and the Render base URL.
+2. Repository singletons (`BorrowerRepository`, `ApplicationRepository`) that toggle between local caching and remote REST sync.
+3. ViewModels (`LoginViewModel`, `BorrowerViewModel`, `ApplicationViewModel`) bound to current compose scopes.
 
 ## Checks
 

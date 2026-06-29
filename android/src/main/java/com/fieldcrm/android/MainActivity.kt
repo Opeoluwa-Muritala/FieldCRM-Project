@@ -26,12 +26,14 @@ import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.setContent
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.koin.androidx.compose.koinViewModel
+import com.fieldcrm.android.ui.components.OfflineSyncDialog
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val appViewModel: AppViewModel = viewModel()
+            val appViewModel: AppViewModel = koinViewModel()
             val appUiState by appViewModel.uiState.collectAsState()
             
             FieldCRMTheme(
@@ -46,13 +48,26 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun FieldCRMApp(appViewModel: AppViewModel = viewModel()) {
-    val loginViewModel: LoginViewModel = viewModel()
-    val borrowerViewModel: BorrowerViewModel = viewModel()
-    val applicationViewModel: ApplicationViewModel = viewModel()
+fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
+    val loginViewModel: LoginViewModel = koinViewModel()
+    val borrowerViewModel: BorrowerViewModel = koinViewModel()
+    val applicationViewModel: ApplicationViewModel = koinViewModel()
     val appUiState by appViewModel.uiState.collectAsState()
     val borrowerUiState by borrowerViewModel.uiState.collectAsState()
     val applicationUiState by applicationViewModel.uiState.collectAsState()
+
+    var showSyncModal by remember { mutableStateOf(false) }
+
+    if (showSyncModal) {
+        OfflineSyncDialog(
+            onDismiss = { showSyncModal = false },
+            onTriggerSync = { onComplete ->
+                applicationViewModel.syncQueue { success ->
+                    onComplete(success)
+                }
+            }
+        )
+    }
 
     if (appUiState.isSessionExpired) {
         SessionExpiredScreen(
@@ -177,7 +192,7 @@ fun FieldCRMApp(appViewModel: AppViewModel = viewModel()) {
                         appViewModel.navigateTo(Screen.ApplicationList)
                     },
                     onNavigateToOfflineQueue = {
-                        appViewModel.navigateTo(Screen.OfflineQueue)
+                        showSyncModal = true
                     },
                     onLogout = {
                         appViewModel.logout()
@@ -377,16 +392,34 @@ fun FieldCRMApp(appViewModel: AppViewModel = viewModel()) {
                 }
             }
             Screen.BranchManagerReview -> {
-                BranchManagerReviewScreen(
-                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                    onDecisionSubmitted = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-                )
+                val app = appUiState.selectedApplication
+                val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id }
+                if (app != null) {
+                    BranchManagerReviewScreen(
+                        application = app,
+                        borrower = borrower,
+                        applicationViewModel = applicationViewModel,
+                        onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
+                        onDecisionSubmitted = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                    )
+                } else {
+                    appViewModel.navigateTo(Screen.ApplicationDetail)
+                }
             }
             Screen.CreditOfficerReview -> {
-                CreditOfficerReviewScreen(
-                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                    onCompleteReview = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-                )
+                val app = appUiState.selectedApplication
+                val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id }
+                if (app != null) {
+                    CreditOfficerReviewScreen(
+                        application = app,
+                        borrower = borrower,
+                        applicationViewModel = applicationViewModel,
+                        onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
+                        onCompleteReview = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                    )
+                } else {
+                    appViewModel.navigateTo(Screen.ApplicationDetail)
+                }
             }
             Screen.AuditorCompliance -> {
                 AuditorComplianceScreen(
@@ -395,10 +428,19 @@ fun FieldCRMApp(appViewModel: AppViewModel = viewModel()) {
                 )
             }
             Screen.AdminMcrApproval -> {
-                AdminMcrApprovalScreen(
-                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                    onDisburseTriggered = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-                )
+                val app = appUiState.selectedApplication
+                val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id }
+                if (app != null) {
+                    AdminMcrApprovalScreen(
+                        application = app,
+                        borrower = borrower,
+                        applicationViewModel = applicationViewModel,
+                        onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
+                        onDisburseTriggered = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                    )
+                } else {
+                    appViewModel.navigateTo(Screen.ApplicationDetail)
+                }
             }
             Screen.DocumentViewer -> {
                 DocumentViewerScreen(
@@ -416,6 +458,7 @@ fun FieldCRMApp(appViewModel: AppViewModel = viewModel()) {
                     userEmail = appUiState.session?.userEmail ?: "chidi@mmfb.com",
                     role = appUiState.session?.role,
                     onBackClick = { appViewModel.navigateTo(Screen.Dashboard) },
+                    onNavigateToOfflineQueue = { showSyncModal = true },
                     onSignOutClick = { appViewModel.logout() }
                 )
             }
