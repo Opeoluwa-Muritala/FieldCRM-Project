@@ -27,33 +27,14 @@ data class BorrowerUiState(
     val newBorrowerNin: String = ""
 )
 
-class BorrowerViewModel(application: Application) : AndroidViewModel(application) {
+class BorrowerViewModel(
+    application: Application,
+    private val repository: BorrowerRepository
+) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(BorrowerUiState())
     val uiState: StateFlow<BorrowerUiState> = _uiState.asStateFlow()
 
-    private val database: AppDatabase
-    private val client: FieldCRMClient
-    private val repository: BorrowerRepository
-
     init {
-        val driver = AndroidSqliteDriver(
-            schema = AppDatabase.Schema,
-            context = application,
-            name = "fieldcrm_offline.db"
-        )
-        database = AppDatabase(driver)
-
-        // Device IP resolution: uses loopback for physical USB device with adb reverse,
-        // and 10.0.2.2 loopback for Android SDK emulator.
-        val isEmulator = android.os.Build.FINGERPRINT.startsWith("generic")
-            || android.os.Build.MODEL.contains("google_sdk")
-            || android.os.Build.MODEL.contains("Emulator")
-            || android.os.Build.MODEL.contains("Android SDK built for x86")
-        val baseUrl = if (isEmulator) "http://10.0.2.2:8000" else "http://localhost:8000"
-
-        client = FieldCRMClient(baseUrl)
-        repository = BorrowerRepository(database, client)
-
         loadBorrowers()
     }
 

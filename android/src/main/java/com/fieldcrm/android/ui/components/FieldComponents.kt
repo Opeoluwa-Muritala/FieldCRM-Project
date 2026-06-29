@@ -361,12 +361,12 @@ fun FieldTextField(
             trailingIcon = trailingIcon,
             textStyle = FieldTheme.typography.bodyStrong.copy(color = FieldTheme.colors.gray100),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = FieldTheme.colors.gray800,
-                unfocusedContainerColor = FieldTheme.colors.gray800,
-                disabledContainerColor = FieldTheme.colors.gray800.copy(alpha = 0.5f),
-                focusedBorderColor = borderColor.copy(alpha = borderAlpha),
-                unfocusedBorderColor = borderColor,
-                disabledBorderColor = FieldTheme.colors.gray700.copy(alpha = 0.5f),
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                disabledContainerColor = Color.Transparent,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                disabledBorderColor = Color.Transparent,
             ),
             modifier = Modifier
                 .fillMaxWidth()

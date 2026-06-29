@@ -18,10 +18,16 @@ import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.screens.common.DetailItem
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.ui.viewmodel.ApplicationViewModel
+import com.fieldcrm.shared.model.BorrowerModel
+import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
 
 @Composable
 fun BranchManagerReviewScreen(
+    application: LoanApplicationModel,
+    borrower: BorrowerModel?,
+    applicationViewModel: ApplicationViewModel,
     onBackClick: () -> Unit,
     onDecisionSubmitted: () -> Unit
 ) {
@@ -31,6 +37,8 @@ fun BranchManagerReviewScreen(
     // Interactive Attestations
     var isKycAttested by remember { mutableStateOf(false) }
     var isCollateralAttested by remember { mutableStateOf(false) }
+
+    val appState by applicationViewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -84,12 +92,12 @@ fun BranchManagerReviewScreen(
                             
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    DetailItem(label = "Applicant", value = "Adaeze Okonkwo")
-                                    DetailItem(label = "Requested Amount", value = "₦ 250,000", isMono = true)
+                                    DetailItem(label = "Applicant", value = borrower?.name ?: "Adaeze Okonkwo")
+                                    DetailItem(label = "Requested Amount", value = "₦ ${application.amount}", isMono = true)
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
                                     DetailItem(label = "Underwritten Stage", value = "Branch Approval")
-                                    DetailItem(label = "Primary Product", value = "Asset Capitalization")
+                                    DetailItem(label = "Primary Product", value = application.product_type)
                                 }
                             }
                             
@@ -98,26 +106,26 @@ fun BranchManagerReviewScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             
                             ReadinessChecklist(
-                                gates = listOf(
-                                    ChecklistGate("Identity Verification Passed", true, StatusChipVariant.Verified),
-                                    ChecklistGate("GPS Site Visitation Logged", true, StatusChipVariant.Verified),
-                                    ChecklistGate("KYC Verification File Stamped", isKycAttested, if (isKycAttested) StatusChipVariant.Verified else StatusChipVariant.Missing),
-                                    ChecklistGate("Collateral Registry Audit Check", isCollateralAttested, if (isCollateralAttested) StatusChipVariant.Verified else StatusChipVariant.Missing)
-                                )
+                                hasCollateral = application.collateral_desc != null,
+                                hasGps = borrower?.gps_coordinates != null,
+                                hasGuarantor = borrower?.guarantor_name != null
                             )
                         }
 
-                        // Attestation verification card
+                        // Attestation Gate Checklist card
                         FieldCard {
-                            Text("REQUIRED SIGN-OFF ATTESTATIONS", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
-                            Spacer(modifier = Modifier.height(12.dp))
-
+                            Text("COMPLIANCE ATTESTATION", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { isKycAttested = !isKycAttested }
+                                    .padding(vertical = 4.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("I verify all KYC files are stamped", style = FieldTheme.typography.body, color = FieldTheme.colors.gray300)
+                                Text("I attest that KYC audits meet MFB requirements", style = FieldTheme.typography.body, color = FieldTheme.colors.gray300)
                                 Checkbox(
                                     checked = isKycAttested,
                                     onCheckedChange = { isKycAttested = it },
@@ -128,12 +136,13 @@ fun BranchManagerReviewScreen(
                                 )
                             }
                             
-                            Spacer(modifier = Modifier.height(8.dp))
                             FieldDivider()
-                            Spacer(modifier = Modifier.height(8.dp))
-
+                            
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { isCollateralAttested = !isCollateralAttested }
+                                    .padding(vertical = 4.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -179,34 +188,36 @@ fun BranchManagerReviewScreen(
                         // Action buttons
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             PrimaryButton(
-                                text = "Approve & Push to Board",
-                                onClick = onDecisionSubmitted,
-                                enabled = isKycAttested && isCollateralAttested && managerComment.isNotEmpty()
+                                text = if (appState.isLoading) "Processing Approval..." else "Approve & Push to Board",
+                                onClick = {
+                                    applicationViewModel.approveApplication(application.id) {
+                                        onDecisionSubmitted()
+                                    }
+                                },
+                                enabled = isKycAttested && isCollateralAttested && managerComment.isNotEmpty() && !appState.isLoading
                             )
                             SecondaryButton(
                                 text = "Return to Underwriting Pool",
-                                onClick = onDecisionSubmitted
+                                onClick = {
+                                    applicationViewModel.returnApplication(application.id, selectedReason, managerComment) {
+                                        onDecisionSubmitted()
+                                    }
+                                },
+                                enabled = !appState.isLoading
                             )
                             DangerButton(
                                 text = "Reject & Deactivate Dossier",
-                                onClick = onDecisionSubmitted
+                                onClick = {
+                                    applicationViewModel.returnApplication(application.id, "REJECTED: $selectedReason", managerComment) {
+                                        onDecisionSubmitted()
+                                    }
+                                },
+                                enabled = !appState.isLoading
                             )
                         }
                     }
                 }
             }
         }
-    }
-}
-
-// ==========================================
-// PREVIEWS
-// ==========================================
-
-@Preview(name = "Compact Phone BM Review", widthDp = 411, heightDp = 850)
-@Composable
-fun PreviewBMReviewCompact() {
-    FieldCRMTheme {
-        BranchManagerReviewScreen(onBackClick = {}, onDecisionSubmitted = {})
     }
 }

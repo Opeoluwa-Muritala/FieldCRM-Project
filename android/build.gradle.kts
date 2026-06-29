@@ -70,7 +70,15 @@ dependencies {
     
     // Ktor Client & SQLDelight Android Driver
     implementation("io.ktor:ktor-client-core:2.3.8")
+    implementation("io.ktor:ktor-client-okhttp:2.3.8")
+    implementation("io.ktor:ktor-client-content-negotiation:2.3.8")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.8")
+    implementation("io.ktor:ktor-client-auth:2.3.8")
     implementation("app.cash.sqldelight:android-driver:2.0.1")
+    
+    // Koin Dependency Injection
+    implementation("io.insert-koin:koin-android:3.5.3")
+    implementation("io.insert-koin:koin-androidx-compose:3.5.3")
     
     // Jetpack Compose Standard
     implementation("androidx.activity:activity-compose:1.8.2")

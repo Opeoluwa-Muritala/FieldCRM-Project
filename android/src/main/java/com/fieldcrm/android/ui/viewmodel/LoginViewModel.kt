@@ -18,7 +18,11 @@ data class LoginUiState(
     val error: String? = null
 )
 
-class LoginViewModel : ViewModel() {
+import androidx.lifecycle.viewModelScope
+import com.fieldcrm.android.data.repository.AuthRepository
+import kotlinx.coroutines.launch
+
+class LoginViewModel(private val authRepository: AuthRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
@@ -38,14 +42,21 @@ class LoginViewModel : ViewModel() {
         }
 
         _uiState.update { it.copy(isLoading = true) }
-        val session = UserSession(
-            token = "token_${UUID.randomUUID()}",
-            role = UserRole.fromLoginIdentifier(state.email),
-            orgId = "org_1",
-            userEmail = state.email
-        )
-        _uiState.update { it.copy(isLoading = false) }
-        onSuccess(session)
+        viewModelScope.launch {
+            val token = authRepository.authenticate(state.email, state.password)
+            _uiState.update { it.copy(isLoading = false) }
+            if (token != null) {
+                val session = UserSession(
+                    token = token,
+                    role = UserRole.fromLoginIdentifier(state.email),
+                    orgId = "org_1",
+                    userEmail = state.email
+                )
+                onSuccess(session)
+            } else {
+                _uiState.update { it.copy(error = "Invalid credentials or network issue") }
+            }
+        }
     }
 
     fun clearError() {

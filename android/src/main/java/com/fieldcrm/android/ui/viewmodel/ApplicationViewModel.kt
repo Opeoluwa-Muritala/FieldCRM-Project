@@ -29,33 +29,14 @@ data class ApplicationUiState(
     val newAppProductType: String = "PERSONAL_LOAN"
 )
 
-class ApplicationViewModel(application: Application) : AndroidViewModel(application) {
+class ApplicationViewModel(
+    application: Application,
+    private val repository: ApplicationRepository
+) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(ApplicationUiState())
     val uiState: StateFlow<ApplicationUiState> = _uiState.asStateFlow()
 
-    private val database: AppDatabase
-    private val client: FieldCRMClient
-    private val repository: ApplicationRepository
-
     init {
-        val driver = AndroidSqliteDriver(
-            schema = AppDatabase.Schema,
-            context = application,
-            name = "fieldcrm_offline.db"
-        )
-        database = AppDatabase(driver)
-
-        // Device IP resolution: uses loopback for physical USB device with adb reverse,
-        // and 10.0.2.2 loopback for Android SDK emulator.
-        val isEmulator = android.os.Build.FINGERPRINT.startsWith("generic")
-            || android.os.Build.MODEL.contains("google_sdk")
-            || android.os.Build.MODEL.contains("Emulator")
-            || android.os.Build.MODEL.contains("Android SDK built for x86")
-        val baseUrl = if (isEmulator) "http://10.0.2.2:8000" else "http://localhost:8000"
-
-        client = FieldCRMClient(baseUrl)
-        repository = ApplicationRepository(database, client)
-
         loadApplications()
     }
 
@@ -152,5 +133,43 @@ class ApplicationViewModel(application: Application) : AndroidViewModel(applicat
 
     fun refreshApplications() {
         loadApplications()
+    }
+
+    fun syncQueue(onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val success = repository.syncWithServer()
+            loadApplications()
+            onComplete(success)
+        }
+    }
+
+    fun approveApplication(id: String, onComplete: () -> Unit = {}) {
+        _uiState.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            repository.approveApplication(id)
+            loadApplications()
+            _uiState.update { it.copy(isLoading = false) }
+            onComplete()
+        }
+    }
+
+    fun returnApplication(id: String, reason: String, notes: String, onComplete: () -> Unit = {}) {
+        _uiState.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            repository.returnApplication(id, reason, notes)
+            loadApplications()
+            _uiState.update { it.copy(isLoading = false) }
+            onComplete()
+        }
+    }
+
+    fun submitCreditReview(id: String, decision: String, notes: String, onComplete: () -> Unit = {}) {
+        _uiState.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            repository.submitCreditReview(id, decision, notes)
+            loadApplications()
+            _uiState.update { it.copy(isLoading = false) }
+            onComplete()
+        }
     }
 }

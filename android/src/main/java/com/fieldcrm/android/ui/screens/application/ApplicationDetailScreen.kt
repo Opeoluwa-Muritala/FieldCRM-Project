@@ -77,9 +77,9 @@ fun ApplicationDetailScreenView(
                 if (!isWide) {
                     // Actions Footer for phones
                     ActionFooter(
-                        onApprove = {},
-                        onReturn = {},
-                        onReject = {}
+                        onApprove = onNavigateToReview,
+                        onReturn = onNavigateToReview,
+                        onReject = onNavigateToReview
                     )
                 }
             },
