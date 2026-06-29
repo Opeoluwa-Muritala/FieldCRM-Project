@@ -1,4 +1,4 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -28,7 +28,7 @@ fun SessionExpiredScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(FieldTheme.colors.background),
+            .background(FieldTheme.colors.gray950),
         contentAlignment = Alignment.Center
     ) {
         Box(

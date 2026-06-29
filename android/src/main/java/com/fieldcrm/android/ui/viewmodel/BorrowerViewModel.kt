@@ -116,6 +116,19 @@ class BorrowerViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun updateBorrowerLocal(updatedBorrower: BorrowerModel, onComplete: () -> Unit = {}) {
+        _uiState.update { state ->
+            val updatedList = state.borrowers.map {
+                if (it.id == updatedBorrower.id) updatedBorrower else it
+            }
+            state.copy(borrowers = updatedList)
+        }
+        viewModelScope.launch {
+            repository.createBorrower(updatedBorrower)
+            onComplete()
+        }
+    }
+
     private fun clearNewBorrowerFields() {
         _uiState.update {
             it.copy(

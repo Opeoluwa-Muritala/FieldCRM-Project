@@ -10,7 +10,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.fieldcrm.android.ui.screens.*
+import com.fieldcrm.android.ui.screens.auth.*
+import com.fieldcrm.android.ui.screens.onboarding.*
+import com.fieldcrm.android.ui.screens.dashboard.*
+import com.fieldcrm.android.ui.screens.borrower.*
+import com.fieldcrm.android.ui.screens.application.*
+import com.fieldcrm.android.ui.screens.document.*
+import com.fieldcrm.android.ui.screens.review.*
+import com.fieldcrm.android.ui.screens.common.*
 import com.fieldcrm.android.ui.viewmodel.*
 import com.fieldcrm.android.core.session.UserRole
 import com.fieldcrm.android.core.session.UserSession
@@ -296,34 +303,78 @@ fun FieldCRMApp(appViewModel: AppViewModel = viewModel()) {
                 )
             }
             Screen.LoanApplicationForm -> {
-                LoanApplicationFormScreen(
-                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                    onFinish = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-                )
+                val app = appUiState.selectedApplication
+                val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id }
+                if (app != null) {
+                    LoanApplicationFormScreen(
+                        application = app,
+                        borrower = borrower,
+                        applicationViewModel = applicationViewModel,
+                        borrowerViewModel = borrowerViewModel,
+                        appViewModel = appViewModel,
+                        onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                    )
+                } else {
+                    appViewModel.navigateTo(Screen.ApplicationDetail)
+                }
             }
             Screen.DocumentUpload -> {
+                val app = appUiState.selectedApplication
+                val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id }
                 DocumentUploadScreen(
+                    borrower = borrower,
                     onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                    onComplete = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                    onComplete = { updatedBorrower ->
+                        borrowerViewModel.updateBorrowerLocal(updatedBorrower) {
+                            appViewModel.navigateTo(Screen.ApplicationDetail)
+                        }
+                    }
                 )
             }
             Screen.GuarantorsForm -> {
-                GuarantorsFormScreen(
-                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                    onSave = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-                )
+                val app = appUiState.selectedApplication
+                val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id }
+                if (borrower != null) {
+                    GuarantorsFormScreen(
+                        borrower = borrower,
+                        borrowerViewModel = borrowerViewModel,
+                        onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
+                        onSave = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                    )
+                } else {
+                    appViewModel.navigateTo(Screen.ApplicationDetail)
+                }
             }
             Screen.PledgeTrust -> {
-                PledgeTrustScreen(
-                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                    onSignComplete = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-                )
+                val app = appUiState.selectedApplication
+                val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id }
+                if (app != null) {
+                    PledgeTrustScreen(
+                        application = app,
+                        borrower = borrower,
+                        applicationViewModel = applicationViewModel,
+                        onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
+                        onSignComplete = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                    )
+                } else {
+                    appViewModel.navigateTo(Screen.ApplicationDetail)
+                }
             }
             Screen.VisitationReport -> {
-                VisitationReportScreen(
-                    onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
-                    onSubmit = { appViewModel.navigateTo(Screen.ApplicationDetail) }
-                )
+                val app = appUiState.selectedApplication
+                val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id }
+                if (app != null) {
+                    VisitationReportScreen(
+                        application = app,
+                        borrower = borrower,
+                        applicationViewModel = applicationViewModel,
+                        borrowerViewModel = borrowerViewModel,
+                        onBackClick = { appViewModel.navigateTo(Screen.ApplicationDetail) },
+                        onSubmit = { appViewModel.navigateTo(Screen.ApplicationDetail) }
+                    )
+                } else {
+                    appViewModel.navigateTo(Screen.ApplicationDetail)
+                }
             }
             Screen.BranchManagerReview -> {
                 BranchManagerReviewScreen(

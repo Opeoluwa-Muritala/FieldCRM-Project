@@ -16,6 +16,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.ui.theme.FieldIcons
 
 @Composable
 fun ComponentsDemoScreen() {
@@ -24,10 +25,10 @@ fun ComponentsDemoScreen() {
     var dropdownValue by remember { mutableStateOf("Ikeja, Lagos State") }
 
     val navItems = listOf(
-        NavigationItem("Home", Icons.Outlined.Home),
-        NavigationItem("Borrowers", Icons.Outlined.Person),
-        NavigationItem("Applications", Icons.Outlined.List),
-        NavigationItem("Settings", Icons.Outlined.Settings)
+        NavigationItem("Home", FieldIcons.HomeOutlined, FieldIcons.HomeFilled),
+        NavigationItem("Borrowers", FieldIcons.SearchOutlined, FieldIcons.SearchFilled),
+        NavigationItem("Applications", FieldIcons.QueueOutlined, FieldIcons.QueueFilled),
+        NavigationItem("Settings", FieldIcons.SettingsOutlined, FieldIcons.SettingsFilled)
     )
     var selectedNavIndex by remember { mutableIntStateOf(1) }
 
@@ -312,10 +313,10 @@ fun PreviewFoldableUnfolded() {
         Row(modifier = Modifier.fillMaxSize().background(FieldTheme.colors.gray950)) {
             FieldNavigationRail(
                 items = listOf(
-                    NavigationItem("Home", Icons.Outlined.Home),
-                    NavigationItem("Borrowers", Icons.Outlined.Person),
-                    NavigationItem("Applications", Icons.Outlined.List),
-                    NavigationItem("Settings", Icons.Outlined.Settings)
+                    NavigationItem("Home", FieldIcons.HomeOutlined, FieldIcons.HomeFilled),
+                    NavigationItem("Borrowers", FieldIcons.SearchOutlined, FieldIcons.SearchFilled),
+                    NavigationItem("Applications", FieldIcons.QueueOutlined, FieldIcons.QueueFilled),
+                    NavigationItem("Settings", FieldIcons.SettingsOutlined, FieldIcons.SettingsFilled)
                 ),
                 selectedItemIndex = 1,
                 onItemSelect = {}
@@ -334,10 +335,10 @@ fun PreviewTablet() {
         Row(modifier = Modifier.fillMaxSize().background(FieldTheme.colors.gray950)) {
             FieldNavigationRail(
                 items = listOf(
-                    NavigationItem("Home", Icons.Outlined.Home),
-                    NavigationItem("Borrowers", Icons.Outlined.Person),
-                    NavigationItem("Applications", Icons.Outlined.List),
-                    NavigationItem("Settings", Icons.Outlined.Settings)
+                    NavigationItem("Home", FieldIcons.HomeOutlined, FieldIcons.HomeFilled),
+                    NavigationItem("Borrowers", FieldIcons.SearchOutlined, FieldIcons.SearchFilled),
+                    NavigationItem("Applications", FieldIcons.QueueOutlined, FieldIcons.QueueFilled),
+                    NavigationItem("Settings", FieldIcons.SettingsOutlined, FieldIcons.SettingsFilled)
                 ),
                 selectedItemIndex = 1,
                 onItemSelect = {}

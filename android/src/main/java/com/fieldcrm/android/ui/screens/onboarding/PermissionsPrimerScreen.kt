@@ -1,4 +1,4 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.onboarding
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -39,7 +39,7 @@ fun PermissionsPrimerScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(FieldTheme.colors.background),
+            .background(FieldTheme.colors.gray950),
         contentAlignment = Alignment.Center
     ) {
         if (isTablet) {
@@ -93,7 +93,7 @@ fun PermissionsContent(
         Box(
             modifier = Modifier
                 .size(64.dp)
-                .background(FieldTheme.colors.purple900, RoundedCornerShape(8.dp)),
+                .background(FieldTheme.colors.purple900.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -174,7 +174,7 @@ fun PermissionRow(icon: ImageVector, title: String, description: String) {
             modifier = Modifier
                 .padding(end = 16.dp)
                 .size(48.dp)
-                .background(FieldTheme.colors.purple900, CircleShape),
+                .background(FieldTheme.colors.purple900.copy(alpha = 0.1f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(

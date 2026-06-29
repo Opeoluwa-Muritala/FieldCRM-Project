@@ -1,4 +1,4 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.borrower
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -13,6 +13,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.components.*
+import com.fieldcrm.android.ui.screens.common.DetailItem
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.shared.model.BorrowerModel

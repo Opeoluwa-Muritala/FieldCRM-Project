@@ -61,6 +61,13 @@ dependencies {
     // Import shared Kotlin Multiplatform library
     implementation(project(":shared"))
     
+    // CameraX and ML Kit Text Recognition
+    implementation("androidx.camera:camera-core:1.3.1")
+    implementation("androidx.camera:camera-camera2:1.3.1")
+    implementation("androidx.camera:camera-lifecycle:1.3.1")
+    implementation("androidx.camera:camera-view:1.3.1")
+    implementation("com.google.mlkit:text-recognition:16.0.0")
+    
     // Ktor Client & SQLDelight Android Driver
     implementation("io.ktor:ktor-client-core:2.3.8")
     implementation("app.cash.sqldelight:android-driver:2.0.1")

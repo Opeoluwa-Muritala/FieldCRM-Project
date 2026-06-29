@@ -19,6 +19,7 @@ from app.core.dependencies import get_current_user, RoleChecker
 from app.domains.auth.router import router as auth_router
 from app.domains.users.router import router as users_router
 from app.domains.loans.router import router as loans_router
+from app.api.v1.mobile import router as mobile_api_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -83,6 +84,7 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 # Mount Routers
 app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"])
 app.include_router(users_router, prefix=f"{settings.API_V1_STR}/users", tags=["Users"])
+app.include_router(mobile_api_router, prefix=f"{settings.API_V1_STR}/mobile", tags=["Mobile API"])
 
 # Mount Loan pages at root
 app.include_router(loans_router)

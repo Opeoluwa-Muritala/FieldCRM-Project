@@ -1,4 +1,4 @@
-package com.fieldcrm.android.ui.screens
+package com.fieldcrm.android.ui.screens.auth
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween

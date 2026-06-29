@@ -124,6 +124,19 @@ class ApplicationViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun updateApplicationLocal(updatedApp: LoanApplicationModel, onComplete: () -> Unit = {}) {
+        _uiState.update { state ->
+            val updatedList = state.applications.map {
+                if (it.id == updatedApp.id) updatedApp else it
+            }
+            state.copy(applications = updatedList)
+        }
+        viewModelScope.launch {
+            repository.createApplication(updatedApp)
+            onComplete()
+        }
+    }
+
     private fun clearNewAppFields() {
         _uiState.update {
             it.copy(
