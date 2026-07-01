@@ -6,6 +6,7 @@ import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import com.fieldcrm.shared.repository.SyncRepository
 import com.fieldcrm.android.data.api.MobileApiService
+import kotlinx.serialization.json.JsonElement
 
 class BorrowerRepository(
     private val database: AppDatabase,
@@ -86,8 +87,8 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun getQueue(queueName: String): String? = null
     override suspend fun createApplication(customerType: String, loanType: String, applicantName: String): String? = null
     override suspend fun getApplicationDetail(id: String): String? = null
-    override suspend fun saveIntakeStep(id: String, step: Int, data: Map<String, String>): String? = null
-    override suspend fun saveGuarantorStep(id: String, slot: Int, step: Int, data: Map<String, String>): String? = null
+    override suspend fun saveIntakeStep(id: String, step: Int, data: Map<String, JsonElement>): String? = null
+    override suspend fun saveGuarantorStep(id: String, slot: Int, step: Int, data: Map<String, JsonElement>): String? = null
     override suspend fun uploadDocument(id: String, category: String, fileBytes: ByteArray?, fileName: String): String? = null
     override suspend fun submitOcrReview(id: String, corrections: Map<String, String>): String? = null
     override suspend fun getVisitationReport(id: String): String? = null
@@ -95,7 +96,9 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun submitVisitationSignoff(id: String, decision: String, notes: String): String? = null
     override suspend fun submitCreditReview(id: String, decision: String, notes: String): String? = null
     override suspend fun approveApplication(id: String): String? = null
-    override suspend fun returnApplication(id: String, reason: String, notes: String): String? = null
+    override suspend fun returnApplication(id: String, reason: String, corrections: List<String>, notes: String): String? = null
+    override suspend fun getBorrowers(): String? = null
+    override suspend fun createBorrower(data: Map<String, JsonElement>): String? = null
     override suspend fun getNotifications() = emptyList<com.fieldcrm.android.data.api.ApiNotification>()
     override suspend fun markNotificationRead(id: String) = false
     override suspend fun clearNotifications() = false
@@ -108,6 +111,8 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun saveAuditChecklist(applicationId: String, checklist: com.fieldcrm.android.data.api.AuditChecklist) = false
     override suspend fun getFaqs() = emptyList<com.fieldcrm.android.data.api.FaqItem>()
     override suspend fun getOnboarding(role: String) = emptyList<com.fieldcrm.android.data.api.OnboardingSlide>()
+    override suspend fun forgotPassword(email: String): Boolean = false
+    override suspend fun resetPassword(token: String, newPassword: String): Boolean = false
 }
 
 class ApplicationRepository(

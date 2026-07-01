@@ -144,8 +144,22 @@ class LoanService:
                     tenor_months=_optional_int(tenor_months),
                 )
                 
+            if step == 9:
+                required_consents = [
+                    "consent_bureau_disclosure",
+                    "consent_credit_check",
+                    "consent_cheque_recovery",
+                    "consent_gsi"
+                ]
+                missing = [k for k in required_consents if not existing_data.get(k)]
+                if missing:
+                    raise DomainException(
+                        f"All legal consents must be accepted before submission. Missing: {', '.join(missing)}",
+                        422
+                    )
+
             await tx_repo.save_stage_data(app_id, "intake", existing_data, user_id)
-            
+
             if step == 9:
                 await tx_repo.advance_stage(app_id, org_id, "ocr_review")
                 await tx_audit.log(

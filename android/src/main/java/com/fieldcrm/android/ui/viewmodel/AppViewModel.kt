@@ -74,6 +74,30 @@ sealed class Screen : NavKey {
     data object Settings : Screen()
     @Serializable
     data object OfflineQueue : Screen()
+    @Serializable
+    data object MyQueue : Screen()
+    @Serializable
+    data object VisitsDue : Screen()
+    @Serializable
+    data object AwaitingConcurrence : Screen()
+    @Serializable
+    data object PendingSignoffs : Screen()
+    @Serializable
+    data object CreditReviewQueue : Screen()
+    @Serializable
+    data object OcrExceptions : Screen()
+    @Serializable
+    data object Pipeline : Screen()
+    @Serializable
+    data object Users : Screen()
+    @Serializable
+    data object SystemActivity : Screen()
+    @Serializable
+    data object AuditTrail : Screen()
+    @Serializable
+    data object ComplianceFlags : Screen()
+    @Serializable
+    data object OcrReview : Screen()
 }
 
 // ── App-level UI state (session + selection only — nav lives in the back stack) ──

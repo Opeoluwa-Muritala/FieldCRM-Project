@@ -1,0 +1,47 @@
+{% extends shell %}
+
+{% set active_page = "notifications" %}
+
+{% block title %}Notifications | FieldCRM{% endblock %}
+{% block breadcrumb %}Notifications{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+
+{% block content %}
+<section class="page-card">
+    <div class="page-card-header">
+        <div>
+            <h2 class="page-card-title">Inbox</h2>
+            <p class="page-card-subtitle">System alerts and application updates.</p>
+        </div>
+        {% if notifications %}
+        <form method="POST" action="/notifications/clear" style="margin:0;">
+            <button type="submit" class="btn-secondary" style="font-size:13px;">Mark All Read &amp; Clear</button>
+        </form>
+        {% endif %}
+    </div>
+
+    <div class="queue-cards">
+        {% for n in notifications %}
+        <div class="queue-card {% if not n.is_read %}queue-card--unread{% endif %}" style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+            <div style="flex:1;">
+                <div class="queue-card-name">{{ n.title }}</div>
+                <div class="queue-card-meta" style="margin-top:4px;">{{ n.message }}</div>
+                <div class="queue-card-amount" style="margin-top:4px; color:var(--color-text-muted, #6b7280);">{{ n.created_at }}</div>
+                {% if n.application_id %}
+                <a href="/applications/{{ n.application_id }}" class="queue-card-meta" style="color:var(--color-primary,#7c3aed); margin-top:4px; display:inline-block;">View Application &rarr;</a>
+                {% endif %}
+            </div>
+            {% if not n.is_read %}
+            <form method="POST" action="/notifications/{{ n.id }}/read" style="margin:0; flex-shrink:0;">
+                <button type="submit" class="btn-ghost" style="font-size:12px; padding:4px 10px;">Mark Read</button>
+            </form>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="flat-card" style="text-align:center; padding:40px 20px; color:var(--color-text-muted,#6b7280);">
+            No notifications at this time.
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

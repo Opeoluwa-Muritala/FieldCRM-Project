@@ -22,14 +22,20 @@ import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.FieldTextField
 import com.fieldcrm.android.ui.components.PrimaryButton
 import com.fieldcrm.android.ui.components.SecondaryButton
+import com.fieldcrm.android.data.api.MobileApiService
 import com.fieldcrm.android.ui.theme.FieldTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 @Composable
 fun ForgotPasswordScreen(
     onBackClick: () -> Unit,
     onNavigateToLogin: () -> Unit
 ) {
+    val apiService: MobileApiService = koinInject()
+    val scope = rememberCoroutineScope()
+
     var email by remember { mutableStateOf("") }
     var emailError by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
@@ -256,9 +262,9 @@ fun ForgotPasswordScreen(
 
     LaunchedEffect(isLoading) {
         if (isLoading) {
-            delay(1500)
+            val success = apiService.forgotPassword(email)
             isLoading = false
-            isSubmitted = true
+            isSubmitted = true  // Show success state regardless (avoids email enumeration)
         }
     }
 }

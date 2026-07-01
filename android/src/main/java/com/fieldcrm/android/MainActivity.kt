@@ -25,6 +25,9 @@ import com.fieldcrm.android.ui.screens.application.*
 import com.fieldcrm.android.ui.screens.document.*
 import com.fieldcrm.android.ui.screens.review.*
 import com.fieldcrm.android.ui.screens.common.*
+import com.fieldcrm.android.ui.screens.queue.*
+import com.fieldcrm.android.ui.screens.admin.*
+import com.fieldcrm.android.ui.screens.audit.*
 import com.fieldcrm.android.ui.viewmodel.*
 import com.fieldcrm.android.core.session.UserRole
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
@@ -243,7 +246,18 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
             onNavigateToOfflineQueue = { showSyncModal = true },
             onLogout = { appViewModel.logout(); NotificationSyncWorker.cancel(context); backStack.clear(); backStack.add(Screen.Login) },
             onNavigateToNotifications = { backStack.add(Screen.Notifications) },
-            onNavigateToSearchResults = { backStack.add(Screen.SearchResults) }
+            onNavigateToSearchResults = { backStack.add(Screen.SearchResults) },
+            onNavigateToMyQueue = { backStack.add(Screen.MyQueue) },
+            onNavigateToVisitsDue = { backStack.add(Screen.VisitsDue) },
+            onNavigateToAwaitingConcurrence = { backStack.add(Screen.AwaitingConcurrence) },
+            onNavigateToPendingSignoffs = { backStack.add(Screen.PendingSignoffs) },
+            onNavigateToCreditReviewQueue = { backStack.add(Screen.CreditReviewQueue) },
+            onNavigateToOcrExceptions = { backStack.add(Screen.OcrExceptions) },
+            onNavigateToPipeline = { backStack.add(Screen.Pipeline) },
+            onNavigateToUsers = { backStack.add(Screen.Users) },
+            onNavigateToSystemActivity = { backStack.add(Screen.SystemActivity) },
+            onNavigateToAuditTrail = { backStack.add(Screen.AuditTrail) },
+            onNavigateToComplianceFlags = { backStack.add(Screen.ComplianceFlags) }
         )
 
         Screen.Settings -> {
@@ -474,6 +488,104 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
         Screen.OfflineQueue -> OfflineQueueScreen(
             onBackClick = { backStack.removeLastOrNull() }
         )
+
+        Screen.MyQueue -> MyQueueScreen(
+            onBackClick = { backStack.removeLastOrNull() },
+            onViewApplication = { appId ->
+                val app = applicationUiState.applications.find { it.id == appId }
+                if (app != null) appViewModel.setSelectedApplication(app)
+                backStack.add(Screen.ApplicationDetail)
+            }
+        )
+
+        Screen.VisitsDue -> VisitsDueScreen(
+            onBackClick = { backStack.removeLastOrNull() },
+            onStartVisit = { appId ->
+                val app = applicationUiState.applications.find { it.id == appId }
+                if (app != null) appViewModel.setSelectedApplication(app)
+                backStack.add(Screen.VisitationReport)
+            }
+        )
+
+        Screen.AwaitingConcurrence -> AwaitingConcurrenceScreen(
+            onBackClick = { backStack.removeLastOrNull() },
+            onViewApplication = { appId ->
+                val app = applicationUiState.applications.find { it.id == appId }
+                if (app != null) appViewModel.setSelectedApplication(app)
+                backStack.add(Screen.ApplicationDetail)
+            }
+        )
+
+        Screen.PendingSignoffs -> PendingSignoffsScreen(
+            onBackClick = { backStack.removeLastOrNull() },
+            onViewReport = { appId ->
+                val app = applicationUiState.applications.find { it.id == appId }
+                if (app != null) appViewModel.setSelectedApplication(app)
+                backStack.add(Screen.VisitationReport)
+            }
+        )
+
+        Screen.CreditReviewQueue -> CreditReviewQueueScreen(
+            onBackClick = { backStack.removeLastOrNull() },
+            onReviewApplication = { appId ->
+                val app = applicationUiState.applications.find { it.id == appId }
+                if (app != null) appViewModel.setSelectedApplication(app)
+                backStack.add(Screen.CreditOfficerReview)
+            }
+        )
+
+        Screen.OcrExceptions -> OcrExceptionsScreen(
+            onBackClick = { backStack.removeLastOrNull() },
+            onResolveException = { appId ->
+                val app = applicationUiState.applications.find { it.id == appId }
+                if (app != null) appViewModel.setSelectedApplication(app)
+                backStack.add(Screen.OcrReview)
+            }
+        )
+
+        Screen.Pipeline -> PipelineScreen(
+            onBackClick = { backStack.removeLastOrNull() },
+            onViewApplication = { appId ->
+                val app = applicationUiState.applications.find { it.id == appId }
+                if (app != null) appViewModel.setSelectedApplication(app)
+                backStack.add(Screen.ApplicationDetail)
+            }
+        )
+
+        Screen.Users -> UsersScreen(
+            onBackClick = { backStack.removeLastOrNull() }
+        )
+
+        Screen.SystemActivity -> SystemActivityScreen(
+            onBackClick = { backStack.removeLastOrNull() },
+            onViewApplication = { appId ->
+                val app = applicationUiState.applications.find { it.id == appId }
+                if (app != null) appViewModel.setSelectedApplication(app)
+                backStack.add(Screen.ApplicationDetail)
+            }
+        )
+
+        Screen.AuditTrail -> AuditTrailScreen(
+            onBackClick = { backStack.removeLastOrNull() }
+        )
+
+        Screen.ComplianceFlags -> ComplianceFlagsScreen(
+            onBackClick = { backStack.removeLastOrNull() }
+        )
+
+        Screen.OcrReview -> {
+            val app = appUiState.selectedApplication
+            if (app != null) {
+                OcrReviewScreen(
+                    application = app,
+                    onBackClick = { backStack.removeLastOrNull() },
+                    onVerified = { backStack.removeLastOrNull() },
+                    onReturnForReupload = { backStack.removeLastOrNull() }
+                )
+            } else {
+                backStack.removeLastOrNull()
+            }
+        }
 
         // Exhaustive — compiler will warn if a new Screen subtype is added without a case
         else -> {}

@@ -18,6 +18,13 @@ class VisitationRepository(BaseRepository):
         met_with: str | None,
         premises_description: str | None,
         direction_from_branch: str | None,
+        visit_date: str | None = None,
+        visit_time: str | None = None,
+        relationship: str | None = None,
+        business_condition: str | None = None,
+        account_officer: str | None = None,
+        gps_coordinates: str | None = None,
+        site_photo_url: str | None = None,
     ) -> dict:
         row = await self.conn.fetchrow(
             self.sql("upsert_report"),
@@ -26,6 +33,13 @@ class VisitationRepository(BaseRepository):
             met_with,
             premises_description,
             direction_from_branch,
+            visit_date,
+            visit_time,
+            relationship,
+            business_condition,
+            account_officer,
+            gps_coordinates,
+            site_photo_url,
         )
         return dict(row)
 

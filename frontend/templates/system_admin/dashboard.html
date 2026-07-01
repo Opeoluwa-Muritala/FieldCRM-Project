@@ -10,10 +10,10 @@
 <div class="role-workspace">
     <div class="role-hero"><div><div class="dashboard-date">{{ today_label }}</div><h1>System control desk</h1></div><a class="btn-primary-filled desktop-only" href="/users">Manage Users</a></div>
     <div class="role-stat-grid">
-        <div class="role-stat"><span>Active Users</span><strong>{{ m.get('active_users', 0) }}</strong></div>
-        <div class="role-stat"><span>Active Loans</span><strong>{{ m.get('active_loans', 0) }}</strong></div>
-        <div class="role-stat warning"><span>Ready Files</span><strong>{{ m.get('ready_for_disbursement', 0) }}</strong></div>
-        <div class="role-stat danger"><span>Blocked</span><strong>{{ m.get('blocked_files', 0) }}</strong></div>
+        <div class="role-stat"><span>Board Tickets</span><strong>{{ m.get('active_users', 0) }}</strong></div>
+        <div class="role-stat"><span>MCR Disbursed</span><strong>{{ m.get('active_loans', 0) }}</strong></div>
+        <div class="role-stat warning"><span>Alert Escalations</span><strong>{{ m.get('ready_for_disbursement', 0) }}</strong></div>
+        <div class="role-stat danger"><span>Decisions Signed</span><strong>{{ m.get('blocked_files', 0) }}</strong></div>
     </div>
     <div class="role-grid-main">
         <section class="page-card"><div class="role-section-head"><h2>Final Control Queue</h2><a href="/system-activity">Open</a></div><div class="role-card-list">

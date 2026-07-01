@@ -146,13 +146,39 @@
         </div>
     </div>
 
+    <!-- Committee Vote Tracker -->
+    <div style="margin-bottom:24px; padding:16px; background:var(--bg-surface,#fff); border:1px solid var(--border-color,#e5e7eb); border-radius:8px;">
+        <h3 style="font-size:14px; font-weight:600; margin-bottom:12px; color:var(--color-text,#111827);">Committee Vote Tracker</h3>
+        <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+            {% for i in range(total_votes|default(5)) %}
+            <div style="width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; {% if i < (yes_votes|default(0)) %}background:#22c55e; color:#fff;{% else %}background:var(--bg-muted,#f3f4f6); color:var(--color-text-muted,#6b7280); border:1px solid var(--border-color,#e5e7eb);{% endif %}">
+                {% if i < (yes_votes|default(0)) %}✓{% else %}–{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <p style="font-size:13px; color:var(--color-text-muted,#6b7280);">{{ yes_votes|default(0) }} of {{ total_votes|default(5) }} votes (quorum: {{ quorum|default(3) }})</p>
+    </div>
+
+    <!-- Manager Attestations -->
+    <div style="margin-bottom:24px; padding:16px; background:var(--bg-surface,#fff); border:1px solid var(--border-color,#e5e7eb); border-radius:8px;">
+        <h3 style="font-size:14px; font-weight:600; margin-bottom:12px; color:var(--color-text,#111827);">Manager Attestations</h3>
+        <label style="display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; cursor:pointer;">
+            <input type="checkbox" name="kyc_attested" required style="margin-top:2px; flex-shrink:0;">
+            <span style="font-size:13px; color:var(--color-text,#111827);">I confirm that KYC documents have been physically sighted and verified for this applicant.</span>
+        </label>
+        <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
+            <input type="checkbox" name="collateral_attested" required style="margin-top:2px; flex-shrink:0;">
+            <span style="font-size:13px; color:var(--color-text,#111827);">I confirm that collateral value has been registered in the branch collateral registry.</span>
+        </label>
+    </div>
+
     <!-- Bottom Actions bar -->
     <div style="display:flex; justify-content:space-between; align-items:center; border-top:0.5px solid var(--color-divider); padding-top:16px;">
         <div style="display:flex; gap:16px;">
             <a href="/applications/{{ app_id }}/return?type=officer" style="color: var(--accent-danger); font-size:12px; font-weight:500; text-decoration:none;">Return to Loan Officer</a>
             <a href="/applications/{{ app_id }}/return?type=credit" style="color: var(--accent-warning); font-size:12px; font-weight:500; text-decoration:none;">Return to Credit Officer</a>
         </div>
-        
+
         <form action="/applications/{{ app_id }}/approve" method="POST" style="display:flex; flex-direction:column; align-items:flex-end;">
             <!-- Simple query override mock to make testing possible -->
             <input type="hidden" name="force_approve" value="1">
@@ -162,5 +188,25 @@
             <span style="font-size: 12px; color:var(--accent-warning); margin-top:4px;">Force approval bypass enables testing overrides.</span>
         </form>
     </div>
+
+    {% if summary and summary.get('stage') == 'disbursed' %}
+    <div style="margin-top:24px; padding:16px; background:#f0fdf4; border:1px solid #86efac; border-radius:8px;">
+        <h3 style="font-size:14px; font-weight:600; margin-bottom:12px; color:#166534;">Disbursement Confirmed</h3>
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="field-label">Transaction Reference</label>
+                <input type="text" class="field-input" value="{{ summary.get('tx_ref', '—') }}" readonly>
+            </div>
+            <div class="form-group">
+                <label class="field-label">Ledger Hash</label>
+                <input type="text" class="field-input" value="{{ summary.get('ledger_hash', '—') }}" readonly>
+            </div>
+            <div class="form-group">
+                <label class="field-label">Disbursed Amount</label>
+                <input type="text" class="field-input" value="₦{{ '{:,.0f}'.format(summary.get('disbursed_amount', 0)) }}" readonly>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

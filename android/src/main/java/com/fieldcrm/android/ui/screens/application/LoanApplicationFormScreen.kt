@@ -138,11 +138,22 @@ fun LoanApplicationFormContent(
     var dobInput by remember { mutableStateOf("1992-04-12") }
     var maritalInput by remember { mutableStateOf("Married") }
 
+    // Step 1 additional fields
+    var idTypeInput by remember { mutableStateOf("National ID") }
+    var idNumberInput by remember { mutableStateOf("") }
+    var idExpiryInput by remember { mutableStateOf("") }
+    var stateOfOriginInput by remember { mutableStateOf("") }
+    var lgaInput by remember { mutableStateOf("") }
+    var nearestLandmarkInput by remember { mutableStateOf("") }
+
     var spouseNameInput by remember { mutableStateOf("") }
     var spousePhoneInput by remember { mutableStateOf("") }
     var spouseChildrenInput by remember { mutableStateOf("2") }
     var spouseDependantsInput by remember { mutableStateOf("1") }
     var spouseBusinessAddressInput by remember { mutableStateOf("") }
+
+    // Step 2 spouse signature
+    var spouseSignatureData by remember { mutableStateOf<String?>(null) }
 
     var gNameInput by remember { mutableStateOf(borrower?.guarantor_name ?: "") }
     var gPhoneInput by remember { mutableStateOf(borrower?.guarantor_phone ?: "") }
@@ -159,11 +170,25 @@ fun LoanApplicationFormContent(
     var tenureInput by remember { mutableStateOf(application.tenure.toString()) }
     var productInput by remember { mutableStateOf(application.product_type) }
 
+    // Step 6 mode of repayment
+    var modeOfRepayment by remember { mutableStateOf("Direct Debit") }
+
+    // Step 7 additional fields
+    var accountNameInput by remember { mutableStateOf("") }
+    var sortCodeInput by remember { mutableStateOf("") }
+
     var collateralDescInput by remember { mutableStateOf(application.collateral_desc ?: "") }
     var collateralValInput by remember { mutableStateOf(application.collateral_value?.toInt()?.toString() ?: "") }
 
     var bankInput by remember { mutableStateOf(borrower?.bank_name ?: "") }
     var accInput by remember { mutableStateOf(borrower?.account_number ?: "") }
+
+    // Step 9 consent state
+    var consentBureauDisclosure by remember { mutableStateOf(false) }
+    var consentCreditCheck by remember { mutableStateOf(false) }
+    var consentChequeRecovery by remember { mutableStateOf(false) }
+    var consentGsi by remember { mutableStateOf(false) }
+    var step9SignatureData by remember { mutableStateOf<String?>(null) }
 
     BoxWithConstraints(
         modifier = Modifier
@@ -314,11 +339,18 @@ fun LoanApplicationFormContent(
                             address = addressInput, onAddressChange = { addressInput = it },
                             dob = dobInput, onDobChange = { dobInput = it },
                             marital = maritalInput, onMaritalChange = { maritalInput = it },
+                            idType = idTypeInput, onIdTypeChange = { idTypeInput = it },
+                            idNumber = idNumberInput, onIdNumberChange = { idNumberInput = it },
+                            idExpiry = idExpiryInput, onIdExpiryChange = { idExpiryInput = it },
+                            stateOfOrigin = stateOfOriginInput, onStateOfOriginChange = { stateOfOriginInput = it },
+                            lga = lgaInput, onLgaChange = { lgaInput = it },
+                            nearestLandmark = nearestLandmarkInput, onNearestLandmarkChange = { nearestLandmarkInput = it },
                             spouseName = spouseNameInput, onSpouseNameChange = { spouseNameInput = it },
                             spousePhone = spousePhoneInput, onSpousePhoneChange = { spousePhoneInput = it },
                             spouseChildren = spouseChildrenInput, onSpouseChildrenChange = { spouseChildrenInput = it },
                             spouseDependants = spouseDependantsInput, onSpouseDependantsChange = { spouseDependantsInput = it },
                             spouseBusinessAddress = spouseBusinessAddressInput, onSpouseBusinessAddressChange = { spouseBusinessAddressInput = it },
+                            spouseSignatureData = spouseSignatureData, onSpouseSignatureConfirm = { spouseSignatureData = it }, onSpouseSignatureClear = { spouseSignatureData = null },
                             gName = gNameInput, onGNameChange = { gNameInput = it },
                             gPhone = gPhoneInput, onGPhoneChange = { gPhoneInput = it },
                             employment = employmentInput, onEmploymentChange = { employmentInput = it },
@@ -330,10 +362,18 @@ fun LoanApplicationFormContent(
                             amount = amountInput, onAmountChange = { amountInput = it },
                             tenure = tenureInput, onTenureChange = { tenureInput = it },
                             product = productInput, onProductChange = { productInput = it },
+                            modeOfRepayment = modeOfRepayment, onModeOfRepaymentChange = { modeOfRepayment = it },
+                            accountName = accountNameInput, onAccountNameChange = { accountNameInput = it },
+                            sortCode = sortCodeInput, onSortCodeChange = { sortCodeInput = it },
                             collateralDesc = collateralDescInput, onCollateralDescChange = { collateralDescInput = it },
                             collateralVal = collateralValInput, onCollateralValChange = { collateralValInput = it },
                             bank = bankInput, onBankChange = { bankInput = it },
-                            acc = accInput, onAccChange = { accInput = it }
+                            acc = accInput, onAccChange = { accInput = it },
+                            consentBureauDisclosure = consentBureauDisclosure, onConsentBureauDisclosureChange = { consentBureauDisclosure = it },
+                            consentCreditCheck = consentCreditCheck, onConsentCreditCheckChange = { consentCreditCheck = it },
+                            consentChequeRecovery = consentChequeRecovery, onConsentChequeRecoveryChange = { consentChequeRecovery = it },
+                            consentGsi = consentGsi, onConsentGsiChange = { consentGsi = it },
+                            step9SignatureData = step9SignatureData, onStep9SignatureConfirm = { step9SignatureData = it }, onStep9SignatureClear = { step9SignatureData = null }
                         )
                     }
 
@@ -350,22 +390,40 @@ fun LoanApplicationFormContent(
                             modifier = Modifier.weight(1f)
                         )
                         Spacer(modifier = Modifier.width(16.dp))
-                        PrimaryButton(
-                            text = if (currentTab == 8) "Submit Profile" else "Next Step",
-                            onClick = {
-                                if (currentTab < 8) {
-                                    currentTab++
-                                } else {
+                        if (currentTab == 8) {
+                            SecondaryButton(
+                                text = "Save Draft",
+                                onClick = {
                                     onSubmit(
                                         nameInput, phoneInput, bvnInput, addressInput, dobInput, maritalInput,
                                         employmentInput, employerInput, incomeInput, amountInput, tenureInput,
                                         productInput, collateralDescInput, collateralValInput, gNameInput, gPhoneInput,
                                         bankInput, accInput
                                     )
-                                }
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            PrimaryButton(
+                                text = "Submit Profile",
+                                onClick = {
+                                    onSubmit(
+                                        nameInput, phoneInput, bvnInput, addressInput, dobInput, maritalInput,
+                                        employmentInput, employerInput, incomeInput, amountInput, tenureInput,
+                                        productInput, collateralDescInput, collateralValInput, gNameInput, gPhoneInput,
+                                        bankInput, accInput
+                                    )
+                                },
+                                enabled = consentBureauDisclosure && consentCreditCheck && consentChequeRecovery && consentGsi && step9SignatureData != null,
+                                modifier = Modifier.weight(1f)
+                            )
+                        } else {
+                            PrimaryButton(
+                                text = "Next Step",
+                                onClick = { currentTab++ },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
             }
@@ -382,11 +440,18 @@ fun WizardTabContent(
     address: String, onAddressChange: (String) -> Unit,
     dob: String, onDobChange: (String) -> Unit,
     marital: String, onMaritalChange: (String) -> Unit,
+    idType: String, onIdTypeChange: (String) -> Unit,
+    idNumber: String, onIdNumberChange: (String) -> Unit,
+    idExpiry: String, onIdExpiryChange: (String) -> Unit,
+    stateOfOrigin: String, onStateOfOriginChange: (String) -> Unit,
+    lga: String, onLgaChange: (String) -> Unit,
+    nearestLandmark: String, onNearestLandmarkChange: (String) -> Unit,
     spouseName: String, onSpouseNameChange: (String) -> Unit,
     spousePhone: String, onSpousePhoneChange: (String) -> Unit,
     spouseChildren: String, onSpouseChildrenChange: (String) -> Unit,
     spouseDependants: String, onSpouseDependantsChange: (String) -> Unit,
     spouseBusinessAddress: String, onSpouseBusinessAddressChange: (String) -> Unit,
+    spouseSignatureData: String?, onSpouseSignatureConfirm: (String) -> Unit, onSpouseSignatureClear: () -> Unit,
     gName: String, onGNameChange: (String) -> Unit,
     gPhone: String, onGPhoneChange: (String) -> Unit,
     employment: String, onEmploymentChange: (String) -> Unit,
@@ -398,10 +463,18 @@ fun WizardTabContent(
     amount: String, onAmountChange: (String) -> Unit,
     tenure: String, onTenureChange: (String) -> Unit,
     product: String, onProductChange: (String) -> Unit,
+    modeOfRepayment: String, onModeOfRepaymentChange: (String) -> Unit,
+    accountName: String, onAccountNameChange: (String) -> Unit,
+    sortCode: String, onSortCodeChange: (String) -> Unit,
     collateralDesc: String, onCollateralDescChange: (String) -> Unit,
     collateralVal: String, onCollateralValChange: (String) -> Unit,
     bank: String, onBankChange: (String) -> Unit,
-    acc: String, onAccChange: (String) -> Unit
+    acc: String, onAccChange: (String) -> Unit,
+    consentBureauDisclosure: Boolean, onConsentBureauDisclosureChange: (Boolean) -> Unit,
+    consentCreditCheck: Boolean, onConsentCreditCheckChange: (Boolean) -> Unit,
+    consentChequeRecovery: Boolean, onConsentChequeRecoveryChange: (Boolean) -> Unit,
+    consentGsi: Boolean, onConsentGsiChange: (Boolean) -> Unit,
+    step9SignatureData: String?, onStep9SignatureConfirm: (String) -> Unit, onStep9SignatureClear: () -> Unit
 ) {
     when (tabIndex) {
         0 -> {
@@ -449,6 +522,47 @@ fun WizardTabContent(
                     label = "Residential Address",
                     isRequired = true
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+                FieldDropdown(
+                    value = idType,
+                    options = listOf("National ID", "Voters Card", "Drivers License", "Passport"),
+                    onOptionSelected = onIdTypeChange,
+                    label = "Means of Identification",
+                    isRequired = true
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                FieldTextField(
+                    value = idNumber,
+                    onValueChange = onIdNumberChange,
+                    label = "ID Number",
+                    isRequired = true
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                FieldTextField(
+                    value = idExpiry,
+                    onValueChange = onIdExpiryChange,
+                    label = "ID Expiry Date",
+                    isRequired = true,
+                    placeholder = "YYYY-MM-DD"
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                FieldTextField(
+                    value = stateOfOrigin,
+                    onValueChange = onStateOfOriginChange,
+                    label = "State of Origin"
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                FieldTextField(
+                    value = lga,
+                    onValueChange = onLgaChange,
+                    label = "LGA"
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                FieldTextField(
+                    value = nearestLandmark,
+                    onValueChange = onNearestLandmarkChange,
+                    label = "Nearest Landmark / Bus Stop"
+                )
             }
         }
         1 -> {
@@ -493,6 +607,14 @@ fun WizardTabContent(
                         value = spouseBusinessAddress,
                         onValueChange = onSpouseBusinessAddressChange,
                         label = "Spouse Business Address"
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("SPOUSE ATTESTATION SIGNATURE", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FieldSignaturePad(
+                        onConfirm = { onSpouseSignatureConfirm("signed") },
+                        onClear = onSpouseSignatureClear,
+                        modifier = Modifier.fillMaxWidth().height(150.dp)
                     )
                 } else {
                     Box(
@@ -626,12 +748,27 @@ fun WizardTabContent(
                     onOptionSelected = onProductChange,
                     label = "Loan Product Segment"
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+                FieldDropdown(
+                    value = modeOfRepayment,
+                    options = listOf("Cheque", "Standing Order", "Direct Debit", "Cash Deposit"),
+                    onOptionSelected = onModeOfRepaymentChange,
+                    label = "Mode of Repayment",
+                    isRequired = true
+                )
             }
         }
         6 -> {
             FieldCard {
                 Text("Disbursement Account Details", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
                 Spacer(modifier = Modifier.height(16.dp))
+                FieldTextField(
+                    value = accountName,
+                    onValueChange = onAccountNameChange,
+                    label = "Account Name",
+                    isRequired = true
+                )
+                Spacer(modifier = Modifier.height(12.dp))
                 FieldTextField(
                     value = bank,
                     onValueChange = onBankChange,
@@ -645,6 +782,12 @@ fun WizardTabContent(
                     label = "Account Number",
                     isRequired = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                FieldTextField(
+                    value = sortCode,
+                    onValueChange = onSortCodeChange,
+                    label = "Sort Code"
                 )
             }
         }
@@ -679,6 +822,47 @@ fun WizardTabContent(
                         ChecklistGate("Requested Loan Principal Captured", amount.isNotEmpty(), if (amount.isNotEmpty()) StatusChipVariant.Verified else StatusChipVariant.Missing),
                         ChecklistGate("Pledge Collateral Specified", collateralDesc.isNotEmpty(), if (collateralDesc.isNotEmpty()) StatusChipVariant.Verified else StatusChipVariant.Missing)
                     )
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            FieldCard {
+                Text("DECLARATIONS & LEGAL CONSENTS", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Checkbox(checked = consentBureauDisclosure, onCheckedChange = onConsentBureauDisclosureChange)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("I consent to Credit Bureau Disclosure and sharing of my credit information.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f))
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Checkbox(checked = consentCreditCheck, onCheckedChange = onConsentCreditCheckChange)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("I authorise a credit check to be conducted on my behalf.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f))
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(modifier = Modifier.fillMaxWidth().background(FieldTheme.colors.statusWarning.copy(alpha = 0.1f), RoundedCornerShape(6.dp)).padding(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = consentChequeRecovery, onCheckedChange = onConsentChequeRecoveryChange)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("I authorise Cheque Recovery as a repayment mechanism. I understand this is irrevocable once signed.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f))
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(modifier = Modifier.fillMaxWidth().background(FieldTheme.colors.statusWarning.copy(alpha = 0.1f), RoundedCornerShape(6.dp)).padding(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = consentGsi, onCheckedChange = onConsentGsiChange)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("I consent to a GSI Mandate being placed on all my accounts.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f))
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("APPLICANT FINAL SIGNATURE", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                Spacer(modifier = Modifier.height(8.dp))
+                FieldSignaturePad(
+                    onConfirm = { onStep9SignatureConfirm("signed") },
+                    onClear = onStep9SignatureClear,
+                    modifier = Modifier.fillMaxWidth().height(150.dp)
                 )
             }
         }

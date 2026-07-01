@@ -57,9 +57,15 @@
             </div>
             <div class="topbar-right">
                 {% block topbar_actions %}{% endblock %}
-                <button class="topbar-bell" type="button" title="Notifications" aria-label="Notifications">
+                <form action="/search" method="GET" style="display:flex; align-items:center; gap:4px;">
+                    <input type="text" name="q" placeholder="Search..." value="{{ request.query_params.get('q', '') }}"
+                           style="border:1px solid var(--border-color,#e5e7eb); border-radius:6px; padding:6px 10px; font-size:13px; width:180px; background:var(--bg-surface,#fff);">
+                    <button type="submit" style="background:none; border:none; cursor:pointer; font-size:16px; padding:4px;" title="Search" aria-label="Search">&#x1F50D;</button>
+                </form>
+                <a href="/notifications" class="topbar-bell" title="Notifications" aria-label="Notifications" style="text-decoration:none;">
                     &#x1F514;
-                </button>
+                </a>
+                <a href="/settings" style="text-decoration:none; font-size:20px; padding:4px;" title="Settings" aria-label="Settings">&#x2699;&#xFE0F;</a>
             </div>
         </header>
 

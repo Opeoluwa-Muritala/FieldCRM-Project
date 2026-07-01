@@ -83,6 +83,20 @@ class LoanRepository(BaseRepository):
         rows = await self.conn.fetch(self.sql("list_recent"), org_id, limit)
         return [LoanRow(**r) for r in rows]
 
+    async def search(self, org_id: UUID, query: str) -> list[LoanRow]:
+        rows = await self.conn.fetch(
+            """
+            SELECT * FROM loan_applications
+            WHERE org_id = $1
+              AND (applicant_name ILIKE '%' || $2 || '%'
+                   OR ref_no ILIKE '%' || $2 || '%')
+            ORDER BY updated_at DESC
+            LIMIT 50
+            """,
+            org_id, query
+        )
+        return [LoanRow(**r) for r in rows]
+
     async def update_intake_details(
         self,
         *,

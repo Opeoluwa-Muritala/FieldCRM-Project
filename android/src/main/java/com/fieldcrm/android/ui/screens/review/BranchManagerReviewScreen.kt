@@ -219,7 +219,7 @@ fun BranchManagerReviewScreen(
                             SecondaryButton(
                                 text = "Return to Underwriting Pool",
                                 onClick = {
-                                    applicationViewModel.returnApplication(application.id, selectedReason, managerComment) {
+                                    applicationViewModel.returnApplication(application.id, selectedReason, emptyList(), managerComment) {
                                         onDecisionSubmitted()
                                     }
                                 },
@@ -228,7 +228,7 @@ fun BranchManagerReviewScreen(
                             DangerButton(
                                 text = "Reject & Deactivate Dossier",
                                 onClick = {
-                                    applicationViewModel.returnApplication(application.id, "REJECTED: $selectedReason", managerComment) {
+                                    applicationViewModel.returnApplication(application.id, "REJECTED: $selectedReason", emptyList(), managerComment) {
                                         onDecisionSubmitted()
                                     }
                                 },

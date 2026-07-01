@@ -233,23 +233,102 @@ fun PledgeTrustContent(
                                     style = FieldTheme.typography.label,
                                     color = FieldTheme.colors.gray500
                                 )
-                                IconButton(
-                                    onClick = {
-                                        pledgeItems = pledgeItems + PledgeItem()
-                                    },
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .background(
-                                            FieldTheme.colors.purple900.copy(alpha = 0.15f),
-                                            RoundedCornerShape(6.dp)
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    // OCR Trigger Button
+                                    var ocrScanning by remember { mutableStateOf(false) }
+                                    IconButton(
+                                        onClick = { ocrScanning = true },
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .background(
+                                                FieldTheme.colors.purple900.copy(alpha = 0.15f),
+                                                RoundedCornerShape(6.dp)
+                                            )
+                                    ) {
+                                        Icon(
+                                            imageVector = FieldIcons.CameraOutlined,
+                                            contentDescription = "Scan & OCR Extract",
+                                            tint = FieldTheme.colors.purple400,
+                                            modifier = Modifier.size(16.dp)
                                         )
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            pledgeItems = pledgeItems + PledgeItem()
+                                        },
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .background(
+                                                FieldTheme.colors.purple900.copy(alpha = 0.15f),
+                                                RoundedCornerShape(6.dp)
+                                            )
+                                    ) {
+                                        Icon(
+                                            imageVector = FieldIcons.AddOutlined,
+                                            contentDescription = "Add Item",
+                                            tint = FieldTheme.colors.purple400,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Upload alternative
+                            var showUploadAlternative by remember { mutableStateOf(false) }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .border(0.5.dp, FieldTheme.colors.gray800, RoundedCornerShape(6.dp))
+                                    .clickable { showUploadAlternative = !showUploadAlternative }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = FieldIcons.DocumentOutlined,
+                                    contentDescription = null,
+                                    tint = FieldTheme.colors.purple400,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = if (showUploadAlternative) "Hide upload option" else "Or upload collateral document instead",
+                                    style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                                    color = FieldTheme.colors.purple400
+                                )
+                            }
+                            if (showUploadAlternative) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(FieldTheme.colors.gray900, RoundedCornerShape(6.dp))
+                                        .border(0.5.dp, FieldTheme.colors.gray700.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        imageVector = FieldIcons.AddOutlined,
-                                        contentDescription = "Add Item",
-                                        tint = FieldTheme.colors.purple400,
-                                        modifier = Modifier.size(16.dp)
-                                    )
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            imageVector = FieldIcons.DocumentOutlined,
+                                            contentDescription = null,
+                                            tint = FieldTheme.colors.gray600,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "Tap to upload collateral valuation report or inventory document",
+                                            style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                                            color = FieldTheme.colors.gray500,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        SecondaryButton(
+                                            text = "Select Document",
+                                            onClick = {},
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
                                 }
                             }
 
@@ -263,7 +342,8 @@ fun PledgeTrustContent(
                                     .padding(8.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("Item", style = FieldTheme.typography.label.copy(fontSize = 10.sp), color = FieldTheme.colors.gray400, modifier = Modifier.weight(2f))
+                                Text("Item", style = FieldTheme.typography.label.copy(fontSize = 10.sp), color = FieldTheme.colors.gray400, modifier = Modifier.weight(1.5f))
+                                Text("Description", style = FieldTheme.typography.label.copy(fontSize = 10.sp), color = FieldTheme.colors.gray400, modifier = Modifier.weight(1.8f))
                                 Text("Qty", style = FieldTheme.typography.label.copy(fontSize = 10.sp), color = FieldTheme.colors.gray400, modifier = Modifier.weight(0.7f))
                                 Text("Est. Value (₦)", style = FieldTheme.typography.label.copy(fontSize = 10.sp), color = FieldTheme.colors.gray400, modifier = Modifier.weight(1.5f))
                                 Spacer(modifier = Modifier.width(28.dp))
@@ -277,7 +357,7 @@ fun PledgeTrustContent(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Column(modifier = Modifier.weight(2f)) {
+                                    Column(modifier = Modifier.weight(1.5f)) {
                                         FieldTextField(
                                             value = item.name,
                                             onValueChange = { v ->
@@ -287,6 +367,17 @@ fun PledgeTrustContent(
                                             },
                                             label = "Item ${index + 1}",
                                             isRequired = true
+                                        )
+                                    }
+                                    Column(modifier = Modifier.weight(1.8f)) {
+                                        FieldTextField(
+                                            value = item.description,
+                                            onValueChange = { v ->
+                                                pledgeItems = pledgeItems.toMutableList().also { list ->
+                                                    list[index] = list[index].copy(description = v)
+                                                }
+                                            },
+                                            label = "Description"
                                         )
                                     }
                                     Column(modifier = Modifier.weight(0.7f)) {

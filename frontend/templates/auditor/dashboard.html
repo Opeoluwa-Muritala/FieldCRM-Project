@@ -10,10 +10,10 @@
 <div class="role-workspace">
     <div class="role-hero"><div><div class="dashboard-date">{{ today_label }}</div><h1>Compliance review desk</h1></div><a class="btn-primary-filled desktop-only" href="/compliance-flags">Open Flags</a></div>
     <div class="role-stat-grid">
-        <div class="role-stat warning"><span>Unverified Docs</span><strong>{{ m.get('unverified_documents', 0) }}</strong></div>
-        <div class="role-stat danger"><span>Critical OCR</span><strong>{{ m.get('critical_ocr_gaps', 0) }}</strong></div>
-        <div class="role-stat"><span>Workflow Exceptions</span><strong>{{ m.get('workflow_exceptions', 0) }}</strong></div>
-        <div class="role-stat"><span>Audit Today</span><strong>{{ m.get('audit_events_today', 0) }}</strong></div>
+        <div class="role-stat warning"><span>Flags Raised</span><strong>{{ m.get('unverified_documents', 0) }}</strong></div>
+        <div class="role-stat danger"><span>Policy Breaches</span><strong>{{ m.get('critical_ocr_gaps', 0) }}</strong></div>
+        <div class="role-stat"><span>Audited Today</span><strong>{{ m.get('workflow_exceptions', 0) }}</strong></div>
+        <div class="role-stat"><span>Workflow Exceptions</span><strong>{{ m.get('audit_events_today', 0) }}</strong></div>
     </div>
     <div class="role-grid-main">
         <section class="page-card"><div class="role-section-head"><h2>Compliance Flags</h2><a href="/compliance-flags">View all</a></div><div class="role-card-list">

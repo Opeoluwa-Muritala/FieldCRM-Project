@@ -45,7 +45,18 @@ fun DashboardScreenView(
     onNavigateToOfflineQueue: () -> Unit,
     onLogout: () -> Unit,
     onNavigateToNotifications: () -> Unit = {},
-    onNavigateToSearchResults: () -> Unit = {}
+    onNavigateToSearchResults: () -> Unit = {},
+    onNavigateToMyQueue: () -> Unit = {},
+    onNavigateToVisitsDue: () -> Unit = {},
+    onNavigateToAwaitingConcurrence: () -> Unit = {},
+    onNavigateToPendingSignoffs: () -> Unit = {},
+    onNavigateToCreditReviewQueue: () -> Unit = {},
+    onNavigateToOcrExceptions: () -> Unit = {},
+    onNavigateToPipeline: () -> Unit = {},
+    onNavigateToUsers: () -> Unit = {},
+    onNavigateToSystemActivity: () -> Unit = {},
+    onNavigateToAuditTrail: () -> Unit = {},
+    onNavigateToComplianceFlags: () -> Unit = {}
 ) {
     val resolvedRole = role ?: UserRole.LOAN_OFFICER
     val configuration = LocalConfiguration.current
@@ -157,6 +168,17 @@ fun DashboardScreenView(
             "NOTIFICATIONS" -> onNavigateToNotifications()
             "SEARCH" -> onNavigateToSearchResults()
             "SIGNOUT" -> showSignOutConfirmation = true
+            "MY_QUEUE" -> onNavigateToMyQueue()
+            "VISITS_DUE" -> onNavigateToVisitsDue()
+            "AWAITING_CONCURRENCE" -> onNavigateToAwaitingConcurrence()
+            "PENDING_SIGNOFFS" -> onNavigateToPendingSignoffs()
+            "CREDIT_REVIEW_QUEUE" -> onNavigateToCreditReviewQueue()
+            "OCR_EXCEPTIONS" -> onNavigateToOcrExceptions()
+            "PIPELINE" -> onNavigateToPipeline()
+            "USERS" -> onNavigateToUsers()
+            "SYSTEM_ACTIVITY" -> onNavigateToSystemActivity()
+            "AUDIT_TRAIL" -> onNavigateToAuditTrail()
+            "COMPLIANCE_FLAGS" -> onNavigateToComplianceFlags()
         }
     }
 
@@ -539,21 +561,35 @@ fun PhoneDashboardHome(
                         UserRole.LOAN_OFFICER -> {
                             item { ShuttleChip("New Client", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") } }
                             item { ShuttleChip("New Loan", FieldIcons.AddOutlined) { onQuickActionClick("NEW_APP") } }
-                            item { ShuttleChip("Offline Queue", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") } }
-                            item { ShuttleChip("Route Visits", FieldIcons.MapOutlined) { onQuickActionClick("VISITS") } }
+                            item { ShuttleChip("My Queue", FieldIcons.QueueOutlined) { onQuickActionClick("MY_QUEUE") } }
+                            item { ShuttleChip("Visits Due", FieldIcons.MapOutlined) { onQuickActionClick("VISITS_DUE") } }
+                            item { ShuttleChip("Offline Sync", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") } }
                         }
                         UserRole.BRANCH_MANAGER -> {
-                            item { ShuttleChip("Underwriting Queue", FieldIcons.PenOutlined) { onQuickActionClick("VISITS") } }
+                            item { ShuttleChip("Pending Signoffs", FieldIcons.PenOutlined) { onQuickActionClick("PENDING_SIGNOFFS") } }
+                            item { ShuttleChip("Awaiting Concurrence", FieldIcons.CheckCircleOutlined) { onQuickActionClick("AWAITING_CONCURRENCE") } }
+                            item { ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") } }
+                            item { ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") } }
                             item { ShuttleChip("Offline Database", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") } }
-                            item { ShuttleChip("Sign Out", FieldIcons.CloseOutlined) { onQuickActionClick("SIGNOUT") } }
                         }
                         UserRole.CREDIT_OFFICER -> {
-                            item { ShuttleChip("Assess Queue", FieldIcons.CheckCircleOutlined) { onQuickActionClick("VISITS") } }
+                            item { ShuttleChip("Credit Queue", FieldIcons.CheckCircleOutlined) { onQuickActionClick("CREDIT_REVIEW_QUEUE") } }
+                            item { ShuttleChip("OCR Exceptions", FieldIcons.CameraOutlined) { onQuickActionClick("OCR_EXCEPTIONS") } }
+                            item { ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") } }
+                            item { ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") } }
                             item { ShuttleChip("Offline Queue", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") } }
-                            item { ShuttleChip("Sign Out", FieldIcons.CloseOutlined) { onQuickActionClick("SIGNOUT") } }
                         }
-                        else -> {
-                            item { ShuttleChip("View Queue", FieldIcons.QueueOutlined) { onQuickActionClick("VISITS") } }
+                        UserRole.AUDITOR -> {
+                            item { ShuttleChip("Audit Trail", FieldIcons.DocumentOutlined) { onQuickActionClick("AUDIT_TRAIL") } }
+                            item { ShuttleChip("Compliance Flags", FieldIcons.AlertOutlined) { onQuickActionClick("COMPLIANCE_FLAGS") } }
+                            item { ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") } }
+                            item { ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") } }
+                        }
+                        UserRole.ADMIN_MCR -> {
+                            item { ShuttleChip("Users", FieldIcons.GroupOutlined) { onQuickActionClick("USERS") } }
+                            item { ShuttleChip("System Activity", FieldIcons.DocumentOutlined) { onQuickActionClick("SYSTEM_ACTIVITY") } }
+                            item { ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") } }
+                            item { ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") } }
                             item { ShuttleChip("Sign Out", FieldIcons.CloseOutlined) { onQuickActionClick("SIGNOUT") } }
                         }
                     }
@@ -703,16 +739,35 @@ fun TabletDashboardHome(
                         UserRole.LOAN_OFFICER -> {
                             ShuttleChip("New Client", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") }
                             ShuttleChip("New Loan", FieldIcons.AddOutlined) { onQuickActionClick("NEW_APP") }
+                            ShuttleChip("My Queue", FieldIcons.QueueOutlined) { onQuickActionClick("MY_QUEUE") }
+                            ShuttleChip("Visits Due", FieldIcons.MapOutlined) { onQuickActionClick("VISITS_DUE") }
                             ShuttleChip("Offline Sync", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") }
-                            ShuttleChip("Visits Map", FieldIcons.MapOutlined) { onQuickActionClick("VISITS") }
                         }
                         UserRole.BRANCH_MANAGER -> {
-                            ShuttleChip("Underwrite", FieldIcons.PenOutlined) { onQuickActionClick("VISITS") }
+                            ShuttleChip("Pending Signoffs", FieldIcons.PenOutlined) { onQuickActionClick("PENDING_SIGNOFFS") }
+                            ShuttleChip("Concurrence", FieldIcons.CheckCircleOutlined) { onQuickActionClick("AWAITING_CONCURRENCE") }
+                            ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") }
+                            ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") }
                             ShuttleChip("Offline Db", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") }
-                            ShuttleChip("Sign Out", FieldIcons.CloseOutlined) { onQuickActionClick("SIGNOUT") }
                         }
-                        else -> {
-                            ShuttleChip("View Queue", FieldIcons.QueueOutlined) { onQuickActionClick("VISITS") }
+                        UserRole.CREDIT_OFFICER -> {
+                            ShuttleChip("Credit Queue", FieldIcons.CheckCircleOutlined) { onQuickActionClick("CREDIT_REVIEW_QUEUE") }
+                            ShuttleChip("OCR Exceptions", FieldIcons.CameraOutlined) { onQuickActionClick("OCR_EXCEPTIONS") }
+                            ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") }
+                            ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") }
+                            ShuttleChip("Offline Queue", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") }
+                        }
+                        UserRole.AUDITOR -> {
+                            ShuttleChip("Audit Trail", FieldIcons.DocumentOutlined) { onQuickActionClick("AUDIT_TRAIL") }
+                            ShuttleChip("Compliance Flags", FieldIcons.AlertOutlined) { onQuickActionClick("COMPLIANCE_FLAGS") }
+                            ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") }
+                            ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") }
+                        }
+                        UserRole.ADMIN_MCR -> {
+                            ShuttleChip("Users", FieldIcons.GroupOutlined) { onQuickActionClick("USERS") }
+                            ShuttleChip("System Activity", FieldIcons.DocumentOutlined) { onQuickActionClick("SYSTEM_ACTIVITY") }
+                            ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") }
+                            ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") }
                             ShuttleChip("Sign Out", FieldIcons.CloseOutlined) { onQuickActionClick("SIGNOUT") }
                         }
                     }
