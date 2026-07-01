@@ -5,9 +5,7 @@ import com.fieldcrm.shared.db.AppDatabase
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import com.fieldcrm.shared.repository.SyncRepository
-import io.ktor.client.request.forms.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
+import com.fieldcrm.android.data.api.MobileApiService
 
 class BorrowerRepository(
     private val database: AppDatabase,
@@ -17,91 +15,100 @@ class BorrowerRepository(
 
     suspend fun getAllBorrowers(): List<BorrowerModel> {
         return try {
-            val remote = client.fetchBorrowers()
-            for (borrower in remote) {
-                queries.insertBorrower(
-                    id = borrower.id,
-                    org_id = borrower.org_id,
-                    name = borrower.name,
-                    phone = borrower.phone,
-                    bvn = borrower.bvn,
-                    nin = borrower.nin,
-                    photo_url = borrower.photo_url,
-                    status = borrower.status,
-                    loan_officer_id = borrower.loan_officer_id
-                )
-            }
-            remote
+            client.fetchApplications().map { it.toBorrowerModel() }
         } catch (e: Exception) {
-            queries.selectAllBorrowers().executeAsList().map { row ->
-                BorrowerModel(
-                    id = row.id,
-                    org_id = row.org_id,
-                    loan_officer_id = row.loan_officer_id,
-                    name = row.name,
-                    phone = row.phone,
-                    bvn = row.bvn,
-                    nin = row.nin,
-                    photo_url = row.photo_url,
-                    status = row.status,
-                    created_at = ""
-                )
-            }
+            queries.selectAllApplications().executeAsList().map { row ->
+                row.toBorrowerModel()
+            }.distinctBy { it.id }
         }
     }
 
     suspend fun createBorrower(borrower: BorrowerModel): Boolean {
-        queries.insertBorrower(
+        val application = LoanApplicationModel(
             id = borrower.id,
             org_id = borrower.org_id,
-            name = borrower.name,
-            phone = borrower.phone,
-            bvn = borrower.bvn,
-            nin = borrower.nin,
-            photo_url = borrower.photo_url,
-            status = borrower.status,
-            loan_officer_id = borrower.loan_officer_id
+            borrower_id = borrower.id,
+            applicant_name = borrower.name,
+            current_stage = 1,
+            current_owner_id = borrower.loan_officer_id,
+            status = "Draft",
+            amount = 0.0,
+            tenure = 0,
+            product_type = "other",
+            interest_rate = 15.0,
+            repayment_frequency = "Monthly",
+            created_at = borrower.created_at
         )
-        return try {
-            client.createBorrower(borrower)
-            true
-        } catch (e: Exception) {
-            queries.insertQueueItem(
-                id = java.util.UUID.randomUUID().toString(),
-                action = "CREATE_BORROWER",
-                entity_id = borrower.id,
-                payload_json = """{"id":"${borrower.id}","name":"${borrower.name}","phone":"${borrower.phone}","bvn":"${borrower.bvn}","nin":"${borrower.nin}"}""",
-                timestamp = System.currentTimeMillis(),
-                attempts = 0
-            )
-            true
-        }
+        return ApplicationRepository(database, client, apiService = NoopMobileApiService).createApplication(application)
     }
 
     suspend fun getBorrowerById(id: String): BorrowerModel? {
-        return try {
-            client.fetchBorrowers().find { it.id == id }
-        } catch (e: Exception) {
-            queries.selectAllBorrowers().executeAsList()
-                .find { it.id == id }?.let { row ->
-                    BorrowerModel(
-                        id = row.id,
-                        org_id = row.org_id,
-                        loan_officer_id = row.loan_officer_id,
-                        name = row.name,
-                        phone = row.phone,
-                        bvn = row.bvn,
-                        nin = row.nin,
-                        photo_url = row.photo_url,
-                        status = row.status,
-                        created_at = ""
-                    )
-                }
-        }
+        return getAllBorrowers().find { it.id == id }
+    }
+
+    private fun LoanApplicationModel.toBorrowerModel(): BorrowerModel {
+        return BorrowerModel(
+            id = id,
+            org_id = org_id,
+            loan_officer_id = current_owner_id,
+            name = applicant_name,
+            phone = "",
+            bvn = "",
+            nin = "",
+            photo_url = null,
+            status = if (status == "Rejected") "INACTIVE" else "ACTIVE",
+            created_at = created_at
+        )
+    }
+
+    private fun com.fieldcrm.shared.db.LoanApplication.toBorrowerModel(): BorrowerModel {
+        return BorrowerModel(
+            id = id,
+            org_id = org_id,
+            loan_officer_id = current_owner_id,
+            name = applicant_name,
+            phone = "",
+            bvn = "",
+            nin = "",
+            photo_url = null,
+            status = if (status == "Rejected") "INACTIVE" else "ACTIVE",
+            created_at = ""
+        )
     }
 }
 
-import com.fieldcrm.android.data.api.MobileApiService
+private object NoopMobileApiService : MobileApiService {
+    override fun setToken(token: String) = Unit
+    override suspend fun login(username: String, password: String) = null
+    override suspend fun getMe() = null
+    override suspend fun getDashboard(): String? = null
+    override suspend fun getDashboardMetrics() = null
+    override suspend fun getQueue(queueName: String): String? = null
+    override suspend fun createApplication(customerType: String, loanType: String, applicantName: String): String? = null
+    override suspend fun getApplicationDetail(id: String): String? = null
+    override suspend fun saveIntakeStep(id: String, step: Int, data: Map<String, String>): String? = null
+    override suspend fun saveGuarantorStep(id: String, slot: Int, step: Int, data: Map<String, String>): String? = null
+    override suspend fun uploadDocument(id: String, category: String, fileBytes: ByteArray?, fileName: String): String? = null
+    override suspend fun submitOcrReview(id: String, corrections: Map<String, String>): String? = null
+    override suspend fun getVisitationReport(id: String): String? = null
+    override suspend fun submitVisitationReport(id: String, metWith: String, premises: String, direction: String): String? = null
+    override suspend fun submitVisitationSignoff(id: String, decision: String, notes: String): String? = null
+    override suspend fun submitCreditReview(id: String, decision: String, notes: String): String? = null
+    override suspend fun approveApplication(id: String): String? = null
+    override suspend fun returnApplication(id: String, reason: String, notes: String): String? = null
+    override suspend fun getNotifications() = emptyList<com.fieldcrm.android.data.api.ApiNotification>()
+    override suspend fun markNotificationRead(id: String) = false
+    override suspend fun clearNotifications() = false
+    override suspend fun getConfig() = null
+    override suspend fun search(query: String) = null
+    override suspend fun getAuditTrail(applicationId: String) = emptyList<com.fieldcrm.android.data.api.AuditTrailEvent>()
+    override suspend fun getBureauData(applicationId: String) = null
+    override suspend fun getCommitteeVotes(applicationId: String) = null
+    override suspend fun getAuditChecklist(applicationId: String) = null
+    override suspend fun saveAuditChecklist(applicationId: String, checklist: com.fieldcrm.android.data.api.AuditChecklist) = false
+    override suspend fun getFaqs() = emptyList<com.fieldcrm.android.data.api.FaqItem>()
+    override suspend fun getOnboarding(role: String) = emptyList<com.fieldcrm.android.data.api.OnboardingSlide>()
+}
 
 class ApplicationRepository(
     private val database: AppDatabase,
@@ -118,6 +125,7 @@ class ApplicationRepository(
                 queries.insertApplication(
                     id = app.id,
                     borrower_id = app.borrower_id,
+                    applicant_name = app.applicant_name,
                     org_id = app.org_id,
                     current_stage = app.current_stage.toLong(),
                     current_owner_id = app.current_owner_id,
@@ -133,6 +141,7 @@ class ApplicationRepository(
                 LoanApplicationModel(
                     id = row.id,
                     borrower_id = row.borrower_id,
+                    applicant_name = row.applicant_name,
                     org_id = row.org_id,
                     current_stage = row.current_stage.toInt(),
                     current_owner_id = row.current_owner_id,
@@ -140,7 +149,8 @@ class ApplicationRepository(
                     amount = row.amount,
                     tenure = row.tenure.toInt(),
                     product_type = row.product_type,
-                    created_by = "",
+                    interest_rate = 15.0,
+                    repayment_frequency = "Monthly",
                     created_at = ""
                 )
             }
@@ -151,6 +161,7 @@ class ApplicationRepository(
         queries.insertApplication(
             id = application.id,
             borrower_id = application.borrower_id,
+            applicant_name = application.applicant_name,
             org_id = application.org_id,
             current_stage = application.current_stage.toLong(),
             current_owner_id = application.current_owner_id,
@@ -167,7 +178,7 @@ class ApplicationRepository(
                 id = java.util.UUID.randomUUID().toString(),
                 action = "CREATE_APPLICATION",
                 entity_id = application.id,
-                payload_json = """{"id":"${application.id}","borrower_id":"${application.borrower_id}","amount":${application.amount},"tenure":${application.tenure}}""",
+                payload_json = """{"id":"${application.id}","applicant_name":"${application.applicant_name}","amount":${application.amount},"tenure":${application.tenure}}""",
                 timestamp = System.currentTimeMillis(),
                 attempts = 0
             )
@@ -177,7 +188,28 @@ class ApplicationRepository(
 
     suspend fun syncWithServer(): Boolean {
         return try {
-            syncRepository.syncQueueWithServer()
+            if (apiService.getMe() == null) return false
+
+            // Phase 1 — PUSH: replay queued offline writes to the server
+            val pushSuccess = syncRepository.syncQueueWithServer()
+
+            // Phase 2 — PULL: refresh local cache with authoritative server state
+            try {
+                val apps = client.fetchApplications()
+                for (a in apps) {
+                    queries.insertApplication(
+                        id = a.id, borrower_id = a.borrower_id, applicant_name = a.applicant_name, org_id = a.org_id,
+                        current_stage = a.current_stage.toLong(),
+                        current_owner_id = a.current_owner_id,
+                        status = a.status, amount = a.amount,
+                        tenure = a.tenure.toLong(), product_type = a.product_type
+                    )
+                }
+            } catch (_: Exception) {
+                // Pull failure is non-fatal — cached data remains valid
+            }
+
+            pushSuccess
         } catch (e: Exception) {
             false
         }
@@ -192,6 +224,7 @@ class ApplicationRepository(
                     LoanApplicationModel(
                         id = row.id,
                         borrower_id = row.borrower_id,
+                        applicant_name = row.applicant_name,
                         org_id = row.org_id,
                         current_stage = row.current_stage.toInt(),
                         current_owner_id = row.current_owner_id,
@@ -199,7 +232,8 @@ class ApplicationRepository(
                         amount = row.amount,
                         tenure = row.tenure.toInt(),
                         product_type = row.product_type,
-                        created_by = "",
+                        interest_rate = 15.0,
+                        repayment_frequency = "Monthly",
                         created_at = ""
                     )
                 }
@@ -219,40 +253,40 @@ class ApplicationRepository(
     }
 }
 
-class AuthRepository(private val client: FieldCRMClient) {
+class AuthRepository(
+    private val client: FieldCRMClient,
+    private val apiService: MobileApiService
+) {
+    // Returns the token on success, null on any failure. Offline login fails closed.
     suspend fun authenticate(username: String, password: String): String? {
         return try {
-            val response: HttpResponse = client.client.submitForm(
-                url = "https://fieldcrm.onrender.com/api/v1/auth/login-bearer",
-                formParameters = parameters {
-                    append("username", username)
-                    append("password", password)
-                }
-            )
-            if (response.status == HttpStatusCode.OK) {
-                val bodyText = response.bodyAsText()
-                val tokenPattern = """access_token":"([^"]+)""".toRegex()
-                val match = tokenPattern.find(bodyText)
-                val token = match?.groupValues?.get(1)
-                if (token != null) {
-                    client.setToken(token)
-                    token
-                } else {
-                    null
-                }
-            } else {
-                null
-            }
+            val token = apiService.login(username, password)?.access_token ?: return null
+            client.setToken(token)
+            apiService.setToken(token)
+            token
         } catch (e: Exception) {
-            if (username.isNotEmpty() && password == "password123") {
-                "offline_cached_token"
-            } else {
-                null
-            }
+            null
         }
     }
 
-    fun isTokenValid(token: String?): Boolean {
-        return token != null && token.isNotEmpty()
+    // Fetch the authenticated user's profile — role, name, orgId
+    suspend fun fetchMe(): com.fieldcrm.android.data.api.MobileUser? {
+        return try {
+            apiService.getMe()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // Re-validate a stored token against the API — returns true if still accepted
+    suspend fun validateToken(token: String): Boolean {
+        return try {
+            client.setToken(token)
+            apiService.setToken(token)
+            val me = apiService.getMe()
+            me != null
+        } catch (e: Exception) {
+            false
+        }
     }
 }

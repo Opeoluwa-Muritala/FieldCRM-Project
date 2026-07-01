@@ -2,9 +2,7 @@ package com.fieldcrm.shared.repository
 
 import com.fieldcrm.shared.api.FieldCRMClient
 import com.fieldcrm.shared.db.AppDatabase
-import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
-import com.fieldcrm.shared.model.SyncPayload
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.serialization.json.Json
@@ -16,30 +14,27 @@ class SyncRepository(
     private val queries = database.appDatabaseQueries
 
     /**
-     * Queues an offline transaction:
-     * 1. Inserts the primary entity locally (to ensure immediate UI responsiveness offline).
-     * 2. Inserts an audit event inside the local chronological SyncQueue.
+     * Queues an offline application write without creating a separate borrower business model.
      */
-    fun queueBorrowerCreation(borrower: BorrowerModel) {
-        // Insert locally
-        queries.insertBorrower(
-            id = borrower.id,
-            org_id = borrower.org_id,
-            name = borrower.name,
-            phone = borrower.phone,
-            bvn = borrower.bvn,
-            nin = borrower.nin,
-            photo_url = borrower.photo_url,
-            status = borrower.status,
-            loan_officer_id = borrower.loan_officer_id
+    fun queueApplicationWrite(application: LoanApplicationModel, action: String = "CREATE_APPLICATION") {
+        queries.insertApplication(
+            id = application.id,
+            borrower_id = application.borrower_id,
+            applicant_name = application.applicant_name,
+            org_id = application.org_id,
+            current_stage = application.current_stage.toLong(),
+            current_owner_id = application.current_owner_id,
+            status = application.status,
+            amount = application.amount,
+            tenure = application.tenure.toLong(),
+            product_type = application.product_type
         )
 
-        // Queue sync action
-        val payloadJson = Json.encodeToString(BorrowerModel.serializer(), borrower)
+        val payloadJson = Json.encodeToString(LoanApplicationModel.serializer(), application)
         queries.insertQueueItem(
-            id = borrower.id,
-            action = "CREATE_BORROWER",
-            entity_id = borrower.id,
+            id = application.id,
+            action = action,
+            entity_id = application.id,
             payload_json = payloadJson,
             timestamp = ClockSystem.nowEpochMillis(),
             attempts = 0L
@@ -48,7 +43,7 @@ class SyncRepository(
 
     /**
      * Sequentially replays outstanding queue actions:
-     * - Implements conflict resolutions (Client-Wins for field profiles; Server-Wins for stages).
+     * Server remains authoritative for workflow stages and permissions.
      */
     suspend fun syncQueueWithServer(): Boolean {
         val queuedItems = queries.selectQueuedItems().executeAsList()
@@ -58,22 +53,9 @@ class SyncRepository(
         for (item in queuedItems) {
             try {
                 val success = when (item.action) {
-                    "CREATE_BORROWER" -> {
-                        val borrower = Json.decodeFromString(BorrowerModel.serializer(), item.payload_json)
-                        val response = client.createBorrower(borrower)
-                        
-                        // Conflict Strategy: Client-Wins for field profiles
-                        // 200 OK or 201 Created is success; 409 Conflict overrides/synchronizes
-                        response.status == HttpStatusCode.Created || 
-                        response.status == HttpStatusCode.OK || 
-                        response.status == HttpStatusCode.Conflict
-                    }
-                    "SUBMIT_APPLICATION" -> {
+                    "CREATE_APPLICATION", "SUBMIT_APPLICATION" -> {
                         val app = Json.decodeFromString(LoanApplicationModel.serializer(), item.payload_json)
                         val response = client.createApplication(app)
-                        
-                        // Conflict Strategy: Server-Wins for stage pipelines
-                        // If the server rejects the stage, we must fail and drop to prevent workflow bypasses
                         response.status == HttpStatusCode.Created || response.status == HttpStatusCode.OK
                     }
                     else -> false

@@ -1,12 +1,12 @@
 package com.fieldcrm.android.ui.screens.review
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,8 +19,10 @@ import com.fieldcrm.android.ui.screens.common.DetailItem
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.viewmodel.ApplicationViewModel
+import com.fieldcrm.android.ui.viewmodel.ConfigViewModel
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
+import org.koin.androidx.compose.koinViewModel
 import java.util.Locale
 
 @Composable
@@ -31,9 +33,20 @@ fun BranchManagerReviewScreen(
     onBackClick: () -> Unit,
     onDecisionSubmitted: () -> Unit
 ) {
-    var managerComment by remember { mutableStateOf("Verified collateral deed metrics against external registry. Flow recommended for Admin disbursement.") }
-    var selectedReason by remember { mutableStateOf("High Confidence Business Site Check") }
-    
+    val configViewModel: ConfigViewModel = koinViewModel()
+    val configState by configViewModel.uiState.collectAsState()
+    val reviewReasons = configState.config?.dropdowns?.review_reasons?.takeIf { it.isNotEmpty() }
+        ?: listOf("High Confidence Business Site Check", "Strong Co-Guarantor Attestation",
+                  "Collateral Evaluation Mismatch", "Insufficient Credit Score")
+
+    var managerComment by remember { mutableStateOf("") }
+    var selectedReason by remember { mutableStateOf(reviewReasons.first()) }
+
+    // Update selectedReason if reviewReasons loaded after initial composition
+    LaunchedEffect(reviewReasons) {
+        if (selectedReason !in reviewReasons) selectedReason = reviewReasons.first()
+    }
+
     // Interactive Attestations
     var isKycAttested by remember { mutableStateOf(false) }
     var isCollateralAttested by remember { mutableStateOf(false) }
@@ -47,7 +60,7 @@ fun BranchManagerReviewScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            imageVector = FieldIcons.ArrowBackOutlined,
                             contentDescription = "Back",
                             tint = FieldTheme.colors.gray400
                         )
@@ -63,8 +76,6 @@ fun BranchManagerReviewScreen(
                 .padding(paddingValues),
             contentAlignment = Alignment.TopCenter
         ) {
-            val isWide = maxWidth >= 600.dp
-            
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -93,7 +104,7 @@ fun BranchManagerReviewScreen(
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     DetailItem(label = "Applicant", value = borrower?.name ?: "Adaeze Okonkwo")
-                                    DetailItem(label = "Requested Amount", value = "₦ ${application.amount}", isMono = true)
+                                    DetailItem(label = "Requested Amount", value = "₦${String.format(Locale.US, "%,.0f", application.amount)}", isMono = true)
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
                                     DetailItem(label = "Underwritten Stage", value = "Branch Approval")
@@ -106,9 +117,23 @@ fun BranchManagerReviewScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             
                             ReadinessChecklist(
-                                hasCollateral = application.collateral_desc != null,
-                                hasGps = borrower?.gps_coordinates != null,
-                                hasGuarantor = borrower?.guarantor_name != null
+                                gates = listOf(
+                                    ChecklistGate(
+                                        label = "Collateral Valuation Registered",
+                                        isVerified = application.collateral_desc != null,
+                                        variant = if (application.collateral_desc != null) StatusChipVariant.Verified else StatusChipVariant.Missing
+                                    ),
+                                    ChecklistGate(
+                                        label = "GPS Visitation Coordinates Logged",
+                                        isVerified = borrower?.gps_coordinates != null,
+                                        variant = if (borrower?.gps_coordinates != null) StatusChipVariant.Verified else StatusChipVariant.Missing
+                                    ),
+                                    ChecklistGate(
+                                        label = "Guarantor Profile Completed",
+                                        isVerified = borrower?.guarantor_name != null,
+                                        variant = if (borrower?.guarantor_name != null) StatusChipVariant.Verified else StatusChipVariant.Missing
+                                    )
+                                )
                             )
                         }
 
@@ -165,12 +190,7 @@ fun BranchManagerReviewScreen(
                             
                             FieldDropdown(
                                 value = selectedReason,
-                                options = listOf(
-                                    "High Confidence Business Site Check",
-                                    "Strong Co-Guarantor Attestation",
-                                    "Collateral Evaluation Mismatch",
-                                    "Insufficient Credit Score"
-                                ),
+                                options = reviewReasons,
                                 onOptionSelected = { selectedReason = it },
                                 label = "Primary Recommendation Reason"
                             )

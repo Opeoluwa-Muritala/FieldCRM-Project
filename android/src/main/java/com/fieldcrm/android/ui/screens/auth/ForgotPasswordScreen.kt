@@ -8,10 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.ArrowForward
-import androidx.compose.material.icons.outlined.LockReset
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -109,7 +106,7 @@ fun ForgotPasswordScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                imageVector = FieldIcons.ArrowBackOutlined,
                                 contentDescription = "Back",
                                 tint = FieldTheme.colors.purple600
                             )
@@ -130,7 +127,7 @@ fun ForgotPasswordScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.LockReset,
+                                imageVector = FieldIcons.LockOutlined,
                                 contentDescription = null,
                                 tint = FieldTheme.colors.purple600,
                                 modifier = Modifier.size(32.dp)
@@ -175,12 +172,6 @@ fun ForgotPasswordScreen(
                                 }
                             },
                             enabled = !isLoading && email.isNotEmpty(),
-                            trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                                    contentDescription = null
-                                )
-                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(52.dp)
@@ -290,7 +281,7 @@ fun ForgotPasswordForm(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                imageVector = FieldIcons.ArrowBackOutlined,
                 contentDescription = "Back",
                 tint = FieldTheme.colors.purple600
             )
@@ -311,7 +302,7 @@ fun ForgotPasswordForm(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Outlined.LockReset,
+                imageVector = FieldIcons.LockOutlined,
                 contentDescription = null,
                 tint = FieldTheme.colors.purple600,
                 modifier = Modifier.size(32.dp)
@@ -345,13 +336,7 @@ fun ForgotPasswordForm(
         PrimaryButton(
             text = if (isLoading) "Sending..." else "Send Reset Link",
             onClick = onSubmit,
-            enabled = !isLoading && email.isNotEmpty(),
-            trailingIcon = {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                    contentDescription = null
-                )
-            }
+            enabled = !isLoading && email.isNotEmpty()
         )
     }
 }

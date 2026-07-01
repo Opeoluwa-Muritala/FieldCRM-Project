@@ -7,11 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,7 +73,7 @@ fun BorrowerListContent(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            imageVector = FieldIcons.ArrowBackOutlined,
                             contentDescription = "Back",
                             tint = FieldTheme.colors.gray400
                         )
@@ -105,7 +102,7 @@ fun BorrowerListContent(
                 contentColor = Color.White,
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = "Add Borrower")
+                Icon(FieldIcons.AddOutlined, contentDescription = "Add Borrower")
             }
         },
         containerColor = FieldTheme.colors.gray950
@@ -125,7 +122,7 @@ fun BorrowerListContent(
                 placeholder = "Search Emeka, Adaeze, or BVN...",
                 trailingIcon = {
                     Icon(
-                        imageVector = Icons.Outlined.Search,
+                        imageVector = FieldIcons.SearchOutlined,
                         contentDescription = "Search",
                         tint = FieldTheme.colors.gray500
                     )

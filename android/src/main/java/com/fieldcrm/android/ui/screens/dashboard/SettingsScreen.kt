@@ -8,18 +8,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Call
-import androidx.compose.material.icons.outlined.Face
-import androidx.compose.material.icons.outlined.NotificationsActive
-import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.HelpOutline
-import androidx.compose.material.icons.outlined.SupportAgent
-import androidx.compose.material.icons.outlined.Report
-import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,9 +21,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.core.session.UserRole
 import com.fieldcrm.android.ui.components.*
+import com.fieldcrm.android.ui.screens.common.DetailItem
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
+import com.fieldcrm.android.ui.viewmodel.ConfigViewModel
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,14 +38,18 @@ fun SettingsScreen(
     onNavigateToOfflineQueue: () -> Unit = {},
     onSignOutClick: () -> Unit = {}
 ) {
+    val configViewModel: ConfigViewModel = koinViewModel()
+    val configState by configViewModel.uiState.collectAsState()
+    val config = configState.config
+
     var faceIdEnabled by remember { mutableStateOf(true) }
     var pushEnabled by remember { mutableStateOf(true) }
     var darkModeEnabled by remember { mutableStateOf(false) }
     var showSignOutConfirmation by remember { mutableStateOf(false) }
-    
+
     // Active modal overlay: "PASSWORD", "PHONE", "HELP", "IT", "REPORT"
     var activeModal by remember { mutableStateOf<String?>(null) }
-    
+
     var currentPhoneNumber by remember { mutableStateOf("+234 801 234 5678") }
 
     if (showSignOutConfirmation) {
@@ -161,13 +156,20 @@ fun SettingsScreen(
                             onDismiss = { activeModal = null }
                         )
                         "HELP" -> HelpCenterModal(
-                            onDismiss = { activeModal = null }
+                            onDismiss = { activeModal = null },
+                            supportEmail = config?.support_email
                         )
                         "IT" -> ITSupportModal(
-                            onDismiss = { activeModal = null }
+                            onDismiss = { activeModal = null },
+                            supportPhone = config?.support_phone,
+                            supportEmail = config?.support_email,
+                            nodeId = config?.node_id
                         )
                         "REPORT" -> ReportProblemModal(
-                            onDismiss = { activeModal = null }
+                            onDismiss = { activeModal = null },
+                            prefillName = userName,
+                            prefillEmail = userEmail,
+                            orgName = config?.org_name ?: "FieldCRM MFB"
                         )
                     }
                 }
@@ -181,7 +183,7 @@ fun SettingsScreen(
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                imageVector = FieldIcons.ArrowBackOutlined,
                                 contentDescription = "Back",
                                 tint = FieldTheme.colors.gray400
                             )
@@ -243,7 +245,7 @@ fun SettingsScreen(
                                             color = FieldTheme.colors.gray100
                                         )
                                         Text(
-                                            text = "${role?.displayName ?: "Loan Officer"} · Ikeja Branch",
+                                            text = if (userEmail.isNotBlank()) userEmail else role?.displayName ?: "Loan Officer",
                                             style = FieldTheme.typography.body.copy(fontSize = 13.sp),
                                             color = FieldTheme.colors.gray400
                                         )
@@ -260,15 +262,15 @@ fun SettingsScreen(
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 
-                                SettingsRow(label = "Change Password", leadingIcon = Icons.Outlined.Lock) {
+                                SettingsRow(label = "Change Password", leadingIcon = FieldIcons.LockOutlined) {
                                     activeModal = "PASSWORD"
                                 }
                                 FieldDivider()
-                                SettingsRow(label = "Update Phone Number", leadingIcon = Icons.Outlined.Call) {
+                                SettingsRow(label = "Update Phone Number", leadingIcon = FieldIcons.PhoneOutlined) {
                                     activeModal = "PHONE"
                                 }
                                 FieldDivider()
-                                SettingsRow(label = "Offline Sync Queue", leadingIcon = Icons.Outlined.Payments) {
+                                SettingsRow(label = "Offline Sync Queue", leadingIcon = FieldIcons.PaymentsOutlined) {
                                     onNavigateToOfflineQueue()
                                 }
                             }
@@ -284,21 +286,21 @@ fun SettingsScreen(
 
                                 SettingsToggleRow(
                                     label = "Enable Face ID",
-                                    leadingIcon = Icons.Outlined.Face,
+                                    leadingIcon = FieldIcons.FingerprintOutlined,
                                     checked = faceIdEnabled,
                                     onCheckedChange = { faceIdEnabled = it }
                                 )
                                 FieldDivider()
                                 SettingsToggleRow(
                                     label = "Push Notifications",
-                                    leadingIcon = Icons.Outlined.NotificationsActive,
+                                    leadingIcon = FieldIcons.BellFilled,
                                     checked = pushEnabled,
                                     onCheckedChange = { pushEnabled = it }
                                 )
                                 FieldDivider()
                                 SettingsToggleRow(
                                     label = "Dark Mode",
-                                    leadingIcon = Icons.Outlined.DarkMode,
+                                    leadingIcon = FieldIcons.SettingsOutlined,
                                     checked = darkModeEnabled,
                                     onCheckedChange = { darkModeEnabled = it }
                                 )
@@ -313,15 +315,15 @@ fun SettingsScreen(
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
 
-                                SettingsRow(label = "Help Center FAQs", leadingIcon = Icons.Outlined.HelpOutline) {
+                                SettingsRow(label = "Help Center FAQs", leadingIcon = FieldIcons.InfoOutlined) {
                                     activeModal = "HELP"
                                 }
                                 FieldDivider()
-                                SettingsRow(label = "Contact IT Support Helpline", leadingIcon = Icons.Outlined.SupportAgent) {
+                                SettingsRow(label = "Contact IT Support Helpline", leadingIcon = FieldIcons.PersonOutlined) {
                                     activeModal = "IT"
                                 }
                                 FieldDivider()
-                                SettingsRow(label = "Report a Technical Problem", leadingIcon = Icons.Outlined.Report) {
+                                SettingsRow(label = "Report a Technical Problem", leadingIcon = FieldIcons.AlertOutlined) {
                                     activeModal = "REPORT"
                                 }
                             }
@@ -464,12 +466,14 @@ fun UpdatePhoneModal(currentPhone: String, onSave: (String) -> Unit, onDismiss: 
 
 // Help Center Modal
 @Composable
-fun HelpCenterModal(onDismiss: () -> Unit) {
+fun HelpCenterModal(onDismiss: () -> Unit, supportEmail: String? = null) {
     var expandedIndex by remember { mutableIntStateOf(-1) }
     val faqs = listOf(
         Pair("How does the camera OCR parser work?", "Align the NIN/BVN identity document inside the viewfinder scanner box. Click Scan & Extract; standard ML Kit extracts and matches text values locally without remote delays."),
         Pair("GPS Coordinates lock timeout?", "Ensure location sensors are enabled on your device. Click the refresh location button to trigger an active ACCESS_FINE_LOCATION provider query."),
-        Pair("Managing the Offline Sync Queue?", "When working offline, completed dossiers are queued locally. Tap the Sync button on the main tab once network coverage is restored to upload cached records.")
+        Pair("Managing the Offline Sync Queue?", "When working offline, completed dossiers are queued locally. Tap the Sync button on the main tab once network coverage is restored to upload cached records."),
+        Pair("What is the DTI limit?", "The Debt-to-Income ratio limit is 40%. Applications above this threshold require additional review before disbursement."),
+        Pair("How do I escalate a compliance flag?", "Navigate to the application audit trail, review workflow events, and use the Report Problem option to escalate to the compliance officer.")
     )
 
     FieldCard {
@@ -500,17 +504,24 @@ fun HelpCenterModal(onDismiss: () -> Unit) {
 
 // IT Support Modal
 @Composable
-fun ITSupportModal(onDismiss: () -> Unit) {
+fun ITSupportModal(
+    onDismiss: () -> Unit,
+    supportPhone: String? = null,
+    supportEmail: String? = null,
+    nodeId: String? = null
+) {
     FieldCard {
         Text("Contact IT Support Helpdesk", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
         Spacer(modifier = Modifier.height(8.dp))
         Text("If you encounter hardware errors or authentication lockouts, contact the microfinance systems support desk.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        DetailItem(label = "Direct Call Support Desk", value = "+234 1 234 5678")
-        DetailItem(label = "Email System Administrator", value = "helpdesk@mainstreetmfb.com")
-        DetailItem(label = "Ikeja System Node Node", value = "IKJ-SRV-049")
-        
+        DetailItem(label = "Direct Call Support Desk", value = supportPhone ?: "+234 1 234 5678")
+        DetailItem(label = "Email System Administrator", value = supportEmail ?: "helpdesk@mainstreetmfb.com")
+        if (nodeId != null) {
+            DetailItem(label = "System Node", value = nodeId)
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
         PrimaryButton(text = "Close", onClick = onDismiss, modifier = Modifier.fillMaxWidth())
     }
@@ -518,11 +529,16 @@ fun ITSupportModal(onDismiss: () -> Unit) {
 
 // Report Problem Modal
 @Composable
-fun ReportProblemModal(onDismiss: () -> Unit) {
-    var name by remember { mutableStateOf("Chidi Okafor") }
-    var email by remember { mutableStateOf("chidi@mainstreetmfb.com") }
-    var accountNum by remember { mutableStateOf("0001234567") }
-    var errorType by remember { mutableStateOf("bank_one_loading") } // "payment_failed", "wrong_deduction", "not_credited", "bank_one_loading", "other"
+fun ReportProblemModal(
+    onDismiss: () -> Unit,
+    prefillName: String = "",
+    prefillEmail: String = "",
+    orgName: String = "FieldCRM"
+) {
+    var name by remember { mutableStateOf(prefillName) }
+    var email by remember { mutableStateOf(prefillEmail) }
+    var accountNum by remember { mutableStateOf("") }
+    var errorType by remember { mutableStateOf("bank_one_loading") }
     var description by remember { mutableStateOf("") }
     
     var isLoading by remember { mutableStateOf(false) }
@@ -551,7 +567,7 @@ fun ReportProblemModal(onDismiss: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Dossier Submitted", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Your support ticket has been sent to Mainstreet MFB IT queue successfully.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400, textAlign = TextAlign.Center)
+                Text("Your support ticket has been sent to $orgName IT queue successfully.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400, textAlign = TextAlign.Center)
                 Spacer(modifier = Modifier.height(24.dp))
                 PrimaryButton(text = "Done", onClick = onDismiss, modifier = Modifier.fillMaxWidth())
             }
@@ -622,7 +638,7 @@ fun ReportProblemModal(onDismiss: () -> Unit) {
                         .padding(horizontal = 16.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    Text(displayLabel, style = FieldTheme.typography.body, color = FieldTheme.colors.gray200)
+                    Text(displayLabel, style = FieldTheme.typography.body, color = FieldTheme.colors.gray300)
                 }
                 DropdownMenu(
                     expanded = expandedDropdown,
@@ -772,5 +788,79 @@ private fun submitSupportTicket(
             onResult(false, "Network error: ${e.localizedMessage}")
         }
     }.start()
+}
+
+@Composable
+fun SettingsRow(
+    label: String,
+    leadingIcon: ImageVector,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = leadingIcon,
+            contentDescription = label,
+            tint = FieldTheme.colors.purple400,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = label,
+            style = FieldTheme.typography.body,
+            color = FieldTheme.colors.gray100,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            imageVector = FieldIcons.ChevronRightOutlined,
+            contentDescription = "Go",
+            tint = FieldTheme.colors.gray500,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+fun SettingsToggleRow(
+    label: String,
+    leadingIcon: ImageVector,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = leadingIcon,
+            contentDescription = label,
+            tint = FieldTheme.colors.purple400,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = label,
+            style = FieldTheme.typography.body,
+            color = FieldTheme.colors.gray100,
+            modifier = Modifier.weight(1f)
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = FieldTheme.colors.purple600,
+                uncheckedThumbColor = FieldTheme.colors.gray400,
+                uncheckedTrackColor = FieldTheme.colors.gray800
+            )
+        )
+    }
 }
 

@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from uuid import UUID
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -599,12 +599,17 @@ async def render_document_upload(
     current_user = Depends(get_current_user)
 ):
     """Page 13 Document Upload page."""
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+
     ctx = build_template_context(
         request,
         current_user,
         app_id=application_id,
         doc_type=type,
-        borrower_name=borrower_name,
+        borrower_name=app.applicant_name,
         active_tab="upload",
         active_page="upload",
     )
@@ -613,16 +618,19 @@ async def render_document_upload(
 @router.post("/applications/{application_id}/documents/upload")
 async def process_document_upload(
     application_id: str,
-    type: str,
+    type: str = "other",
     category: str = Form("other"),
+    file: UploadFile = File(...),
     service: DocumentService = Depends(get_document_service),
     current_user = Depends(get_current_user)
 ):
     """POST handler to store documents on server side."""
-    await service.save_mock_upload(
+    doc_type = category or type or "other"
+    await service.save_upload(
         loan_id=UUID(application_id),
         org_id=current_user.org_id,
-        category=category,
+        doc_type=doc_type,
+        file=file,
         uploaded_by=current_user.id,
         user_role=current_user.role,
     )

@@ -6,9 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowForward
-import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -161,7 +158,7 @@ fun OnboardingContent(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Shield,
+                        imageVector = FieldIcons.ShieldOutlined,
                         contentDescription = null,
                         tint = FieldTheme.colors.purple600,
                         modifier = Modifier.size(24.dp)
@@ -275,14 +272,7 @@ fun OnboardingContent(
                         onSlideIndexChange(currentSlideIndex + 1)
                     }
                 },
-                trailingIcon = if (!isLastSlide) {
-                    {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                            contentDescription = null
-                        )
-                    }
-                } else null,
+                trailingIcon = null,
                 modifier = Modifier.weight(2f)
             )
         }

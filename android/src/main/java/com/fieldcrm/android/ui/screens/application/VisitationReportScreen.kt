@@ -14,14 +14,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -86,12 +84,11 @@ fun VisitationReportContent(
     onSubmitComplete: (locationState: String, remarks: String) -> Unit
 ) {
     val context = LocalContext.current
-    var remarks by remember { mutableStateOf(application.officer_recommendation ?: "Visually confirmed business operational stock and evaluated trade kiosk.") }
+    var remarks by remember { mutableStateOf(application.officer_recommendation ?: "") }
     var locationState by remember { mutableStateOf(borrower?.gps_coordinates ?: "Click refresh to lock GPS coordinates") }
     var isRefreshingGPS by remember { mutableStateOf(false) }
-    
+
     var showCameraScanner by remember { mutableStateOf(false) }
-    var scannerMode by remember { mutableStateOf("OCR") } // "OCR" or "PHOTO"
     var capturedPhotoPath by remember { mutableStateOf<String?>(null) }
 
     // Rotate refresh icon animation
@@ -139,11 +136,8 @@ fun VisitationReportContent(
 
     if (showCameraScanner) {
         CameraOcrScanner(
-            mode = scannerMode,
-            onTextScanned = { text ->
-                remarks = text.take(500)
-                showCameraScanner = false
-            },
+            mode = "PHOTO",
+            onTextScanned = { showCameraScanner = false },
             onPhotoCaptured = { path ->
                 capturedPhotoPath = path
                 showCameraScanner = false
@@ -158,7 +152,7 @@ fun VisitationReportContent(
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                imageVector = FieldIcons.ArrowBackOutlined,
                                 contentDescription = "Back",
                                 tint = FieldTheme.colors.gray400
                             )
@@ -204,7 +198,7 @@ fun VisitationReportContent(
                                 ) {
                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                                         Icon(
-                                            imageVector = Icons.Outlined.LocationOn,
+                                            imageVector = FieldIcons.LocationOutlined,
                                             contentDescription = "GPS Location",
                                             tint = FieldTheme.colors.purple400,
                                             modifier = Modifier.size(20.dp)
@@ -234,7 +228,7 @@ fun VisitationReportContent(
                                             .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(4.dp))
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Outlined.Refresh,
+                                            imageVector = FieldIcons.RefreshOutlined,
                                             contentDescription = "Refresh GPS",
                                             tint = FieldTheme.colors.gray400,
                                             modifier = Modifier
@@ -280,10 +274,7 @@ fun VisitationReportContent(
                                         Box(modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)) {
                                             PrimaryButton(
                                                 text = "Retake",
-                                                onClick = {
-                                                    scannerMode = "PHOTO"
-                                                    showCameraScanner = true
-                                                }
+                                                onClick = { showCameraScanner = true }
                                             )
                                         }
                                     } else {
@@ -305,22 +296,10 @@ fun VisitationReportContent(
                                                 textAlign = TextAlign.Center
                                             )
                                             Spacer(modifier = Modifier.height(12.dp))
-                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                SecondaryButton(
-                                                    text = "Scan OCR",
-                                                    onClick = {
-                                                        scannerMode = "OCR"
-                                                        showCameraScanner = true
-                                                    }
-                                                )
-                                                PrimaryButton(
-                                                    text = "Capture Photo",
-                                                    onClick = {
-                                                        scannerMode = "PHOTO"
-                                                        showCameraScanner = true
-                                                    }
-                                                )
-                                            }
+                                            PrimaryButton(
+                                                text = "Take Site Photo",
+                                                onClick = { showCameraScanner = true }
+                                            )
                                         }
                                     }
                                 }

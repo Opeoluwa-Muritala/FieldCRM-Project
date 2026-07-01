@@ -17,6 +17,15 @@ enum class UserRole {
         }
 
     companion object {
+        fun fromServerRole(role: String): UserRole = when (role.trim().lowercase()) {
+            "branch_manager", "branchmanager" -> BRANCH_MANAGER
+            "credit_officer", "creditofficer" -> CREDIT_OFFICER
+            "auditor" -> AUDITOR
+            "admin_mcr", "admin", "mcr" -> ADMIN_MCR
+            else -> LOAN_OFFICER
+        }
+
+        @Deprecated("Use fromServerRole — role must come from the API, not the email")
         fun fromLoginIdentifier(identifier: String): UserRole {
             val normalized = identifier.trim().lowercase()
             return when {

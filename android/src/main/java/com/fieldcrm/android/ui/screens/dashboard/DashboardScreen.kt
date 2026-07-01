@@ -10,12 +10,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.ExitToApp
-import androidx.compose.material.icons.automirrored.outlined.List
-import androidx.compose.material.icons.automirrored.outlined.Send
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,13 +27,21 @@ import com.fieldcrm.android.core.session.UserRole
 import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
+import com.fieldcrm.android.ui.viewmodel.DashboardViewModel
+import com.fieldcrm.shared.model.BorrowerModel
+import com.fieldcrm.shared.model.LoanApplicationModel
+import org.koin.androidx.compose.koinViewModel
 import java.util.Locale
 
 @Composable
 fun DashboardScreenView(
     role: UserRole?,
+    borrowers: List<BorrowerModel> = emptyList(),
+    applications: List<LoanApplicationModel> = emptyList(),
+    sessionEmail: String? = null,
     onNavigateToBorrowers: () -> Unit,
-    onNavigateToApplications: () -> Unit,
+    onNavigateToCreateApplication: () -> Unit = {},
+    onNavigateToApplication: (appId: String) -> Unit = {},
     onNavigateToOfflineQueue: () -> Unit,
     onLogout: () -> Unit,
     onNavigateToNotifications: () -> Unit = {},
@@ -54,76 +56,84 @@ fun DashboardScreenView(
     var syncInProgress by remember { mutableStateOf(false) }
     var showSignOutConfirmation by remember { mutableStateOf(false) }
 
-    // User details mapping
-    val (userName, userEmail) = when (resolvedRole) {
-        UserRole.LOAN_OFFICER -> "Chidi Okafor" to "chidi@mainstreetmfb.com"
-        UserRole.BRANCH_MANAGER -> "Alhaji Ibrahim" to "ibrahim@mainstreetmfb.com"
-        UserRole.CREDIT_OFFICER -> "Tunde Bakare" to "tunde@mainstreetmfb.com"
-        UserRole.AUDITOR -> "Sarah Philip" to "sarah@mainstreetmfb.com"
-        UserRole.ADMIN_MCR -> "Kemi Adeosun" to "kemi@mainstreetmfb.com"
-    }
+    val dashboardViewModel: DashboardViewModel = koinViewModel()
+    val dashboardState by dashboardViewModel.uiState.collectAsState()
+    val liveMetrics = dashboardState.metrics
 
-    // Role-specific metrics mapping
+    // Derive display name from session email, fall back to role-based placeholder
+    val userName = if (!sessionEmail.isNullOrBlank()) {
+        sessionEmail.substringBefore("@")
+            .split(".", "_", "-")
+            .joinToString(" ") { it.replaceFirstChar { c -> c.uppercaseChar() } }
+    } else {
+        when (resolvedRole) {
+            UserRole.LOAN_OFFICER -> "Loan Officer"
+            UserRole.BRANCH_MANAGER -> "Branch Manager"
+            UserRole.CREDIT_OFFICER -> "Credit Officer"
+            UserRole.AUDITOR -> "Auditor"
+            UserRole.ADMIN_MCR -> "Admin MCR"
+        }
+    }
+    val userEmail = sessionEmail ?: ""
+
+    // Role-specific metrics mapping — values overridden by live API data when available
     val metrics = when (resolvedRole) {
         UserRole.LOAN_OFFICER -> listOf(
-            MetricData("12", "APPS TODAY", Icons.Outlined.Assignment, FieldTheme.colors.purple600),
-            MetricData("2", "PENDING SYNC", Icons.Outlined.CloudQueue, FieldTheme.colors.statusWarning),
-            MetricData("4", "VISITS DUE", Icons.Outlined.LocationOn, FieldTheme.colors.purple600),
-            MetricData("3", "MISSING DOCS", Icons.Outlined.ErrorOutline, FieldTheme.colors.statusDanger)
+            MetricData(liveMetrics?.apps_today?.toString() ?: "—", "APPS TODAY", FieldIcons.DocumentOutlined, FieldTheme.colors.purple600),
+            MetricData(liveMetrics?.pending_sync?.toString() ?: "—", "PENDING SYNC", FieldIcons.SyncOutlined, FieldTheme.colors.statusWarning),
+            MetricData(liveMetrics?.visits_due?.toString() ?: "—", "VISITS DUE", FieldIcons.LocationOutlined, FieldTheme.colors.purple600),
+            MetricData(liveMetrics?.missing_docs?.toString() ?: "—", "MISSING DOCS", FieldIcons.AlertOutlined, FieldTheme.colors.statusDanger)
         )
         UserRole.BRANCH_MANAGER -> listOf(
-            MetricData("5", "AWAITING SIGNOFF", Icons.Outlined.RateReview, FieldTheme.colors.statusWarning),
-            MetricData("₦14.2M", "BRANCH DISBURSED", Icons.Outlined.Payments, FieldTheme.colors.statusSuccess),
-            MetricData("94%", "TARGET MET", Icons.Outlined.TrendingUp, FieldTheme.colors.purple600),
-            MetricData("8", "ACTIVE AGENTS", Icons.Outlined.Group, FieldTheme.colors.purple600)
+            MetricData(liveMetrics?.awaiting_signoff?.toString() ?: "—", "AWAITING SIGNOFF", FieldIcons.PenOutlined, FieldTheme.colors.statusWarning),
+            MetricData(liveMetrics?.let { "₦${String.format(Locale.US, "%,.1fM", it.branch_disbursed / 1_000_000)}" } ?: "—", "BRANCH DISBURSED", FieldIcons.PaymentsOutlined, FieldTheme.colors.statusSuccess),
+            MetricData(liveMetrics?.let { "${it.target_met_pct}%" } ?: "—", "TARGET MET", FieldIcons.PaymentsOutlined, FieldTheme.colors.purple600),
+            MetricData(liveMetrics?.active_agents?.toString() ?: "—", "ACTIVE AGENTS", FieldIcons.GroupOutlined, FieldTheme.colors.purple600)
         )
         UserRole.CREDIT_OFFICER -> listOf(
-            MetricData("8", "UNDERWRITING QUEUE", Icons.Outlined.FactCheck, FieldTheme.colors.purple600),
-            MetricData("24m", "AVG TURNAROUND", Icons.Outlined.Timer, FieldTheme.colors.purple600),
-            MetricData("3", "HIGH RISK CASES", Icons.Outlined.WarningAmber, FieldTheme.colors.statusDanger),
-            MetricData("12", "APPROVED TODAY", Icons.Outlined.CheckCircleOutline, FieldTheme.colors.statusSuccess)
+            MetricData(liveMetrics?.underwriting_queue?.toString() ?: "—", "UNDERWRITING QUEUE", FieldIcons.CheckCircleOutlined, FieldTheme.colors.purple600),
+            MetricData(liveMetrics?.let { "${it.avg_turnaround_mins}m" } ?: "—", "AVG TURNAROUND", FieldIcons.ClockOutlined, FieldTheme.colors.purple600),
+            MetricData(liveMetrics?.high_risk_cases?.toString() ?: "—", "HIGH RISK CASES", FieldIcons.AlertOutlined, FieldTheme.colors.statusDanger),
+            MetricData(liveMetrics?.approved_today?.toString() ?: "—", "APPROVED TODAY", FieldIcons.CheckCircleOutlined, FieldTheme.colors.statusSuccess)
         )
         UserRole.AUDITOR -> listOf(
-            MetricData("14", "FLAGS RAISED", Icons.Outlined.Report, FieldTheme.colors.statusDanger),
-            MetricData("98.2%", "OCR CONFIDENCE", Icons.Outlined.AutoFixHigh, FieldTheme.colors.statusSuccess),
-            MetricData("2", "POLICY BREACHES", Icons.Outlined.Gavel, FieldTheme.colors.statusWarning),
-            MetricData("42", "AUDITED TODAY", Icons.Outlined.Task, FieldTheme.colors.purple600)
+            MetricData(liveMetrics?.flags_raised?.toString() ?: "—", "FLAGS RAISED", FieldIcons.AlertOutlined, FieldTheme.colors.statusDanger),
+            MetricData("—", "OCR CONFIDENCE", FieldIcons.CameraOutlined, FieldTheme.colors.statusSuccess),
+            MetricData(liveMetrics?.policy_breaches?.toString() ?: "—", "POLICY BREACHES", FieldIcons.CheckCircleOutlined, FieldTheme.colors.statusWarning),
+            MetricData(liveMetrics?.audited_today?.toString() ?: "—", "AUDITED TODAY", FieldIcons.QueueOutlined, FieldTheme.colors.purple600)
         )
         UserRole.ADMIN_MCR -> listOf(
-            MetricData("6", "BOARD TICKETS", Icons.Outlined.Description, FieldTheme.colors.statusWarning),
-            MetricData("₦84.0M", "MCR DISBURSED", Icons.Outlined.AccountBalance, FieldTheme.colors.statusSuccess),
-            MetricData("0", "ALERT ESCALATIONS", Icons.Outlined.NotificationsActive, FieldTheme.colors.purple600),
-            MetricData("12", "DECISIONS SIGNED", Icons.Outlined.DoneAll, FieldTheme.colors.statusSuccess)
+            MetricData(liveMetrics?.board_tickets?.toString() ?: "—", "BOARD TICKETS", FieldIcons.DocumentOutlined, FieldTheme.colors.statusWarning),
+            MetricData(liveMetrics?.let { "₦${String.format(Locale.US, "%,.1fM", it.mcr_disbursed / 1_000_000)}" } ?: "—", "MCR DISBURSED", FieldIcons.ShieldOutlined, FieldTheme.colors.statusSuccess),
+            MetricData(liveMetrics?.alert_escalations?.toString() ?: "—", "ALERT ESCALATIONS", FieldIcons.BellFilled, FieldTheme.colors.purple600),
+            MetricData(liveMetrics?.decisions_signed?.toString() ?: "—", "DECISIONS SIGNED", FieldIcons.CheckCircleOutlined, FieldTheme.colors.statusSuccess)
         )
     }
 
-    // Role-specific Work Queue Items mapping
-    val rawQueueItems = when (resolvedRole) {
-        UserRole.LOAN_OFFICER -> listOf(
-            QueueItem("Adaeze Kalu", "MMFB-041", "Missing Guarantor Signature", StatusChipVariant.NeedsReview),
-            QueueItem("Bola Tinub.", "MMFB-039", "Visitation Geotag Pending", StatusChipVariant.LowConfidence),
-            QueueItem("Chioma Eze", "MMFB-022", "Ready for Concurrence", StatusChipVariant.Verified)
-        )
-        UserRole.BRANCH_MANAGER -> listOf(
-            QueueItem("Adaeze Kalu", "MMFB-041", "Concurrence review needed", StatusChipVariant.NeedsReview),
-            QueueItem("Musa Bello", "MMFB-037", "High value ticket (₦2.0M)", StatusChipVariant.Verified),
-            QueueItem("Ngozi Obi", "MMFB-031", "Returned for Guarantor Address", StatusChipVariant.Returned)
-        )
-        UserRole.CREDIT_OFFICER -> listOf(
-            QueueItem("David Okoro", "MMFB-054", "Credit Risk Analysis required", StatusChipVariant.NeedsReview),
-            QueueItem("Joy Amadi", "MMFB-051", "OCR mismatch on Passport photo", StatusChipVariant.LowConfidence),
-            QueueItem("Chike Okafor", "MMFB-049", "Verified Income (₦850k)", StatusChipVariant.Verified)
-        )
-        UserRole.AUDITOR -> listOf(
-            QueueItem("Kalu Udoh", "MMFB-044", "OCR confidence below threshold (42%)", StatusChipVariant.LowConfidence),
-            QueueItem("Emeka Onu", "MMFB-042", "Geotag LGA mismatch alert", StatusChipVariant.NeedsReview),
-            QueueItem("Mary Jane", "MMFB-040", "Perfect OCR check details", StatusChipVariant.Verified)
-        )
-        UserRole.ADMIN_MCR -> listOf(
-            QueueItem("Musa Bello", "MMFB-037", "Awaiting MCR Sign-off (₦2.0M)", StatusChipVariant.NeedsReview),
-            QueueItem("Fatima Yusuf", "MMFB-028", "Awaiting Disbursal Approval", StatusChipVariant.Approved),
-            QueueItem("Obinna K.", "MMFB-025", "MCR concurrence completed", StatusChipVariant.Signed)
-        )
+    // Build queue from real borrowers + applications (merged view)
+    val rawQueueItems = remember(borrowers, applications) {
+        borrowers.map { borrower ->
+            val app = applications
+                .filter { it.borrower_id == borrower.id }
+                .maxByOrNull { it.current_stage }
+            QueueItem(
+                name = borrower.name,
+                borrowerId = borrower.id,
+                appId = app?.id ?: "",
+                refNo = if (app != null) app.id.take(8).uppercase(Locale.getDefault()) else "NO-APP",
+                detail = if (app != null)
+                    "₦${String.format(Locale.US, "%,.0f", app.amount)} · ${app.product_type}"
+                else
+                    "No active application",
+                status = when {
+                    app == null -> StatusChipVariant.NeedsReview
+                    app.status.lowercase(Locale.getDefault()) in listOf("approved", "bm approved") -> StatusChipVariant.Approved
+                    app.status.lowercase(Locale.getDefault()) == "returned" -> StatusChipVariant.Returned
+                    app.status.lowercase(Locale.getDefault()) in listOf("ocr_review", "ocr review", "credit_review", "credit review") -> StatusChipVariant.LowConfidence
+                    else -> StatusChipVariant.NeedsReview
+                }
+            )
+        }
     }
 
     // Filter queue items based on search query
@@ -141,13 +151,18 @@ fun DashboardScreenView(
     val onQuickActionClick = { actionType: String ->
         when (actionType) {
             "REG_BORROWER" -> onNavigateToBorrowers()
-            "NEW_APP" -> onNavigateToApplications()
+            "NEW_APP" -> onNavigateToCreateApplication()
             "SYNC_QUEUE" -> onNavigateToOfflineQueue()
             "VISITS" -> selectedTab = 1
             "NOTIFICATIONS" -> onNavigateToNotifications()
             "SEARCH" -> onNavigateToSearchResults()
             "SIGNOUT" -> showSignOutConfirmation = true
         }
+    }
+
+    val onQueueItemClick = { appId: String ->
+        if (appId.isNotEmpty()) onNavigateToApplication(appId)
+        else onNavigateToCreateApplication()
     }
 
     if (showSignOutConfirmation) {
@@ -179,7 +194,7 @@ fun DashboardScreenView(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Outlined.ExitToApp,
+                                    imageVector = FieldIcons.CloseOutlined,
                                     contentDescription = "Sign Out",
                                     tint = FieldTheme.colors.statusDanger,
                                     modifier = Modifier.size(32.dp)
@@ -242,13 +257,14 @@ fun DashboardScreenView(
                             role = resolvedRole,
                             metrics = metrics,
                             queueItems = filteredQueueItems,
-                            onQuickActionClick = onQuickActionClick
+                            onQuickActionClick = onQuickActionClick,
+                            onQueueItemClick = onQueueItemClick
                         )
                         1 -> QueueTab(
                             searchQuery = searchQuery,
                             onSearchChange = { searchQuery = it },
                             queueItems = filteredQueueItems,
-                            onItemClick = { refNo -> onNavigateToApplications() }
+                            onItemClick = { appId -> onQueueItemClick(appId) }
                         )
                         2 -> SyncTab(
                             syncInProgress = syncInProgress,
@@ -297,13 +313,14 @@ fun DashboardScreenView(
                             role = resolvedRole,
                             metrics = metrics,
                             queueItems = filteredQueueItems,
-                            onQuickActionClick = onQuickActionClick
+                            onQuickActionClick = onQuickActionClick,
+                            onQueueItemClick = onQueueItemClick
                         )
                         1 -> QueueTab(
                             searchQuery = searchQuery,
                             onSearchChange = { searchQuery = it },
                             queueItems = filteredQueueItems,
-                            onItemClick = { refNo -> onNavigateToApplications() }
+                            onItemClick = { appId -> onQueueItemClick(appId) }
                         )
                         2 -> SyncTab(
                             syncInProgress = syncInProgress,
@@ -349,6 +366,8 @@ data class MetricData(
 // ==========================================
 data class QueueItem(
     val name: String,
+    val borrowerId: String = "",
+    val appId: String = "",
     val refNo: String,
     val detail: String,
     val status: StatusChipVariant
@@ -363,7 +382,8 @@ fun PhoneDashboardHome(
     role: UserRole,
     metrics: List<MetricData>,
     queueItems: List<QueueItem>,
-    onQuickActionClick: (String) -> Unit
+    onQuickActionClick: (String) -> Unit,
+    onQueueItemClick: (appId: String) -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier
@@ -390,14 +410,14 @@ fun PhoneDashboardHome(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Shield,
+                            imageVector = FieldIcons.ShieldOutlined,
                             contentDescription = null,
                             tint = FieldTheme.colors.purple600,
                             modifier = Modifier.size(24.dp)
                         )
                     }
                     Text(
-                        text = "FIELDRCM",
+                        text = "FIELDCRM",
                         style = FieldTheme.typography.title.copy(
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
@@ -415,7 +435,7 @@ fun PhoneDashboardHome(
                             .background(FieldTheme.colors.gray900, CircleShape)
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Search,
+                            imageVector = FieldIcons.SearchOutlined,
                             contentDescription = "Search",
                             tint = FieldTheme.colors.gray400,
                             modifier = Modifier.size(20.dp)
@@ -428,7 +448,7 @@ fun PhoneDashboardHome(
                             .background(FieldTheme.colors.gray900, CircleShape)
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Notifications,
+                            imageVector = FieldIcons.BellOutlined,
                             contentDescription = "Notifications",
                             tint = FieldTheme.colors.gray400,
                             modifier = Modifier.size(20.dp)
@@ -517,24 +537,24 @@ fun PhoneDashboardHome(
                 ) {
                     when (role) {
                         UserRole.LOAN_OFFICER -> {
-                            item { ShuttleChip("New Client", Icons.Outlined.PersonAdd) { onQuickActionClick("REG_BORROWER") } }
-                            item { ShuttleChip("New Loan", Icons.Outlined.NoteAdd) { onQuickActionClick("NEW_APP") } }
-                            item { ShuttleChip("Offline Queue", Icons.Outlined.CloudQueue) { onQuickActionClick("SYNC_QUEUE") } }
-                            item { ShuttleChip("Route Visits", Icons.Outlined.Map) { onQuickActionClick("VISITS") } }
+                            item { ShuttleChip("New Client", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") } }
+                            item { ShuttleChip("New Loan", FieldIcons.AddOutlined) { onQuickActionClick("NEW_APP") } }
+                            item { ShuttleChip("Offline Queue", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") } }
+                            item { ShuttleChip("Route Visits", FieldIcons.MapOutlined) { onQuickActionClick("VISITS") } }
                         }
                         UserRole.BRANCH_MANAGER -> {
-                            item { ShuttleChip("Underwriting Queue", Icons.Outlined.RateReview) { onQuickActionClick("VISITS") } }
-                            item { ShuttleChip("Offline Database", Icons.Outlined.CloudQueue) { onQuickActionClick("SYNC_QUEUE") } }
-                            item { ShuttleChip("Sign Out", Icons.Outlined.ExitToApp) { onQuickActionClick("SIGNOUT") } }
+                            item { ShuttleChip("Underwriting Queue", FieldIcons.PenOutlined) { onQuickActionClick("VISITS") } }
+                            item { ShuttleChip("Offline Database", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") } }
+                            item { ShuttleChip("Sign Out", FieldIcons.CloseOutlined) { onQuickActionClick("SIGNOUT") } }
                         }
                         UserRole.CREDIT_OFFICER -> {
-                            item { ShuttleChip("Assess Queue", Icons.Outlined.FactCheck) { onQuickActionClick("VISITS") } }
-                            item { ShuttleChip("Offline Queue", Icons.Outlined.CloudQueue) { onQuickActionClick("SYNC_QUEUE") } }
-                            item { ShuttleChip("Sign Out", Icons.Outlined.ExitToApp) { onQuickActionClick("SIGNOUT") } }
+                            item { ShuttleChip("Assess Queue", FieldIcons.CheckCircleOutlined) { onQuickActionClick("VISITS") } }
+                            item { ShuttleChip("Offline Queue", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") } }
+                            item { ShuttleChip("Sign Out", FieldIcons.CloseOutlined) { onQuickActionClick("SIGNOUT") } }
                         }
                         else -> {
-                            item { ShuttleChip("View Queue", Icons.Outlined.List) { onQuickActionClick("VISITS") } }
-                            item { ShuttleChip("Sign Out", Icons.Outlined.ExitToApp) { onQuickActionClick("SIGNOUT") } }
+                            item { ShuttleChip("View Queue", FieldIcons.QueueOutlined) { onQuickActionClick("VISITS") } }
+                            item { ShuttleChip("Sign Out", FieldIcons.CloseOutlined) { onQuickActionClick("SIGNOUT") } }
                         }
                     }
                 }
@@ -550,11 +570,11 @@ fun PhoneDashboardHome(
                     color = FieldTheme.colors.gray500
                 )
                 if (queueItems.isEmpty()) {
-                    EmptyState(text = "No pending actions found.")
+                    EmptyState(text = "No borrowers found. Register a new client to begin.")
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         queueItems.forEach { item ->
-                            ActionFeedCard(item, onActionClick = { onQuickActionClick("NEW_APP") })
+                            ActionFeedCard(item, onActionClick = { onQueueItemClick(item.appId) })
                         }
                     }
                 }
@@ -572,7 +592,8 @@ fun TabletDashboardHome(
     role: UserRole,
     metrics: List<MetricData>,
     queueItems: List<QueueItem>,
-    onQuickActionClick: (String) -> Unit
+    onQuickActionClick: (String) -> Unit,
+    onQueueItemClick: (appId: String) -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -604,14 +625,14 @@ fun TabletDashboardHome(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Shield,
+                            imageVector = FieldIcons.ShieldOutlined,
                             contentDescription = null,
                             tint = FieldTheme.colors.purple600,
                             modifier = Modifier.size(24.dp)
                         )
                     }
                     Text(
-                        text = "FIELDRCM TABLET",
+                        text = "FIELDCRM TABLET",
                         style = FieldTheme.typography.title.copy(
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
@@ -623,10 +644,10 @@ fun TabletDashboardHome(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     IconButton(onClick = { onQuickActionClick("SEARCH") }) {
-                        Icon(Icons.Outlined.Search, "Search", tint = FieldTheme.colors.gray400)
+                        Icon(FieldIcons.SearchOutlined, "Search", tint = FieldTheme.colors.gray400)
                     }
                     IconButton(onClick = { onQuickActionClick("NOTIFICATIONS") }) {
-                        Icon(Icons.Outlined.Notifications, "Notifications", tint = FieldTheme.colors.gray400)
+                        Icon(FieldIcons.BellOutlined, "Notifications", tint = FieldTheme.colors.gray400)
                     }
                 }
             }
@@ -680,19 +701,19 @@ fun TabletDashboardHome(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     when (role) {
                         UserRole.LOAN_OFFICER -> {
-                            ShuttleChip("New Client", Icons.Outlined.PersonAdd) { onQuickActionClick("REG_BORROWER") }
-                            ShuttleChip("New Loan", Icons.Outlined.NoteAdd) { onQuickActionClick("NEW_APP") }
-                            ShuttleChip("Offline Sync", Icons.Outlined.CloudQueue) { onQuickActionClick("SYNC_QUEUE") }
-                            ShuttleChip("Visits Map", Icons.Outlined.Map) { onQuickActionClick("VISITS") }
+                            ShuttleChip("New Client", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") }
+                            ShuttleChip("New Loan", FieldIcons.AddOutlined) { onQuickActionClick("NEW_APP") }
+                            ShuttleChip("Offline Sync", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") }
+                            ShuttleChip("Visits Map", FieldIcons.MapOutlined) { onQuickActionClick("VISITS") }
                         }
                         UserRole.BRANCH_MANAGER -> {
-                            ShuttleChip("Underwrite", Icons.Outlined.RateReview) { onQuickActionClick("VISITS") }
-                            ShuttleChip("Offline Db", Icons.Outlined.CloudQueue) { onQuickActionClick("SYNC_QUEUE") }
-                            ShuttleChip("Sign Out", Icons.Outlined.ExitToApp) { onQuickActionClick("SIGNOUT") }
+                            ShuttleChip("Underwrite", FieldIcons.PenOutlined) { onQuickActionClick("VISITS") }
+                            ShuttleChip("Offline Db", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") }
+                            ShuttleChip("Sign Out", FieldIcons.CloseOutlined) { onQuickActionClick("SIGNOUT") }
                         }
                         else -> {
-                            ShuttleChip("View Queue", Icons.Outlined.List) { onQuickActionClick("VISITS") }
-                            ShuttleChip("Sign Out", Icons.Outlined.ExitToApp) { onQuickActionClick("SIGNOUT") }
+                            ShuttleChip("View Queue", FieldIcons.QueueOutlined) { onQuickActionClick("VISITS") }
+                            ShuttleChip("Sign Out", FieldIcons.CloseOutlined) { onQuickActionClick("SIGNOUT") }
                         }
                     }
                 }
@@ -719,11 +740,11 @@ fun TabletDashboardHome(
                 ) {
                     if (queueItems.isEmpty()) {
                         item {
-                            EmptyState(text = "No pending tasks in queue.")
+                            EmptyState(text = "No borrowers found. Register a new client to begin.")
                         }
                     } else {
                         items(queueItems) { item ->
-                            ActionFeedCard(item, onActionClick = { onQuickActionClick("NEW_APP") })
+                            ActionFeedCard(item, onActionClick = { onQueueItemClick(item.appId) })
                         }
                     }
                 }
@@ -761,7 +782,7 @@ fun QueueTab(
             placeholder = "Filter by client name, ref number...",
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Outlined.Search,
+                    imageVector = FieldIcons.SearchOutlined,
                     contentDescription = null,
                     tint = FieldTheme.colors.gray500
                 )
@@ -781,7 +802,7 @@ fun QueueTab(
                     FieldCard(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onItemClick(item.refNo) }
+                            .clickable { onItemClick(item.appId) }
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -842,7 +863,7 @@ fun SyncTab(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = if (syncInProgress) Icons.Outlined.Sync else Icons.Outlined.CloudQueue,
+                imageVector = if (syncInProgress) FieldIcons.SyncFilled else FieldIcons.SyncOutlined,
                 contentDescription = "Sync Queue",
                 tint = FieldTheme.colors.purple600,
                 modifier = Modifier.size(40.dp)

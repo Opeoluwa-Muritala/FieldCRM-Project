@@ -7,9 +7,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,9 +41,6 @@ fun ConfirmationScreen(
     var isTimerCancelled by remember { mutableStateOf(false) }
     
     val scope = rememberCoroutineScope()
-    val configuration = LocalConfiguration.current
-    val isTablet = configuration.screenWidthDp >= 600
-    
     // Pulsing circle animation for success state badge
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
@@ -118,7 +114,7 @@ fun ConfirmationScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Check,
+                                imageVector = FieldIcons.CheckOutlined,
                                 contentDescription = "Success",
                                 tint = Color.White,
                                 modifier = Modifier.size(32.dp)

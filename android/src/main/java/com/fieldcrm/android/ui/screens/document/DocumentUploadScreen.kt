@@ -1,243 +1,250 @@
 package com.fieldcrm.android.ui.screens.document
 
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
-import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
+import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.ui.viewmodel.DocumentUploadViewModel
+import com.fieldcrm.android.ui.viewmodel.UploadState
 import com.fieldcrm.shared.model.BorrowerModel
-import java.util.Locale
+import org.koin.androidx.compose.koinViewModel
+
+private val DOCUMENT_CATEGORIES = listOf(
+    "id" to "Identity Document (NIN / Intl. Passport / Driver's License)",
+    "payslip" to "Pay Slip",
+    "bank_statement" to "Bank Statement",
+    "guarantor" to "Guarantor Document",
+    "pledge" to "Deed of Pledge",
+    "other" to "Other Supporting"
+)
 
 @Composable
 fun DocumentUploadScreen(
+    applicationId: String,
     borrower: BorrowerModel?,
     onBackClick: () -> Unit,
     onComplete: (BorrowerModel) -> Unit
 ) {
-    var documentName by remember { mutableStateOf("NIN_Card_Adaeze_Okonkwo.jpg") }
-    var extractedName by remember { mutableStateOf(borrower?.name ?: "") }
-    var extractedBvn by remember { mutableStateOf(borrower?.bvn ?: "") }
-    var ocrConfidence by remember { mutableFloatStateOf(0.88f) }
-    var selectedTab by remember { mutableStateOf(0) }
+    val viewModel: DocumentUploadViewModel = koinViewModel()
+    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    // Reset on launch so stale state from a previous screen visit doesn't persist
+    LaunchedEffect(applicationId) { viewModel.reset() }
+
+    // File picker — reads bytes + filename from the chosen URI
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            val bytes = context.contentResolver.openInputStream(it)?.use { s -> s.readBytes() }
+            val name = context.contentResolver.query(it, null, null, null, null)?.use { cursor ->
+                val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (cursor.moveToFirst() && idx >= 0) cursor.getString(idx) else "document"
+            } ?: "document"
+            if (bytes != null) viewModel.setFile(bytes, name)
+        }
+    }
+
     var showCameraScanner by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableStateOf(0) }
 
     if (showCameraScanner) {
         CameraOcrScanner(
             mode = "OCR",
             onTextScanned = { text ->
                 val lines = text.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
-                if (lines.isNotEmpty()) {
-                    extractedName = lines.first()
-                }
                 val bvnRegex = "\\b\\d{9,11}\\b".toRegex()
-                val match = bvnRegex.find(text)
-                if (match != null) {
-                    extractedBvn = match.value
-                }
-                ocrConfidence = 0.98f
-                documentName = "Real_Camera_Scan_ID.jpg"
+                val bvn = bvnRegex.find(text)?.value ?: uiState.extractedBvn
+                viewModel.setOcrResult(
+                    name = lines.firstOrNull() ?: uiState.extractedName,
+                    bvn = bvn,
+                    confidence = 0.97f,
+                    fileName = "camera_scan_${System.currentTimeMillis()}.jpg"
+                )
                 showCameraScanner = false
             },
             onDismiss = { showCameraScanner = false }
         )
-    } else {
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(FieldTheme.colors.gray950)
-        ) {
-            val isWide = maxWidth >= 840.dp
-            
-            Scaffold(
-                topBar = {
-                    FieldTopAppBar(
-                        title = "Document OCR Pipeline",
-                        navigationIcon = {
-                            IconButton(onClick = onBackClick) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                                    contentDescription = "Back",
-                                    tint = FieldTheme.colors.gray400
-                                )
-                            }
-                        }
-                    )
-                },
-                containerColor = FieldTheme.colors.gray950
-            ) { paddingValues ->
-                val onVerifyAndConfirm = {
-                    val fallbackBorrower = borrower ?: BorrowerModel(
-                        id = "temp_1", org_id = "org_1", loan_officer_id = "LO_1",
-                        name = "", phone = "", bvn = "", nin = "", status = "Active", created_at = ""
-                    )
-                    val updatedBorrower = fallbackBorrower.copy(
-                        name = extractedName,
-                        bvn = extractedBvn
-                    )
-                    onComplete(updatedBorrower)
-                }
+        return
+    }
 
-                if (isWide) {
-                    // Wide Screen: Split Pane
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
-                    ) {
-                        // Left Pane: Document Preview Box
-                        Box(
-                            modifier = Modifier
-                                .weight(1.2f)
-                                .fillMaxHeight()
-                                .background(FieldTheme.colors.gray900)
-                                .borderRight(0.5.dp, FieldTheme.colors.gray700.copy(alpha = 0.3f))
-                                .padding(24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "ORIGINAL IMAGE SCAN",
-                                    style = FieldTheme.typography.label,
-                                    color = FieldTheme.colors.gray500,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .size(width = 300.dp, height = 400.dp)
-                                        .background(FieldTheme.colors.gray850, RoundedCornerShape(8.dp))
-                                        .border(1.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier.padding(16.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = FieldIcons.CameraOutlined,
-                                            contentDescription = "Camera",
-                                            tint = FieldTheme.colors.purple400,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        Text(
-                                            text = "[ Scan Preview: $documentName ]",
-                                            style = FieldTheme.typography.body,
-                                            color = FieldTheme.colors.gray400
-                                        )
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        PrimaryButton(
-                                            text = "Scan ID Document",
-                                            onClick = { showCameraScanner = true }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Right Pane: OCR Extraction correction fields
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .verticalScroll(rememberScrollState())
-                                .padding(24.dp)
-                        ) {
-                            OcrDetailsSection(
-                                extractedName = extractedName,
-                                onNameChange = { extractedName = it },
-                                extractedBvn = extractedBvn,
-                                onBvnChange = { extractedBvn = it },
-                                ocrConfidence = ocrConfidence,
-                                onVerifyClick = onVerifyAndConfirm
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(FieldTheme.colors.gray950)
+    ) {
+        val isWide = maxWidth >= 840.dp
+
+        Scaffold(
+            topBar = {
+                FieldTopAppBar(
+                    title = "Document Upload${borrower?.name?.let { " — $it" } ?: ""}",
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = FieldIcons.ArrowBackOutlined,
+                                contentDescription = "Back",
+                                tint = FieldTheme.colors.gray400
                             )
                         }
                     }
-                } else {
-                    // Compact Screen: Tabbed View
+                )
+            },
+            containerColor = FieldTheme.colors.gray950
+        ) { paddingValues ->
+
+            val onVerifyAndConfirm: () -> Unit = {
+                // Submit OCR corrections to API, then update borrower and navigate back
+                viewModel.submitOcrReview(applicationId) {
+                    val base = borrower ?: BorrowerModel(
+                        id = "temp_${System.currentTimeMillis()}",
+                        org_id = "", loan_officer_id = "",
+                        name = "", phone = "", bvn = "", nin = "", status = "Active", created_at = ""
+                    )
+                    onComplete(base.copy(name = uiState.extractedName, bvn = uiState.extractedBvn))
+                }
+            }
+
+            if (isWide) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
+                    // Left pane — source selection + preview
+                    Box(
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .fillMaxHeight()
+                            .background(FieldTheme.colors.gray900)
+                            .borderRight(0.5.dp, FieldTheme.colors.gray700.copy(alpha = 0.3f))
+                            .padding(24.dp),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(
+                                text = "DOCUMENT SOURCE",
+                                style = FieldTheme.typography.label,
+                                color = FieldTheme.colors.gray500
+                            )
+                            SourceSelectionPanel(
+                                fileName = uiState.fileName,
+                                uploadState = uiState.uploadState,
+                                onScanCamera = { showCameraScanner = true },
+                                onPickFile = { filePickerLauncher.launch("*/*") },
+                                onUpload = { viewModel.uploadDocument(applicationId) }
+                            )
+                        }
+                    }
+
+                    // Right pane — category + OCR fields
                     Column(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .verticalScroll(rememberScrollState())
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        TabRow(
-                            selectedTabIndex = selectedTab,
-                            containerColor = FieldTheme.colors.gray900,
-                            contentColor = FieldTheme.colors.purple400
-                        ) {
+                        CategorySelector(
+                            selected = uiState.category,
+                            onSelect = viewModel::setCategory
+                        )
+                        OcrFieldsCard(
+                            extractedName = uiState.extractedName,
+                            onNameChange = viewModel::setExtractedName,
+                            extractedBvn = uiState.extractedBvn,
+                            onBvnChange = viewModel::setExtractedBvn,
+                            ocrConfidence = uiState.ocrConfidence,
+                            submitState = uiState.ocrSubmitState,
+                            onVerifyClick = onVerifyAndConfirm
+                        )
+                    }
+                }
+            } else {
+                // Compact — tab layout
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
+                    TabRow(
+                        selectedTabIndex = selectedTab,
+                        containerColor = FieldTheme.colors.gray900,
+                        contentColor = FieldTheme.colors.purple400
+                    ) {
+                        listOf("Upload", "OCR Fields").forEachIndexed { i, label ->
                             Tab(
-                                selected = selectedTab == 0,
-                                onClick = { selectedTab = 0 },
-                                text = { 
+                                selected = selectedTab == i,
+                                onClick = { selectedTab = i },
+                                text = {
                                     Text(
-                                        text = "Scan View",
-                                        color = if (selectedTab == 0) FieldTheme.colors.purple400 else FieldTheme.colors.gray400,
-                                        style = FieldTheme.typography.bodyStrong.copy(fontSize = 14.sp)
-                                    )
-                                }
-                            )
-                            Tab(
-                                selected = selectedTab == 1,
-                                onClick = { selectedTab = 1 },
-                                text = { 
-                                    Text(
-                                        text = "OCR Fields",
-                                        color = if (selectedTab == 1) FieldTheme.colors.purple400 else FieldTheme.colors.gray400,
+                                        text = label,
+                                        color = if (selectedTab == i) FieldTheme.colors.purple400 else FieldTheme.colors.gray400,
                                         style = FieldTheme.typography.bodyStrong.copy(fontSize = 14.sp)
                                     )
                                 }
                             )
                         }
-                        
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .verticalScroll(rememberScrollState())
-                                .padding(16.dp)
-                        ) {
-                            if (selectedTab == 0) {
-                                Text(
-                                    text = "IDENTITY CARD ATTACHMENT",
-                                    style = FieldTheme.typography.label,
-                                    color = FieldTheme.colors.gray500,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                )
-                                FieldUploadDropzone(
-                                    title = "Scan ID Slip",
-                                    subtitle = "Tap to open OCR scanner camera",
-                                    onClick = { showCameraScanner = true }
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                DocumentThumbnail(
-                                    fileName = documentName,
-                                    fileSize = if (documentName.startsWith("Real")) "2.1 MB" else "1.2 MB",
-                                    fileType = "jpg"
-                                )
-                            } else {
-                                OcrDetailsSection(
-                                    extractedName = extractedName,
-                                    onNameChange = { extractedName = it },
-                                    extractedBvn = extractedBvn,
-                                    onBvnChange = { extractedBvn = it },
-                                    ocrConfidence = ocrConfidence,
-                                    onVerifyClick = onVerifyAndConfirm
-                                )
-                            }
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        if (selectedTab == 0) {
+                            Text(
+                                text = "IDENTITY CARD ATTACHMENT",
+                                style = FieldTheme.typography.label,
+                                color = FieldTheme.colors.gray500
+                            )
+                            CategorySelector(
+                                selected = uiState.category,
+                                onSelect = viewModel::setCategory
+                            )
+                            SourceSelectionPanel(
+                                fileName = uiState.fileName,
+                                uploadState = uiState.uploadState,
+                                onScanCamera = { showCameraScanner = true },
+                                onPickFile = { filePickerLauncher.launch("*/*") },
+                                onUpload = { viewModel.uploadDocument(applicationId) }
+                            )
+                        } else {
+                            OcrFieldsCard(
+                                extractedName = uiState.extractedName,
+                                onNameChange = viewModel::setExtractedName,
+                                extractedBvn = uiState.extractedBvn,
+                                onBvnChange = viewModel::setExtractedBvn,
+                                ocrConfidence = uiState.ocrConfidence,
+                                submitState = uiState.ocrSubmitState,
+                                onVerifyClick = onVerifyAndConfirm
+                            )
                         }
                     }
                 }
@@ -246,13 +253,150 @@ fun DocumentUploadScreen(
     }
 }
 
+// ── Sub-composables ─────────────────────────────────────────
+
 @Composable
-fun OcrDetailsSection(
+private fun SourceSelectionPanel(
+    fileName: String,
+    uploadState: UploadState,
+    onScanCamera: () -> Unit,
+    onPickFile: () -> Unit,
+    onUpload: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Drop zone / file picker
+        FieldUploadDropzone(
+            title = if (fileName.isBlank()) "Choose from Device" else fileName,
+            subtitle = if (fileName.isBlank()) "Tap to browse files — PDF, JPG, PNG up to 5 MB" else "Tap to replace",
+            onClick = onPickFile
+        )
+
+        // Camera scan option
+        SecondaryButton(
+            text = "Scan with Camera (OCR)",
+            onClick = onScanCamera
+        )
+
+        // Upload to server — only active once a file is selected
+        when (uploadState) {
+            is UploadState.Idle -> {
+                if (fileName.isNotBlank()) {
+                    PrimaryButton(text = "Upload to Server", onClick = onUpload)
+                }
+            }
+            is UploadState.InFlight -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = FieldTheme.colors.brandPrimary
+                    )
+                    Text(
+                        text = "Uploading…",
+                        style = FieldTheme.typography.body,
+                        color = FieldTheme.colors.gray400
+                    )
+                }
+            }
+            is UploadState.Done -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = FieldIcons.CheckOutlined,
+                        contentDescription = "Uploaded",
+                        tint = FieldTheme.colors.statusSuccess,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "Uploaded successfully",
+                        style = FieldTheme.typography.body,
+                        color = FieldTheme.colors.statusSuccess
+                    )
+                }
+            }
+            is UploadState.Failed -> {
+                Text(
+                    text = uploadState.message,
+                    style = FieldTheme.typography.body,
+                    color = FieldTheme.colors.statusDanger
+                )
+                SecondaryButton(text = "Retry Upload", onClick = onUpload)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategorySelector(
+    selected: String,
+    onSelect: (String) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = "DOCUMENT CATEGORY",
+            style = FieldTheme.typography.label,
+            color = FieldTheme.colors.gray500
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp))
+                .background(FieldTheme.colors.gray850, RoundedCornerShape(8.dp))
+        ) {
+            DOCUMENT_CATEGORIES.forEachIndexed { index, (key, label) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(key) }
+                        .background(
+                            if (selected == key) FieldTheme.colors.brandPrimary.copy(alpha = 0.08f)
+                            else androidx.compose.ui.graphics.Color.Transparent
+                        )
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = label,
+                        style = FieldTheme.typography.body.copy(
+                            fontWeight = if (selected == key) FontWeight.Medium else FontWeight.Normal
+                        ),
+                        color = if (selected == key) FieldTheme.colors.purple400 else FieldTheme.colors.gray300
+                    )
+                    if (selected == key) {
+                        Icon(
+                            imageVector = FieldIcons.CheckOutlined,
+                            contentDescription = null,
+                            tint = FieldTheme.colors.purple400,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+                if (index < DOCUMENT_CATEGORIES.lastIndex) {
+                    FieldDivider()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun OcrFieldsCard(
     extractedName: String,
     onNameChange: (String) -> Unit,
     extractedBvn: String,
     onBvnChange: (String) -> Unit,
     ocrConfidence: Float,
+    submitState: UploadState,
     onVerifyClick: () -> Unit
 ) {
     FieldCard {
@@ -268,52 +412,106 @@ fun OcrDetailsSection(
             )
             SourceTag(source = "ocr")
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "SCANNER CONFIDENCE LEVEL",
-            style = FieldTheme.typography.label,
-            color = FieldTheme.colors.gray500
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        ConfidenceBar(percentage = ocrConfidence)
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (ocrConfidence > 0f) {
+            Text(
+                text = "SCANNER CONFIDENCE LEVEL",
+                style = FieldTheme.typography.label,
+                color = FieldTheme.colors.gray500
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            ConfidenceBar(percentage = ocrConfidence)
+            Spacer(modifier = Modifier.height(20.dp))
+        } else {
+            Text(
+                text = "Scan a document with the camera to extract identity fields, or fill in manually.",
+                style = FieldTheme.typography.body,
+                color = FieldTheme.colors.gray500
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
         FieldTextField(
             value = extractedName,
             onValueChange = onNameChange,
-            label = "Extracted Name Check",
+            label = "Full Name (from document)",
             isRequired = true
         )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
+        Spacer(modifier = Modifier.height(12.dp))
         FieldTextField(
             value = extractedBvn,
             onValueChange = onBvnChange,
-            label = "Extracted BVN Reference",
+            label = "BVN Reference",
             isRequired = true
         )
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        PrimaryButton(
-            text = "Verify & Correct Parameters",
-            onClick = onVerifyClick
-        )
+        Spacer(modifier = Modifier.height(24.dp))
+
+        when (submitState) {
+            is UploadState.InFlight -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = FieldTheme.colors.brandPrimary
+                    )
+                    Text("Submitting…", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+                }
+            }
+            is UploadState.Done -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(FieldIcons.CheckOutlined, contentDescription = null, tint = FieldTheme.colors.statusSuccess, modifier = Modifier.size(18.dp))
+                    Text("Verified & submitted", style = FieldTheme.typography.body, color = FieldTheme.colors.statusSuccess)
+                }
+            }
+            is UploadState.Failed -> {
+                Text(submitState.message, style = FieldTheme.typography.body, color = FieldTheme.colors.statusDanger)
+                Spacer(modifier = Modifier.height(8.dp))
+                PrimaryButton(text = "Retry Verification", onClick = onVerifyClick)
+            }
+            else -> {
+                val canSubmit = extractedName.isNotBlank() || extractedBvn.isNotBlank()
+                PrimaryButton(
+                    text = "Verify & Confirm",
+                    onClick = onVerifyClick,
+                    enabled = canSubmit
+                )
+                if (!canSubmit) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Scan a document or fill in fields above to continue.",
+                        style = FieldTheme.typography.body,
+                        color = FieldTheme.colors.gray500
+                    )
+                }
+            }
+        }
     }
 }
 
-@Preview(name = "Compact Phone Document Upload", widthDp = 411, heightDp = 850)
+// ── Previews ─────────────────────────────────────────────────
+
+@Preview(name = "Compact", widthDp = 411, heightDp = 850)
 @Composable
 fun PreviewDocUploadCompact() {
     val demoBorrower = BorrowerModel(
         id = "1", org_id = "org_1", loan_officer_id = "LO_1",
-        name = "Adaeze Okonkwo", phone = "08012345678", bvn = "222333444", nin = "111222333",
+        name = "Ngozi Eze", phone = "08012345678", bvn = "", nin = "",
         status = "Active", created_at = ""
     )
     FieldCRMTheme {
-        DocumentUploadScreen(borrower = demoBorrower, onBackClick = {}, onComplete = {})
+        DocumentUploadScreen(
+            applicationId = "app_1",
+            borrower = demoBorrower,
+            onBackClick = {},
+            onComplete = {}
+        )
     }
 }

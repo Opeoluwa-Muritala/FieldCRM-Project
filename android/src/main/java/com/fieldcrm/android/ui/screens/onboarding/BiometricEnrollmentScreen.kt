@@ -3,8 +3,7 @@ package com.fieldcrm.android.ui.screens.onboarding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Fingerprint
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,9 +21,6 @@ fun BiometricEnrollmentScreen(
     onEnableClick: () -> Unit,
     onNotNowClick: () -> Unit
 ) {
-    val configuration = LocalConfiguration.current
-    val isTablet = configuration.screenWidthDp >= 600
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -53,7 +49,7 @@ fun BiometricEnrollmentScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Fingerprint,
+                            imageVector = FieldIcons.FingerprintOutlined,
                             contentDescription = "Biometric Icon",
                             tint = FieldTheme.colors.purple600,
                             modifier = Modifier.size(32.dp)

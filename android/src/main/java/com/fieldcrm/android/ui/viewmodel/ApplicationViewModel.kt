@@ -81,6 +81,7 @@ class ApplicationViewModel(
             id = UUID.randomUUID().toString(),
             org_id = "org_1",
             borrower_id = borrower.id,
+            applicant_name = borrower.name,
             current_stage = 1,
             current_owner_id = borrower.loan_officer_id,
             status = "PENDING_CREDIT_REVIEW",

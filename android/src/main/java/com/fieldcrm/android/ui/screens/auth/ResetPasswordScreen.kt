@@ -11,12 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.RadioButtonUnchecked
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -157,7 +152,7 @@ fun ResetPasswordScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Shield,
+                                    imageVector = FieldIcons.ShieldOutlined,
                                     contentDescription = null,
                                     tint = FieldTheme.colors.purple600,
                                     modifier = Modifier.size(36.dp)
@@ -191,7 +186,7 @@ fun ResetPasswordScreen(
                             trailingIcon = {
                                 IconButton(onClick = { showNewPassword = !showNewPassword }) {
                                     Icon(
-                                        imageVector = if (showNewPassword) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                                        imageVector = if (showNewPassword) FieldIcons.EyeOutlined else FieldIcons.EyeOffOutlined,
                                         contentDescription = "Toggle password visibility",
                                         tint = FieldTheme.colors.gray400
                                     )
@@ -352,8 +347,8 @@ fun ResetPasswordFormContent(
     onConfirmPasswordChange: (String) -> Unit,
     showNewPassword: Boolean,
     onToggleShowNewPassword: () -> Unit,
-    showConfirmPassword: Boolean,
-    onToggleShowConfirmPassword: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") showConfirmPassword: Boolean,
+    @Suppress("UNUSED_PARAMETER") onToggleShowConfirmPassword: () -> Unit,
     lengthMet: Boolean,
     uppercaseMet: Boolean,
     numberMet: Boolean,
@@ -378,7 +373,7 @@ fun ResetPasswordFormContent(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Shield,
+                    imageVector = FieldIcons.ShieldOutlined,
                     contentDescription = null,
                     tint = FieldTheme.colors.purple600,
                     modifier = Modifier.size(36.dp)
@@ -412,7 +407,7 @@ fun ResetPasswordFormContent(
             trailingIcon = {
                 IconButton(onClick = { onToggleShowNewPassword() }) {
                     Icon(
-                        imageVector = if (showNewPassword) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                        imageVector = if (showNewPassword) FieldIcons.EyeOutlined else FieldIcons.EyeOffOutlined,
                         contentDescription = "Toggle password visibility",
                         tint = FieldTheme.colors.gray400
                     )
@@ -549,7 +544,7 @@ fun RequirementRow(satisfied: Boolean, text: String) {
             label = "requirement_color"
         )
         Icon(
-            imageVector = if (satisfied) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
+            imageVector = if (satisfied) FieldIcons.CheckCircleOutlined else FieldIcons.RadioUncheckedOutlined,
             contentDescription = null,
             tint = color,
             modifier = Modifier.size(16.dp)

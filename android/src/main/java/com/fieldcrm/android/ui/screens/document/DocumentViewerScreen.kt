@@ -7,11 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,7 +38,7 @@ fun DocumentViewerScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            imageVector = FieldIcons.ArrowBackOutlined,
                             contentDescription = "Back",
                             tint = FieldTheme.colors.gray400
                         )
@@ -161,7 +158,7 @@ fun ControlHeader(
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onRotateClick) {
                 Icon(
-                    imageVector = Icons.Outlined.Refresh,
+                    imageVector = FieldIcons.RefreshOutlined,
                     contentDescription = "Rotate",
                     tint = FieldTheme.colors.gray400
                 )
@@ -202,7 +199,7 @@ fun ViewerCanvasBox(rotationAngle: Int, zoomLevel: Float) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
-                imageVector = Icons.Outlined.Search,
+                imageVector = FieldIcons.SearchOutlined,
                 contentDescription = "PDF Scan Preview",
                 tint = FieldTheme.colors.gray500,
                 modifier = Modifier.size(48.dp)

@@ -11,13 +11,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -213,39 +208,45 @@ fun FieldTopAppBar(
     actions: @Composable RowScope.() -> Unit = {},
     navigationIcon: @Composable (() -> Unit)? = null
 ) {
+    // Outer box fills behind the status bar so the background colour is seamless.
+    // The inner Column pushes the actual bar content below the status bar via
+    // statusBarsPadding(), making the back button reachable and stopping content bleed.
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp)
             .background(FieldTheme.colors.gray900)
             .borderBottom(0.5.dp, FieldTheme.colors.gray700.copy(alpha = 0.4f))
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Spacer(modifier = Modifier.fillMaxWidth().statusBarsPadding())
             Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                if (navigationIcon != null) {
-                    navigationIcon()
-                    Spacer(modifier = Modifier.width(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (navigationIcon != null) {
+                        navigationIcon()
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text(
+                        text = title,
+                        style = FieldTheme.typography.display.copy(fontSize = 18.sp),
+                        color = FieldTheme.colors.gray100
+                    )
                 }
-                Text(
-                    text = title,
-                    style = FieldTheme.typography.display.copy(fontSize = 18.sp),
-                    color = FieldTheme.colors.gray100
-                )
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End
-            ) {
-                actions()
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    actions()
+                }
             }
         }
     }
@@ -314,7 +315,6 @@ fun FieldTextField(
     trailingIcon: @Composable (() -> Unit)? = null
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    val borderAlpha = if (isFocused) 0.6f else 1f
     val borderColor = if (errorText != null) {
         FieldTheme.colors.statusDanger
     } else if (isFocused) {
@@ -418,7 +418,7 @@ fun FieldDropdown(
             trailingIcon = {
                 IconButton(onClick = { expanded = !expanded }) {
                     Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
+                        imageVector = FieldIcons.ChevronDownOutlined,
                         contentDescription = "Dropdown Indicator",
                         tint = FieldTheme.colors.gray400
                     )
@@ -607,7 +607,7 @@ fun FieldUploadDropzone(
             verticalArrangement = Arrangement.Center
         ) {
             Icon(
-                imageVector = Icons.Outlined.Info,
+                imageVector = FieldIcons.InfoOutlined,
                 contentDescription = "Upload Icon",
                 tint = FieldTheme.colors.purple500,
                 modifier = Modifier.size(32.dp)
@@ -723,7 +723,7 @@ fun SourceTag(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.Default.CheckCircle,
+            imageVector = FieldIcons.CheckCircleFilled,
             contentDescription = "Source Type",
             tint = FieldTheme.colors.gray500,
             modifier = Modifier.size(10.dp)
@@ -1007,7 +1007,7 @@ fun LoanStageTimeline(
                 ) {
                     if (isCompleted) {
                         Icon(
-                            imageVector = Icons.Outlined.Check,
+                            imageVector = FieldIcons.CheckOutlined,
                             contentDescription = "Done",
                             tint = Color.White,
                             modifier = Modifier.size(10.dp)
@@ -1065,7 +1065,7 @@ fun ReadinessChecklist(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = if (gate.isVerified) Icons.Outlined.Check else Icons.Outlined.Close,
+                        imageVector = if (gate.isVerified) FieldIcons.CheckOutlined else FieldIcons.CloseOutlined,
                         contentDescription = if (gate.isVerified) "Verified" else "Failed",
                         tint = if (gate.isVerified) FieldTheme.colors.statusSuccess else FieldTheme.colors.statusDanger,
                         modifier = Modifier.size(16.dp)

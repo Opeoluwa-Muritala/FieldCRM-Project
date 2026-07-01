@@ -6,10 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,7 +45,7 @@ fun AdminMcrApprovalScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            imageVector = FieldIcons.ArrowBackOutlined,
                             contentDescription = "Back",
                             tint = FieldTheme.colors.gray400
                         )
@@ -63,8 +61,6 @@ fun AdminMcrApprovalScreen(
                 .padding(paddingValues),
             contentAlignment = Alignment.TopCenter
         ) {
-            val isWide = maxWidth >= 600.dp
-            
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -145,7 +141,7 @@ fun AdminMcrApprovalScreen(
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
-                                            imageVector = Icons.Outlined.CheckCircle,
+                                            imageVector = FieldIcons.CheckCircleOutlined,
                                             contentDescription = "Success",
                                             tint = FieldTheme.colors.statusSuccess,
                                             modifier = Modifier.size(32.dp)
@@ -170,7 +166,7 @@ fun AdminMcrApprovalScreen(
                                         }
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             Text("Disbursed Amount", style = FieldTheme.typography.body.copy(fontSize = 13.sp), color = FieldTheme.colors.gray400)
-                                            Text("₦ ${application.amount}", style = FieldTheme.typography.mono.copy(fontWeight = FontWeight.Bold), color = FieldTheme.colors.purple400)
+                                            Text("₦${String.format(java.util.Locale.US, "%,.0f", application.amount)}", style = FieldTheme.typography.mono.copy(fontWeight = FontWeight.Bold), color = FieldTheme.colors.purple400)
                                         }
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             Text("Recipient", style = FieldTheme.typography.body.copy(fontSize = 13.sp), color = FieldTheme.colors.gray400)

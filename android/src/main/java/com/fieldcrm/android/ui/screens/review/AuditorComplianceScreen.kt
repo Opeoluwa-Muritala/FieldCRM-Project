@@ -4,9 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,20 +13,39 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fieldcrm.android.data.api.AuditChecklist
 import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.ui.viewmodel.AuditTrailViewModel
+import org.koin.androidx.compose.koinViewModel
 import java.util.Locale
 
 @Composable
 fun AuditorComplianceScreen(
+    applicationId: String = "",
     onBackClick: () -> Unit,
     onAuditComplete: () -> Unit
 ) {
-    var isConsentVerified by remember { mutableStateOf(true) }
-    var isSignatureMatched by remember { mutableStateOf(true) }
+    val viewModel: AuditTrailViewModel = koinViewModel()
+    val auditState by viewModel.uiState.collectAsState()
+
+    var isConsentVerified by remember { mutableStateOf(false) }
+    var isSignatureMatched by remember { mutableStateOf(false) }
     var isExhibitsVerified by remember { mutableStateOf(false) }
     var auditComments by remember { mutableStateOf("") }
+
+    LaunchedEffect(applicationId) {
+        if (applicationId.isNotEmpty()) viewModel.loadChecklist(applicationId)
+    }
+
+    LaunchedEffect(auditState.checklist) {
+        auditState.checklist?.let { cl ->
+            isConsentVerified = cl.consent_verified
+            isSignatureMatched = cl.signature_matched
+            isExhibitsVerified = cl.exhibits_verified
+        }
+    }
 
     val allChecksPassed = isConsentVerified && isSignatureMatched && isExhibitsVerified
 
@@ -38,7 +56,7 @@ fun AuditorComplianceScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            imageVector = FieldIcons.ArrowBackOutlined,
                             contentDescription = "Back",
                             tint = FieldTheme.colors.gray400
                         )
@@ -54,8 +72,6 @@ fun AuditorComplianceScreen(
                 .padding(paddingValues),
             contentAlignment = Alignment.TopCenter
         ) {
-            val isWide = maxWidth >= 600.dp
-            
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -173,9 +189,18 @@ fun AuditorComplianceScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         PrimaryButton(
-                            text = "Log Auditor Sign-Off",
-                            onClick = onAuditComplete,
-                            enabled = allChecksPassed
+                            text = if (auditState.isSaving) "Saving..." else "Log Auditor Sign-Off",
+                            onClick = {
+                                viewModel.saveChecklist(
+                                    applicationId,
+                                    AuditChecklist(
+                                        consent_verified = isConsentVerified,
+                                        signature_matched = isSignatureMatched,
+                                        exhibits_verified = isExhibitsVerified
+                                    )
+                                ) { onAuditComplete() }
+                            },
+                            enabled = allChecksPassed && !auditState.isSaving
                         )
                     }
                 }

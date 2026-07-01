@@ -6,13 +6,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Phone
-import androidx.compose.material.icons.outlined.Fingerprint
-import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material3.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,7 +75,7 @@ fun CreateBorrowerContent(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            imageVector = FieldIcons.ArrowBackOutlined,
                             contentDescription = "Back",
                             tint = FieldTheme.colors.gray400
                         )
@@ -96,8 +91,6 @@ fun CreateBorrowerContent(
                 .padding(paddingValues),
             contentAlignment = Alignment.TopCenter
         ) {
-            val isWide = maxWidth >= 600.dp
-            
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -133,7 +126,7 @@ fun CreateBorrowerContent(
                             enabled = !isLoading,
                             leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Outlined.Person,
+                                    imageVector = FieldIcons.PersonOutlined,
                                     contentDescription = "Name",
                                     tint = FieldTheme.colors.gray500
                                 )
@@ -152,7 +145,7 @@ fun CreateBorrowerContent(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                             leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Outlined.Phone,
+                                    imageVector = FieldIcons.PhoneOutlined,
                                     contentDescription = "Phone",
                                     tint = FieldTheme.colors.gray500
                                 )
@@ -171,7 +164,7 @@ fun CreateBorrowerContent(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Outlined.Fingerprint,
+                                    imageVector = FieldIcons.FingerprintOutlined,
                                     contentDescription = "BVN",
                                     tint = FieldTheme.colors.gray500
                                 )
@@ -190,7 +183,7 @@ fun CreateBorrowerContent(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Outlined.Badge,
+                                    imageVector = FieldIcons.BadgeOutlined,
                                     contentDescription = "NIN",
                                     tint = FieldTheme.colors.gray500
                                 )
