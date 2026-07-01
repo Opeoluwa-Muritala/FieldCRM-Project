@@ -3,8 +3,7 @@ package com.fieldcrm.android.ui.screens.auth
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.GppMaybe
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,9 +21,6 @@ fun SessionExpiredScreen(
     userEmail: String,
     onReauthSuccess: () -> Unit
 ) {
-    val configuration = LocalConfiguration.current
-    val isTablet = configuration.screenWidthDp >= 600
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -53,7 +49,7 @@ fun SessionExpiredScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.GppMaybe,
+                            imageVector = FieldIcons.AlertOutlined,
                             contentDescription = "Session Expired",
                             tint = FieldTheme.colors.statusDanger,
                             modifier = Modifier.size(32.dp)
@@ -70,7 +66,7 @@ fun SessionExpiredScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "For your security, you have been automatically logged out due to inactivity. Please sign in again to access FieldCRM.",
+                        text = "For your security, ${if (userEmail.isNotBlank()) "$userEmail has" else "your session has"} been automatically logged out due to inactivity. Please sign in again to access FieldCRM.",
                         style = FieldTheme.typography.body,
                         color = FieldTheme.colors.gray400,
                         textAlign = TextAlign.Center

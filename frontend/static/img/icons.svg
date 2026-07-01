@@ -1,0 +1,248 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+
+  <!-- ── HOME ─────────────────────────────────────────────── -->
+  <!-- House: peaked roof, arched door, two windows -->
+  <symbol id="icon-home-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M12,2.5 L2.5,11 H4.5 V21.5 H19.5 V11 H21.5 Z
+         M9.5,21.5 V16 Q9.5,13.8 12,13.8 Q14.5,13.8 14.5,16 V21.5
+         M6.5,12.5 H9.5 V15.5 H6.5 Z
+         M14.5,12.5 H17.5 V15.5 H14.5 Z"/>
+  </symbol>
+  <symbol id="icon-home-f" viewBox="0 0 24 24">
+    <path fill="currentColor" fill-rule="evenodd"
+      d="M12,2.5 L2.5,11 H4.5 V21.5 H19.5 V11 H21.5 Z
+         M9.5,21.5 V16 Q9.5,13.8 12,13.8 Q14.5,13.8 14.5,16 V21.5 Z
+         M6.5,12.5 H9.5 V15.5 H6.5 Z
+         M14.5,12.5 H17.5 V15.5 H14.5 Z"/>
+  </symbol>
+
+  <!-- ── QUEUE / MY QUEUE ──────────────────────────────────── -->
+  <!-- Three task rows, each with a square status bullet on the left -->
+  <symbol id="icon-queue-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M3.5,7 H6.5 V10 H3.5 Z M9.5,8.5 H20.5
+         M3.5,12.5 H6.5 V15.5 H3.5 Z M9.5,14 H20.5
+         M3.5,18 H6.5 V21 H3.5 Z M9.5,19.5 H16"/>
+  </symbol>
+  <symbol id="icon-queue-f" viewBox="0 0 24 24">
+    <path fill="currentColor"
+      d="M3.5,7 H20.5 V10 H3.5 Z M3.5,12.5 H20.5 V15.5 H3.5 Z M3.5,18 H16 V21 H3.5 Z"/>
+  </symbol>
+
+  <!-- ── NEW APPLICATION (primary FAB) ─────────────────────── -->
+  <!-- Plus sign inside a circle -->
+  <symbol id="icon-new-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+      d="M12,5 V19 M5,12 H19"/>
+  </symbol>
+  <symbol id="icon-new-f" viewBox="0 0 24 24">
+    <path fill="currentColor"
+      d="M10.5,3.5 H13.5 V10.5 H20.5 V13.5 H13.5 V20.5 H10.5 V13.5 H3.5 V10.5 H10.5 Z"/>
+  </symbol>
+
+  <!-- ── SYNC (bidirectional cloud) ───────────────────────── -->
+  <symbol id="icon-sync-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M7,12 C5,12 3,10.5 3,8.5 C3,6.5 4.5,5 6.5,5 C7,3 9,2 11.5,2 C14,2 15.5,3.5 16.5,5 C17,4.8 17.5,4.7 18,4.7 C19.5,4.7 21,6 21,8 C21,10 19.5,12 17,12 Z M8,22 V12 M5,15 L8,12.5 L11,15 M16,12 V22 M13,19 L16,21.5 L19,19"/>
+  </symbol>
+  <symbol id="icon-sync-f" viewBox="0 0 24 24">
+    <path fill="currentColor"
+      d="M7,12 C5,12 3,10.5 3,8.5 C3,6.5 4.5,5 6.5,5 C7,3 9,2 11.5,2 C14,2 15.5,3.5 16.5,5 C17,4.8 17.5,4.7 18,4.7 C19.5,4.7 21,6 21,8 C21,10 19.5,12 17,12 Z M8,12 L5,15.5 H6.5 V22 H9.5 V15.5 H11 Z M14.5,12 H17.5 V18.5 H19.5 L16,22 L12.5,18.5 H14.5 Z"/>
+  </symbol>
+
+  <!-- ── UPLOAD ─────────────────────────────────────────────── -->
+  <!-- Upward arrow with a horizontal tray bar at base -->
+  <symbol id="icon-upload-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M12,17 V5 M8,9 L12,5 L16,9
+         M4,17 H20 V20 H4 Z"/>
+  </symbol>
+  <symbol id="icon-upload-f" viewBox="0 0 24 24">
+    <path fill="currentColor"
+      d="M10.5,16 V9.5 H7 L12,4 L17,9.5 H13.5 V16 Z
+         M4,17.5 H20 V20.5 H4 Z"/>
+  </symbol>
+
+  <!-- ── VISITS / MAP PIN ───────────────────────────────────── -->
+  <!-- Teardrop location pin with inner ring -->
+  <symbol id="icon-visits-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M12,2 C8.13,2 5,5.13 5,9 C5,14.25 12,22 12,22 C12,22 19,14.25 19,9 C19,5.13 15.87,2 12,2 Z"/>
+    <circle fill="none" stroke="currentColor" stroke-width="1.75" cx="12" cy="9" r="2.5"/>
+  </symbol>
+  <symbol id="icon-visits-f" viewBox="0 0 24 24">
+    <path fill="currentColor" fill-rule="evenodd"
+      d="M12,2 C8.13,2 5,5.13 5,9 C5,14.25 12,22 12,22 C12,22 19,14.25 19,9 C19,5.13 15.87,2 12,2 Z
+         M12,6.5 C13.38,6.5 14.5,7.62 14.5,9 C14.5,10.38 13.38,11.5 12,11.5 C10.62,11.5 9.5,10.38 9.5,9 C9.5,7.62 10.62,6.5 12,6.5 Z"/>
+  </symbol>
+
+  <!-- ── AWAITING / HOURGLASS ──────────────────────────────── -->
+  <!-- Hourglass: wide top, narrow waist, wide bottom, partially filled -->
+  <symbol id="icon-awaiting-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M5,3 H19 M5,21 H19
+         M7,3 Q7,11 12,12 Q17,13 17,21 M17,3 Q17,11 12,12 Q7,13 7,21"/>
+  </symbol>
+  <symbol id="icon-awaiting-f" viewBox="0 0 24 24">
+    <path fill="currentColor"
+      d="M5,3 H19 L16,10 Q14,12 12,12 Q10,12 8,10 Z
+         M5,21 H19 L16,14 Q14,12 12,12 Q10,12 8,14 Z"/>
+  </symbol>
+
+  <!-- ── SIGNOFFS / SIGNATURE ──────────────────────────────── -->
+  <!-- Pen nib writing a checkmark line -->
+  <symbol id="icon-signoffs-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M16,3 L21,8 L9,20 L4,21 L5,16 Z M14,5 L19,10
+         M3,21 H21"/>
+  </symbol>
+  <symbol id="icon-signoffs-f" viewBox="0 0 24 24">
+    <path fill="currentColor"
+      d="M16,3 L21,8 L9,20 L4,21 L5,16 Z M3,21.5 H21 V23 H3 Z"/>
+  </symbol>
+
+  <!-- ── PIPELINE / FUNNEL ──────────────────────────────────── -->
+  <!-- Funnel: wide top narrowing to a pipe stem -->
+  <symbol id="icon-pipeline-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M3,3 H21 L14,11 V19 L10,21 V11 Z"/>
+  </symbol>
+  <symbol id="icon-pipeline-f" viewBox="0 0 24 24">
+    <path fill="currentColor"
+      d="M3,3 H21 L14,11 V21 L10,21 V11 Z"/>
+  </symbol>
+
+  <!-- ── LOGOUT / EXIT ──────────────────────────────────────── -->
+  <!-- Door frame with arrow pointing out to the right -->
+  <symbol id="icon-logout-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M10,3 H4 V21 H10
+         M16,8 L21,12 L16,16 M21,12 H9"/>
+  </symbol>
+  <symbol id="icon-logout-f" viewBox="0 0 24 24">
+    <path fill="currentColor"
+      d="M4,3 H10 V5.5 H6.5 V18.5 H10 V21 H4 Z
+         M14.5,8 L20.5,12 L14.5,16 L14.5,13.5 H9 V10.5 H14.5 Z"/>
+  </symbol>
+
+  <!-- ── REVIEWS / UNDERWRITING ────────────────────────────── -->
+  <!-- Clipboard with a check mark on it -->
+  <symbol id="icon-reviews-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M9,3 H5 Q4,3 4,4 V20 Q4,21 5,21 H19 Q20,21 20,20 V4 Q20,3 19,3 H15
+         M9,3 Q9,1.5 12,1.5 Q15,1.5 15,3
+         M8,13 L11,16 L16,10"/>
+  </symbol>
+  <symbol id="icon-reviews-f" viewBox="0 0 24 24">
+    <path fill="currentColor" fill-rule="evenodd"
+      d="M9,3 Q9,1.5 12,1.5 Q15,1.5 15,3 H19 Q20,3 20,4 V20 Q20,21 19,21 H5 Q4,21 4,20 V4 Q4,3 5,3 Z
+         M8,13 L11,16 L16,10 L14.5,8.5 L11,12.5 L9.5,11.5 Z"/>
+  </symbol>
+
+  <!-- ── OCR / DOCUMENT SCAN ───────────────────────────────── -->
+  <!-- Document with horizontal scan lines and corner brackets -->
+  <symbol id="icon-ocr-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M3,5 V3 H5 M19,3 H21 V5 M3,19 V21 H5 M19,21 H21 V19
+         M7,9 H17 M7,12 H17 M7,15 H13"/>
+  </symbol>
+  <symbol id="icon-ocr-f" viewBox="0 0 24 24">
+    <path fill="currentColor"
+      d="M3,2 H5.5 V4.5 H3 Z M18.5,2 H21 V4.5 H18.5 Z M3,19.5 H5.5 V22 H3 Z M18.5,19.5 H21 V22 H18.5 Z
+         M6,8 H18 V10 H6 Z M6,11 H18 V13 H6 Z M6,14 H14 V16 H6 Z"/>
+  </symbol>
+
+  <!-- ── LOANS / FOLDER ────────────────────────────────────── -->
+  <!-- Tabbed folder with a coin/circle inside -->
+  <symbol id="icon-loans-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M2,8 H22 V20 Q22,21 21,21 H3 Q2,21 2,20 Z
+         M2,8 V6 Q2,5 3,5 H10 L12,8"/>
+    <circle fill="none" stroke="currentColor" stroke-width="1.75" cx="12" cy="14.5" r="3.5"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"
+      d="M12,12.5 V11.5 M12,17.5 V16.5 M10.3,13.3 L9.5,12.5 M14.5,16.5 L13.7,15.7
+         M9.5,16.5 L10.3,15.7 M13.7,13.3 L14.5,12.5"/>
+  </symbol>
+  <symbol id="icon-loans-f" viewBox="0 0 24 24">
+    <path fill="currentColor" fill-rule="evenodd"
+      d="M10,5 H3 Q2,5 2,6 V20 Q2,21 3,21 H21 Q22,21 22,20 V8 H12 Z M10,5 L12,8 H2 V6 Z
+         M12,11 C9.79,11 8,12.79 8,15 C8,17.21 9.79,19 12,19 C14.21,19 16,17.21 16,15 C16,12.79 14.21,11 12,11 Z
+         M12,12.8 C13.22,12.8 14.2,13.78 14.2,15 C14.2,16.22 13.22,17.2 12,17.2 C10.78,17.2 9.8,16.22 9.8,15 C9.8,13.78 10.78,12.8 12,12.8 Z"/>
+  </symbol>
+
+  <!-- ── FLAGS / COMPLIANCE ────────────────────────────────── -->
+  <!-- Flagpole with triangular flag, exclamation inside -->
+  <symbol id="icon-flags-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M5,3 V21 M5,3 H19 L15,9 H19 L15,15 H5"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+      d="M14,6 V10 M14,11.5 V12.5"/>
+  </symbol>
+  <symbol id="icon-flags-f" viewBox="0 0 24 24">
+    <path fill="currentColor"
+      d="M4,3 H20 L16.5,9 H20 L16.5,15 H4 Z M4,17 H5.5 V22 H4 Z"/>
+  </symbol>
+
+  <!-- ── AUDIT / AUDIT TRAIL ───────────────────────────────── -->
+  <!-- Document with a circular stamp/seal at bottom-right corner -->
+  <symbol id="icon-audit-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M6,2 H14 L20,8 V22 H6 Z M14,2 V8 H20
+         M9,12 H15 M9,15 H13"/>
+    <circle fill="none" stroke="currentColor" stroke-width="1.5" cx="17" cy="18" r="3"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+      d="M15.5,18 L16.5,19 L18.5,17"/>
+  </symbol>
+  <symbol id="icon-audit-f" viewBox="0 0 24 24">
+    <path fill="currentColor" fill-rule="evenodd"
+      d="M6,2 H14 L20,8 V22 H6 Z M14,2 V8 H20 Z
+         M9,11.5 H15 V13 H9 Z M9,14.5 H13 V16 H9 Z
+         M17,15 C15.34,15 14,16.34 14,18 C14,19.66 15.34,21 17,21 C18.66,21 20,19.66 20,18 C20,16.34 18.66,15 17,15 Z
+         M15.5,18 L16.5,19 L18.5,17 L17.8,16.3 L16.5,17.6 L16.2,17.3 Z"/>
+  </symbol>
+
+  <!-- ── USERS / TEAM ──────────────────────────────────────── -->
+  <!-- Two overlapping person silhouettes -->
+  <symbol id="icon-users-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M9,8 C9,5.79 10.79,4 13,4 C15.21,4 17,5.79 17,8 C17,10.21 15.21,12 13,12 C10.79,12 9,10.21 9,8 Z
+         M5,20 C5,16.69 8.58,14 13,14 C17.42,14 21,16.69 21,20
+         M3,12 C3,10.34 4.34,9 6,9 C6.74,9 7.41,9.28 7.91,9.73
+         M3,20 C3,17.79 4.35,16 6,16"/>
+  </symbol>
+  <symbol id="icon-users-f" viewBox="0 0 24 24">
+    <path fill="currentColor"
+      d="M13,4 C10.79,4 9,5.79 9,8 C9,10.21 10.79,12 13,12 C15.21,12 17,10.21 17,8 C17,5.79 15.21,4 13,4 Z
+         M5,20 C5,16.69 8.58,14 13,14 C17.42,14 21,16.69 21,20 Z
+         M6,9 C4.34,9 3,10.34 3,12 C3,13.66 3.9,14.58 5.1,15.16 C6.33,14.42 7.8,14 9.35,14 C8.2,13.17 7,11.45 6.5,9.55 C6.34,9.19 6.18,9 6,9 Z
+         M3,20 C3,18.5 3.6,17.3 4.5,16.4 C3.57,16.83 3,17.88 3,20 Z"/>
+  </symbol>
+
+  <!-- ── ACTIVITY / SYSTEM PULSE ───────────────────────────── -->
+  <!-- EKG-style pulse line (heartbeat / activity monitor) -->
+  <symbol id="icon-activity-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M2,12 H6 L8,7 L11,17 L13,9 L15,12 H22"/>
+  </symbol>
+  <symbol id="icon-activity-f" viewBox="0 0 24 24">
+    <path fill="currentColor"
+      d="M2,10.5 H5.5 L8,4.5 L11.5,18.5 L13.5,8.5 L15.5,10.5 H22 V13.5 H16.5 L13,6.5 L10,19.5 L6.5,13.5 H2 Z"/>
+  </symbol>
+
+  <!-- ── DOCUMENT UPLOAD ───────────────────────────────────── -->
+  <!-- Page with folded corner + upward arrow emerging from it -->
+  <symbol id="icon-doc-upload-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M5,2.5 H14.5 L19.5,7.5 V21.5 H5 Z M14.5,2.5 V7.5 H19.5
+         M12,17 V11 M9.5,13.5 L12,11 L14.5,13.5"/>
+  </symbol>
+  <symbol id="icon-doc-upload-f" viewBox="0 0 24 24">
+    <!-- Document body fills solid; fold corner + arrow are EvenOdd holes -->
+    <path fill="currentColor" fill-rule="evenodd"
+      d="M5,2.5 H14.5 L19.5,7.5 V21.5 H5 Z
+         M14.5,2.5 L19.5,7.5 H14.5 Z
+         M13,17 V13.5 H14.5 L12,11 L9.5,13.5 H11 V17 Z"/>
+  </symbol>
+
+</svg>

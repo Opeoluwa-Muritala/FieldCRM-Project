@@ -8,16 +8,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,7 +46,7 @@ fun LoanApplicationFormScreen(
         application = application,
         borrower = borrower,
         onBackClick = onBackClick,
-        onSubmit = { name, phone, bvn, address, dob, marital, employment, employer, income, amount, tenure, product, collateralDesc, collateralVal, gName, gPhone, bank, acc ->
+        onSubmit = { name, phone, bvn, address, _, _, employment, employer, income, amount, tenure, product, collateralDesc, collateralVal, gName, gPhone, bank, acc ->
             val updatedBorrower = borrower?.copy(
                 name = name,
                 phone = phone,
@@ -180,7 +179,7 @@ fun LoanApplicationFormContent(
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                imageVector = FieldIcons.ArrowBackOutlined,
                                 contentDescription = "Back",
                                 tint = FieldTheme.colors.gray400
                             )
@@ -244,7 +243,7 @@ fun LoanApplicationFormContent(
                                 ) {
                                     if (isCompleted) {
                                         Icon(
-                                            imageVector = Icons.Outlined.Check,
+                                            imageVector = FieldIcons.CheckOutlined,
                                             contentDescription = "Done",
                                             tint = Color.White,
                                             modifier = Modifier.size(12.dp)
@@ -456,44 +455,70 @@ fun WizardTabContent(
             FieldCard {
                 Text("Spousal Consent & Dependants", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
                 Spacer(modifier = Modifier.height(16.dp))
-                FieldTextField(
-                    value = spouseName,
-                    onValueChange = onSpouseNameChange,
-                    label = "Name of Spouse",
-                    isRequired = marital == "Married"
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                FieldTextField(
-                    value = spousePhone,
-                    onValueChange = onSpousePhoneChange,
-                    label = "Spouse Telephone Number",
-                    isRequired = marital == "Married"
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        FieldTextField(
-                            value = spouseChildren,
-                            onValueChange = onSpouseChildrenChange,
-                            label = "Number of Children",
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                        )
+                if (marital == "Married") {
+                    FieldTextField(
+                        value = spouseName,
+                        onValueChange = onSpouseNameChange,
+                        label = "Name of Spouse",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = spousePhone,
+                        onValueChange = onSpousePhoneChange,
+                        label = "Spouse Telephone Number",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            FieldTextField(
+                                value = spouseChildren,
+                                onValueChange = onSpouseChildrenChange,
+                                label = "Number of Children",
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            FieldTextField(
+                                value = spouseDependants,
+                                onValueChange = onSpouseDependantsChange,
+                                label = "Number of Dependants",
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
+                        }
                     }
-                    Column(modifier = Modifier.weight(1f)) {
-                        FieldTextField(
-                            value = spouseDependants,
-                            onValueChange = onSpouseDependantsChange,
-                            label = "Number of Dependants",
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                        )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = spouseBusinessAddress,
+                        onValueChange = onSpouseBusinessAddressChange,
+                        label = "Spouse Business Address"
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(FieldTheme.colors.gray900, RoundedCornerShape(8.dp))
+                            .padding(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Not Applicable",
+                                style = FieldTheme.typography.bodyStrong,
+                                color = FieldTheme.colors.gray400,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Spousal consent is not required for $marital applicants. You may proceed to the next step.",
+                                style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                                color = FieldTheme.colors.gray500,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
-                Spacer(modifier = Modifier.height(12.dp))
-                FieldTextField(
-                    value = spouseBusinessAddress,
-                    onValueChange = onSpouseBusinessAddressChange,
-                    label = "Spouse Business Address"
-                )
             }
         }
         2 -> {

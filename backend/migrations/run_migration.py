@@ -17,6 +17,8 @@ MIGRATION_FILES = [
     "001_full_schema.sql",
     "002_ref_no_sequence.sql",
     "003_seed_demo.sql",
+    "004_notifications.sql",
+    "005_seed_notifications_and_pledges.sql",
 ]
 
 

@@ -44,6 +44,31 @@ All Android workflow routes are under:
 | `GET` | `/api/v1/mobile/me` | Current authenticated user |
 | `GET` | `/api/v1/mobile/dashboard` | Role-specific dashboard data |
 | `GET` | `/api/v1/mobile/queues/{queue_name}` | Role queue data |
+| `GET` | `/api/v1/mobile/notifications` | List current user's notifications, newest first |
+| `PATCH` | `/api/v1/mobile/notifications/{id}/read` | Mark one notification as read |
+| `DELETE` | `/api/v1/mobile/notifications` | Clear current user's notifications |
+
+Notification response:
+
+```json
+[
+  {
+    "id": "notif_abc123",
+    "title": "Application Returned",
+    "message": "MMFB-041 was returned by Branch Manager for correction",
+    "created_at": "2026-06-30T08:23:00Z",
+    "is_read": false,
+    "application_id": "app_xyz789",
+    "type": "application_returned"
+  }
+]
+```
+
+Mark-read response:
+
+```json
+{ "ok": true }
+```
 
 Queue names:
 
@@ -116,17 +141,27 @@ Payload:
 | Method | Route | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/v1/mobile/applications/{application_id}/documents` | List documents |
-| `POST` | `/api/v1/mobile/applications/{application_id}/documents` | Record a document upload category |
+| `POST` | `/api/v1/mobile/applications/{application_id}/documents` | Upload and store a physical document |
 
-Payload:
+Multipart payload:
 
-```json
-{
-  "category": "loan_application_form"
-}
+```http
+POST /api/v1/mobile/applications/{application_id}/documents
+Content-Type: multipart/form-data
+
+file=@loan-form.pdf
+doc_type=loan_application_form
+form_code=MMFB/CRM/01
 ```
 
-Current behavior matches the web route: it records a mock document upload entry rather than streaming a physical file.
+Rules:
+
+- `file` is required.
+- `doc_type` is required and defaults to `other` only for compatibility.
+- `form_code` is optional; known form categories are mapped by the backend when omitted.
+- Accepted MIME types are `application/pdf`, `image/jpeg`, and `image/png`.
+- Maximum file size is 10 MB.
+- The response returns the created document metadata row.
 
 ## OCR Review
 
@@ -202,4 +237,3 @@ Return payload:
   "notes": "Upload a clear recent bank statement and guarantor cheque."
 }
 ```
-

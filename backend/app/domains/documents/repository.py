@@ -6,7 +6,7 @@ from app.core.base_repository import BaseRepository
 class DocumentRepository(BaseRepository):
     domain = "documents"
 
-    async def create_mock_upload(
+    async def create(
         self,
         *,
         loan_id: UUID,
@@ -33,6 +33,31 @@ class DocumentRepository(BaseRepository):
         )
         return dict(row)
 
+    async def create_mock_upload(
+        self,
+        *,
+        loan_id: UUID,
+        org_id: UUID,
+        doc_type: str,
+        form_code: str | None,
+        original_name: str,
+        stored_path: str,
+        mime_type: str,
+        size_bytes: int,
+        uploaded_by: UUID,
+    ) -> dict:
+        return await self.create(
+            loan_id=loan_id,
+            org_id=org_id,
+            doc_type=doc_type,
+            form_code=form_code,
+            original_name=original_name,
+            stored_path=stored_path,
+            mime_type=mime_type,
+            size_bytes=size_bytes,
+            uploaded_by=uploaded_by,
+        )
+
     async def get_by_loan(self, loan_id: UUID, org_id: UUID) -> list[dict]:
         rows = await self.conn.fetch(
             self.sql("get_by_loan"),
@@ -40,4 +65,3 @@ class DocumentRepository(BaseRepository):
             org_id,
         )
         return [dict(row) for row in rows] if rows else []
-

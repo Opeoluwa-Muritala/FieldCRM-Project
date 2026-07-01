@@ -70,4 +70,27 @@ class VisitationService:
                 source="manual",
                 notes=notes,
             )
+            if decision == "concurred":
+                loan = await self.repo.conn.fetchrow(
+                    """
+                    SELECT ref_no, applicant_name, created_by
+                    FROM loan_applications
+                    WHERE id = $1
+                      AND org_id = $2
+                    """,
+                    loan_id,
+                    org_id,
+                )
+                if loan:
+                    from app.domains.notifications.repository import NotificationRepository
+                    from app.domains.notifications.service import NotificationService
+
+                    await NotificationService(NotificationRepository(self.repo.conn)).create(
+                        user_id=report.get("visiting_officer_id") or loan["created_by"],
+                        org_id=org_id,
+                        application_id=loan_id,
+                        title="Visitation Signed Off",
+                        message=f"Branch Manager concurred on site visit for {loan['applicant_name']}",
+                        notification_type="visitation_signoff",
+                    )
         return report

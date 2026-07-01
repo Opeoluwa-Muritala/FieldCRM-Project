@@ -100,3 +100,79 @@ class AuditService:
                 source="manual",
                 notes=reason,
             )
+            await self._notify_workflow_event(
+                application_id=_as_uuid(application_id),
+                org_id=_as_uuid(org_id),
+                action=action,
+                to_stage=str_to,
+                actor_role=db_role,
+            )
+
+    async def _notify_workflow_event(
+        self,
+        *,
+        application_id: UUID,
+        org_id: UUID,
+        action: str,
+        to_stage: str,
+        actor_role: str,
+    ) -> None:
+        row = await self.conn.fetchrow(
+            """
+            SELECT
+                id,
+                ref_no,
+                applicant_name,
+                created_by,
+                branch_manager_id,
+                credit_officer_id
+            FROM loan_applications
+            WHERE id = $1
+              AND org_id = $2
+            """,
+            application_id,
+            org_id,
+        )
+        if not row:
+            return
+
+        recipient_id = row["created_by"]
+        ref_no = row["ref_no"]
+        applicant_name = row["applicant_name"]
+
+        title = None
+        notification_type = None
+        message = None
+
+        if to_stage == "returned" or action.lower().startswith("return"):
+            title = "Application Returned"
+            notification_type = "application_returned"
+            message = f"{ref_no} was returned by {actor_role.replace('_', ' ').title()} for correction"
+        elif action == "Credit Underwriting Verdict":
+            recipient_id = row["branch_manager_id"] or row["created_by"]
+            title = "Credit Review Done"
+            notification_type = "credit_review"
+            message = f"Credit review completed for {applicant_name} ({ref_no})"
+        elif to_stage == "disbursement_ready" or action == "Branch Final Approval":
+            title = "Loan Approved"
+            notification_type = "approved"
+            message = f"{ref_no} was approved for disbursement"
+        elif action == "Verify OCR Data":
+            title = "Documents Verified"
+            notification_type = "document_verified"
+            message = f"Documents verified for {applicant_name} ({ref_no})"
+
+        if not title:
+            return
+
+        from app.domains.notifications.repository import NotificationRepository
+        from app.domains.notifications.service import NotificationService
+
+        await NotificationService(NotificationRepository(self.conn)).create(
+            user_id=recipient_id,
+            org_id=org_id,
+            application_id=application_id,
+            title=title,
+            message=message,
+            notification_type=notification_type,
+        )

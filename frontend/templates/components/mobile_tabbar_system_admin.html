@@ -1,6 +1,41 @@
+{# Mobile bottom tab bar — System Admin #}
+{# Tabs: Home · Users · Activity · Audit · Logout #}
+
 {% set active_tab = active_tab|default('home') %}
-<button class="tab-item {% if active_tab == 'home' %}active{% endif %}" type="button" onclick="window.location.href='/dashboard'" aria-label="Home"><span class="tab-icon">&#x1F3E0;</span><span class="tab-label">Home</span></button>
-<button class="tab-item {% if active_tab == 'users' %}active{% endif %}" type="button" onclick="window.location.href='/users'" aria-label="Users"><span class="tab-icon">&#x1F465;</span><span class="tab-label">Users</span></button>
-<button class="tab-item {% if active_tab == 'activity' %}active{% endif %}" type="button" onclick="window.location.href='/system-activity'" aria-label="Activity"><span class="tab-icon">&#x1F4A0;</span><span class="tab-label">Activity</span></button>
-<button class="tab-item {% if active_tab == 'audit' %}active{% endif %}" type="button" onclick="window.location.href='/audit-trail'" aria-label="Audit"><span class="tab-icon">&#x1F4DC;</span><span class="tab-label">Audit</span></button>
-<button class="tab-item" type="button" onclick="window.location.href='/logout'" aria-label="Logout"><span class="tab-icon">&#x21AA;</span><span class="tab-label">Logout</span></button>
+
+{% macro tab_icon(id) %}
+<svg class="tab-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <use class="icon-stroke" href="/static/img/icons.svg#icon-{{ id }}-o"/>
+  <use class="icon-fill"   href="/static/img/icons.svg#icon-{{ id }}-f"/>
+</svg>
+{% endmacro %}
+
+<button class="tab-item {% if active_tab == 'home' %}active{% endif %}"
+        type="button" onclick="window.location.href='/dashboard'" aria-label="Home">
+    <span class="tab-icon">{{ tab_icon('home') }}</span>
+    <span class="tab-label">Home</span>
+</button>
+
+<button class="tab-item {% if active_tab == 'users' %}active{% endif %}"
+        type="button" onclick="window.location.href='/users'" aria-label="Users">
+    <span class="tab-icon">{{ tab_icon('users') }}</span>
+    <span class="tab-label">Users</span>
+</button>
+
+<button class="tab-item {% if active_tab == 'activity' %}active{% endif %}"
+        type="button" onclick="window.location.href='/system-activity'" aria-label="System Activity">
+    <span class="tab-icon">{{ tab_icon('activity') }}</span>
+    <span class="tab-label">Activity</span>
+</button>
+
+<button class="tab-item {% if active_tab == 'audit' %}active{% endif %}"
+        type="button" onclick="window.location.href='/audit-trail'" aria-label="Audit Trail">
+    <span class="tab-icon">{{ tab_icon('audit') }}</span>
+    <span class="tab-label">Audit</span>
+</button>
+
+<button class="tab-item"
+        type="button" onclick="window.location.href='/logout'" aria-label="Logout">
+    <span class="tab-icon">{{ tab_icon('logout') }}</span>
+    <span class="tab-label">Logout</span>
+</button>

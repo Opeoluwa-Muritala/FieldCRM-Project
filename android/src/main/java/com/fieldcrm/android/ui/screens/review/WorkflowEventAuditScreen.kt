@@ -8,9 +8,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +21,8 @@ import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.ui.viewmodel.AuditTrailViewModel
+import org.koin.androidx.compose.koinViewModel
 import java.util.Locale
 
 data class AuditLogEvent(
@@ -35,37 +36,29 @@ data class AuditLogEvent(
 
 @Composable
 fun WorkflowEventAuditScreen(
+    applicationId: String = "",
     onBackClick: () -> Unit
 ) {
+    val viewModel: AuditTrailViewModel = koinViewModel()
+    val auditState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(applicationId) {
+        if (applicationId.isNotEmpty()) viewModel.load(applicationId)
+    }
+
     var selectedFilterIndex by remember { mutableIntStateOf(0) }
     val filters = listOf("ALL CONSOLE LOGS", "MY ACTIVITIES", "UNDERWRITING", "DISBURSEMENTS")
 
-    val events = listOf(
+    val events = auditState.events.map { e ->
         AuditLogEvent(
-            timestamp = "2026-06-18 13:40",
-            actor = "Chidi Okafor",
-            role = "Loan Officer",
-            description = "Created initial borrower intake profile",
-            stateDiff = "Name: Adaeze Okonkwo\nBVN: 222333444",
-            isMine = true
-        ),
-        AuditLogEvent(
-            timestamp = "2026-06-18 13:52",
-            actor = "Fatima Al-Hassan",
-            role = "Credit Officer",
-            description = "Completed credit evaluation score pull",
-            stateDiff = "Score: 740\nDTI Ratio: 32%",
-            isMine = false
-        ),
-        AuditLogEvent(
-            timestamp = "2026-06-18 14:02",
-            actor = "Samuel Adebayo",
-            role = "Branch Manager",
-            description = "Approved loan application and signed collateral receipts",
-            stateDiff = null,
-            isMine = false
+            timestamp = e.timestamp.take(16).replace("T", " "),
+            actor = e.actor_name,
+            role = e.actor_role.replace("_", " ").replaceFirstChar { it.uppercaseChar() },
+            description = e.action,
+            stateDiff = e.state_diff.takeIf { it.isNotBlank() && it != "- → -" },
+            isMine = e.is_mine
         )
-    )
+    }
 
     Scaffold(
         topBar = {
@@ -74,7 +67,7 @@ fun WorkflowEventAuditScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            imageVector = FieldIcons.ArrowBackOutlined,
                             contentDescription = "Back",
                             tint = FieldTheme.colors.gray400
                         )
@@ -122,27 +115,48 @@ fun WorkflowEventAuditScreen(
             }
             
             // Audit Log List
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                val filteredEvents = if (selectedFilterIndex == 1) {
-                    events.filter { it.isMine }
-                } else {
-                    events
+            if (auditState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = FieldTheme.colors.purple600)
                 }
-                
-                itemsIndexed(filteredEvents) { index, item ->
-                    AuditTrailEntry(
-                        timestamp = item.timestamp,
-                        actorName = item.actor,
-                        actorRole = item.role,
-                        action = item.description,
-                        diff = item.stateDiff,
-                        isCurrentUserAction = item.isMine
-                    )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    val filteredEvents = if (selectedFilterIndex == 1) {
+                        events.filter { it.isMine }
+                    } else {
+                        events
+                    }
+
+                    if (filteredEvents.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillParentMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                androidx.compose.material3.Text(
+                                    text = if (applicationId.isEmpty()) "No application selected" else "No audit events found",
+                                    style = FieldTheme.typography.body,
+                                    color = FieldTheme.colors.gray500
+                                )
+                            }
+                        }
+                    }
+
+                    itemsIndexed(filteredEvents) { _, item ->
+                        AuditTrailEntry(
+                            timestamp = item.timestamp,
+                            actorName = item.actor,
+                            actorRole = item.role,
+                            action = item.description,
+                            diff = item.stateDiff,
+                            isCurrentUserAction = item.isMine
+                        )
+                    }
                 }
             }
         }

@@ -30,6 +30,7 @@ data class LoanApplicationModel(
     val id: String,
     val org_id: String,
     val borrower_id: String,
+    val applicant_name: String = "Applicant",
     val current_stage: Int,
     val current_owner_id: String,
     val status: String,

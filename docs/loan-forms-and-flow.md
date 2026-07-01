@@ -61,7 +61,7 @@ The Loan Officer application detail also exposes upload shortcuts for:
 - `id_card`: Valid ID Card
 - `utility_bill`: Utility Bill
 
-Documents are stored with `doc_type`, optional `form_code`, file name/path, MIME type, file size, quality status, verification status, uploader, and timestamps.
+Documents are uploaded as multipart files from web or Android and stored with `doc_type`, optional `form_code`, file name/path, MIME type, file size, quality status, verification status, uploader, and timestamps. The accepted upload formats are PDF, JPEG, and PNG, with a 10 MB maximum per file.
 
 ## Main Intake Application Form
 
@@ -525,4 +525,3 @@ The `loan_applications.stage` values are:
 - `rejected`
 
 Workflow activity is stored as immutable events with event type, source stage, destination stage, triggering user, role, notes, and timestamp.
-

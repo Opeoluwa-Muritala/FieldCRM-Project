@@ -53,7 +53,9 @@ data class FieldColors(
     val statusWarning: Color,
     val statusDanger: Color,
     val statusInfo: Color
-)
+) {
+    val brandPrimary: Color get() = purple600
+}
 
 // Desktop-inspired Dark Mode (Warm, deep slate-purples)
 val DarkFieldColors = FieldColors(
@@ -190,7 +192,7 @@ val LocalFieldTypography = staticCompositionLocalOf { FieldTypo }
 val LocalFieldShapes = staticCompositionLocalOf { FieldShapes() }
 
 // Dynamic theme resolution base on user role and system mode
-fun getRoleColors(role: UserRole?, darkTheme: Boolean): FieldColors {
+fun getRoleColors(@Suppress("UNUSED_PARAMETER") role: UserRole?, darkTheme: Boolean): FieldColors {
     val base = if (darkTheme) DarkFieldColors else LightFieldColors
     
     val (primaryColor, primaryHover, primaryLight, primaryTint) = if (darkTheme) {

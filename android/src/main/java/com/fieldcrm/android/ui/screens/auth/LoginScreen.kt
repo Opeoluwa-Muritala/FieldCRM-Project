@@ -10,20 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.material.icons.outlined.Fingerprint
-import androidx.compose.material.icons.outlined.HelpOutline
-import androidx.compose.material.icons.automirrored.outlined.ArrowForward
-import android.hardware.biometrics.BiometricPrompt
-import android.os.CancellationSignal
-import androidx.core.content.ContextCompat
-import androidx.compose.ui.platform.LocalContext
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -150,7 +137,7 @@ fun LoginScreenContent(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Shield,
+                                imageVector = FieldIcons.ShieldOutlined,
                                 contentDescription = "Shield Logo",
                                 tint = FieldTheme.colors.purple600,
                                 modifier = Modifier.size(36.dp)
@@ -188,7 +175,7 @@ fun LoginScreenContent(
                             errorText = emailError,
                             leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Outlined.Person,
+                                    imageVector = FieldIcons.PersonOutlined,
                                     contentDescription = null,
                                     tint = FieldTheme.colors.gray400
                                 )
@@ -220,7 +207,7 @@ fun LoginScreenContent(
                             errorText = passwordError,
                             leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Outlined.Lock,
+                                    imageVector = FieldIcons.LockOutlined,
                                     contentDescription = null,
                                     tint = FieldTheme.colors.gray400
                                 )
@@ -228,8 +215,8 @@ fun LoginScreenContent(
                             trailingIcon = {
                                 IconButton(onClick = { showPassword = !showPassword }) {
                                     Icon(
-                                        imageVector = if (showPassword) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
-                                        contentDescription = if (showPassword) "Toggle password visibility" else "Toggle password visibility",
+                                        imageVector = if (showPassword) FieldIcons.EyeOutlined else FieldIcons.EyeOffOutlined,
+                                        contentDescription = "Toggle password visibility",
                                         tint = FieldTheme.colors.gray400
                                     )
                                 }
@@ -265,12 +252,6 @@ fun LoginScreenContent(
                                 onLoginClick()
                             },
                             enabled = !state.isLoading && inputsFilled,
-                            trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                                    contentDescription = null
-                                )
-                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(52.dp)
@@ -280,38 +261,13 @@ fun LoginScreenContent(
                         // Biometric option (shown on second+ login only)
                         if (hasEnrolledBiometrics) {
                             Spacer(modifier = Modifier.height(12.dp))
-                            val context = LocalContext.current
                             SecondaryButton(
                                 text = "Use Face ID / Touch ID",
-                                onClick = {
-                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                                        val executor = ContextCompat.getMainExecutor(context)
-                                        val biometricPrompt = BiometricPrompt.Builder(context)
-                                            .setTitle("Biometric Login")
-                                            .setSubtitle("Sign in to your FieldCRM staff account")
-                                            .setNegativeButton("Cancel", executor) { _, _ -> }
-                                            .build()
-
-                                        biometricPrompt.authenticate(
-                                            CancellationSignal(),
-                                            executor,
-                                            object : BiometricPrompt.AuthenticationCallback() {
-                                                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult?) {
-                                                    onEmailChange("chidi@mmfb.com")
-                                                    onPasswordChange("password123")
-                                                    onLoginClick()
-                                                }
-                                            }
-                                        )
-                                    } else {
-                                        onEmailChange("chidi@mmfb.com")
-                                        onPasswordChange("password123")
-                                        onLoginClick()
-                                    }
-                                },
+                                onClick = {},
+                                enabled = false,
                                 leadingIcon = {
                                     Icon(
-                                        imageVector = Icons.Outlined.Fingerprint,
+                                        imageVector = FieldIcons.FingerprintOutlined,
                                         contentDescription = null,
                                         modifier = Modifier.size(20.dp)
                                     )
@@ -331,7 +287,7 @@ fun LoginScreenContent(
                                 .padding(8.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.HelpOutline,
+                                imageVector = FieldIcons.InfoOutlined,
                                 contentDescription = null,
                                 tint = FieldTheme.colors.gray500,
                                 modifier = Modifier.size(16.dp)

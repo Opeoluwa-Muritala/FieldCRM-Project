@@ -4,9 +4,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material3.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,9 +23,6 @@ fun FullScreenErrorScreen(
     onRetryClick: () -> Unit
 ) {
     var isLoading by remember { mutableStateOf(false) }
-    val configuration = LocalConfiguration.current
-    val isTablet = configuration.screenWidthDp >= 600
-
     // Pulsing circle animation for error state badge
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
@@ -68,7 +64,7 @@ fun FullScreenErrorScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.CloudOff,
+                            imageVector = FieldIcons.CloudOffOutlined,
                             contentDescription = "No Connection",
                             tint = FieldTheme.colors.statusDanger,
                             modifier = Modifier.size(36.dp)

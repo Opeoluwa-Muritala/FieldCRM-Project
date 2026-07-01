@@ -1,7 +1,8 @@
+import json
 from typing import Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, Query, UploadFile, status
 from pydantic import BaseModel, Field
 
 from app.core.audit import AuditService
@@ -13,6 +14,8 @@ from app.domains.guarantors.repository import GuarantorRepository
 from app.domains.guarantors.service import GuarantorService
 from app.domains.loans.repository import LoanRepository
 from app.domains.loans.service import LoanService
+from app.domains.notifications.repository import NotificationRepository
+from app.domains.notifications.service import NotificationService
 from app.domains.visitation.repository import VisitationRepository
 from app.domains.visitation.service import VisitationService
 from app.services.dashboard_service import DashboardService
@@ -34,6 +37,26 @@ class CreateApplicationRequest(BaseModel):
     customer_type: Literal["new", "existing"]
     loan_type: Literal["enterprise", "msef", "payee", "other"]
     applicant_name: str = "New Applicant"
+    borrower_id: str | None = None
+    amount: float | None = None
+    tenure: int | None = None
+    product_type: str | None = None
+
+
+class MobileBorrowerRequest(BaseModel):
+    name: str
+    phone: str = ""
+    bvn: str = ""
+    nin: str = ""
+    gps_coordinates: str | None = None
+    physical_address: str | None = None
+    employment_status: str | None = None
+    employer_name: str | None = None
+    monthly_income: float | None = None
+    bank_name: str | None = None
+    account_number: str | None = None
+    guarantor_name: str | None = None
+    guarantor_phone: str | None = None
 
 
 class SaveStepRequest(BaseModel):
@@ -42,10 +65,6 @@ class SaveStepRequest(BaseModel):
 
 class SaveGuarantorStepRequest(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict)
-
-
-class DocumentUploadRequest(BaseModel):
-    category: str = "other"
 
 
 class OcrReviewRequest(BaseModel):
@@ -79,8 +98,123 @@ class ReturnApplicationRequest(BaseModel):
     notes: str
 
 
+class AuditChecklistRequest(BaseModel):
+    consent_verified: bool = False
+    signature_matched: bool = False
+    exhibits_verified: bool = False
+
+
 def _role(user) -> str:
     return user.role.lower().replace(" ", "_")
+
+
+def _mobile_role(user) -> str:
+    role = _role(user)
+    role_map = {
+        "system_admin": "admin_mcr",
+        "admin": "admin_mcr",
+        "mcr": "admin_mcr",
+    }
+    return role_map.get(role, role)
+
+
+def _stage_number(stage: str | None) -> int:
+    return {
+        "intake": 1,
+        "ocr_review": 2,
+        "credit_review": 3,
+        "branch_approval": 4,
+        "disbursement_ready": 5,
+        "disbursed": 6,
+        "returned": 7,
+        "rejected": 8,
+    }.get(stage or "intake", 1)
+
+
+def _stage_status(stage: str | None) -> str:
+    return {
+        "intake": "Draft",
+        "ocr_review": "OCR Review",
+        "credit_review": "Credit Review",
+        "branch_approval": "Branch Approval",
+        "disbursement_ready": "Disbursement Ready",
+        "disbursed": "Disbursed",
+        "returned": "Returned",
+        "rejected": "Rejected",
+    }.get(stage or "intake", "Draft")
+
+
+def _mobile_application(app: Any, current_user) -> dict[str, Any]:
+    app_id = str(app.id)
+    return {
+        "id": app_id,
+        "org_id": str(getattr(app, "org_id", current_user.org_id)),
+        "borrower_id": str(getattr(app, "borrower_id", app_id)),
+        "current_stage": getattr(app, "current_stage", _stage_number(getattr(app, "stage", None))),
+        "current_owner_id": str(getattr(app, "current_owner_id", "") or getattr(app, "created_by", current_user.id)),
+        "status": getattr(app, "status", _stage_status(getattr(app, "stage", None))),
+        "amount": float(getattr(app, "amount", 0) or 0),
+        "tenure": int(getattr(app, "tenure", getattr(app, "tenor_months", 0)) or 0),
+        "product_type": getattr(app, "product_type", getattr(app, "loan_type", "other")),
+        "interest_rate": getattr(app, "interest_rate", 15.0),
+        "repayment_frequency": getattr(app, "repayment_frequency", getattr(app, "repayment_mode", "Monthly") or "Monthly"),
+        "collateral_desc": getattr(app, "collateral_desc", getattr(app, "purpose", None)),
+        "collateral_value": getattr(app, "collateral_value", 0.0),
+        "officer_recommendation": getattr(app, "officer_recommendation", ""),
+        "applicant_name": getattr(app, "applicant_name", "Applicant"),
+        "stage": getattr(app, "stage", None),
+        "created_at": getattr(app, "created_at", ""),
+    }
+
+
+def _mobile_borrower(app: Any, current_user, nin: str = "") -> dict[str, Any]:
+    app_id = str(app.id)
+    return {
+        "id": app_id,
+        "org_id": str(getattr(app, "org_id", current_user.org_id)),
+        "loan_officer_id": str(getattr(app, "created_by", current_user.id) or current_user.id),
+        "name": getattr(app, "applicant_name", "Applicant"),
+        "phone": getattr(app, "phone", "") or "",
+        "bvn": getattr(app, "bvn", "") or "",
+        "nin": nin,
+        "photo_url": None,
+        "status": "ACTIVE" if getattr(app, "stage", None) != "rejected" else "INACTIVE",
+        "gps_coordinates": None,
+        "physical_address": None,
+        "employment_status": None,
+        "employer_name": None,
+        "monthly_income": None,
+        "bank_name": None,
+        "account_number": None,
+        "guarantor_name": None,
+        "guarantor_phone": None,
+        "created_at": getattr(app, "created_at", ""),
+    }
+
+
+def _mobile_dashboard_metrics(data: dict[str, Any]) -> dict[str, Any]:
+    metrics = data.get("metrics", {}) if data else {}
+    return {
+        "apps_today": metrics.get("my_applications", metrics.get("total_applications", 0)),
+        "pending_sync": 0,
+        "visits_due": metrics.get("visits_due", 0),
+        "missing_docs": metrics.get("pending_upload", 0),
+        "branch_disbursed": float(metrics.get("ready_amount", 0) or 0),
+        "target_met_pct": int(metrics.get("target_met_pct", 0) or 0),
+        "awaiting_signoff": metrics.get("pending_signoffs", metrics.get("awaiting_concurrence", 0)),
+        "active_agents": metrics.get("active_assigned", 0),
+        "underwriting_queue": metrics.get("underwriting_queue", metrics.get("credit_review_count", 0)),
+        "avg_turnaround_mins": metrics.get("avg_turnaround_mins", 0),
+        "high_risk_cases": metrics.get("high_risk_cases", 0),
+        "approved_today": metrics.get("approved_today", 0),
+        "flags_raised": metrics.get("flags_raised", 0),
+        "policy_breaches": metrics.get("policy_breaches", 0),
+        "audited_today": metrics.get("audited_today", 0),
+        "board_tickets": metrics.get("board_tickets", 0),
+        "mcr_disbursed": float(metrics.get("mcr_disbursed", 0) or 0),
+        "alert_escalations": metrics.get("alert_escalations", 0),
+        "decisions_signed": metrics.get("decisions_signed", metrics.get("approved_today", 0)),
+    }
 
 
 def _stage_from_query(stage: str | None) -> str | None:
@@ -136,6 +270,10 @@ def _visitation_service(conn) -> VisitationService:
     return VisitationService(VisitationRepository(conn), AuditService(conn))
 
 
+def _notification_service(conn) -> NotificationService:
+    return NotificationService(NotificationRepository(conn))
+
+
 @router.get("/me", response_model=MobileUserResponse)
 async def get_mobile_user(current_user=Depends(get_current_user)):
     return {
@@ -143,7 +281,7 @@ async def get_mobile_user(current_user=Depends(get_current_user)):
         "org_id": current_user.org_id,
         "full_name": current_user.full_name,
         "email": current_user.email,
-        "role": current_user.role,
+        "role": _mobile_role(current_user),
         "display_role": current_user.display_role,
     }
 
@@ -151,15 +289,48 @@ async def get_mobile_user(current_user=Depends(get_current_user)):
 @router.get("/dashboard")
 async def get_mobile_dashboard(conn=Depends(db_conn), current_user=Depends(get_current_user)):
     data = await DashboardService(conn).get_dashboard_data(current_user)
+    metrics = _mobile_dashboard_metrics(data)
     return {
+        **metrics,
         "user": {
             "id": current_user.id,
             "full_name": current_user.full_name,
-            "role": current_user.role,
+            "role": _mobile_role(current_user),
             "display_role": current_user.display_role,
         },
         "data": data,
     }
+
+
+@router.get("/notifications")
+async def list_mobile_notifications(conn=Depends(db_conn), current_user=Depends(get_current_user)):
+    return await _notification_service(conn).list_for_user(
+        user_id=current_user.id,
+        org_id=current_user.org_id,
+    )
+
+
+@router.patch("/notifications/{notification_id}/read")
+async def mark_mobile_notification_read(
+    notification_id: str,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    await _notification_service(conn).mark_read_for_user(
+        notification_id=notification_id,
+        user_id=current_user.id,
+        org_id=current_user.org_id,
+    )
+    return {"ok": True}
+
+
+@router.delete("/notifications")
+async def clear_mobile_notifications(conn=Depends(db_conn), current_user=Depends(get_current_user)):
+    await _notification_service(conn).clear_for_user(
+        user_id=current_user.id,
+        org_id=current_user.org_id,
+    )
+    return {"ok": True}
 
 
 @router.get("/queues/{queue_name}")
@@ -209,6 +380,66 @@ async def get_mobile_queue(
     return {"queue": queue_name, "items": items}
 
 
+@router.get("/borrowers")
+async def list_mobile_borrowers(
+    page: int = Query(1, ge=1),
+    size: int = Query(50, ge=1, le=100),
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    repo = LoanRepository(conn)
+    officer_id = current_user.id if _role(current_user) == "loan_officer" else None
+    applications, total = await repo.list_by_stage(
+        org_id=current_user.org_id,
+        stage=None,
+        officer_id=officer_id,
+        page=page,
+        size=size,
+    )
+    seen: set[str] = set()
+    items = []
+    for app in applications:
+        full_app = await repo.get_by_id(app.id, current_user.org_id)
+        borrower_id = str(full_app.id if full_app else app.id)
+        if borrower_id in seen:
+            continue
+        seen.add(borrower_id)
+        items.append(_mobile_borrower(full_app or app, current_user))
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "size": size,
+    }
+
+
+@router.post("/borrowers", status_code=status.HTTP_201_CREATED)
+async def create_mobile_borrower(
+    payload: MobileBorrowerRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"loan_officer", "system_admin"})
+    app = await _loan_service(conn).create_loan(
+        org_id=current_user.org_id,
+        customer_type="new",
+        loan_type="other",
+        applicant_name=payload.name,
+        user_id=current_user.id,
+    )
+    updated = await LoanRepository(conn).update_intake_details(
+        loan_id=app.id,
+        org_id=current_user.org_id,
+        applicant_name=payload.name,
+        phone=payload.phone,
+        bvn=payload.bvn,
+        amount=None,
+        tenor_months=None,
+    )
+    borrower = updated or app
+    return {"borrower": _mobile_borrower(borrower, current_user, nin=payload.nin)}
+
+
 @router.get("/applications")
 async def list_mobile_applications(
     stage: str | None = None,
@@ -226,8 +457,12 @@ async def list_mobile_applications(
         page=page,
         size=size,
     )
+    items = []
+    for app in applications:
+        full_app = await repo.get_by_id(app.id, current_user.org_id)
+        items.append(_mobile_application(full_app or app, current_user))
     return {
-        "items": applications,
+        "items": items,
         "total": total,
         "page": page,
         "size": size,
@@ -241,14 +476,33 @@ async def create_mobile_application(
     current_user=Depends(get_current_user),
 ):
     _ensure_roles(current_user, {"loan_officer", "system_admin"})
+    applicant_name = payload.applicant_name
+    if payload.borrower_id:
+        try:
+            borrower_app = await LoanRepository(conn).get_by_id(UUID(payload.borrower_id), current_user.org_id)
+            if borrower_app:
+                applicant_name = borrower_app.applicant_name
+        except ValueError:
+            pass
     app = await _loan_service(conn).create_loan(
         org_id=current_user.org_id,
         customer_type=payload.customer_type,
         loan_type=payload.loan_type,
-        applicant_name=payload.applicant_name,
+        applicant_name=applicant_name,
         user_id=current_user.id,
     )
-    return {"application": app, "next": {"type": "intake_step", "step": 1}}
+    if payload.amount is not None or payload.tenure is not None:
+        updated = await LoanRepository(conn).update_intake_details(
+            loan_id=app.id,
+            org_id=current_user.org_id,
+            applicant_name=applicant_name,
+            phone=None,
+            bvn=None,
+            amount=payload.amount,
+            tenor_months=payload.tenure,
+        )
+        app = updated or app
+    return {"application": _mobile_application(app, current_user), "next": {"type": "intake_step", "step": 1}}
 
 
 @router.get("/applications/{application_id}")
@@ -359,15 +613,20 @@ async def save_mobile_guarantor_step(
 @router.post("/applications/{application_id}/documents")
 async def upload_mobile_document(
     application_id: UUID,
-    payload: DocumentUploadRequest,
+    file: UploadFile = File(...),
+    doc_type: str = Form("other"),
+    form_code: str | None = Form(None),
+    category: str | None = Form(None),
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
     await _get_application_or_404(conn, application_id, current_user)
-    document = await _document_service(conn).save_mock_upload(
+    document = await _document_service(conn).save_upload(
         loan_id=application_id,
         org_id=current_user.org_id,
-        category=payload.category,
+        doc_type=doc_type or category or "other",
+        form_code=form_code,
+        file=file,
         uploaded_by=current_user.id,
         user_role=current_user.role,
     )
@@ -459,6 +718,22 @@ async def submit_mobile_visitation_signoff(
     )
     if not report:
         raise HTTPException(status_code=409, detail="No submitted visitation report is awaiting signoff")
+    # Notify loan officer of visitation sign-off
+    try:
+        app_obj = await LoanRepository(conn).get_by_id(application_id, current_user.org_id)
+        created_by = getattr(app_obj, "created_by", None) if app_obj else None
+        if created_by and created_by != current_user.id:
+            verb = "concurred with" if payload.decision == "concurred" else "returned"
+            await _notification_service(conn).create(
+                user_id=created_by,
+                org_id=current_user.org_id,
+                application_id=application_id,
+                title="Visitation Sign-Off",
+                message=f"Branch manager {verb} your visitation report.",
+                notification_type="visitation_signoff",
+            )
+    except Exception:
+        pass
     return {"report": report}
 
 
@@ -489,6 +764,20 @@ async def submit_mobile_credit_review(
         actor_role=current_user.role,
         reason=payload.recommendation_notes,
     )
+    # Notify loan officer of credit review outcome
+    try:
+        created_by = getattr(app, "created_by", None)
+        if created_by and created_by != current_user.id:
+            await _notification_service(conn).create(
+                user_id=created_by,
+                org_id=current_user.org_id,
+                application_id=application_id,
+                title="Credit Review Complete",
+                message=f"Credit officer verdict: {payload.recommendation_decision}",
+                notification_type="credit_review",
+            )
+    except Exception:
+        pass
     return {"application": updated, "stage": stage}
 
 
@@ -522,6 +811,20 @@ async def approve_mobile_application(
         actor_id=str(current_user.id),
         actor_role=current_user.role,
     )
+    # Notify loan officer of approval
+    try:
+        created_by = getattr(app, "created_by", None)
+        if created_by and created_by != current_user.id:
+            await _notification_service(conn).create(
+                user_id=created_by,
+                org_id=current_user.org_id,
+                application_id=application_id,
+                title="Application Approved",
+                message="Your loan application has been approved and is ready for disbursement.",
+                notification_type="approval",
+            )
+    except Exception:
+        pass
     return {"application": app}
 
 
@@ -558,4 +861,292 @@ async def return_mobile_application(
         reason=return_reason,
     )
     app = await LoanRepository(conn).get_by_id(application_id, current_user.org_id)
+    # Notify loan officer their application was returned
+    try:
+        created_by = getattr(app, "created_by", None) if app else None
+        if created_by and created_by != current_user.id:
+            await _notification_service(conn).create(
+                user_id=created_by,
+                org_id=current_user.org_id,
+                application_id=application_id,
+                title="Application Returned",
+                message=f"Your loan application has been returned: {payload.reason_category}",
+                notification_type="returned",
+            )
+    except Exception:
+        pass
     return {"application": app, "return_reason": return_reason}
+
+
+@router.get("/config")
+async def get_mobile_config(conn=Depends(db_conn), current_user=Depends(get_current_user)):
+    row = await conn.fetchrow("SELECT name FROM organisations WHERE id = $1", current_user.org_id)
+    org_name = row["name"] if row else "FieldCRM MFB"
+    return {
+        "org_name": org_name,
+        "support_phone": "+234 1 234 5678",
+        "support_email": "helpdesk@mainstreetmfb.com",
+        "node_id": "IKJ-SRV-049",
+        "dti_limit": 0.40,
+        "pledge_form_code": "MMFB/CRM/02",
+        "dropdowns": {
+            "marital_status": ["Single", "Married", "Widowed", "Divorced"],
+            "employment_status": ["Public Service", "Private Sector", "Self Employed", "Unemployed"],
+            "loan_products": [
+                {"id": "WC", "name": "Working Capital"},
+                {"id": "AP", "name": "Asset Purchase"},
+                {"id": "MS", "name": "MSEF"},
+                {"id": "PY", "name": "Payee"},
+            ],
+            "error_categories": ["Payment Failed", "Wrong Deduction", "Not Credited", "BankOne Issue", "Other"],
+            "review_reasons": [
+                "High Confidence Business Site Check",
+                "Strong Co-Guarantor Attestation",
+                "Collateral Evaluation Mismatch",
+                "Insufficient Credit Score",
+            ],
+            "document_categories": [
+                "National ID", "Utility Bill", "Bank Statement", "Business Permit", "Guarantor ID"
+            ],
+        },
+    }
+
+
+@router.get("/search")
+async def search_mobile(
+    q: str = Query(""),
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    if len(q.strip()) < 2:
+        return {"applications": [], "borrowers": []}
+    term = f"%{q.strip()}%"
+    apps = await conn.fetch(
+        """
+        SELECT id, ref_no, applicant_name, stage
+        FROM loan_applications
+        WHERE org_id = $1 AND deleted_at IS NULL
+          AND (applicant_name ILIKE $2 OR ref_no ILIKE $2)
+        ORDER BY updated_at DESC LIMIT 20
+        """,
+        current_user.org_id, term,
+    )
+    borrowers_raw = await conn.fetch(
+        """
+        SELECT DISTINCT ON (applicant_name) id, applicant_name AS name, phone
+        FROM loan_applications
+        WHERE org_id = $1 AND deleted_at IS NULL AND applicant_name ILIKE $2
+        ORDER BY applicant_name, created_at DESC LIMIT 20
+        """,
+        current_user.org_id, term,
+    )
+    return {
+        "applications": [
+            {"id": str(r["id"]), "ref_no": r["ref_no"],
+             "borrower_name": r["applicant_name"], "status": _stage_status(r["stage"])}
+            for r in apps
+        ],
+        "borrowers": [
+            {"id": str(r["id"]), "name": r["name"], "phone": r["phone"] or ""}
+            for r in borrowers_raw
+        ],
+    }
+
+
+@router.get("/applications/{application_id}/audit")
+async def get_mobile_audit_trail(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    await _get_application_or_404(conn, application_id, current_user)
+    events = await conn.fetch(
+        """
+        SELECT we.id, we.event_type, we.from_stage, we.to_stage,
+               we.triggered_role, we.notes, we.created_at,
+               u.full_name AS actor_name
+        FROM workflow_events we
+        JOIN users u ON u.id = we.triggered_by
+        WHERE we.loan_id = $1 AND we.org_id = $2
+        ORDER BY we.created_at DESC
+        """,
+        application_id, current_user.org_id,
+    )
+    return [
+        {
+            "id": str(e["id"]),
+            "timestamp": e["created_at"].isoformat(),
+            "actor_name": e["actor_name"],
+            "actor_role": e["triggered_role"],
+            "action": e["event_type"],
+            "state_diff": f"{e['from_stage'] or '-'} → {e['to_stage'] or '-'}",
+            "notes": e["notes"] or "",
+            "is_mine": str(e.get("triggered_by", "")) == str(current_user.id),
+        }
+        for e in events
+    ]
+
+
+@router.get("/applications/{application_id}/bureau")
+async def get_mobile_bureau(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    await _get_application_or_404(conn, application_id, current_user)
+    row = await conn.fetchrow(
+        """
+        SELECT data_json FROM stage_data
+        WHERE loan_id = $1 AND stage = 'credit_review'
+        ORDER BY saved_at DESC LIMIT 1
+        """,
+        application_id,
+    )
+    data = dict(row["data_json"]) if row else {}
+    return {
+        "credit_score": int(data.get("credit_score", 0)),
+        "dti_ratio": float(data.get("dti_ratio", 0.0)),
+        "income_verified": bool(data.get("income_verified", False)),
+        "source": data.get("bureau_source", "Bureau Pull — Lagos Node"),
+    }
+
+
+@router.get("/applications/{application_id}/committee-votes")
+async def get_mobile_committee_votes(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    await _get_application_or_404(conn, application_id, current_user)
+    rows = await conn.fetch(
+        """
+        SELECT notes FROM workflow_events
+        WHERE loan_id = $1 AND org_id = $2 AND event_type = 'committee_vote'
+        """,
+        application_id, current_user.org_id,
+    )
+    total = len(rows)
+    yes_votes = sum(1 for r in rows if (r["notes"] or "").lower().startswith("yes"))
+    return {"yes_votes": yes_votes, "total_votes": total, "quorum": 3}
+
+
+@router.get("/applications/{application_id}/audit-checklist")
+async def get_mobile_audit_checklist(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    await _get_application_or_404(conn, application_id, current_user)
+    row = await conn.fetchrow(
+        """
+        SELECT data_json FROM stage_data
+        WHERE loan_id = $1 AND stage = 'audit_checklist'
+        ORDER BY saved_at DESC LIMIT 1
+        """,
+        application_id,
+    )
+    data = dict(row["data_json"]) if row else {}
+    return {
+        "consent_verified": bool(data.get("consent_verified", False)),
+        "signature_matched": bool(data.get("signature_matched", False)),
+        "exhibits_verified": bool(data.get("exhibits_verified", False)),
+    }
+
+
+@router.patch("/applications/{application_id}/audit-checklist")
+async def save_mobile_audit_checklist(
+    application_id: UUID,
+    payload: AuditChecklistRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"auditor", "system_admin"})
+    await _get_application_or_404(conn, application_id, current_user)
+    data = json.dumps({
+        "consent_verified": payload.consent_verified,
+        "signature_matched": payload.signature_matched,
+        "exhibits_verified": payload.exhibits_verified,
+    })
+    await conn.execute(
+        "INSERT INTO stage_data (loan_id, stage, data_json, saved_by) VALUES ($1, 'audit_checklist', $2::jsonb, $3)",
+        application_id, data, current_user.id,
+    )
+    return {"ok": True}
+
+
+@router.get("/faqs")
+async def get_mobile_faqs(current_user=Depends(get_current_user)):
+    return [
+        {
+            "question": "How does the camera OCR parser work?",
+            "answer": "Align the NIN/BVN identity document inside the viewfinder scanner box. Click Scan & Extract; standard ML Kit extracts and matches text values locally without remote delays.",
+        },
+        {
+            "question": "GPS Coordinates lock timeout?",
+            "answer": "Ensure location sensors are enabled on your device. Click the refresh location button to trigger an active ACCESS_FINE_LOCATION provider query.",
+        },
+        {
+            "question": "Managing the Offline Sync Queue?",
+            "answer": "When working offline, completed dossiers are queued locally. Tap the Sync button on the main tab once network coverage is restored to upload cached records.",
+        },
+        {
+            "question": "What is the DTI limit for loan approval?",
+            "answer": "The Debt-to-Income ratio limit is 40%. Applications above this threshold require additional review and committee approval before disbursement.",
+        },
+        {
+            "question": "How do I escalate a compliance flag?",
+            "answer": "Navigate to the application audit trail, review workflow events, and use the Report Problem option to escalate to the compliance officer via the platform.",
+        },
+    ]
+
+
+_ONBOARDING_SLIDES: dict[str, list[dict]] = {
+    "loan_officer": [
+        {"title": "Welcome to FieldCRM", "subtitle": "Your Field Operations Hub",
+         "body": "Manage loan applications, conduct visits, and process borrower records from your mobile device — anytime, anywhere."},
+        {"title": "Create Applications", "subtitle": "Start a New Loan Dossier",
+         "body": "Tap the + button on your Work Queue to begin a new loan application. Fill in borrower details step by step and capture documents with OCR scanning."},
+        {"title": "Schedule Visits", "subtitle": "Track Your Field Visits",
+         "body": "View visits due today on your dashboard. Complete visitation reports in the field and submit them for branch manager sign-off."},
+        {"title": "Offline Mode", "subtitle": "Work Without Internet",
+         "body": "All your changes are saved locally when offline. When you reconnect, the sync queue automatically uploads completed records to the server."},
+    ],
+    "credit_officer": [
+        {"title": "Credit Review Console", "subtitle": "Your Underwriting Workspace",
+         "body": "Access all applications assigned for credit evaluation. Pull bureau scores, calculate DTI, and submit your recommendation."},
+        {"title": "Bureau Integration", "subtitle": "Automated Score Retrieval",
+         "body": "Credit scores and DTI ratios are pulled automatically from the bureau integration. Review the data and verify income before submitting your verdict."},
+        {"title": "OCR Exceptions", "subtitle": "Handle Document Flags",
+         "body": "Review OCR exceptions flagged during document scanning. Correct misread values and verify critical fields before advancing applications."},
+    ],
+    "branch_manager": [
+        {"title": "Manager Dashboard", "subtitle": "Branch Oversight Console",
+         "body": "Monitor all applications awaiting your sign-off, review concurrence requests from field officers, and track branch disbursement targets."},
+        {"title": "Approval Workflow", "subtitle": "Final Branch Decision",
+         "body": "Review credit officer recommendations and complete the final approval attestation. Applications you approve move directly to disbursement ready status."},
+        {"title": "Visitation Sign-Off", "subtitle": "Concur or Return Reports",
+         "body": "Review visitation reports submitted by your field officers. Concur with findings or return for corrections before final approval."},
+    ],
+    "auditor": [
+        {"title": "Compliance Audit", "subtitle": "Regulatory Oversight Tools",
+         "body": "Review loan files for policy compliance, verify audit checklists, and flag applications with potential regulatory breaches."},
+        {"title": "Audit Checklist", "subtitle": "Structured Compliance Review",
+         "body": "Complete the audit checklist for each reviewed application. Verify consent documentation, signature matching, and exhibit compliance."},
+    ],
+    "admin_mcr": [
+        {"title": "System Control", "subtitle": "Administrative Overview",
+         "body": "Monitor all applications across branches, manage user assignments, and review system-level metrics and alert escalations."},
+        {"title": "MCR Disbursement", "subtitle": "Final Disbursement Control",
+         "body": "Review applications in disbursement-ready status, verify committee votes, and authorize final disbursement to borrower accounts."},
+    ],
+}
+
+
+@router.get("/onboarding")
+async def get_mobile_onboarding(
+    role: str = Query("loan_officer"),
+    current_user=Depends(get_current_user),
+):
+    mapped = _mobile_role(current_user) if not role else role
+    slides = _ONBOARDING_SLIDES.get(mapped, _ONBOARDING_SLIDES["loan_officer"])
+    return slides

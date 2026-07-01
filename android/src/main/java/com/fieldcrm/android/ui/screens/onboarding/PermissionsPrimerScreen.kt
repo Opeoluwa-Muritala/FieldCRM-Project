@@ -4,12 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.PhotoCamera
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.NotificationsActive
-import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -97,7 +93,7 @@ fun PermissionsContent(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Outlined.Shield,
+                imageVector = FieldIcons.ShieldOutlined,
                 contentDescription = "Brand Mark",
                 tint = FieldTheme.colors.purple600,
                 modifier = Modifier.size(32.dp)
@@ -121,7 +117,7 @@ fun PermissionsContent(
 
         if (needsCamera) {
             PermissionRow(
-                icon = Icons.Outlined.PhotoCamera,
+                icon = FieldIcons.CameraOutlined,
                 title = "Camera Access",
                 description = "Required for secure document scanning and client identity verification in the field."
             )
@@ -130,7 +126,7 @@ fun PermissionsContent(
 
         if (needsLocation) {
             PermissionRow(
-                icon = Icons.Outlined.LocationOn,
+                icon = FieldIcons.LocationOutlined,
                 title = "Location Services",
                 description = "Enables accurate field verification, geotagging visits, and optimizing your daily route."
             )
@@ -139,7 +135,7 @@ fun PermissionsContent(
 
         if (needsNotifications) {
             PermissionRow(
-                icon = Icons.Outlined.NotificationsActive,
+                icon = FieldIcons.BellFilled,
                 title = "Push Notifications",
                 description = "Stay updated with real-time task assignments, crucial alerts, and schedule changes."
             )

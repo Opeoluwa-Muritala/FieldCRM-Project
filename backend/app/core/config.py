@@ -77,6 +77,14 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = ["http://localhost:8000", "http://127.0.0.1:8000"]
     COOKIE_SECURE: bool = os.getenv("COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
 
+    # Document uploads
+    DOCUMENT_UPLOAD_DIR: str = os.getenv(
+        "DOCUMENT_UPLOAD_DIR",
+        str(ROOT_DIR / "frontend" / "static" / "uploads"),
+    )
+    DOCUMENT_MAX_UPLOAD_BYTES: int = int(os.getenv("DOCUMENT_MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
+    DOCUMENT_ALLOWED_MIME_TYPES: List[str] = ["application/pdf", "image/jpeg", "image/png"]
+
     @model_validator(mode="after")
     def normalize_database_url(self):
         if self.DATABASE_URL == "sqlite:///./fieldcrm.db":

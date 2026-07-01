@@ -7,11 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -92,7 +89,7 @@ fun ApplicationListContent(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            imageVector = FieldIcons.ArrowBackOutlined,
                             contentDescription = "Back",
                             tint = FieldTheme.colors.gray400
                         )
@@ -122,7 +119,7 @@ fun ApplicationListContent(
                 contentColor = Color.White,
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = "Create Application")
+                Icon(FieldIcons.AddOutlined, contentDescription = "Create Application")
             }
         },
         containerColor = FieldTheme.colors.gray950
@@ -143,7 +140,7 @@ fun ApplicationListContent(
                 placeholder = "Search Emeka, Adaeze, or ref...",
                 trailingIcon = {
                     Icon(
-                        imageVector = Icons.Outlined.Search,
+                        imageVector = FieldIcons.SearchOutlined,
                         contentDescription = "Search",
                         tint = FieldTheme.colors.gray500
                     )
@@ -251,7 +248,7 @@ fun ApplicationListContent(
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
-                                            text = "₦ ${app.amount}",
+                                            text = "₦${String.format(Locale.US, "%,.0f", app.amount)}",
                                             style = FieldTheme.typography.mono.copy(
                                                 fontSize = 13.sp,
                                                 fontWeight = FontWeight.Bold

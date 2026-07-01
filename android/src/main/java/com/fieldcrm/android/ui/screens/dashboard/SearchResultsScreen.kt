@@ -6,15 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.AssignmentInd
 import androidx.compose.material3.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,7 +20,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.theme.FieldTheme
-import kotlinx.coroutines.delay
+import com.fieldcrm.android.ui.viewmodel.SearchViewModel
+import org.koin.androidx.compose.koinViewModel
 
 data class SearchResultApplication(val name: String, val refNo: String)
 data class SearchResultDocument(val title: String, val type: String)
@@ -38,42 +32,24 @@ fun SearchResultsScreen(
     onBackClick: () -> Unit,
     onNavigateToApplication: (String) -> Unit
 ) {
+    val searchViewModel: SearchViewModel = koinViewModel()
+    val searchState by searchViewModel.uiState.collectAsState()
+
     var searchQuery by remember { mutableStateOf("") }
-    var debouncedQuery by remember { mutableStateOf("") }
-    
-    // Simulate debouncing at 300ms
+
     LaunchedEffect(searchQuery) {
-        delay(300)
-        debouncedQuery = searchQuery
+        searchViewModel.search(searchQuery)
     }
 
     val recentSearches = listOf("Kalu", "MMFB-041", "Adaeze", "Guarantor")
-    
-    val allApplications = listOf(
-        SearchResultApplication("Adaeze Kalu", "MMFB-041"),
-        SearchResultApplication("Adaeze Kalu (guarantor)", "MMFB-039"),
-        SearchResultApplication("Chidi Okafor", "MMFB-052"),
-        SearchResultApplication("Fatima Yusuf", "MMFB-028")
-    )
-    
-    val allDocuments = listOf(
-        SearchResultDocument("Guarantor Form - MMFB-041", "PDF"),
-        SearchResultDocument("Business Valuation - MMFB-039", "JPG")
-    )
 
-    // Filter results
-    val filteredApps = if (debouncedQuery.isBlank()) emptyList() else {
-        allApplications.filter {
-            it.name.contains(debouncedQuery, ignoreCase = true) ||
-            it.refNo.contains(debouncedQuery, ignoreCase = true)
-        }
-    }
-    
-    val filteredDocs = if (debouncedQuery.isBlank()) emptyList() else {
-        allDocuments.filter {
-            it.title.contains(debouncedQuery, ignoreCase = true)
-        }
-    }
+    val filteredApps = searchState.results?.applications?.map {
+        SearchResultApplication(it.borrower_name, it.ref_no)
+    } ?: emptyList()
+
+    val filteredDocs = emptyList<SearchResultDocument>()
+
+    val debouncedQuery = searchQuery
 
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
@@ -95,7 +71,7 @@ fun SearchResultsScreen(
                         },
                         leadingIcon = {
                             Icon(
-                                imageVector = Icons.Outlined.Search,
+                                imageVector = FieldIcons.SearchOutlined,
                                 contentDescription = "Search",
                                 tint = FieldTheme.colors.gray500
                             )
@@ -107,7 +83,7 @@ fun SearchResultsScreen(
                                     modifier = Modifier.size(48.dp) // Minimum touch target
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Outlined.Close,
+                                        imageVector = FieldIcons.CloseOutlined,
                                         contentDescription = "Clear",
                                         tint = FieldTheme.colors.gray400
                                     )
@@ -135,7 +111,7 @@ fun SearchResultsScreen(
                         modifier = Modifier.size(48.dp) // Minimum touch target
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            imageVector = FieldIcons.ArrowBackOutlined,
                             contentDescription = "Back",
                             tint = FieldTheme.colors.gray400
                         )
@@ -191,6 +167,10 @@ fun SearchResultsScreen(
                         }
                     }
                 }
+            } else if (searchState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = FieldTheme.colors.purple600)
+                }
             } else if (debouncedQuery.isNotEmpty() && filteredApps.isEmpty() && filteredDocs.isEmpty()) {
                 // No results state
                 Column(
@@ -201,7 +181,7 @@ fun SearchResultsScreen(
                         .padding(32.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Shield, // Shield brand mark substitute
+                        imageVector = FieldIcons.ShieldOutlined, // Shield brand mark substitute
                         contentDescription = "No Results",
                         tint = FieldTheme.colors.purple600,
                         modifier = Modifier
@@ -268,7 +248,7 @@ fun SearchResultsScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Outlined.AssignmentInd,
+                                            imageVector = FieldIcons.BadgeOutlined,
                                             contentDescription = "Application",
                                             tint = FieldTheme.colors.purple400,
                                             modifier = Modifier.size(24.dp)
@@ -288,7 +268,7 @@ fun SearchResultsScreen(
                                             )
                                         }
                                         Icon(
-                                            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                                            imageVector = FieldIcons.ChevronRightOutlined,
                                             contentDescription = "Go",
                                             tint = FieldTheme.colors.gray500,
                                             modifier = Modifier.size(20.dp)
@@ -349,7 +329,7 @@ fun SearchResultsScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Outlined.Description,
+                                            imageVector = FieldIcons.DocumentOutlined,
                                             contentDescription = "Document",
                                             tint = FieldTheme.colors.purple400,
                                             modifier = Modifier.size(24.dp)
@@ -369,7 +349,7 @@ fun SearchResultsScreen(
                                             )
                                         }
                                         Icon(
-                                            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                                            imageVector = FieldIcons.ChevronRightOutlined,
                                             contentDescription = "Go",
                                             tint = FieldTheme.colors.gray500,
                                             modifier = Modifier.size(20.dp)

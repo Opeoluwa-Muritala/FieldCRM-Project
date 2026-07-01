@@ -10,45 +10,87 @@
     <div class="page-card no-shadow" style="max-width: 640px; width: 100%;">
         <div class="page-card-header">
             <h2 class="page-card-title">Upload Document</h2>
-            <p class="page-card-subtitle">Upload the requested document for borrower {{ borrower_name }}. Category: <strong style="color:var(--color-brand-shield);">{{ doc_type|upper }}</strong></p>
+            <p class="page-card-subtitle">
+                Attach a supporting document for <strong>{{ borrower_name }}</strong>.
+                Category: <strong style="color:var(--color-brand-shield);">{{ doc_type|upper }}</strong>
+            </p>
         </div>
 
-        <form action="/applications/{{ app_id }}/documents/upload?type={{ doc_type }}" method="POST" enctype="multipart/form-data">
-            <!-- File dropzone -->
-            <div class="upload-dragzone" onclick="document.getElementById('fileInput').click()">
-                <span style="font-size:32px; color: var(--color-brand-shield);">&#x1F4E4;</span>
-                <span style="font-weight:500; margin-top:8px;">Drag and drop file here, or click to browse</span>
-                <span style="font-size: 12px; color:var(--text-muted); margin-top:4px;">Supports PDF, JPG, JPEG, PNG up to 5MB</span>
-                <input type="file" name="file" id="fileInput" style="display:none;" onchange="handleFileSelected(this)">
+        <form id="uploadForm" action="/applications/{{ app_id }}/documents/upload?type={{ doc_type }}"
+              method="POST" enctype="multipart/form-data" onsubmit="handleFormSubmit(event)">
+
+            <!-- Drop zone -->
+            <div class="upload-dragzone" id="dropzone"
+                 onclick="document.getElementById('fileInput').click()"
+                 ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                 ondragleave="this.classList.remove('drag-over')"
+                 ondrop="handleDrop(event)">
+                <svg viewBox="0 0 24 24" width="36" height="36"
+                     style="color:var(--color-brand-shield);" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <use href="/static/img/icons.svg#icon-doc-upload-o"/>
+                </svg>
+                <span style="font-weight:500; margin-top:8px;">Drag and drop file here, or tap to browse</span>
+                <span style="font-size:12px; color:var(--text-muted); margin-top:4px;">PDF, JPG, JPEG, PNG - max 10 MB</span>
+                <input type="file" name="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png"
+                       style="display:none;" onchange="handleFileSelected(this)">
             </div>
 
-            <!-- Upload Feedback Box (Hidden initially) -->
-            <div id="uploadFeedbackSlot" style="display:none; margin-top:20px; border:0.5px solid var(--border-color); border-radius:8px; padding:16px; background-color: var(--bg-secondary);">
-                <div style="display:flex; align-items:center; gap:16px;">
-                    <div style="font-size:24px; color:var(--color-brand-shield);" id="fileIcon">&#x1F4C4;</div>
-                    <div style="flex:1;">
-                        <div style="font-size:13px; font-weight:500;" id="fileNameVal">document_filename.pdf</div>
-                        <div style="font-size: 12px; color:var(--text-muted);" id="fileSizeVal">1.2 MB</div>
+            <!-- File preview row (hidden until a file is chosen) -->
+            <div id="uploadFeedbackSlot" style="display:none; margin-top:16px;
+                 border:0.5px solid var(--border-color); border-radius:8px; padding:14px;
+                 background-color:var(--bg-secondary);">
+                <div style="display:flex; align-items:center; gap:14px;">
+                    <svg id="fileIcon" viewBox="0 0 24 24" width="28" height="28"
+                         style="color:var(--color-brand-shield); flex-shrink:0;"
+                         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <use href="/static/img/icons.svg#icon-doc-upload-o"/>
+                    </svg>
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-size:13px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                             id="fileNameVal"></div>
+                        <div style="font-size:12px; color:var(--text-muted);" id="fileSizeVal"></div>
                     </div>
+                    <button type="button" class="btn-ghost-link" style="font-size:12px; flex-shrink:0;"
+                            onclick="clearFileSelection()">Remove</button>
                 </div>
-                <div style="margin-top:16px; display:flex; align-items:center; gap:12px;">
-                    <label class="field-label" style="margin-bottom:0;" for="catSelect">Selected Category</label>
-                    <select name="category" id="catSelect" class="field-select" style="min-height:30px; width:180px;">
-                        <option value="payslip" {% if doc_type == 'payslip' %}selected{% endif %}>Payslip</option>
-                        <option value="id" {% if doc_type == 'id' %}selected{% endif %}>Identity Document</option>
-                        <option value="statement" {% if doc_type == 'bank_statement' or doc_type == 'statement' %}selected{% endif %}>Bank Statement</option>
+
+                <!-- Category override -->
+                <div style="margin-top:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <label class="field-label" style="margin-bottom:0; white-space:nowrap;" for="catSelect">Category</label>
+                    <select name="category" id="catSelect" class="field-select" style="flex:1; min-width:160px;">
+                        <option value="id"        {% if doc_type == 'id' %}selected{% endif %}>Identity Document</option>
+                        <option value="payslip"   {% if doc_type == 'payslip' %}selected{% endif %}>Pay Slip</option>
+                        <option value="statement" {% if doc_type in ('bank_statement','statement') %}selected{% endif %}>Bank Statement</option>
                         <option value="guarantor" {% if 'guarantor' in doc_type %}selected{% endif %}>Guarantor Document</option>
-                        <option value="other" {% if doc_type == 'other' %}selected{% endif %}>Other Supporting</option>
+                        <option value="pledge"    {% if doc_type == 'pledge' %}selected{% endif %}>Deed of Pledge</option>
+                        <option value="other"     {% if doc_type == 'other' %}selected{% endif %}>Other Supporting</option>
                     </select>
-                    <span style="font-size: 12px; color:var(--color-brand-shield); cursor:pointer;" onclick="clearFileSelection()">Upload Another</span>
+                </div>
+            </div>
+
+            <!-- Upload progress bar (hidden until submit) -->
+            <div id="uploadProgress" style="display:none; margin-top:16px;">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+                    <svg viewBox="0 0 24 24" width="18" height="18" style="color:var(--color-brand-shield);"
+                         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <use href="/static/img/icons.svg#icon-sync-o"/>
+                    </svg>
+                    <span style="font-size:13px; color:var(--text-muted);" id="progressLabel">Uploading…</span>
+                </div>
+                <div style="height:4px; border-radius:2px; background:var(--bg-tertiary); overflow:hidden;">
+                    <div id="progressBar"
+                         style="height:100%; width:0%; background:var(--color-brand-shield);
+                                border-radius:2px; transition:width 0.3s ease;"></div>
                 </div>
             </div>
 
             <!-- Form actions -->
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:32px; border-top:0.5px solid var(--color-divider); padding-top:16px;">
-                <!-- Simple javascript referrer redirect to go back if possible -->
-                <button type="button" class="btn-ghost-link" onclick="window.history.back()">&larr; Cancel & Go Back</button>
-                <button type="submit" class="btn-primary-filled" id="saveDocBtn" disabled>Save Document &rarr;</button>
+            <div style="display:flex; justify-content:space-between; align-items:center;
+                        margin-top:28px; border-top:0.5px solid var(--color-divider); padding-top:16px;">
+                <button type="button" class="btn-ghost-link" onclick="window.history.back()">&larr; Cancel</button>
+                <button type="submit" class="btn-primary-filled" id="saveDocBtn" disabled>
+                    Save Document &rarr;
+                </button>
             </div>
         </form>
     </div>
@@ -56,31 +98,93 @@
 
 <script>
     function handleFileSelected(input) {
-        if (input.files && input.files[0]) {
-            const file = input.files[0];
-            document.getElementById('fileNameVal').textContent = file.name;
-            
-            // Format size
-            let sz = file.size / (1024 * 1024);
-            document.getElementById('fileSizeVal').textContent = sz.toFixed(2) + " MB";
-            
-            // Show icon by type
-            const icon = document.getElementById('fileIcon');
-            if (file.type.includes('image')) {
-                icon.innerHTML = '&#x1F5BC;';
-            } else {
-                icon.innerHTML = '&#x1F4C4;';
-            }
-            
-            document.getElementById('uploadFeedbackSlot').style.display = 'block';
-            document.getElementById('saveDocBtn').disabled = false;
+        if (!input.files || !input.files[0]) return;
+        applyFile(input.files[0]);
+    }
+
+    function handleDrop(event) {
+        event.preventDefault();
+        document.getElementById('dropzone').classList.remove('drag-over');
+        const file = event.dataTransfer.files[0];
+        if (file) {
+            document.getElementById('fileInput').files = event.dataTransfer.files;
+            applyFile(file);
         }
     }
 
+    function applyFile(file) {
+        const MAX_MB = 10;
+        if (file.size > MAX_MB * 1024 * 1024) {
+            alert('File exceeds ' + MAX_MB + ' MB. Please choose a smaller file.');
+            return;
+        }
+
+        document.getElementById('fileNameVal').textContent = file.name;
+        const mb = (file.size / (1024 * 1024)).toFixed(2);
+        document.getElementById('fileSizeVal').textContent = mb + ' MB';
+
+        // Swap icon — image files get the OCR icon, documents stay as doc-upload
+        const iconUse = document.querySelector('#fileIcon use');
+        if (iconUse) {
+            iconUse.setAttribute('href', file.type.startsWith('image/')
+                ? '/static/img/icons.svg#icon-ocr-o'
+                : '/static/img/icons.svg#icon-doc-upload-o');
+        }
+
+        document.getElementById('uploadFeedbackSlot').style.display = 'block';
+        document.getElementById('saveDocBtn').disabled = false;
+    }
+
     function clearFileSelection() {
-        document.getElementById('fileInput').value = "";
+        document.getElementById('fileInput').value = '';
         document.getElementById('uploadFeedbackSlot').style.display = 'none';
+        document.getElementById('uploadProgress').style.display = 'none';
         document.getElementById('saveDocBtn').disabled = true;
+    }
+
+    function handleFormSubmit(event) {
+        event.preventDefault();
+        const form = document.getElementById('uploadForm');
+        const formData = new FormData(form);
+
+        document.getElementById('saveDocBtn').disabled = true;
+        document.getElementById('uploadProgress').style.display = 'block';
+
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                document.getElementById('progressBar').style.width = pct + '%';
+                document.getElementById('progressLabel').textContent = 'Uploading… ' + pct + '%';
+            }
+        });
+
+        xhr.addEventListener('load', function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                document.getElementById('progressBar').style.width = '100%';
+                document.getElementById('progressLabel').textContent = 'Upload complete — redirecting…';
+                // Server redirects or returns JSON with next URL
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.redirect) { window.location.href = data.redirect; return; }
+                } catch (_) {}
+                window.history.back();
+            } else {
+                document.getElementById('progressLabel').textContent = 'Upload failed (HTTP ' + xhr.status + '). Please retry.';
+                document.getElementById('progressBar').style.background = 'var(--color-danger, #e53e3e)';
+                document.getElementById('saveDocBtn').disabled = false;
+            }
+        });
+
+        xhr.addEventListener('error', function() {
+            document.getElementById('progressLabel').textContent = 'Network error. Check your connection and retry.';
+            document.getElementById('progressBar').style.background = 'var(--color-danger, #e53e3e)';
+            document.getElementById('saveDocBtn').disabled = false;
+        });
+
+        xhr.open('POST', form.action);
+        xhr.send(formData);
     }
 </script>
 {% endblock %}

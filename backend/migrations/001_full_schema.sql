@@ -27,6 +27,7 @@ DROP TABLE IF EXISTS organisation CASCADE;
 
 -- Also drop new-schema tables if they exist (idempotent reruns)
 DROP TABLE IF EXISTS audit_entries CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS visitation_reports CASCADE;
 DROP TABLE IF EXISTS workflow_events CASCADE;
 DROP TABLE IF EXISTS ocr_fields CASCADE;
@@ -298,6 +299,24 @@ CREATE TABLE visitation_reports (
     updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE UNIQUE INDEX ix_visitation_loan ON visitation_reports (loan_id);
+
+-- =============================================================================
+-- NOTIFICATIONS
+-- =============================================================================
+CREATE TABLE notifications (
+    id              TEXT PRIMARY KEY DEFAULT ('notif_' || replace(gen_random_uuid()::text, '-', '')),
+    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    org_id          UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+    application_id  UUID REFERENCES loan_applications(id) ON DELETE CASCADE,
+    title           TEXT NOT NULL,
+    message         TEXT NOT NULL,
+    type            TEXT NOT NULL,
+    is_read         BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX ix_notifications_user_date ON notifications (user_id, created_at DESC);
+CREATE INDEX ix_notifications_user_unread ON notifications (user_id, is_read, created_at DESC);
+CREATE INDEX ix_notifications_application ON notifications (application_id);
 
 -- =============================================================================
 -- AUDIT ENTRIES (append-only, never updated or deleted)

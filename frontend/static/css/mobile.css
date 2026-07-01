@@ -173,12 +173,33 @@
     justify-content: center;
     gap: 2px;
     cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.tab-item.active {
+    color: var(--role-accent, var(--color-brand-shield));
 }
 
 .tab-icon {
-    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
     line-height: 1;
 }
+
+/* SVG icon variants: show outlined by default, filled when active */
+.tab-icon .tab-svg {
+    width: 22px;
+    height: 22px;
+    display: block;
+}
+
+.tab-icon .icon-fill { display: none; }
+.tab-icon .icon-stroke { display: block; }
+.tab-item.active .icon-fill { display: block; }
+.tab-item.active .icon-stroke { display: none; }
 
 .tab-label {
     max-width: 100%;

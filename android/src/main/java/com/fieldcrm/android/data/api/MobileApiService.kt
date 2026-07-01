@@ -7,18 +7,19 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import com.fieldcrm.shared.model.BorrowerModel
 
 interface MobileApiService {
+    fun setToken(token: String)
     suspend fun login(username: String, password: String): TokenResponse?
     suspend fun getMe(): MobileUser?
     suspend fun getDashboard(): String?
+    suspend fun getDashboardMetrics(): DashboardMetrics?
     suspend fun getQueue(queueName: String): String?
     suspend fun createApplication(customerType: String, loanType: String, applicantName: String): String?
     suspend fun getApplicationDetail(id: String): String?
     suspend fun saveIntakeStep(id: String, step: Int, data: Map<String, String>): String?
     suspend fun saveGuarantorStep(id: String, slot: Int, step: Int, data: Map<String, String>): String?
-    suspend fun uploadDocument(id: String, category: String): String?
+    suspend fun uploadDocument(id: String, category: String, fileBytes: ByteArray? = null, fileName: String = "document"): String?
     suspend fun submitOcrReview(id: String, corrections: Map<String, String>): String?
     suspend fun getVisitationReport(id: String): String?
     suspend fun submitVisitationReport(id: String, metWith: String, premises: String, direction: String): String?
@@ -26,7 +27,138 @@ interface MobileApiService {
     suspend fun submitCreditReview(id: String, decision: String, notes: String): String?
     suspend fun approveApplication(id: String): String?
     suspend fun returnApplication(id: String, reason: String, notes: String): String?
+    suspend fun getNotifications(): List<ApiNotification>
+    suspend fun markNotificationRead(id: String): Boolean
+    suspend fun clearNotifications(): Boolean
+    suspend fun getConfig(): AppConfig?
+    suspend fun search(query: String): SearchResponse?
+    suspend fun getAuditTrail(applicationId: String): List<AuditTrailEvent>
+    suspend fun getBureauData(applicationId: String): BureauData?
+    suspend fun getCommitteeVotes(applicationId: String): CommitteeVotes?
+    suspend fun getAuditChecklist(applicationId: String): AuditChecklist?
+    suspend fun saveAuditChecklist(applicationId: String, checklist: AuditChecklist): Boolean
+    suspend fun getFaqs(): List<FaqItem>
+    suspend fun getOnboarding(role: String): List<OnboardingSlide>
 }
+
+@kotlinx.serialization.Serializable
+data class ApiNotification(
+    val id: String,
+    val title: String,
+    val message: String,
+    val created_at: String,
+    val is_read: Boolean,
+    val application_id: String? = null,
+    val type: String = "general"
+)
+
+@kotlinx.serialization.Serializable
+data class DashboardMetrics(
+    val apps_today: Int = 0,
+    val pending_sync: Int = 0,
+    val visits_due: Int = 0,
+    val missing_docs: Int = 0,
+    val branch_disbursed: Double = 0.0,
+    val target_met_pct: Int = 0,
+    val awaiting_signoff: Int = 0,
+    val active_agents: Int = 0,
+    val underwriting_queue: Int = 0,
+    val avg_turnaround_mins: Int = 0,
+    val high_risk_cases: Int = 0,
+    val approved_today: Int = 0,
+    val flags_raised: Int = 0,
+    val policy_breaches: Int = 0,
+    val audited_today: Int = 0,
+    val board_tickets: Int = 0,
+    val mcr_disbursed: Double = 0.0,
+    val alert_escalations: Int = 0,
+    val decisions_signed: Int = 0
+)
+
+@kotlinx.serialization.Serializable
+data class LoanProduct(val id: String, val name: String)
+
+@kotlinx.serialization.Serializable
+data class ConfigDropdowns(
+    val marital_status: List<String> = emptyList(),
+    val employment_status: List<String> = emptyList(),
+    val loan_products: List<LoanProduct> = emptyList(),
+    val error_categories: List<String> = emptyList(),
+    val review_reasons: List<String> = emptyList(),
+    val document_categories: List<String> = emptyList()
+)
+
+@kotlinx.serialization.Serializable
+data class AppConfig(
+    val org_name: String = "",
+    val support_phone: String = "",
+    val support_email: String = "",
+    val node_id: String = "",
+    val dti_limit: Double = 0.40,
+    val pledge_form_code: String = "MMFB/CRM/02",
+    val dropdowns: ConfigDropdowns = ConfigDropdowns()
+)
+
+@kotlinx.serialization.Serializable
+data class AppSearchResult(
+    val id: String,
+    val ref_no: String,
+    val borrower_name: String,
+    val status: String
+)
+
+@kotlinx.serialization.Serializable
+data class BorrowerSearchResult(
+    val id: String,
+    val name: String,
+    val phone: String
+)
+
+@kotlinx.serialization.Serializable
+data class SearchResponse(
+    val applications: List<AppSearchResult> = emptyList(),
+    val borrowers: List<BorrowerSearchResult> = emptyList()
+)
+
+@kotlinx.serialization.Serializable
+data class AuditTrailEvent(
+    val id: String,
+    val timestamp: String,
+    val actor_name: String,
+    val actor_role: String,
+    val action: String,
+    val state_diff: String,
+    val notes: String = "",
+    val is_mine: Boolean = false
+)
+
+@kotlinx.serialization.Serializable
+data class BureauData(
+    val credit_score: Int = 0,
+    val dti_ratio: Double = 0.0,
+    val income_verified: Boolean = false,
+    val source: String = ""
+)
+
+@kotlinx.serialization.Serializable
+data class CommitteeVotes(
+    val yes_votes: Int = 0,
+    val total_votes: Int = 0,
+    val quorum: Int = 3
+)
+
+@kotlinx.serialization.Serializable
+data class AuditChecklist(
+    val consent_verified: Boolean = false,
+    val signature_matched: Boolean = false,
+    val exhibits_verified: Boolean = false
+)
+
+@kotlinx.serialization.Serializable
+data class FaqItem(val question: String, val answer: String)
+
+@kotlinx.serialization.Serializable
+data class OnboardingSlide(val title: String, val subtitle: String, val body: String)
 
 class MobileApiServiceImpl(
     private val client: HttpClient,
@@ -35,8 +167,8 @@ class MobileApiServiceImpl(
 
     private var token: String? = null
 
-    fun setToken(newToken: String) {
-        token = newToken
+    override fun setToken(token: String) {
+        this.token = token
     }
 
     private fun HttpRequestBuilder.authHeader() {
@@ -83,6 +215,17 @@ class MobileApiServiceImpl(
                 authHeader()
             }
             if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    override suspend fun getDashboardMetrics(): DashboardMetrics? {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/dashboard") {
+                authHeader()
+            }
+            if (response.status == HttpStatusCode.OK) response.body() else null
         } catch (e: Exception) {
             null
         }
@@ -149,14 +292,26 @@ class MobileApiServiceImpl(
         }
     }
 
-    override suspend fun uploadDocument(id: String, category: String): String? {
+    override suspend fun uploadDocument(id: String, category: String, fileBytes: ByteArray?, fileName: String): String? {
+        if (fileBytes == null) return null
         return try {
-            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/applications/$id/documents") {
-                authHeader()
-                contentType(ContentType.Application.Json)
-                setBody(mapOf("category" to category))
+            val contentType = when (fileName.substringAfterLast('.', "").lowercase()) {
+                "pdf" -> ContentType.Application.Pdf
+                "jpg", "jpeg" -> ContentType.Image.JPEG
+                "png" -> ContentType.Image.PNG
+                else -> ContentType.Application.OctetStream
             }
-            if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
+            val response: HttpResponse = client.submitFormWithBinaryData(
+                url = "$baseUrl/api/v1/mobile/applications/$id/documents",
+                formData = formData {
+                    append("doc_type", category)
+                    append("file", fileBytes, io.ktor.http.Headers.build {
+                        append(HttpHeaders.ContentType, contentType.toString())
+                        append(HttpHeaders.ContentDisposition, "form-data; name=\"file\"; filename=\"$fileName\"")
+                    })
+                }
+            ) { authHeader() }
+            if (response.status == HttpStatusCode.OK || response.status == HttpStatusCode.Created) response.bodyAsText() else null
         } catch (e: Exception) {
             null
         }
@@ -247,5 +402,119 @@ class MobileApiServiceImpl(
         } catch (e: Exception) {
             null
         }
+    }
+
+    override suspend fun getNotifications(): List<ApiNotification> {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/notifications") {
+                authHeader()
+            }
+            if (response.status == HttpStatusCode.OK) response.body() else emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    override suspend fun markNotificationRead(id: String): Boolean {
+        return try {
+            val response: HttpResponse = client.patch("$baseUrl/api/v1/mobile/notifications/$id/read") {
+                authHeader()
+            }
+            response.status == HttpStatusCode.OK
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun clearNotifications(): Boolean {
+        return try {
+            val response: HttpResponse = client.delete("$baseUrl/api/v1/mobile/notifications") {
+                authHeader()
+            }
+            response.status == HttpStatusCode.OK || response.status == HttpStatusCode.NoContent
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun getConfig(): AppConfig? {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/config") { authHeader() }
+            if (response.status == HttpStatusCode.OK) response.body() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun search(query: String): SearchResponse? {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/search") {
+                authHeader()
+                parameter("q", query)
+            }
+            if (response.status == HttpStatusCode.OK) response.body() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun getAuditTrail(applicationId: String): List<AuditTrailEvent> {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/applications/$applicationId/audit") {
+                authHeader()
+            }
+            if (response.status == HttpStatusCode.OK) response.body() else emptyList()
+        } catch (e: Exception) { emptyList() }
+    }
+
+    override suspend fun getBureauData(applicationId: String): BureauData? {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/applications/$applicationId/bureau") {
+                authHeader()
+            }
+            if (response.status == HttpStatusCode.OK) response.body() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun getCommitteeVotes(applicationId: String): CommitteeVotes? {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/applications/$applicationId/committee-votes") {
+                authHeader()
+            }
+            if (response.status == HttpStatusCode.OK) response.body() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun getAuditChecklist(applicationId: String): AuditChecklist? {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/applications/$applicationId/audit-checklist") {
+                authHeader()
+            }
+            if (response.status == HttpStatusCode.OK) response.body() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun saveAuditChecklist(applicationId: String, checklist: AuditChecklist): Boolean {
+        return try {
+            val response: HttpResponse = client.patch("$baseUrl/api/v1/mobile/applications/$applicationId/audit-checklist") {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(checklist)
+            }
+            response.status == HttpStatusCode.OK
+        } catch (e: Exception) { false }
+    }
+
+    override suspend fun getFaqs(): List<FaqItem> {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/faqs") { authHeader() }
+            if (response.status == HttpStatusCode.OK) response.body() else emptyList()
+        } catch (e: Exception) { emptyList() }
+    }
+
+    override suspend fun getOnboarding(role: String): List<OnboardingSlide> {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/onboarding") {
+                authHeader()
+                parameter("role", role)
+            }
+            if (response.status == HttpStatusCode.OK) response.body() else emptyList()
+        } catch (e: Exception) { emptyList() }
     }
 }
