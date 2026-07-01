@@ -196,11 +196,43 @@ async def logout_web(next: str = None):
     redirect_url = "/login"
     if next and next.strip() and next.startswith("/") and not next.startswith("//"):
         redirect_url += f"?next={urllib.parse.quote(next.strip())}"
-        
+
     redirect = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
     redirect.delete_cookie(key="session", path="/")
     redirect.delete_cookie(key="__Host-session", path="/")
     return redirect
+
+@app.get("/forgot-password")
+async def render_forgot_password(request: Request):
+    return templates.TemplateResponse(request, "shared/forgot_password.html", {"submitted": False, "error": None})
+
+@app.post("/forgot-password")
+async def process_forgot_password(request: Request, email: str = Form(...), conn=Depends(db_conn)):
+    from app.domains.auth.repository import AuthRepository
+    from app.domains.auth.service import AuthService
+    await AuthService(AuthRepository(conn)).request_password_reset(email)
+    return templates.TemplateResponse(request, "shared/forgot_password.html", {"submitted": True, "error": None})
+
+@app.get("/reset-password")
+async def render_reset_password(request: Request, token: str = None):
+    return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": None, "success": False})
+
+@app.post("/reset-password")
+async def process_reset_password(
+    request: Request,
+    token: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    conn=Depends(db_conn),
+):
+    from app.domains.auth.repository import AuthRepository
+    from app.domains.auth.service import AuthService
+    if new_password != confirm_password:
+        return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": "Passwords do not match.", "success": False})
+    ok = await AuthService(AuthRepository(conn)).reset_password(token, new_password)
+    if not ok:
+        return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": "Invalid or expired reset link.", "success": False})
+    return RedirectResponse(url="/login?reset=1", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/api/v1/health")
 async def health_check():

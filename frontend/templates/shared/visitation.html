@@ -75,6 +75,23 @@
             </div>
         </div>
 
+        <!-- GPS & Site Photo (from mobile) -->
+        <div style="border-top: 0.5px solid var(--color-divider); padding-top: 20px; margin-bottom: 20px;">
+            <div style="font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; letter-spacing:0.05em; font-weight: 500;">Mobile Field Evidence</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="field-label">GPS Coordinates (from mobile)</label>
+                    <input type="text" class="field-input" value="{{ data.gps_coordinates if data and data.gps_coordinates else 'Not captured via mobile' }}" readonly>
+                </div>
+                {% if data and data.site_photo_url %}
+                <div class="form-group-full">
+                    <label class="field-label">Site Photograph</label>
+                    <img src="{{ data.site_photo_url }}" style="max-width:320px; border-radius:8px; border:1px solid var(--border-color); margin-top:8px; display:block;">
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
         <!-- Section 2: Branch Manager Concurrence -->
         <div style="border-top: 0.5px solid var(--color-divider); padding-top: 24px; margin-bottom: 24px;">
             <div style="font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 16px; letter-spacing:0.05em; font-weight: 500;">Branch Manager Concurrence</div>

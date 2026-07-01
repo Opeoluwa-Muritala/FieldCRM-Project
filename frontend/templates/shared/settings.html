@@ -1,0 +1,70 @@
+{% extends shell %}
+
+{% set active_page = "settings" %}
+
+{% block title %}Settings | FieldCRM{% endblock %}
+{% block breadcrumb %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<section class="page-card" style="max-width:640px;">
+    <div class="page-card-header">
+        <div>
+            <h2 class="page-card-title">Profile &amp; Security</h2>
+            <p class="page-card-subtitle">View your profile and update your password.</p>
+        </div>
+    </div>
+
+    <!-- Profile Info -->
+    <div class="form-grid" style="margin-bottom:32px;">
+        <div class="form-group">
+            <label class="field-label">Full Name</label>
+            <input class="field-input" type="text" value="{{ current_user.full_name }}" readonly>
+        </div>
+        <div class="form-group">
+            <label class="field-label">Email Address</label>
+            <input class="field-input" type="email" value="{{ current_user.email }}" readonly>
+        </div>
+        <div class="form-group">
+            <label class="field-label">Role</label>
+            <input class="field-input" type="text" value="{{ current_user.display_role or current_user.role|replace('_',' ')|title }}" readonly>
+        </div>
+        <div class="form-group">
+            <label class="field-label">Organisation</label>
+            <input class="field-input" type="text" value="{{ current_user.org_id }}" readonly>
+        </div>
+    </div>
+
+    <hr style="border:none; border-top:1px solid var(--border-color,#e5e7eb); margin-bottom:24px;">
+
+    <!-- Change Password -->
+    <h3 style="font-size:15px; font-weight:600; margin-bottom:16px;">Change Password</h3>
+
+    {% if success %}
+    <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:12px; color:#166534; font-size:13px; margin-bottom:16px;">{{ success }}</div>
+    {% endif %}
+    {% if error %}
+    <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; padding:12px; color:#991b1b; font-size:13px; margin-bottom:16px;">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/settings/change-password">
+        <div class="form-grid">
+            <div class="form-group form-group-full">
+                <label class="field-label" for="current_password">Current Password</label>
+                <input class="field-input" id="current_password" name="current_password" type="password" required autocomplete="current-password">
+            </div>
+            <div class="form-group">
+                <label class="field-label" for="new_password">New Password</label>
+                <input class="field-input" id="new_password" name="new_password" type="password" required minlength="8" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+                <label class="field-label" for="confirm_password">Confirm New Password</label>
+                <input class="field-input" id="confirm_password" name="confirm_password" type="password" required minlength="8" autocomplete="new-password">
+            </div>
+        </div>
+        <div style="margin-top:20px;">
+            <button type="submit" class="btn-primary">Update Password</button>
+        </div>
+    </form>
+</section>
+{% endblock %}

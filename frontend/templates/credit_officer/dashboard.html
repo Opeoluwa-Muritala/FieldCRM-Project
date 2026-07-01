@@ -10,10 +10,10 @@
 <div class="role-workspace">
     <div class="role-hero"><div><div class="dashboard-date">{{ today_label }}</div><h1>Credit review workstation</h1></div><a class="btn-primary-filled desktop-only" href="/my-reviews">Open Reviews</a></div>
     <div class="role-stat-grid">
-        <div class="role-stat"><span>Reviews Due</span><strong>{{ m.get('reviews_due', 0) }}</strong></div>
-        <div class="role-stat warning"><span>OCR Exceptions</span><strong>{{ m.get('ocr_exceptions', 0) }}</strong></div>
-        <div class="role-stat"><span>Reviewed Today</span><strong>{{ m.get('reviewed_today', 0) }}</strong></div>
-        <div class="role-stat danger"><span>Returned Week</span><strong>{{ m.get('returned_this_week', 0) }}</strong></div>
+        <div class="role-stat"><span>Underwriting Queue</span><strong>{{ m.get('reviews_due', 0) }}</strong></div>
+        <div class="role-stat warning"><span>Avg Turnaround</span><strong>{{ m.get('ocr_exceptions', 0) }}</strong></div>
+        <div class="role-stat"><span>Approved Today</span><strong>{{ m.get('reviewed_today', 0) }}</strong></div>
+        <div class="role-stat danger"><span>High Risk Cases</span><strong>{{ m.get('returned_this_week', 0) }}</strong></div>
     </div>
     <div class="role-grid-main">
         <section class="page-card"><div class="role-section-head"><h2>Review Queue</h2><a href="/my-reviews">View all</a></div><div class="role-card-list">

@@ -1,7 +1,10 @@
 -- visitation/queries/upsert_report.sql
 -- Creates or updates the officer visitation report for a loan.
 -- Params: $1=loan_id, $2=org_id, $3=met_with,
---         $4=premises_description, $5=direction_from_branch
+--         $4=premises_description, $5=direction_from_branch,
+--         $6=visit_date, $7=visit_time, $8=relationship,
+--         $9=business_condition, $10=account_officer,
+--         $11=gps_coordinates, $12=site_photo_url
 
 INSERT INTO visitation_reports (
     loan_id,
@@ -9,14 +12,18 @@ INSERT INTO visitation_reports (
     met_with,
     premises_description,
     direction_from_branch,
+    visit_date,
+    business_condition,
     status
 )
-VALUES ($1, $2, $3, $4, $5, 'submitted')
+VALUES ($1, $2, $3, $4, $5, $6::date, $9, 'submitted')
 ON CONFLICT (loan_id)
 DO UPDATE SET
     met_with = EXCLUDED.met_with,
     premises_description = EXCLUDED.premises_description,
     direction_from_branch = EXCLUDED.direction_from_branch,
+    visit_date = EXCLUDED.visit_date,
+    business_condition = EXCLUDED.business_condition,
     status = 'submitted',
     updated_at = NOW()
 RETURNING

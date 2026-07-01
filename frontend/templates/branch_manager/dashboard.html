@@ -17,10 +17,10 @@
     </div>
 
     <div class="role-stat-grid">
-        <div class="role-stat"><span>Awaiting Me</span><strong>{{ m.get('awaiting_concurrence', 0) }}</strong></div>
-        <div class="role-stat"><span>Visit Signoffs</span><strong>{{ m.get('pending_signoffs', 0) }}</strong></div>
-        <div class="role-stat"><span>Approved Today</span><strong>{{ m.get('approved_today', 0) }}</strong></div>
-        <div class="role-stat danger"><span>Returned Week</span><strong>{{ m.get('returned_this_week', 0) }}</strong></div>
+        <div class="role-stat"><span>Awaiting Signoff</span><strong>{{ m.get('awaiting_concurrence', 0) }}</strong></div>
+        <div class="role-stat"><span>Active Agents</span><strong>{{ m.get('pending_signoffs', 0) }}</strong></div>
+        <div class="role-stat"><span>Branch Disbursed</span><strong>{{ m.get('approved_today', 0) }}</strong></div>
+        <div class="role-stat danger"><span>Target Met %</span><strong>{{ m.get('returned_this_week', 0) }}</strong></div>
     </div>
 
     <div class="role-grid-main">

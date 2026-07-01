@@ -33,7 +33,6 @@ import androidx.core.content.ContextCompat
 import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
-import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.viewmodel.ApplicationViewModel
 import com.fieldcrm.android.ui.viewmodel.BorrowerViewModel
 import com.fieldcrm.shared.model.BorrowerModel
@@ -87,6 +86,14 @@ fun VisitationReportContent(
     var remarks by remember { mutableStateOf(application.officer_recommendation ?: "") }
     var locationState by remember { mutableStateOf(borrower?.gps_coordinates ?: "Click refresh to lock GPS coordinates") }
     var isRefreshingGPS by remember { mutableStateOf(false) }
+    var visitDate by remember { mutableStateOf("") }
+    var visitTime by remember { mutableStateOf("") }
+    var personMet by remember { mutableStateOf("") }
+    var relationship by remember { mutableStateOf("") }
+    var premisesDescription by remember { mutableStateOf("") }
+    var directionFromBranch by remember { mutableStateOf("") }
+    var businessCondition by remember { mutableStateOf("") }
+    var accountOfficer by remember { mutableStateOf("") }
 
     var showCameraScanner by remember { mutableStateOf(false) }
     var capturedPhotoPath by remember { mutableStateOf<String?>(null) }
@@ -305,6 +312,74 @@ fun VisitationReportContent(
                                 }
                             }
                             
+                            // Visit Details Form
+                            FieldCard {
+                                Text(
+                                    text = "VISIT DETAILS",
+                                    style = FieldTheme.typography.label,
+                                    color = FieldTheme.colors.gray500
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                FieldTextField(
+                                    value = visitDate,
+                                    onValueChange = { visitDate = it },
+                                    label = "Date of Visitation",
+                                    isRequired = true,
+                                    placeholder = "YYYY-MM-DD"
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                FieldTextField(
+                                    value = visitTime,
+                                    onValueChange = { visitTime = it },
+                                    label = "Time of Arrival",
+                                    placeholder = "e.g. 10:30 AM"
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                FieldTextField(
+                                    value = personMet,
+                                    onValueChange = { personMet = it },
+                                    label = "Person Met",
+                                    isRequired = true,
+                                    placeholder = "e.g. Customer / Spouse / Landlord"
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                FieldTextField(
+                                    value = relationship,
+                                    onValueChange = { relationship = it },
+                                    label = "Relationship to Applicant"
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                FieldTextField(
+                                    value = premisesDescription,
+                                    onValueChange = { premisesDescription = it },
+                                    label = "Premises Description",
+                                    isRequired = true,
+                                    multiline = true
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                FieldTextField(
+                                    value = directionFromBranch,
+                                    onValueChange = { directionFromBranch = it },
+                                    label = "Direction from Branch",
+                                    isRequired = true,
+                                    multiline = true
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                FieldTextField(
+                                    value = businessCondition,
+                                    onValueChange = { businessCondition = it },
+                                    label = "Business Condition Observed",
+                                    multiline = true
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                FieldTextField(
+                                    value = accountOfficer,
+                                    onValueChange = { accountOfficer = it },
+                                    label = "Account Officer",
+                                    isRequired = true
+                                )
+                            }
+
                             // Remarks Form
                             FieldCard {
                                 Text(
@@ -350,7 +425,7 @@ fun VisitationReportContent(
                             PrimaryButton(
                                 text = "Submit Field Verification Dossier",
                                 onClick = { onSubmitComplete(locationState, remarks) },
-                                enabled = remarks.isNotEmpty() && !isRefreshingGPS
+                                enabled = remarks.isNotEmpty() && visitDate.isNotEmpty() && personMet.isNotEmpty() && !isRefreshingGPS
                             )
                         }
                     }

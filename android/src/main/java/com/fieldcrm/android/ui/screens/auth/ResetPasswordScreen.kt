@@ -29,21 +29,27 @@ import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.FieldTextField
 import com.fieldcrm.android.ui.components.PrimaryButton
 import com.fieldcrm.android.ui.components.SecondaryButton
+import com.fieldcrm.android.data.api.MobileApiService
 import com.fieldcrm.android.ui.theme.FieldTheme
 import kotlinx.coroutines.delay
+import org.koin.compose.koinInject
 
 @Composable
 fun ResetPasswordScreen(
     onNavigateToLogin: (prefilledEmail: String, successMessage: String) -> Unit
 ) {
+    val apiService: MobileApiService = koinInject()
+
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var showNewPassword by remember { mutableStateOf(false) }
     var showConfirmPassword by remember { mutableStateOf(false) }
     var confirmPasswordError by remember { mutableStateOf<String?>(null) }
-    
+    var resetToken by remember { mutableStateOf("") }
+
     var isLoading by remember { mutableStateOf(false) }
     var isSubmitted by remember { mutableStateOf(false) }
+    var resetError by remember { mutableStateOf<String?>(null) }
  
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
@@ -325,16 +331,20 @@ fun ResetPasswordScreen(
 
     LaunchedEffect(isLoading) {
         if (isLoading) {
-            delay(1500)
+            val success = apiService.resetPassword(resetToken, newPassword)
             isLoading = false
-            isSubmitted = true
+            if (success) {
+                isSubmitted = true
+            } else {
+                resetError = "Reset link is invalid or expired. Please request a new one."
+            }
         }
     }
 
     LaunchedEffect(isSubmitted) {
         if (isSubmitted) {
             delay(2000)
-            onNavigateToLogin("staff@mainstreetmfb.com", "Password updated. Please sign in.")
+            onNavigateToLogin("", "Password updated. Please sign in.")
         }
     }
 }

@@ -1150,3 +1150,52 @@ async def get_mobile_onboarding(
     mapped = _mobile_role(current_user) if not role else role
     slides = _ONBOARDING_SLIDES.get(mapped, _ONBOARDING_SLIDES["loan_officer"])
     return slides
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/auth/forgot-password")
+async def mobile_forgot_password(req: ForgotPasswordRequest, conn=Depends(db_conn)):
+    from app.domains.auth.repository import AuthRepository
+    from app.domains.auth.service import AuthService
+    await AuthService(AuthRepository(conn)).request_password_reset(req.email)
+    return {"message": "If that email is registered, a reset link has been sent."}
+
+
+@router.post("/auth/reset-password")
+async def mobile_reset_password(req: ResetPasswordRequest, conn=Depends(db_conn)):
+    from app.domains.auth.repository import AuthRepository
+    from app.domains.auth.service import AuthService
+    ok = await AuthService(AuthRepository(conn)).reset_password(req.token, req.new_password)
+    if not ok:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token.")
+    return {"message": "Password reset successful."}
+
+
+class OcrCorrectionsRequest(BaseModel):
+    corrections: dict[str, str] = Field(default_factory=dict)
+
+
+@router.post("/applications/{application_id}/ocr-corrections")
+async def save_mobile_ocr_corrections(
+    application_id: str,
+    req: OcrCorrectionsRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    svc = LoanService(LoanRepository(conn), AuditService(conn))
+    await svc.save_wizard_step(
+        app_id=UUID(application_id),
+        org_id=current_user.org_id,
+        step=0,
+        form_data={"ocr_corrections": req.corrections, "correction_source": "mobile"},
+        user_id=current_user.id,
+    )
+    return {"message": "OCR corrections saved."}

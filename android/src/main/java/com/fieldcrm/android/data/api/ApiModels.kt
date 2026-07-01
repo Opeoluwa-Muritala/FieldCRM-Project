@@ -1,6 +1,8 @@
 package com.fieldcrm.android.data.api
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 
 @Serializable
 data class TokenResponse(
@@ -27,7 +29,7 @@ data class CreateAppRequest(
 
 @Serializable
 data class SaveStepRequest(
-    val data: Map<String, String>
+    val data: Map<String, JsonElement>
 )
 
 @Serializable
@@ -58,5 +60,6 @@ data class CreditReviewRequest(
 @Serializable
 data class ReturnApplicationRequest(
     val reason_category: String,
+    val corrections: List<String> = emptyList(),
     val notes: String
 )

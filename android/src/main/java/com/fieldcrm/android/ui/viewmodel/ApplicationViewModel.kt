@@ -154,10 +154,10 @@ class ApplicationViewModel(
         }
     }
 
-    fun returnApplication(id: String, reason: String, notes: String, onComplete: () -> Unit = {}) {
+    fun returnApplication(id: String, reason: String, corrections: List<String> = emptyList(), notes: String, onComplete: () -> Unit = {}) {
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            repository.returnApplication(id, reason, notes)
+            repository.returnApplication(id, reason, corrections, notes)
             loadApplications()
             _uiState.update { it.copy(isLoading = false) }
             onComplete()

@@ -7,6 +7,7 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import kotlinx.serialization.json.JsonElement
 
 interface MobileApiService {
     fun setToken(token: String)
@@ -15,10 +16,12 @@ interface MobileApiService {
     suspend fun getDashboard(): String?
     suspend fun getDashboardMetrics(): DashboardMetrics?
     suspend fun getQueue(queueName: String): String?
+    suspend fun getBorrowers(): String?
+    suspend fun createBorrower(data: Map<String, JsonElement>): String?
     suspend fun createApplication(customerType: String, loanType: String, applicantName: String): String?
     suspend fun getApplicationDetail(id: String): String?
-    suspend fun saveIntakeStep(id: String, step: Int, data: Map<String, String>): String?
-    suspend fun saveGuarantorStep(id: String, slot: Int, step: Int, data: Map<String, String>): String?
+    suspend fun saveIntakeStep(id: String, step: Int, data: Map<String, JsonElement>): String?
+    suspend fun saveGuarantorStep(id: String, slot: Int, step: Int, data: Map<String, JsonElement>): String?
     suspend fun uploadDocument(id: String, category: String, fileBytes: ByteArray? = null, fileName: String = "document"): String?
     suspend fun submitOcrReview(id: String, corrections: Map<String, String>): String?
     suspend fun getVisitationReport(id: String): String?
@@ -26,7 +29,7 @@ interface MobileApiService {
     suspend fun submitVisitationSignoff(id: String, decision: String, notes: String): String?
     suspend fun submitCreditReview(id: String, decision: String, notes: String): String?
     suspend fun approveApplication(id: String): String?
-    suspend fun returnApplication(id: String, reason: String, notes: String): String?
+    suspend fun returnApplication(id: String, reason: String, corrections: List<String> = emptyList(), notes: String): String?
     suspend fun getNotifications(): List<ApiNotification>
     suspend fun markNotificationRead(id: String): Boolean
     suspend fun clearNotifications(): Boolean
@@ -39,6 +42,8 @@ interface MobileApiService {
     suspend fun saveAuditChecklist(applicationId: String, checklist: AuditChecklist): Boolean
     suspend fun getFaqs(): List<FaqItem>
     suspend fun getOnboarding(role: String): List<OnboardingSlide>
+    suspend fun forgotPassword(email: String): Boolean
+    suspend fun resetPassword(token: String, newPassword: String): Boolean
 }
 
 @kotlinx.serialization.Serializable
@@ -266,7 +271,25 @@ class MobileApiServiceImpl(
         }
     }
 
-    override suspend fun saveIntakeStep(id: String, step: Int, data: Map<String, String>): String? {
+    override suspend fun getBorrowers(): String? {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/borrowers") { authHeader() }
+            if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun createBorrower(data: Map<String, JsonElement>): String? {
+        return try {
+            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/borrowers") {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(data)
+            }
+            if (response.status == HttpStatusCode.OK || response.status == HttpStatusCode.Created) response.bodyAsText() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun saveIntakeStep(id: String, step: Int, data: Map<String, JsonElement>): String? {
         return try {
             val response: HttpResponse = client.put("$baseUrl/api/v1/mobile/applications/$id/intake/steps/$step") {
                 authHeader()
@@ -279,12 +302,12 @@ class MobileApiServiceImpl(
         }
     }
 
-    override suspend fun saveGuarantorStep(id: String, slot: Int, step: Int, data: Map<String, String>): String? {
+    override suspend fun saveGuarantorStep(id: String, slot: Int, step: Int, data: Map<String, JsonElement>): String? {
         return try {
             val response: HttpResponse = client.put("$baseUrl/api/v1/mobile/applications/$id/guarantors/$slot/steps/$step") {
                 authHeader()
                 contentType(ContentType.Application.Json)
-                setBody(mapOf("data" to data))
+                setBody(SaveStepRequest(data))
             }
             if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
         } catch (e: Exception) {
@@ -391,12 +414,12 @@ class MobileApiServiceImpl(
         }
     }
 
-    override suspend fun returnApplication(id: String, reason: String, notes: String): String? {
+    override suspend fun returnApplication(id: String, reason: String, corrections: List<String>, notes: String): String? {
         return try {
             val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/applications/$id/return") {
                 authHeader()
                 contentType(ContentType.Application.Json)
-                setBody(ReturnApplicationRequest(reason, notes))
+                setBody(ReturnApplicationRequest(reason, corrections, notes))
             }
             if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
         } catch (e: Exception) {
@@ -516,5 +539,25 @@ class MobileApiServiceImpl(
             }
             if (response.status == HttpStatusCode.OK) response.body() else emptyList()
         } catch (e: Exception) { emptyList() }
+    }
+
+    override suspend fun forgotPassword(email: String): Boolean {
+        return try {
+            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/auth/forgot-password") {
+                contentType(ContentType.Application.Json)
+                setBody(mapOf("email" to email))
+            }
+            response.status == HttpStatusCode.OK
+        } catch (e: Exception) { false }
+    }
+
+    override suspend fun resetPassword(token: String, newPassword: String): Boolean {
+        return try {
+            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/auth/reset-password") {
+                contentType(ContentType.Application.Json)
+                setBody(mapOf("token" to token, "new_password" to newPassword))
+            }
+            response.status == HttpStatusCode.OK
+        } catch (e: Exception) { false }
     }
 }

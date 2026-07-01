@@ -99,7 +99,31 @@ fun CreditOfficerReviewScreen(
                             style = FieldTheme.typography.body,
                             color = FieldTheme.colors.gray400
                         )
-                        
+
+                        // Application Summary Card
+                        FieldCard {
+                            Text(
+                                text = "APPLICATION SUMMARY",
+                                style = FieldTheme.typography.label,
+                                color = FieldTheme.colors.gray500
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            DetailItem(label = "Applicant", value = borrower?.name ?: application.applicant_name ?: "—")
+                            DetailItem(label = "BVN", value = borrower?.bvn ?: "—")
+                            DetailItem(label = "Phone", value = borrower?.phone ?: "—")
+                            FieldDivider()
+                            Spacer(modifier = Modifier.height(4.dp))
+                            DetailItem(label = "Product Type", value = application.product_type)
+                            DetailItem(
+                                label = "Loan Amount",
+                                value = "₦ ${String.format(Locale.US, "%,.2f", application.amount)}"
+                            )
+                            DetailItem(label = "Tenure", value = "${application.tenure} months")
+                            DetailItem(label = "Interest Rate", value = "${application.interest_rate}% p.a.")
+                            DetailItem(label = "Repayment Frequency", value = application.repayment_frequency)
+                            DetailItem(label = "Application Status", value = application.status)
+                        }
+
                         // DTI Calculator Card
                         FieldCard {
                             Text(
@@ -172,6 +196,51 @@ fun CreditOfficerReviewScreen(
                                     style = FieldTheme.typography.body.copy(fontSize = 11.sp),
                                     color = FieldTheme.colors.gray500
                                 )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+                            FieldDivider()
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Affordability Table
+                            Text(
+                                text = "AFFORDABILITY TABLE",
+                                style = FieldTheme.typography.label,
+                                color = FieldTheme.colors.gray500
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            val monthlyIncome = application.amount / application.tenure.coerceAtLeast(1)
+                            val monthlyInstalment = monthlyIncome * (1 + application.interest_rate / 100 / 12)
+                            val estimatedExpenses = monthlyIncome * 0.30
+                            val netDisposable = monthlyIncome - estimatedExpenses - monthlyInstalment
+                            val affordabilityRows = listOf(
+                                Triple("Monthly Income (Est.)", "₦ ${String.format(Locale.US, "%,.0f", monthlyIncome * 3)}", FieldTheme.colors.statusSuccess),
+                                Triple("Monthly Instalment", "₦ ${String.format(Locale.US, "%,.0f", monthlyInstalment)}", FieldTheme.colors.statusWarning),
+                                Triple("Est. Living Expenses (30%)", "₦ ${String.format(Locale.US, "%,.0f", estimatedExpenses * 3)}", FieldTheme.colors.gray400),
+                                Triple("Net Disposable Income", "₦ ${String.format(Locale.US, "%,.0f", netDisposable * 3)}", if (netDisposable > 0) FieldTheme.colors.statusSuccess else FieldTheme.colors.statusDanger)
+                            )
+                            affordabilityRows.forEachIndexed { idx, (label, value, color) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            if (idx % 2 == 0) FieldTheme.colors.gray900 else Color.Transparent,
+                                            RoundedCornerShape(4.dp)
+                                        )
+                                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = label,
+                                        style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                                        color = FieldTheme.colors.gray400
+                                    )
+                                    Text(
+                                        text = value,
+                                        style = FieldTheme.typography.mono.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold),
+                                        color = color
+                                    )
+                                }
                             }
                         }
                         
@@ -311,6 +380,144 @@ fun CreditOfficerReviewScreen(
                                 if (index < guarantors.size - 1) {
                                     FieldDivider()
                                 }
+                            }
+                        }
+
+                        // Document Verification Checklist
+                        FieldCard {
+                            Text(
+                                text = "DOCUMENT VERIFICATION CHECKLIST",
+                                style = FieldTheme.typography.label,
+                                color = FieldTheme.colors.gray500
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            val docChecklist = remember {
+                                mutableStateListOf(
+                                    Pair("National ID / International Passport", true),
+                                    Pair("Utility Bill (Not older than 3 months)", true),
+                                    Pair("Bank Statement (6 months)", true),
+                                    Pair("Business Registration / CAC Certificate", false),
+                                    Pair("Guarantor ID Document", true),
+                                    Pair("Signed Loan Application Form", true),
+                                    Pair("Passport Photograph", true),
+                                    Pair("Collateral Documentation", false)
+                                )
+                            }
+
+                            docChecklist.forEachIndexed { index, (docName, isVerified) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { docChecklist[index] = Pair(docName, !isVerified) }
+                                        .padding(vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isVerified) FieldIcons.CheckCircleOutlined else FieldIcons.AlertOutlined,
+                                        contentDescription = null,
+                                        tint = if (isVerified) FieldTheme.colors.statusSuccess else FieldTheme.colors.statusWarning,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        text = docName,
+                                        style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                                        color = if (isVerified) FieldTheme.colors.gray300 else FieldTheme.colors.gray500,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    StatusChip(variant = if (isVerified) StatusChipVariant.Verified else StatusChipVariant.Missing)
+                                }
+                                if (index < docChecklist.size - 1) FieldDivider()
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            val missingCount = docChecklist.count { !it.second }
+                            if (missingCount > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(FieldTheme.colors.statusWarning.copy(alpha = 0.08f), RoundedCornerShape(4.dp))
+                                        .border(0.5.dp, FieldTheme.colors.statusWarning.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                                        .padding(10.dp)
+                                ) {
+                                    Text(
+                                        text = "$missingCount document(s) still pending. Tap to mark as verified.",
+                                        style = FieldTheme.typography.body.copy(fontSize = 11.sp),
+                                        color = FieldTheme.colors.statusWarning
+                                    )
+                                }
+                            }
+                        }
+
+                        // OCR Exceptions Table
+                        FieldCard {
+                            Text(
+                                text = "OCR CONFIDENCE EXCEPTIONS",
+                                style = FieldTheme.typography.label,
+                                color = FieldTheme.colors.gray500
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Table header
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(FieldTheme.colors.gray900, RoundedCornerShape(4.dp))
+                                    .padding(8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Document", style = FieldTheme.typography.label.copy(fontSize = 10.sp), color = FieldTheme.colors.gray400, modifier = Modifier.weight(2f))
+                                Text("Confidence", style = FieldTheme.typography.label.copy(fontSize = 10.sp), color = FieldTheme.colors.gray400, modifier = Modifier.weight(1f))
+                                Text("Action", style = FieldTheme.typography.label.copy(fontSize = 10.sp), color = FieldTheme.colors.gray400, modifier = Modifier.weight(1f))
+                            }
+
+                            val ocrExceptions = listOf(
+                                Triple("CAC Certificate", "42%", StatusChipVariant.Missing),
+                                Triple("Collateral Doc", "61%", StatusChipVariant.NeedsReview)
+                            )
+
+                            if (ocrExceptions.isEmpty()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "No OCR exceptions — all documents passed confidence threshold.",
+                                    style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                                    color = FieldTheme.colors.statusSuccess,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            } else {
+                                ocrExceptions.forEachIndexed { index, (docName, confidence, variant) ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = docName,
+                                            style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                                            color = FieldTheme.colors.gray300,
+                                            modifier = Modifier.weight(2f)
+                                        )
+                                        Text(
+                                            text = confidence,
+                                            style = FieldTheme.typography.mono.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold),
+                                            color = FieldTheme.colors.statusDanger,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            StatusChip(variant = variant)
+                                        }
+                                    }
+                                    if (index < ocrExceptions.size - 1) FieldDivider()
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Low-confidence documents require manual verification or re-upload before approval.",
+                                    style = FieldTheme.typography.body.copy(fontSize = 11.sp),
+                                    color = FieldTheme.colors.gray500
+                                )
                             }
                         }
 

@@ -550,19 +550,17 @@ async def render_guarantor_step(
 ):
     """GET handler for Guarantor intake flow steps 1 to 8."""
     data = await service.get_wizard_data(UUID(application_id), guarantor_index)
-    return templates.TemplateResponse(
+    ctx = build_template_context(
         request,
-        "shared/guarantor_wizard.html",
-        {
-            "current_user": current_user,
-            "app_id": application_id,
-            "guarantor_index": guarantor_index,
-            "step": step,
-            "data": data,
-            "hide_tabbar": True,
-            "mobile_title_text": f"Guarantor: Step {step}"
-        }
+        current_user,
+        app_id=application_id,
+        guarantor_index=guarantor_index,
+        step=step,
+        data=data,
+        hide_tabbar=True,
+        mobile_title_text=f"Guarantor: Step {step}"
     )
+    return templates.TemplateResponse(request, "shared/guarantor_wizard.html", ctx)
 
 @router.post("/applications/{application_id}/guarantors/{guarantor_index}/step/{step}")
 async def process_guarantor_step(
@@ -728,6 +726,11 @@ async def process_visitation_report(
         met_with=form_data.get("met_with"),
         premises_description=form_data.get("premises_description"),
         direction_from_branch=form_data.get("direction_from_branch"),
+        visit_date=form_data.get("visit_date"),
+        visit_time=form_data.get("visit_time"),
+        relationship=form_data.get("relationship"),
+        business_condition=form_data.get("business_condition"),
+        account_officer=form_data.get("account_officer"),
         submitted_by=current_user.id,
         user_role=current_user.role,
     )
@@ -833,11 +836,22 @@ async def render_approval_readiness(
 
 @router.post("/applications/{application_id}/approve")
 async def process_approval_readiness(
+    request: Request,
     application_id: str,
     conn = Depends(db_conn),
     current_user = Depends(get_current_user)
 ):
     """POST processor to complete branch approval."""
+    form_data = await request.form()
+    kyc_attested = form_data.get("kyc_attested")
+    collateral_attested = form_data.get("collateral_attested")
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(
+        "Approval attestations for application %s — kyc_attested=%s, collateral_attested=%s",
+        application_id, kyc_attested, collateral_attested
+    )
+
     repo = LoanRepository(conn)
     app = await repo.approve(UUID(application_id), current_user.org_id, current_user.id)
     if not app:
@@ -996,6 +1010,79 @@ async def render_current_loans(
         active_page="borrowers",
     )
     return templates.TemplateResponse(request, "shared/borrowers.html", ctx)
+
+@router.get("/notifications")
+async def render_notifications(
+    request: Request,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    svc = NotificationService(NotificationRepository(conn))
+    notifications = await svc.list_for_user(user_id=current_user.id, org_id=current_user.org_id)
+    ctx = build_template_context(request, current_user, notifications=notifications, active_page="notifications")
+    return templates.TemplateResponse(request, "shared/notifications.html", ctx)
+
+@router.post("/notifications/{notification_id}/read")
+async def mark_notification_read(
+    request: Request,
+    notification_id: str,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    svc = NotificationService(NotificationRepository(conn))
+    await svc.mark_read_for_user(notification_id=notification_id, user_id=str(current_user.id), org_id=str(current_user.org_id))
+    return RedirectResponse(url="/notifications", status_code=status.HTTP_303_SEE_OTHER)
+
+@router.post("/notifications/clear")
+async def clear_notifications(
+    request: Request,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    svc = NotificationService(NotificationRepository(conn))
+    await svc.clear_for_user(user_id=str(current_user.id), org_id=str(current_user.org_id))
+    return RedirectResponse(url="/notifications", status_code=status.HTTP_303_SEE_OTHER)
+
+@router.get("/settings")
+async def render_settings(
+    request: Request,
+    current_user=Depends(get_current_user),
+):
+    ctx = build_template_context(request, current_user, active_page="settings", success=None, error=None)
+    return templates.TemplateResponse(request, "shared/settings.html", ctx)
+
+@router.post("/settings/change-password")
+async def change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    from app.domains.auth.repository import AuthRepository
+    from app.domains.auth.service import AuthService
+    if new_password != confirm_password:
+        ctx = build_template_context(request, current_user, active_page="settings", success=None, error="Passwords do not match.")
+        return templates.TemplateResponse(request, "shared/settings.html", ctx)
+    ok = await AuthService(AuthRepository(conn)).change_password(str(current_user.id), current_password, new_password)
+    if not ok:
+        ctx = build_template_context(request, current_user, active_page="settings", success=None, error="Current password is incorrect.")
+        return templates.TemplateResponse(request, "shared/settings.html", ctx)
+    ctx = build_template_context(request, current_user, active_page="settings", success="Password updated successfully.", error=None)
+    return templates.TemplateResponse(request, "shared/settings.html", ctx)
+
+@router.get("/search")
+async def render_search(
+    request: Request,
+    q: str = "",
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    repo = LoanRepository(conn)
+    applications = await repo.search(org_id=current_user.org_id, query=q) if q else []
+    ctx = build_template_context(request, current_user, query=q, applications=applications, active_page="search")
+    return templates.TemplateResponse(request, "shared/search_results.html", ctx)
 
 @router.get("/audit")
 async def render_compliance_audit(

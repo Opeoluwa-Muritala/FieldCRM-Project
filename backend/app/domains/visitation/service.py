@@ -17,6 +17,13 @@ class VisitationService:
         met_with: str | None,
         premises_description: str | None,
         direction_from_branch: str | None,
+        visit_date: str | None = None,
+        visit_time: str | None = None,
+        relationship: str | None = None,
+        business_condition: str | None = None,
+        account_officer: str | None = None,
+        gps_coordinates: str | None = None,
+        site_photo_url: str | None = None,
         submitted_by: UUID,
         user_role: str,
     ) -> dict:
@@ -26,6 +33,13 @@ class VisitationService:
             met_with=met_with,
             premises_description=premises_description,
             direction_from_branch=direction_from_branch,
+            visit_date=visit_date,
+            visit_time=visit_time,
+            relationship=relationship,
+            business_condition=business_condition,
+            account_officer=account_officer,
+            gps_coordinates=gps_coordinates,
+            site_photo_url=site_photo_url,
         )
         await self.audit.insert(
             org_id=org_id,

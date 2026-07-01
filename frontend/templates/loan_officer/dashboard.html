@@ -36,11 +36,11 @@
     <div class="lo-stat-chips">
         <div class="lo-stat-chip">
             <span class="lo-stat-chip-value">{{ m.get('my_applications', 0) }}</span>
-            <span class="lo-stat-chip-label">My Apps</span>
+            <span class="lo-stat-chip-label">Applications Today</span>
         </div>
         <div class="lo-stat-chip">
             <span class="lo-stat-chip-value">{{ m.get('pending_upload', 0) }}</span>
-            <span class="lo-stat-chip-label">Pending Upload</span>
+            <span class="lo-stat-chip-label">Pending Sync</span>
         </div>
         <div class="lo-stat-chip">
             <span class="lo-stat-chip-value">{{ m.get('visits_due', 0) }}</span>
@@ -48,7 +48,7 @@
         </div>
         <div class="lo-stat-chip lo-stat-chip-danger">
             <span class="lo-stat-chip-value">{{ m.get('returned', 0) }}</span>
-            <span class="lo-stat-chip-label">Returned</span>
+            <span class="lo-stat-chip-label">Missing Docs</span>
         </div>
     </div>
 
@@ -122,7 +122,7 @@
     <div class="metrics-row">
         <div class="metric-card">
             <div class="metric-card-top">
-                <span class="metric-label">My Applications</span>
+                <span class="metric-label">Applications Today</span>
                 <div class="metric-icon-bg">&#x1F4CB;</div>
             </div>
             <div class="metric-card-bottom">
@@ -132,7 +132,7 @@
         </div>
         <div class="metric-card">
             <div class="metric-card-top">
-                <span class="metric-label">Pending Upload</span>
+                <span class="metric-label">Visits Due</span>
                 <div class="metric-icon-bg">&#x1F4E4;</div>
             </div>
             <div class="metric-card-bottom">
@@ -142,7 +142,7 @@
         </div>
         <div class="metric-card">
             <div class="metric-card-top">
-                <span class="metric-label">Visits Due</span>
+                <span class="metric-label">Pending Sync</span>
                 <div class="metric-icon-bg">&#x1F4CD;</div>
             </div>
             <div class="metric-card-bottom">
@@ -152,7 +152,7 @@
         </div>
         <div class="metric-card">
             <div class="metric-card-top">
-                <span class="metric-label">Returned</span>
+                <span class="metric-label">Missing Docs</span>
                 <div class="metric-icon-bg metric-icon-bg-danger">&#x21A9;</div>
             </div>
             <div class="metric-card-bottom">
