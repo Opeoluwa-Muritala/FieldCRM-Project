@@ -449,7 +449,7 @@ async def render_application_detail(
     
     wizard_data = await loan_svc.get_wizard_data(UUID(application_id))
     documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
-    visitation_data = await visitation_repo.get_by_loan(UUID(application_id), current_user.org_id) or {}
+    visitation_data = await visitation_repo.get_by_loan(loan_id=UUID(application_id), org_id=current_user.org_id) or {}
     readiness_summary = await repo.get_readiness_summary(UUID(application_id), current_user.org_id)
     
     # Load and filter audit events
