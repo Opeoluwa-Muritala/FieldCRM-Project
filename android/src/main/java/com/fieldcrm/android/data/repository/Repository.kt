@@ -256,6 +256,53 @@ class ApplicationRepository(
     suspend fun submitCreditReview(id: String, decision: String, notes: String): Boolean {
         return apiService.submitCreditReview(id, decision, notes) != null
     }
+
+    suspend fun submitOcrReview(id: String, corrections: Map<String, String> = emptyMap()): Boolean {
+        return apiService.submitOcrReview(id, corrections) != null
+    }
+
+    suspend fun submitVisitationToServer(id: String, metWith: String, premises: String, direction: String): Boolean {
+        return apiService.submitVisitationReport(id, metWith, premises, direction) != null
+    }
+
+    fun queueStageAction(action: String, entityId: String, payloadJson: String) {
+        queries.insertQueueItem(
+            id = java.util.UUID.randomUUID().toString(),
+            action = action,
+            entity_id = entityId,
+            payload_json = payloadJson,
+            timestamp = System.currentTimeMillis(),
+            attempts = 0
+        )
+    }
+
+    suspend fun submitIntakeToServer(id: String, amount: Double, tenure: Int, productType: String, collateralDesc: String, collateralValue: Double): Boolean {
+        val body = buildString {
+            append("{")
+            append("\"current_stage\":2,")
+            append("\"status\":\"ocr_review\",")
+            append("\"amount\":$amount,")
+            append("\"tenure\":$tenure,")
+            append("\"product_type\":\"$productType\",")
+            append("\"collateral_desc\":\"$collateralDesc\",")
+            append("\"collateral_value\":$collateralValue")
+            append("}")
+        }
+        // Use saveIntakeStep for step 6 (loan request)
+        return apiService.saveIntakeStep(id, 6, mapOf(
+            "amount" to kotlinx.serialization.json.JsonPrimitive(amount),
+            "tenure" to kotlinx.serialization.json.JsonPrimitive(tenure),
+            "product_type" to kotlinx.serialization.json.JsonPrimitive(productType)
+        )) != null
+    }
+
+    suspend fun patchApplicationMeta(id: String, collateralDesc: String, collateralValue: Double): Boolean {
+        // Use the saveIntakeStep endpoint to push collateral data
+        return apiService.saveIntakeStep(id, 8, mapOf(
+            "collateral_desc" to kotlinx.serialization.json.JsonPrimitive(collateralDesc),
+            "collateral_value" to kotlinx.serialization.json.JsonPrimitive(collateralValue)
+        )) != null
+    }
 }
 
 class AuthRepository(

@@ -25,6 +25,7 @@ import com.fieldcrm.android.ui.screens.common.DetailItem
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
+import com.fieldcrm.android.ui.viewmodel.AppViewModel
 import com.fieldcrm.android.ui.viewmodel.ConfigViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -42,9 +43,12 @@ fun SettingsScreen(
     val configState by configViewModel.uiState.collectAsState()
     val config = configState.config
 
+    val appViewModel: AppViewModel = koinViewModel()
+    val appUiState by appViewModel.uiState.collectAsState()
+
     var faceIdEnabled by remember { mutableStateOf(true) }
     var pushEnabled by remember { mutableStateOf(true) }
-    var darkModeEnabled by remember { mutableStateOf(false) }
+    val darkModeEnabled = appUiState.isDarkMode
     var showSignOutConfirmation by remember { mutableStateOf(false) }
 
     // Active modal overlay: "PASSWORD", "PHONE", "HELP", "IT", "REPORT"
@@ -302,7 +306,7 @@ fun SettingsScreen(
                                     label = "Dark Mode",
                                     leadingIcon = FieldIcons.SettingsOutlined,
                                     checked = darkModeEnabled,
-                                    onCheckedChange = { darkModeEnabled = it }
+                                    onCheckedChange = { appViewModel.setDarkMode(it) }
                                 )
                             }
 

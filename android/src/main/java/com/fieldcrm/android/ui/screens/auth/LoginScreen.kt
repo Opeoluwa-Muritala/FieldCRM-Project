@@ -52,6 +52,13 @@ fun LoginScreenView(
 ) {
     val state by viewModel.uiState.collectAsState()
 
+    LaunchedEffect(hasEnrolledBiometrics) {
+        if (hasEnrolledBiometrics) {
+            kotlinx.coroutines.delay(400)
+            onBiometricClick()
+        }
+    }
+
     LoginScreenContent(
         state = state,
         hasEnrolledBiometrics = hasEnrolledBiometrics,

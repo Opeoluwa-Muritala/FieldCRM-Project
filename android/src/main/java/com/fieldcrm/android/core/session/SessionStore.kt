@@ -2,11 +2,34 @@ package com.fieldcrm.android.core.session
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
 class SessionStore(context: Context) {
 
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences("fieldcrm_session", Context.MODE_PRIVATE)
+    private val masterKey = MasterKey.Builder(context, "fieldcrm_session_key")
+        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .build()
+
+    private val prefs: SharedPreferences = try {
+        EncryptedSharedPreferences.create(
+            context,
+            "fieldcrm_session_enc",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    } catch (e: Exception) {
+        // Key mismatch after reinstall — wipe and recreate
+        context.deleteSharedPreferences("fieldcrm_session_enc")
+        EncryptedSharedPreferences.create(
+            context,
+            "fieldcrm_session_enc",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
 
     companion object {
         private const val KEY_TOKEN = "auth_token"
@@ -20,6 +43,7 @@ class SessionStore(context: Context) {
         private const val KEY_PASSCODE_HASH = "passcode_hash"
         private const val KEY_ONBOARDING_SEEN = "onboarding_seen"
         private const val KEY_PERMISSIONS_SEEN = "permissions_seen"
+        private const val KEY_DARK_MODE = "dark_mode"
 
         // 48-hour session TTL
         private const val SESSION_TTL_MS = 48L * 60 * 60 * 1000
@@ -99,4 +123,8 @@ class SessionStore(context: Context) {
     fun setOnboardingSeen() { prefs.edit().putBoolean(KEY_ONBOARDING_SEEN, true).apply() }
     fun hasSeenPermissions(): Boolean = prefs.getBoolean(KEY_PERMISSIONS_SEEN, false)
     fun setPermissionsSeen() { prefs.edit().putBoolean(KEY_PERMISSIONS_SEEN, true).apply() }
+
+    // Dark mode
+    fun isDarkMode(): Boolean = prefs.getBoolean(KEY_DARK_MODE, false)
+    fun setDarkMode(enabled: Boolean) { prefs.edit().putBoolean(KEY_DARK_MODE, enabled).apply() }
 }

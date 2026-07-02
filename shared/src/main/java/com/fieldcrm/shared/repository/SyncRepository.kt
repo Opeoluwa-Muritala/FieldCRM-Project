@@ -3,9 +3,12 @@ package com.fieldcrm.shared.repository
 import com.fieldcrm.shared.api.FieldCRMClient
 import com.fieldcrm.shared.db.AppDatabase
 import com.fieldcrm.shared.model.LoanApplicationModel
+import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 class SyncRepository(
     private val database: AppDatabase,
@@ -57,6 +60,57 @@ class SyncRepository(
                         val app = Json.decodeFromString(LoanApplicationModel.serializer(), item.payload_json)
                         val response = client.createApplication(app)
                         response.status == HttpStatusCode.Created || response.status == HttpStatusCode.OK
+                    }
+                    "SUBMIT_OCR_REVIEW" -> {
+                        try {
+                            val payload = kotlinx.serialization.json.Json.parseToJsonElement(item.payload_json).jsonObject
+                            val appId = payload["id"]!!.jsonPrimitive.content
+                            val response = client.httpClient.post("${client.baseUrl}/api/v1/mobile/applications/$appId/ocr-review") {
+                                io.ktor.http.contentType(ContentType.Application.Json)
+                                client.authHeader(this)
+                                setBody("""{"action":"verify","corrections":{}}""")
+                            }
+                            response.status.value in 200..299
+                        } catch (e: Exception) { false }
+                    }
+                    "SUBMIT_VISITATION" -> {
+                        try {
+                            val payload = kotlinx.serialization.json.Json.parseToJsonElement(item.payload_json).jsonObject
+                            val appId = payload["id"]!!.jsonPrimitive.content
+                            val bodyStr = payload["body"]?.jsonPrimitive?.content ?: "{}"
+                            val response = client.httpClient.put("${client.baseUrl}/api/v1/mobile/applications/$appId/visitation") {
+                                io.ktor.http.contentType(ContentType.Application.Json)
+                                client.authHeader(this)
+                                setBody(bodyStr)
+                            }
+                            response.status.value in 200..299
+                        } catch (e: Exception) { false }
+                    }
+                    "EXECUTE_PLEDGE" -> {
+                        try {
+                            val payload = kotlinx.serialization.json.Json.parseToJsonElement(item.payload_json).jsonObject
+                            val appId = payload["id"]!!.jsonPrimitive.content
+                            val bodyStr = payload["body"]?.jsonPrimitive?.content ?: "{}"
+                            val response = client.httpClient.patch("${client.baseUrl}/api/v1/mobile/applications/$appId") {
+                                io.ktor.http.contentType(ContentType.Application.Json)
+                                client.authHeader(this)
+                                setBody(bodyStr)
+                            }
+                            response.status.value in 200..299
+                        } catch (e: Exception) { false }
+                    }
+                    "SUBMIT_INTAKE" -> {
+                        try {
+                            val payload = kotlinx.serialization.json.Json.parseToJsonElement(item.payload_json).jsonObject
+                            val appId = payload["id"]!!.jsonPrimitive.content
+                            val bodyStr = payload["body"]?.jsonPrimitive?.content ?: "{}"
+                            val response = client.httpClient.patch("${client.baseUrl}/api/v1/mobile/applications/$appId") {
+                                io.ktor.http.contentType(ContentType.Application.Json)
+                                client.authHeader(this)
+                                setBody(bodyStr)
+                            }
+                            response.status.value in 200..299
+                        } catch (e: Exception) { false }
                     }
                     else -> false
                 }

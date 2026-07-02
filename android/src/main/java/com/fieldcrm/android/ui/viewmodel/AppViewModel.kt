@@ -123,9 +123,11 @@ data class AppUiState(
     val hasPasscode: Boolean = false,
     val passcodeHash: String? = null,
     val pendingBiometricAction: BiometricAction? = null,
+    val isDarkMode: Boolean = false,
     val successTitle: String = "",
     val successSubtitle: String = "",
-    val successDestination: Screen = Screen.Dashboard
+    val successDestination: Screen = Screen.Dashboard,
+    val preselectedBorrowerId: String? = null
 )
 
 class AppViewModel(private val sessionStore: SessionStore) : ViewModel() {
@@ -136,7 +138,8 @@ class AppViewModel(private val sessionStore: SessionStore) : ViewModel() {
             hasSeenOnboarding = sessionStore.hasSeenOnboarding(),
             hasSeenPermissions = sessionStore.hasSeenPermissions(),
             hasPasscode = sessionStore.hasPasscode(),
-            passcodeHash = sessionStore.getPasscodeHash()
+            passcodeHash = sessionStore.getPasscodeHash(),
+            isDarkMode = sessionStore.isDarkMode()
         )
     )
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
@@ -189,6 +192,15 @@ class AppViewModel(private val sessionStore: SessionStore) : ViewModel() {
 
     fun setBiometricAction(action: BiometricAction?) {
         _uiState.update { it.copy(pendingBiometricAction = action) }
+    }
+
+    fun setDarkMode(enabled: Boolean) {
+        sessionStore.setDarkMode(enabled)
+        _uiState.update { it.copy(isDarkMode = enabled) }
+    }
+
+    fun preselectBorrower(borrowerId: String?) {
+        _uiState.update { it.copy(preselectedBorrowerId = borrowerId) }
     }
 
     fun triggerSuccessScreen(title: String, subtitle: String, destination: Screen) {

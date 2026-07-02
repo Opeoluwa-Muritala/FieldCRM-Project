@@ -53,24 +53,20 @@ fun VisitationReportScreen(
         application = application,
         borrower = borrower,
         onBackClick = onBackClick,
-        onSubmitComplete = { locationState, remarks ->
-            val updatedBorrower = borrower?.copy(
-                gps_coordinates = locationState
-            )
-            val updatedApp = application.copy(
-                officer_recommendation = remarks
-            )
+        onSubmitComplete = { locationState, remarks, metWith, premises, direction ->
+            val updatedBorrower = borrower?.copy(gps_coordinates = locationState)
+            val updatedApp = application.copy(officer_recommendation = remarks)
             if (updatedBorrower != null) {
-                borrowerViewModel.updateBorrowerLocal(updatedBorrower) {
-                    applicationViewModel.updateApplicationLocal(updatedApp) {
-                        onSubmit()
-                    }
-                }
-            } else {
-                applicationViewModel.updateApplicationLocal(updatedApp) {
-                    onSubmit()
-                }
+                borrowerViewModel.updateBorrowerLocal(updatedBorrower) {}
             }
+            applicationViewModel.updateApplicationLocal(updatedApp) {}
+            applicationViewModel.submitVisitationReport(
+                id = application.id,
+                metWith = metWith,
+                premises = premises,
+                direction = direction,
+                onSuccess = onSubmit
+            )
         }
     )
 }
@@ -80,7 +76,7 @@ fun VisitationReportContent(
     application: LoanApplicationModel,
     borrower: BorrowerModel?,
     onBackClick: () -> Unit,
-    onSubmitComplete: (locationState: String, remarks: String) -> Unit
+    onSubmitComplete: (locationState: String, remarks: String, metWith: String, premises: String, direction: String) -> Unit
 ) {
     val context = LocalContext.current
     var remarks by remember { mutableStateOf(application.officer_recommendation ?: "") }
@@ -421,7 +417,7 @@ fun VisitationReportContent(
                             
                             PrimaryButton(
                                 text = "Submit Field Verification Dossier",
-                                onClick = { onSubmitComplete(locationState, remarks) },
+                                onClick = { onSubmitComplete(locationState, remarks, personMet, premisesDescription, directionFromBranch) },
                                 enabled = remarks.isNotEmpty() && visitDate.isNotEmpty() && personMet.isNotEmpty() && !isRefreshingGPS
                             )
                         }
@@ -476,6 +472,6 @@ fun PreviewVisitationCompact() {
         status = "Active", created_at = ""
     )
     FieldCRMTheme {
-        VisitationReportContent(application = demoApp, borrower = demoBorrower, onBackClick = {}, onSubmitComplete = { _, _ -> })
+        VisitationReportContent(application = demoApp, borrower = demoBorrower, onBackClick = {}, onSubmitComplete = { _, _, _, _, _ -> })
     }
 }

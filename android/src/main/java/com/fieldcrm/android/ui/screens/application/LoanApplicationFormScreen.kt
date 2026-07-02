@@ -30,6 +30,10 @@ import com.fieldcrm.android.ui.viewmodel.Screen
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 
 data class WizardTab(val index: Int, val name: String, val icon: String)
 
@@ -40,12 +44,14 @@ fun LoanApplicationFormScreen(
     applicationViewModel: ApplicationViewModel,
     borrowerViewModel: BorrowerViewModel,
     appViewModel: AppViewModel,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onNavigateToGuarantorsForm: () -> Unit = {}
 ) {
     LoanApplicationFormContent(
         application = application,
         borrower = borrower,
         onBackClick = onBackClick,
+        onNavigateToGuarantorsForm = onNavigateToGuarantorsForm,
         onSubmit = { name, phone, bvn, address, _, _, employment, employer, income, amount, tenure, product, collateralDesc, collateralVal, gName, gPhone, bank, acc ->
             val updatedBorrower = borrower?.copy(
                 name = name,
@@ -90,7 +96,7 @@ fun LoanApplicationFormScreen(
             )
 
             borrowerViewModel.updateBorrowerLocal(updatedBorrower) {
-                applicationViewModel.updateApplicationLocal(updatedApp) {
+                applicationViewModel.submitIntakeForm(updatedApp, updatedBorrower) {
                     appViewModel.setSelectedApplication(updatedApp)
                     appViewModel.setSelectedBorrower(updatedBorrower)
                     appViewModel.triggerSuccessScreen(
@@ -109,6 +115,7 @@ fun LoanApplicationFormContent(
     application: LoanApplicationModel,
     borrower: BorrowerModel?,
     onBackClick: () -> Unit,
+    onNavigateToGuarantorsForm: () -> Unit = {},
     onSubmit: (
         name: String, phone: String, bvn: String, address: String, dob: String, marital: String,
         employment: String, employer: String, income: String, amount: String, tenure: String,
@@ -117,6 +124,8 @@ fun LoanApplicationFormContent(
     ) -> Unit
 ) {
     var currentTab by remember { mutableIntStateOf(0) }
+    var isDirty by remember { mutableStateOf(false) }
+    var showUnsavedDialog by remember { mutableStateOf(false) }
 
     val tabs = listOf(
         WizardTab(0, "Applicant Details", "01"),
@@ -158,9 +167,16 @@ fun LoanApplicationFormContent(
     var gNameInput by remember { mutableStateOf(borrower?.guarantor_name ?: "") }
     var gPhoneInput by remember { mutableStateOf(borrower?.guarantor_phone ?: "") }
 
-    var employmentInput by remember { mutableStateOf(borrower?.employment_status ?: "Self Employed") }
+    var employmentInput by remember { mutableStateOf(borrower?.employment_status ?: "Self-employed") }
     var employerInput by remember { mutableStateOf(borrower?.employer_name ?: "") }
     var incomeInput by remember { mutableStateOf(borrower?.monthly_income?.toInt()?.toString() ?: "350000") }
+
+    var industryInput by remember { mutableStateOf("") }
+    var yearsEmployedInput by remember { mutableStateOf("") }
+    var employerAddressInput by remember { mutableStateOf("") }
+    var businessTypeInput by remember { mutableStateOf("") }
+    var businessDetailsInput by remember { mutableStateOf("") }
+    var supportingProofInput by remember { mutableStateOf("") }
 
     var facilityBankInput by remember { mutableStateOf("") }
     var facilityAmountInput by remember { mutableStateOf("") }
@@ -184,6 +200,19 @@ fun LoanApplicationFormContent(
     var accInput by remember { mutableStateOf(borrower?.account_number ?: "") }
 
     // Step 9 consent state
+    var educationLevelInput by remember { mutableStateOf("Graduate") }
+    var loanPurposeInput by remember { mutableStateOf("Working Capital") }
+    var collateralSecurityInput by remember { mutableStateOf(setOf<String>()) }
+
+    var pledgeBorrowerInput by remember { mutableStateOf(borrower?.name ?: "") }
+    var pledgeObligorInput by remember { mutableStateOf("") }
+    var pledgeLocationInput by remember { mutableStateOf("") }
+    var pledgeDateInput by remember { mutableStateOf("") }
+    var pledgeAmountWordsInput by remember { mutableStateOf("") }
+    var pledgeWitnessNameInput by remember { mutableStateOf("") }
+    var pledgeWitnessAddressInput by remember { mutableStateOf("") }
+    var pledgeLegalAckInput by remember { mutableStateOf(false) }
+
     var consentBureauDisclosure by remember { mutableStateOf(false) }
     var consentCreditCheck by remember { mutableStateOf(false) }
     var consentChequeRecovery by remember { mutableStateOf(false) }
@@ -197,12 +226,28 @@ fun LoanApplicationFormContent(
     ) {
         val isWide = maxWidth >= 840.dp
 
+        if (showUnsavedDialog) {
+            AlertDialog(
+                onDismissRequest = { showUnsavedDialog = false },
+                title = { Text("Unsaved Changes") },
+                text = { Text("You have unsaved form data. Leave without saving?") },
+                confirmButton = {
+                    TextButton(onClick = { showUnsavedDialog = false; onBackClick() }) { Text("Leave") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showUnsavedDialog = false }) { Text("Stay") }
+                }
+            )
+        }
+
         Scaffold(
             topBar = {
                 FieldTopAppBar(
                     title = "Lending Wizard: Step ${currentTab + 1} of 9",
                     navigationIcon = {
-                        IconButton(onClick = onBackClick) {
+                        IconButton(onClick = {
+                            if (isDirty && currentTab > 0) showUnsavedDialog = true else onBackClick()
+                        }) {
                             Icon(
                                 imageVector = FieldIcons.ArrowBackOutlined,
                                 contentDescription = "Back",
@@ -333,7 +378,7 @@ fun LoanApplicationFormContent(
                     ) {
                         WizardTabContent(
                             tabIndex = currentTab,
-                            name = nameInput, onNameChange = { nameInput = it },
+                            name = nameInput, onNameChange = { nameInput = it; isDirty = true },
                             phone = phoneInput, onPhoneChange = { phoneInput = it },
                             bvn = bvnInput, onBvnChange = { bvnInput = it },
                             address = addressInput, onAddressChange = { addressInput = it },
@@ -353,13 +398,20 @@ fun LoanApplicationFormContent(
                             spouseSignatureData = spouseSignatureData, onSpouseSignatureConfirm = { spouseSignatureData = it }, onSpouseSignatureClear = { spouseSignatureData = null },
                             gName = gNameInput, onGNameChange = { gNameInput = it },
                             gPhone = gPhoneInput, onGPhoneChange = { gPhoneInput = it },
+                            onNavigateToGuarantorsForm = onNavigateToGuarantorsForm,
                             employment = employmentInput, onEmploymentChange = { employmentInput = it },
                             employer = employerInput, onEmployerChange = { employerInput = it },
                             income = incomeInput, onIncomeChange = { incomeInput = it },
+                            industry = industryInput, onIndustryChange = { industryInput = it },
+                            yearsEmployed = yearsEmployedInput, onYearsEmployedChange = { yearsEmployedInput = it },
+                            employerAddress = employerAddressInput, onEmployerAddressChange = { employerAddressInput = it },
+                            businessType = businessTypeInput, onBusinessTypeChange = { businessTypeInput = it },
+                            businessDetails = businessDetailsInput, onBusinessDetailsChange = { businessDetailsInput = it },
+                            supportingProof = supportingProofInput, onSupportingProofChange = { supportingProofInput = it },
                             facilityBank = facilityBankInput, onFacilityBankChange = { facilityBankInput = it },
                             facilityAmount = facilityAmountInput, onFacilityAmountChange = { facilityAmountInput = it },
                             facilityTenure = facilityTenureInput, onFacilityTenureChange = { facilityTenureInput = it },
-                            amount = amountInput, onAmountChange = { amountInput = it },
+                            amount = amountInput, onAmountChange = { amountInput = it; isDirty = true },
                             tenure = tenureInput, onTenureChange = { tenureInput = it },
                             product = productInput, onProductChange = { productInput = it },
                             modeOfRepayment = modeOfRepayment, onModeOfRepaymentChange = { modeOfRepayment = it },
@@ -369,6 +421,17 @@ fun LoanApplicationFormContent(
                             collateralVal = collateralValInput, onCollateralValChange = { collateralValInput = it },
                             bank = bankInput, onBankChange = { bankInput = it },
                             acc = accInput, onAccChange = { accInput = it },
+                            educationLevel = educationLevelInput, onEducationLevelChange = { educationLevelInput = it },
+                            loanPurpose = loanPurposeInput, onLoanPurposeChange = { loanPurposeInput = it },
+                            collateralSecurity = collateralSecurityInput, onCollateralSecurityChange = { collateralSecurityInput = it },
+                            pledgeBorrower = pledgeBorrowerInput, onPledgeBorrowerChange = { pledgeBorrowerInput = it },
+                            pledgeObligor = pledgeObligorInput, onPledgeObligorChange = { pledgeObligorInput = it },
+                            pledgeLocation = pledgeLocationInput, onPledgeLocationChange = { pledgeLocationInput = it },
+                            pledgeDate = pledgeDateInput, onPledgeDateChange = { pledgeDateInput = it },
+                            pledgeAmountWords = pledgeAmountWordsInput, onPledgeAmountWordsChange = { pledgeAmountWordsInput = it },
+                            pledgeWitnessName = pledgeWitnessNameInput, onPledgeWitnessNameChange = { pledgeWitnessNameInput = it },
+                            pledgeWitnessAddress = pledgeWitnessAddressInput, onPledgeWitnessAddressChange = { pledgeWitnessAddressInput = it },
+                            pledgeLegalAck = pledgeLegalAckInput, onPledgeLegalAckChange = { pledgeLegalAckInput = it },
                             consentBureauDisclosure = consentBureauDisclosure, onConsentBureauDisclosureChange = { consentBureauDisclosure = it },
                             consentCreditCheck = consentCreditCheck, onConsentCreditCheckChange = { consentCreditCheck = it },
                             consentChequeRecovery = consentChequeRecovery, onConsentChequeRecoveryChange = { consentChequeRecovery = it },
@@ -405,7 +468,7 @@ fun LoanApplicationFormContent(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             PrimaryButton(
-                                text = "Submit Profile",
+                                text = "Submit for Credit Review",
                                 onClick = {
                                     onSubmit(
                                         nameInput, phoneInput, bvnInput, addressInput, dobInput, maritalInput,
@@ -454,9 +517,16 @@ fun WizardTabContent(
     spouseSignatureData: String?, onSpouseSignatureConfirm: (String) -> Unit, onSpouseSignatureClear: () -> Unit,
     gName: String, onGNameChange: (String) -> Unit,
     gPhone: String, onGPhoneChange: (String) -> Unit,
+    onNavigateToGuarantorsForm: () -> Unit,
     employment: String, onEmploymentChange: (String) -> Unit,
     employer: String, onEmployerChange: (String) -> Unit,
     income: String, onIncomeChange: (String) -> Unit,
+    industry: String, onIndustryChange: (String) -> Unit,
+    yearsEmployed: String, onYearsEmployedChange: (String) -> Unit,
+    employerAddress: String, onEmployerAddressChange: (String) -> Unit,
+    businessType: String, onBusinessTypeChange: (String) -> Unit,
+    businessDetails: String, onBusinessDetailsChange: (String) -> Unit,
+    supportingProof: String, onSupportingProofChange: (String) -> Unit,
     facilityBank: String, onFacilityBankChange: (String) -> Unit,
     facilityAmount: String, onFacilityAmountChange: (String) -> Unit,
     facilityTenure: String, onFacilityTenureChange: (String) -> Unit,
@@ -470,6 +540,17 @@ fun WizardTabContent(
     collateralVal: String, onCollateralValChange: (String) -> Unit,
     bank: String, onBankChange: (String) -> Unit,
     acc: String, onAccChange: (String) -> Unit,
+    educationLevel: String, onEducationLevelChange: (String) -> Unit,
+    loanPurpose: String, onLoanPurposeChange: (String) -> Unit,
+    collateralSecurity: Set<String>, onCollateralSecurityChange: (Set<String>) -> Unit,
+    pledgeBorrower: String, onPledgeBorrowerChange: (String) -> Unit,
+    pledgeObligor: String, onPledgeObligorChange: (String) -> Unit,
+    pledgeLocation: String, onPledgeLocationChange: (String) -> Unit,
+    pledgeDate: String, onPledgeDateChange: (String) -> Unit,
+    pledgeAmountWords: String, onPledgeAmountWordsChange: (String) -> Unit,
+    pledgeWitnessName: String, onPledgeWitnessNameChange: (String) -> Unit,
+    pledgeWitnessAddress: String, onPledgeWitnessAddressChange: (String) -> Unit,
+    pledgeLegalAck: Boolean, onPledgeLegalAckChange: (Boolean) -> Unit,
     consentBureauDisclosure: Boolean, onConsentBureauDisclosureChange: (Boolean) -> Unit,
     consentCreditCheck: Boolean, onConsentCreditCheckChange: (Boolean) -> Unit,
     consentChequeRecovery: Boolean, onConsentChequeRecoveryChange: (Boolean) -> Unit,
@@ -563,6 +644,32 @@ fun WizardTabContent(
                     onValueChange = onNearestLandmarkChange,
                     label = "Nearest Landmark / Bus Stop"
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("PASSPORT PHOTO", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                Spacer(modifier = Modifier.height(8.dp))
+                var hasPassportPhoto by remember { mutableStateOf(false) }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(4.dp))
+                        .background(FieldTheme.colors.gray900, RoundedCornerShape(4.dp))
+                        .clickable { hasPassportPhoto = !hasPassportPhoto }
+                        .padding(horizontal = 12.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = if (hasPassportPhoto) FieldIcons.CheckOutlined else FieldIcons.CameraOutlined,
+                        contentDescription = "Passport Photo",
+                        tint = if (hasPassportPhoto) FieldTheme.colors.statusSuccess else FieldTheme.colors.purple400,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = if (hasPassportPhoto) "Passport Photo uploaded / captured" else "No passport photo - tap to upload/capture",
+                        style = FieldTheme.typography.body,
+                        color = if (hasPassportPhoto) FieldTheme.colors.gray100 else FieldTheme.colors.gray500
+                    )
+                }
             }
         }
         1 -> {
@@ -644,118 +751,310 @@ fun WizardTabContent(
             }
         }
         2 -> {
-            FieldCard {
-                Text("Guarantors List Overview", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
-                Spacer(modifier = Modifier.height(16.dp))
-                FieldTextField(
-                    value = gName,
-                    onValueChange = onGNameChange,
-                    label = "Guarantor 1 Full Name",
-                    isRequired = true
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                FieldTextField(
-                    value = gPhone,
-                    onValueChange = onGPhoneChange,
-                    label = "Guarantor 1 Phone",
-                    isRequired = true
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Guarantor profiles can be thoroughly completed and signed from the main dossier screen.",
-                    style = FieldTheme.typography.body.copy(fontSize = 12.sp),
-                    color = FieldTheme.colors.gray500
-                )
+            var g1Relationship by remember { mutableStateOf("Sibling") }
+            var g2Name by remember { mutableStateOf("") }
+            var g2Relationship by remember { mutableStateOf("Friend") }
+            var g2Phone by remember { mutableStateOf("") }
+            
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                FieldCard {
+                    Text("Guarantor 1 Profile", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    FieldTextField(
+                        value = gName,
+                        onValueChange = onGNameChange,
+                        label = "Guarantor 1 Full Name",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldDropdown(
+                        value = g1Relationship,
+                        options = listOf("Sibling", "Spouse", "Parent", "Business Partner", "Friend", "Other"),
+                        onOptionSelected = { g1Relationship = it },
+                        label = "Relationship"
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = gPhone,
+                        onValueChange = onGPhoneChange,
+                        label = "Guarantor 1 Phone",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    PrimaryButton(
+                        text = "Complete Guarantor 1 Form",
+                        onClick = onNavigateToGuarantorsForm
+                    )
+                }
+
+                FieldCard {
+                    Text("Guarantor 2 Profile", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    FieldTextField(
+                        value = g2Name,
+                        onValueChange = { g2Name = it },
+                        label = "Guarantor 2 Full Name",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldDropdown(
+                        value = g2Relationship,
+                        options = listOf("Sibling", "Spouse", "Parent", "Business Partner", "Friend", "Other"),
+                        onOptionSelected = { g2Relationship = it },
+                        label = "Relationship"
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = g2Phone,
+                        onValueChange = { g2Phone = it },
+                        label = "Guarantor 2 Phone",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    PrimaryButton(
+                        text = "Complete Guarantor 2 Form",
+                        onClick = onNavigateToGuarantorsForm
+                    )
+                }
             }
         }
         3 -> {
             FieldCard {
-                Text("Employment & Business details", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
+                Text("Employment & Business Details", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
                 Spacer(modifier = Modifier.height(16.dp))
                 FieldDropdown(
                     value = employment,
-                    options = listOf("Public Service", "Private Sector", "Self Employed", "Unemployed"),
+                    options = listOf("Full-time", "Part-time", "Contract Staff", "Public Servant", "Self-employed", "Unemployed"),
                     onOptionSelected = onEmploymentChange,
                     label = "Employment Status"
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                FieldTextField(
-                    value = employer,
-                    onValueChange = onEmployerChange,
-                    label = "Employer / Business Name",
-                    isRequired = employment != "Unemployed"
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                FieldAmountField(
-                    value = income,
-                    onValueChange = onIncomeChange,
-                    label = "Monthly Average Income / Sales",
-                    isRequired = true
-                )
+
+                if (employment in listOf("Full-time", "Part-time", "Contract Staff", "Public Servant")) {
+                    FieldTextField(
+                        value = industry,
+                        onValueChange = onIndustryChange,
+                        label = "Industry / Sector",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = yearsEmployed,
+                        onValueChange = onYearsEmployedChange,
+                        label = "Years Employed",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = employer,
+                        onValueChange = onEmployerChange,
+                        label = "Employer Name",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldAmountField(
+                        value = income,
+                        onValueChange = onIncomeChange,
+                        label = "Monthly Salary",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = employerAddress,
+                        onValueChange = onEmployerAddressChange,
+                        label = "Employer Address",
+                        isRequired = true
+                    )
+                } else if (employment == "Self-employed") {
+                    FieldTextField(
+                        value = businessType,
+                        onValueChange = onBusinessTypeChange,
+                        label = "Business Type",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = businessDetails,
+                        onValueChange = onBusinessDetailsChange,
+                        label = "Business Details / Activity",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldAmountField(
+                        value = income,
+                        onValueChange = onIncomeChange,
+                        label = "Monthly Average Sales / Turnover",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = supportingProof,
+                        onValueChange = onSupportingProofChange,
+                        label = "Supporting Proof / References",
+                        placeholder = "e.g. CAC Reg No, Rent Receipt, Invoice Ref",
+                        isRequired = true
+                    )
+                } else {
+                    Text(
+                        text = "Unemployed applicant. No employment details required. You may proceed to the next step.",
+                        style = FieldTheme.typography.body,
+                        color = FieldTheme.colors.gray500,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                }
             }
         }
         4 -> {
-            FieldCard {
-                Text("Existing Loan Facilities", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
-                Spacer(modifier = Modifier.height(16.dp))
-                FieldTextField(
-                    value = facilityBank,
-                    onValueChange = onFacilityBankChange,
-                    label = "Bank Name"
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        FieldAmountField(
-                            value = facilityAmount,
-                            onValueChange = onFacilityAmountChange,
-                            label = "Amount"
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
+            var facilityRows by remember { mutableStateOf(listOf(Triple(facilityBank, facilityAmount, facilityTenure))) }
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                FieldCard {
+                    Text("Educational Background", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    FieldDropdown(
+                        value = educationLevel,
+                        options = listOf("Primary", "Secondary", "Graduate", "Postgraduate"),
+                        onOptionSelected = onEducationLevelChange,
+                        label = "Highest Level of Education"
+                    )
+                }
+                FieldCard {
+                    Text("Existing Loan Facilities", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    facilityRows.forEachIndexed { idx, row ->
+                        if (idx > 0) Spacer(modifier = Modifier.height(12.dp))
                         FieldTextField(
-                            value = facilityTenure,
-                            onValueChange = onFacilityTenureChange,
-                            label = "Tenor (months)",
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            value = row.first,
+                            onValueChange = { newVal ->
+                                val updated = facilityRows.toMutableList()
+                                updated[idx] = Triple(newVal, row.second, row.third)
+                                facilityRows = updated
+                                if (idx == 0) onFacilityBankChange(newVal)
+                            },
+                            label = if (idx == 0) "Bank Name" else "Bank Name ${idx + 1}"
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                FieldAmountField(
+                                    value = row.second,
+                                    onValueChange = { newVal ->
+                                        val updated = facilityRows.toMutableList()
+                                        updated[idx] = Triple(row.first, newVal, row.third)
+                                        facilityRows = updated
+                                        if (idx == 0) onFacilityAmountChange(newVal)
+                                    },
+                                    label = "Amount"
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                FieldTextField(
+                                    value = row.third,
+                                    onValueChange = { newVal ->
+                                        val updated = facilityRows.toMutableList()
+                                        updated[idx] = Triple(row.first, row.second, newVal)
+                                        facilityRows = updated
+                                        if (idx == 0) onFacilityTenureChange(newVal)
+                                    },
+                                    label = "Tenor (months)",
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                )
+                            }
+                            if (facilityRows.size > 1) {
+                                IconButton(
+                                    onClick = {
+                                        val updated = facilityRows.toMutableList()
+                                        updated.removeAt(idx)
+                                        facilityRows = updated
+                                    },
+                                    modifier = Modifier.padding(top = 16.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = FieldIcons.CloseOutlined,
+                                        contentDescription = "Remove",
+                                        tint = FieldTheme.colors.statusDanger
+                                    )
+                                }
+                            }
+                        }
                     }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SecondaryButton(
+                        text = "Add Another Facility",
+                        onClick = { facilityRows = facilityRows + Triple("", "", "") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
         5 -> {
-            FieldCard {
-                Text("Principal Loan Request", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
-                Spacer(modifier = Modifier.height(16.dp))
-                FieldAmountField(
-                    value = amount,
-                    onValueChange = onAmountChange,
-                    label = "Requested Loan Principal",
-                    isRequired = true
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                FieldTextField(
-                    value = tenure,
-                    onValueChange = onTenureChange,
-                    label = "Requested Tenure (Months)",
-                    isRequired = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                FieldDropdown(
-                    value = product,
-                    options = listOf("Working Capital", "Asset Purchase", "Inventory Expansion", "Education"),
-                    onOptionSelected = onProductChange,
-                    label = "Loan Product Segment"
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                FieldDropdown(
-                    value = modeOfRepayment,
-                    options = listOf("Cheque", "Standing Order", "Direct Debit", "Cash Deposit"),
-                    onOptionSelected = onModeOfRepaymentChange,
-                    label = "Mode of Repayment",
-                    isRequired = true
-                )
+            val collateralOptions = listOf("Shop Stock", "Household Appliances", "Business Proceeds", "Property Documents", "Vehicles")
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                FieldCard {
+                    Text("Principal Loan Request", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    FieldAmountField(
+                        value = amount,
+                        onValueChange = onAmountChange,
+                        label = "Requested Loan Principal",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = tenure,
+                        onValueChange = onTenureChange,
+                        label = "Requested Tenure (Months)",
+                        isRequired = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldDropdown(
+                        value = loanPurpose,
+                        options = listOf("Working Capital", "Business Asset Acquisition", "Emergency Personal Expense", "Other"),
+                        onOptionSelected = { onLoanPurposeChange(it); onProductChange(it) },
+                        label = "Loan Purpose",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldDropdown(
+                        value = modeOfRepayment,
+                        options = listOf("Cheque", "Standing Order", "Direct Debit", "Cash Deposit"),
+                        onOptionSelected = onModeOfRepaymentChange,
+                        label = "Mode of Repayment",
+                        isRequired = true
+                    )
+                }
+                FieldCard {
+                    Text("Collateral Security", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Select all that apply", style = FieldTheme.typography.body, color = FieldTheme.colors.gray500)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    collateralOptions.forEach { option ->
+                        val checked = option in collateralSecurity
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onCollateralSecurityChange(
+                                        if (checked) collateralSecurity - option else collateralSecurity + option
+                                    )
+                                }
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = {
+                                    onCollateralSecurityChange(
+                                        if (it) collateralSecurity + option else collateralSecurity - option
+                                    )
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(option, style = FieldTheme.typography.body, color = FieldTheme.colors.gray300)
+                        }
+                    }
+                }
             }
         }
         6 -> {
@@ -792,22 +1091,229 @@ fun WizardTabContent(
             }
         }
         7 -> {
-            FieldCard {
-                Text("Collateral Pledge Schedule", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
-                Spacer(modifier = Modifier.height(16.dp))
-                FieldTextField(
-                    value = collateralDesc,
-                    onValueChange = onCollateralDescChange,
-                    label = "Pledged Asset Description",
-                    isRequired = true
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                FieldAmountField(
-                    value = collateralVal,
-                    onValueChange = onCollateralValChange,
-                    label = "Estimated Market Value",
-                    isRequired = true
-                )
+            var pledgeAmountInput by remember { mutableStateOf(amount) }
+            var pledgeDescription by remember { mutableStateOf(collateralDesc) }
+            var pledgeItems by remember { mutableStateOf(listOf(Pair("", ""))) }
+            var borrowerSignature by remember { mutableStateOf<String?>(null) }
+            var witnessSignature by remember { mutableStateOf<String?>(null) }
+            val context = LocalContext.current
+            var uploadedDocName by remember { mutableStateOf<String?>(null) }
+            val pledgePickerLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.GetContent()
+            ) { uri ->
+                uri?.let {
+                    val name = context.contentResolver.query(it, null, null, null, null)?.use { cursor ->
+                        val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (cursor.moveToFirst() && idx >= 0) cursor.getString(idx) else "pledge_document"
+                    } ?: "pledge_document"
+                    uploadedDocName = name
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                FieldCard {
+                    Text("Pledge & Trust Receipt Details", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    FieldTextField(
+                        value = pledgeBorrower,
+                        onValueChange = onPledgeBorrowerChange,
+                        label = "Borrower / Pledgor Name",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = pledgeObligor,
+                        onValueChange = onPledgeObligorChange,
+                        label = "Obligor / Surety Name",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = pledgeLocation,
+                        onValueChange = onPledgeLocationChange,
+                        label = "Pledge Location / Address",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = pledgeDate,
+                        onValueChange = onPledgeDateChange,
+                        label = "Pledge Date",
+                        placeholder = "YYYY-MM-DD",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldAmountField(
+                        value = pledgeAmountInput,
+                        onValueChange = {
+                            pledgeAmountInput = it
+                            onCollateralValChange(it)
+                        },
+                        label = "Pledge Amount (Figures)",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = pledgeAmountWords,
+                        onValueChange = onPledgeAmountWordsChange,
+                        label = "Pledge Amount (Words)",
+                        placeholder = "e.g. Five Hundred Thousand Naira Only",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = pledgeDescription,
+                        onValueChange = {
+                            pledgeDescription = it
+                            onCollateralDescChange(it)
+                        },
+                        label = "General Pledge Description",
+                        isRequired = true
+                    )
+                }
+
+                FieldCard {
+                    Text("Pledged Items Schedule", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    pledgeItems.forEachIndexed { idx, item ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1.5f)) {
+                                FieldTextField(
+                                    value = item.first,
+                                    onValueChange = { newVal ->
+                                        val newList = pledgeItems.toMutableList()
+                                        newList[idx] = Pair(newVal, item.second)
+                                        pledgeItems = newList
+                                    },
+                                    label = "Item Description ${idx + 1}"
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                FieldTextField(
+                                    value = item.second,
+                                    onValueChange = { newVal ->
+                                        val newList = pledgeItems.toMutableList()
+                                        newList[idx] = Pair(item.first, newVal)
+                                        pledgeItems = newList
+                                    },
+                                    label = "Qty / Value"
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    if (pledgeItems.size > 1) {
+                                        val newList = pledgeItems.toMutableList()
+                                        newList.removeAt(idx)
+                                        pledgeItems = newList
+                                    }
+                                },
+                                modifier = Modifier.padding(top = 16.dp)
+                            ) {
+                                Icon(
+                                    imageVector = FieldIcons.CloseOutlined,
+                                    contentDescription = "Remove Item",
+                                    tint = FieldTheme.colors.statusDanger
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SecondaryButton(
+                        text = "Add Pledged Item",
+                        onClick = { pledgeItems = pledgeItems + Pair("", "") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                FieldCard {
+                    Text("Witness Details", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    FieldTextField(
+                        value = pledgeWitnessName,
+                        onValueChange = onPledgeWitnessNameChange,
+                        label = "Witness Full Name",
+                        isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = pledgeWitnessAddress,
+                        onValueChange = onPledgeWitnessAddressChange,
+                        label = "Witness Address",
+                        isRequired = true
+                    )
+                }
+
+                FieldCard {
+                    Text("Signatures & Verification", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("BORROWER SIGNATURE", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FieldSignaturePad(
+                        onConfirm = { borrowerSignature = "signed" },
+                        onClear = { borrowerSignature = null },
+                        modifier = Modifier.fillMaxWidth().height(120.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("WITNESS SIGNATURE", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FieldSignaturePad(
+                        onConfirm = { witnessSignature = "signed" },
+                        onClear = { witnessSignature = null },
+                        modifier = Modifier.fillMaxWidth().height(120.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onPledgeLegalAckChange(!pledgeLegalAck) }
+                    ) {
+                        Checkbox(checked = pledgeLegalAck, onCheckedChange = onPledgeLegalAckChange)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "I acknowledge that the pledged items are free of encumbrance and I have legal authority to pledge them.",
+                            style = FieldTheme.typography.body,
+                            color = FieldTheme.colors.gray300,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("ALTERNATIVE METHOD", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(6.dp))
+                            .background(FieldTheme.colors.gray900, RoundedCornerShape(6.dp))
+                            .clickable { pledgePickerLauncher.launch("*/*") }
+                            .padding(horizontal = 12.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = FieldIcons.DocumentOutlined,
+                            contentDescription = "Upload Document",
+                            tint = FieldTheme.colors.purple400,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = uploadedDocName?.let { "Uploaded: $it" } ?: "Upload alternative signed document",
+                            style = FieldTheme.typography.body,
+                            color = if (uploadedDocName != null) FieldTheme.colors.gray100 else FieldTheme.colors.gray500
+                        )
+                    }
+                }
             }
         }
         else -> {
