@@ -187,7 +187,7 @@ fun AuditTrailScreen(
                                         Text(
                                             text = event.stageChange,
                                             style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
-                                            color = FieldTheme.colors.purple300
+                                            color = FieldTheme.colors.purple400
                                         )
                                     }
                                 }

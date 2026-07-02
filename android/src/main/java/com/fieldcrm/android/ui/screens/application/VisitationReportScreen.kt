@@ -353,23 +353,20 @@ fun VisitationReportContent(
                                     value = premisesDescription,
                                     onValueChange = { premisesDescription = it },
                                     label = "Premises Description",
-                                    isRequired = true,
-                                    multiline = true
+                                    isRequired = true
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 FieldTextField(
                                     value = directionFromBranch,
                                     onValueChange = { directionFromBranch = it },
                                     label = "Direction from Branch",
-                                    isRequired = true,
-                                    multiline = true
+                                    isRequired = true
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 FieldTextField(
                                     value = businessCondition,
                                     onValueChange = { businessCondition = it },
-                                    label = "Business Condition Observed",
-                                    multiline = true
+                                    label = "Business Condition Observed"
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 FieldTextField(

@@ -19,6 +19,8 @@ import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.shared.model.BorrowerModel
+import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
 
 private data class CreditReviewItem(
@@ -30,18 +32,34 @@ private data class CreditReviewItem(
 )
 
 private val placeholderCreditItems = listOf(
-    CreditReviewItem("Adaeze Okonkwo", "SME Loan", "₦500,000", "6 MO", "app_001"),
-    CreditReviewItem("Emeka Chukwu", "Asset Loan", "₦1,200,000", "12 MO", "app_002"),
-    CreditReviewItem("Ngozi Adeyemi", "Working Capital", "₦350,000", "3 MO", "app_003"),
-    CreditReviewItem("Chukwuemeka Eze", "SME Loan", "₦750,000", "9 MO", "app_004"),
-    CreditReviewItem("Fatima Bello", "Agric Loan", "₦200,000", "6 MO", "app_005")
+    CreditReviewItem("Adaeze Okonkwo", "SME Loan", "₦500,000", "6 MO", ""),
+    CreditReviewItem("Emeka Chukwu", "Asset Loan", "₦1,200,000", "12 MO", ""),
+    CreditReviewItem("Ngozi Adeyemi", "Working Capital", "₦350,000", "3 MO", ""),
+    CreditReviewItem("Chukwuemeka Eze", "SME Loan", "₦750,000", "9 MO", ""),
+    CreditReviewItem("Fatima Bello", "Agric Loan", "₦200,000", "6 MO", "")
 )
 
 @Composable
 fun CreditReviewQueueScreen(
+    applications: List<LoanApplicationModel> = emptyList(),
+    borrowers: List<BorrowerModel> = emptyList(),
     onBackClick: () -> Unit,
     onReviewApplication: (String) -> Unit = {}
 ) {
+    val reviewItems = remember(applications, borrowers) {
+        if (applications.isNotEmpty()) {
+            applications.map { app ->
+                val borrower = borrowers.find { it.id == app.borrower_id }
+                CreditReviewItem(
+                    applicantName = borrower?.name ?: "Unknown Applicant",
+                    productType = app.product_type,
+                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount)}",
+                    tenure = "—",
+                    appId = app.id
+                )
+            }
+        } else placeholderCreditItems
+    }
     var isLoading by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -75,7 +93,7 @@ fun CreditReviewQueueScreen(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "${placeholderCreditItems.size} QUEUED",
+                            text = "${reviewItems.size} QUEUED",
                             style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
                             color = FieldTheme.colors.purple400
                         )
@@ -119,11 +137,11 @@ fun CreditReviewQueueScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(placeholderCreditItems) { item ->
+                    items(reviewItems) { item ->
                         FieldCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onReviewApplication(item.appId) }
+                                .clickable(enabled = item.appId.isNotEmpty()) { onReviewApplication(item.appId) }
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),

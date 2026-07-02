@@ -15,6 +15,11 @@ class SessionStore(context: Context) {
         private const val KEY_ROLE = "user_role"
         private const val KEY_ORG_ID = "org_id"
         private const val KEY_EXPIRES_AT = "expires_at"
+        private const val KEY_BIOMETRIC_ENROLLED = "biometric_enrolled"
+        private const val KEY_BIOMETRIC_SHOWN = "biometric_enrollment_shown"
+        private const val KEY_PASSCODE_HASH = "passcode_hash"
+        private const val KEY_ONBOARDING_SEEN = "onboarding_seen"
+        private const val KEY_PERMISSIONS_SEEN = "permissions_seen"
 
         // 48-hour session TTL
         private const val SESSION_TTL_MS = 48L * 60 * 60 * 1000
@@ -68,4 +73,30 @@ class SessionStore(context: Context) {
         val expiresAt = prefs.getLong(KEY_EXPIRES_AT, 0L)
         return token.isNotEmpty() && System.currentTimeMillis() <= expiresAt
     }
+
+    // Biometric
+    fun isBiometricEnrolled(): Boolean = prefs.getBoolean(KEY_BIOMETRIC_ENROLLED, false)
+    fun setBiometricEnrolled(enrolled: Boolean) {
+        prefs.edit().putBoolean(KEY_BIOMETRIC_ENROLLED, enrolled).apply()
+    }
+    fun hasBiometricEnrollmentBeenShown(): Boolean = prefs.getBoolean(KEY_BIOMETRIC_SHOWN, false)
+    fun markBiometricEnrollmentShown() {
+        prefs.edit().putBoolean(KEY_BIOMETRIC_SHOWN, true).apply()
+    }
+
+    // Passcode
+    fun savePasscodeHash(hash: String) {
+        prefs.edit().putString(KEY_PASSCODE_HASH, hash).apply()
+    }
+    fun getPasscodeHash(): String? = prefs.getString(KEY_PASSCODE_HASH, null)
+    fun hasPasscode(): Boolean = getPasscodeHash() != null
+    fun clearPasscode() {
+        prefs.edit().remove(KEY_PASSCODE_HASH).apply()
+    }
+
+    // Onboarding / permissions (persisted so they survive process restart)
+    fun hasSeenOnboarding(): Boolean = prefs.getBoolean(KEY_ONBOARDING_SEEN, false)
+    fun setOnboardingSeen() { prefs.edit().putBoolean(KEY_ONBOARDING_SEEN, true).apply() }
+    fun hasSeenPermissions(): Boolean = prefs.getBoolean(KEY_PERMISSIONS_SEEN, false)
+    fun setPermissionsSeen() { prefs.edit().putBoolean(KEY_PERMISSIONS_SEEN, true).apply() }
 }

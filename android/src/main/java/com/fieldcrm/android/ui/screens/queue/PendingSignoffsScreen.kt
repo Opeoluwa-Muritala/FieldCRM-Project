@@ -18,6 +18,8 @@ import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.shared.model.BorrowerModel
+import com.fieldcrm.shared.model.LoanApplicationModel
 
 private data class PendingSignoffItem(
     val applicantName: String,
@@ -27,18 +29,33 @@ private data class PendingSignoffItem(
 )
 
 private val placeholderSignoffItems = listOf(
-    PendingSignoffItem("Adaeze Okonkwo", "Samuel Okeke", "2026-07-01", "report_001"),
-    PendingSignoffItem("Ngozi Adeyemi", "Grace Nwosu", "2026-06-30", "report_002"),
-    PendingSignoffItem("Emeka Chukwu", "Samuel Okeke", "2026-06-30", "report_003"),
-    PendingSignoffItem("Chinedu Obi", "Aisha Mohammed", "2026-06-29", "report_004"),
-    PendingSignoffItem("Fatima Bello", "Grace Nwosu", "2026-06-29", "report_005")
+    PendingSignoffItem("Adaeze Okonkwo", "Samuel Okeke", "2026-07-01", ""),
+    PendingSignoffItem("Ngozi Adeyemi", "Grace Nwosu", "2026-06-30", ""),
+    PendingSignoffItem("Emeka Chukwu", "Samuel Okeke", "2026-06-30", ""),
+    PendingSignoffItem("Chinedu Obi", "Aisha Mohammed", "2026-06-29", ""),
+    PendingSignoffItem("Fatima Bello", "Grace Nwosu", "2026-06-29", "")
 )
 
 @Composable
 fun PendingSignoffsScreen(
+    applications: List<LoanApplicationModel> = emptyList(),
+    borrowers: List<BorrowerModel> = emptyList(),
     onBackClick: () -> Unit,
     onViewReport: (String) -> Unit = {}
 ) {
+    val signoffItems = remember(applications, borrowers) {
+        if (applications.isNotEmpty()) {
+            applications.map { app ->
+                val borrower = borrowers.find { it.id == app.borrower_id }
+                PendingSignoffItem(
+                    applicantName = borrower?.name ?: "Unknown Applicant",
+                    loanOfficer = "Loan Officer",
+                    visitDate = "2026-07-02",
+                    reportId = app.id
+                )
+            }
+        } else placeholderSignoffItems
+    }
     var isLoading by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -72,7 +89,7 @@ fun PendingSignoffsScreen(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "${placeholderSignoffItems.size} REPORTS",
+                            text = "${signoffItems.size} REPORTS",
                             style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
                             color = FieldTheme.colors.purple400
                         )
@@ -110,11 +127,11 @@ fun PendingSignoffsScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(placeholderSignoffItems) { item ->
+                    items(signoffItems) { item ->
                         FieldCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onViewReport(item.reportId) }
+                                .clickable(enabled = item.reportId.isNotEmpty()) { onViewReport(item.reportId) }
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -154,7 +171,7 @@ fun PendingSignoffsScreen(
                                                 FieldTheme.colors.purple400,
                                                 RoundedCornerShape(6.dp)
                                             )
-                                            .clickable { onViewReport(item.reportId) }
+                                            .clickable(enabled = item.reportId.isNotEmpty()) { onViewReport(item.reportId) }
                                             .padding(horizontal = 12.dp, vertical = 4.dp)
                                     ) {
                                         Text(

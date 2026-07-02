@@ -1,8 +1,15 @@
 package com.fieldcrm.android
 
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import org.koin.android.ext.android.inject
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -17,6 +24,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.rememberNavBackStack
+import com.fieldcrm.android.core.biometric.BiometricPromptManager
+import com.fieldcrm.android.core.biometric.BiometricPromptManager.BiometricResult
 import com.fieldcrm.android.ui.screens.auth.*
 import com.fieldcrm.android.ui.screens.onboarding.*
 import com.fieldcrm.android.ui.screens.dashboard.*
@@ -29,17 +38,19 @@ import com.fieldcrm.android.ui.screens.queue.*
 import com.fieldcrm.android.ui.screens.admin.*
 import com.fieldcrm.android.ui.screens.audit.*
 import com.fieldcrm.android.ui.viewmodel.*
+import com.fieldcrm.android.ui.viewmodel.BiometricAction
 import com.fieldcrm.android.core.session.UserRole
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.core.notification.NotificationSyncWorker
 import org.koin.androidx.compose.koinViewModel
-import com.fieldcrm.android.ui.components.OfflineSyncDialog
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private val loginViewModel: LoginViewModel by inject()
     private val appViewModel: AppViewModel by inject()
+
+    private val promptManager by lazy { BiometricPromptManager(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,7 +58,7 @@ class MainActivity : ComponentActivity() {
             val appUiState by appViewModel.uiState.collectAsState()
             FieldCRMTheme(role = appUiState.session?.role) {
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    FieldCRMApp(appViewModel)
+                    FieldCRMApp(appViewModel, promptManager)
                 }
             }
         }
@@ -62,7 +73,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
+fun FieldCRMApp(
+    appViewModel: AppViewModel = koinViewModel(),
+    promptManager: BiometricPromptManager? = null
+) {
     val loginViewModel: LoginViewModel = koinViewModel()
     val borrowerViewModel: BorrowerViewModel = koinViewModel()
     val applicationViewModel: ApplicationViewModel = koinViewModel()
@@ -72,8 +86,6 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
     val applicationUiState by applicationViewModel.uiState.collectAsState()
     val loginUiState by loginViewModel.uiState.collectAsState()
     val restoredSession by loginViewModel.restoredSession.collectAsState()
-
-    var showSyncModal by remember { mutableStateOf(false) }
 
     val backStack = rememberNavBackStack(Screen.Login)
 
@@ -86,7 +98,61 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
         }
     }
 
-    // Handle back press globally — NavDisplay is not used so we wire it manually
+    // Biometric state — action lives in ViewModel; result collected from manager
+    val biometricResult by promptManager?.promptResults?.collectAsState(initial = null)
+        ?: remember { mutableStateOf(null) }
+
+    // Launcher to send user to system biometric enrollment when none are set
+    val enrollLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+        onResult = {}
+    )
+
+    // Dispatch biometric results through ViewModel
+    LaunchedEffect(biometricResult) {
+        when (val result = biometricResult) {
+            BiometricResult.AuthenticationSuccess -> {
+                when (appUiState.pendingBiometricAction) {
+                    BiometricAction.LOGIN -> loginViewModel.restoreStoredSession(
+                        onSuccess = { session ->
+                            appViewModel.setSession(session)
+                            backStack.clear()
+                            backStack.add(Screen.Dashboard)
+                        },
+                        onError = {}
+                    )
+                    BiometricAction.ENROLL -> {
+                        appViewModel.setBiometricsEnrolled(true)
+                        appViewModel.markBiometricEnrollmentShown()
+                        val next: Screen = when {
+                            !appUiState.hasSeenPermissions -> Screen.PermissionsPrimer
+                            !appUiState.hasSeenOnboarding -> Screen.Onboarding
+                            else -> Screen.Dashboard
+                        }
+                        backStack.clear()
+                        backStack.add(next)
+                    }
+                    null -> {}
+                }
+                appViewModel.setBiometricAction(null)
+            }
+            BiometricResult.AuthenticationNotSet -> {
+                if (Build.VERSION.SDK_INT >= 30) {
+                    val enrollIntent = Intent(Settings.ACTION_BIOMETRIC_ENROLL).apply {
+                        putExtra(
+                            Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
+                            BIOMETRIC_STRONG or DEVICE_CREDENTIAL
+                        )
+                    }
+                    enrollLauncher.launch(enrollIntent)
+                }
+                appViewModel.setBiometricAction(null)
+            }
+            else -> {}
+        }
+    }
+
+    // Handle back press globally
     androidx.activity.compose.BackHandler(enabled = true) {
         val onRoot = backStack.isEmpty() ||
             backStack.last() == Screen.Dashboard ||
@@ -112,7 +178,7 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
             appViewModel.setSession(session)
             NotificationSyncWorker.schedule(context)
             val next: Screen = when {
-                !appUiState.hasEnrolledBiometrics -> Screen.BiometricEnrollment
+                !appUiState.hasSeenBiometricEnrollment -> Screen.BiometricEnrollment
                 !appUiState.hasSeenPermissions -> Screen.PermissionsPrimer
                 !appUiState.hasSeenOnboarding -> Screen.Onboarding
                 else -> Screen.Dashboard
@@ -128,16 +194,14 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
         return
     }
 
-    if (showSyncModal) {
-        OfflineSyncDialog(
-            onDismiss = { showSyncModal = false },
-            onTriggerSync = { onComplete ->
-                applicationViewModel.syncQueue { success -> onComplete(success) }
-            }
-        )
+    // Auto-sync when session becomes active
+    LaunchedEffect(appUiState.session) {
+        if (appUiState.session != null) {
+            applicationViewModel.syncQueue {}
+        }
     }
 
-    // Session expiry overlay — shown above the screen stack
+    // Session expiry overlay
     if (appUiState.isSessionExpired) {
         SessionExpiredScreen(
             userEmail = appUiState.session?.userEmail ?: "",
@@ -148,23 +212,31 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
 
     // Render the top of the back stack
     when (val screen = backStack.lastOrNull() ?: Screen.Login) {
-        Screen.Login -> LoginScreenView(
-            viewModel = loginViewModel,
-            hasEnrolledBiometrics = appUiState.hasEnrolledBiometrics,
-            onLoginSuccess = { session ->
-                appViewModel.setSession(session)
-                NotificationSyncWorker.schedule(context)
-                val next: Screen = when {
-                    !appUiState.hasEnrolledBiometrics -> Screen.BiometricEnrollment
-                    !appUiState.hasSeenPermissions -> Screen.PermissionsPrimer
-                    !appUiState.hasSeenOnboarding -> Screen.Onboarding
-                    else -> Screen.Dashboard
-                }
-                backStack.clear()
-                backStack.add(next)
-            },
-            onForgotPasswordClick = { backStack.add(Screen.ForgotPassword) }
-        )
+        Screen.Login -> {
+            LoginScreenView(
+                viewModel = loginViewModel,
+                hasEnrolledBiometrics = appUiState.hasEnrolledBiometrics,
+                hasPasscode = appUiState.hasPasscode,
+                onLoginSuccess = { session ->
+                    appViewModel.setSession(session)
+                    NotificationSyncWorker.schedule(context)
+                    val next: Screen = when {
+                        !appUiState.hasSeenBiometricEnrollment -> Screen.BiometricEnrollment
+                        !appUiState.hasSeenPermissions -> Screen.PermissionsPrimer
+                        !appUiState.hasSeenOnboarding -> Screen.Onboarding
+                        else -> Screen.Dashboard
+                    }
+                    backStack.clear()
+                    backStack.add(next)
+                },
+                onForgotPasswordClick = { backStack.add(Screen.ForgotPassword) },
+                onBiometricClick = {
+                    appViewModel.setBiometricAction(BiometricAction.LOGIN)
+                    promptManager?.showBiometricPrompt()
+                },
+                onPasscodeClick = { backStack.add(Screen.PasscodeLogin) }
+            )
+        }
 
         Screen.ForgotPassword -> ForgotPasswordScreen(
             onBackClick = { backStack.removeLastOrNull() },
@@ -182,8 +254,23 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
                 else -> Screen.Dashboard
             }
             BiometricEnrollmentScreen(
-                onEnableClick = { appViewModel.setBiometricsEnrolled(true); backStack.add(next) },
-                onNotNowClick = { backStack.add(next) }
+                onEnableClick = {
+                    appViewModel.setBiometricAction(BiometricAction.ENROLL)
+                    promptManager?.showBiometricPrompt(
+                        title = "Enable Biometric Login",
+                        description = "Verify your biometric to enable quick sign-in"
+                    ) ?: run {
+                        // No biometric hardware — skip enrollment
+                        appViewModel.markBiometricEnrollmentShown()
+                        backStack.clear()
+                        backStack.add(next)
+                    }
+                },
+                onNotNowClick = {
+                    appViewModel.markBiometricEnrollmentShown()
+                    backStack.clear()
+                    backStack.add(next)
+                }
             )
         }
 
@@ -222,6 +309,9 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
             onBackClick = { backStack.removeLastOrNull() },
             onNavigateToApplication = { refNo ->
                 val app = applicationUiState.applications.find { it.id == refNo }
+                    ?: applicationUiState.applications.find {
+                        it.ref_no.equals(refNo, ignoreCase = true)
+                    }
                 if (app != null) appViewModel.setSelectedApplication(app)
                 backStack.add(Screen.ApplicationDetail)
             }
@@ -243,7 +333,6 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
                     backStack.add(Screen.CreateApplication)
                 }
             },
-            onNavigateToOfflineQueue = { showSyncModal = true },
             onLogout = { appViewModel.logout(); NotificationSyncWorker.cancel(context); backStack.clear(); backStack.add(Screen.Login) },
             onNavigateToNotifications = { backStack.add(Screen.Notifications) },
             onNavigateToSearchResults = { backStack.add(Screen.SearchResults) },
@@ -257,7 +346,8 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
             onNavigateToUsers = { backStack.add(Screen.Users) },
             onNavigateToSystemActivity = { backStack.add(Screen.SystemActivity) },
             onNavigateToAuditTrail = { backStack.add(Screen.AuditTrail) },
-            onNavigateToComplianceFlags = { backStack.add(Screen.ComplianceFlags) }
+            onNavigateToComplianceFlags = { backStack.add(Screen.ComplianceFlags) },
+            onNavigateToOfflineQueue = { backStack.add(Screen.OfflineQueue) }
         )
 
         Screen.Settings -> {
@@ -274,7 +364,6 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
                 userEmail = sessionEmail,
                 role = appUiState.session?.role,
                 onBackClick = { backStack.removeLastOrNull() },
-                onNavigateToOfflineQueue = { showSyncModal = true },
                 onSignOutClick = { appViewModel.logout(); NotificationSyncWorker.cancel(context); backStack.clear(); backStack.add(Screen.Login) }
             )
         }
@@ -302,7 +391,11 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
 
         Screen.CreateBorrower -> CreateBorrowerScreenView(
             viewModel = borrowerViewModel,
-            onBorrowerCreated = { _ -> backStack.removeLastOrNull() },
+            onBorrowerCreated = { newBorrower ->
+                appViewModel.setSelectedBorrower(newBorrower)
+                backStack.removeLastOrNull()
+                backStack.add(Screen.BorrowerDetail)
+            },
             onBackClick = { backStack.removeLastOrNull() }
         )
 
@@ -490,6 +583,8 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
         )
 
         Screen.MyQueue -> MyQueueScreen(
+            applications = applicationUiState.applications,
+            borrowers = borrowerUiState.borrowers,
             onBackClick = { backStack.removeLastOrNull() },
             onViewApplication = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
@@ -499,6 +594,8 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
         )
 
         Screen.VisitsDue -> VisitsDueScreen(
+            applications = applicationUiState.applications,
+            borrowers = borrowerUiState.borrowers,
             onBackClick = { backStack.removeLastOrNull() },
             onStartVisit = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
@@ -508,6 +605,8 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
         )
 
         Screen.AwaitingConcurrence -> AwaitingConcurrenceScreen(
+            applications = applicationUiState.applications,
+            borrowers = borrowerUiState.borrowers,
             onBackClick = { backStack.removeLastOrNull() },
             onViewApplication = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
@@ -517,6 +616,8 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
         )
 
         Screen.PendingSignoffs -> PendingSignoffsScreen(
+            applications = applicationUiState.applications,
+            borrowers = borrowerUiState.borrowers,
             onBackClick = { backStack.removeLastOrNull() },
             onViewReport = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
@@ -526,6 +627,8 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
         )
 
         Screen.CreditReviewQueue -> CreditReviewQueueScreen(
+            applications = applicationUiState.applications,
+            borrowers = borrowerUiState.borrowers,
             onBackClick = { backStack.removeLastOrNull() },
             onReviewApplication = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
@@ -535,6 +638,8 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
         )
 
         Screen.OcrExceptions -> OcrExceptionsScreen(
+            applications = applicationUiState.applications,
+            borrowers = borrowerUiState.borrowers,
             onBackClick = { backStack.removeLastOrNull() },
             onResolveException = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
@@ -544,6 +649,8 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
         )
 
         Screen.Pipeline -> PipelineScreen(
+            applications = applicationUiState.applications,
+            borrowers = borrowerUiState.borrowers,
             onBackClick = { backStack.removeLastOrNull() },
             onViewApplication = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
@@ -557,6 +664,8 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
         )
 
         Screen.SystemActivity -> SystemActivityScreen(
+            applications = applicationUiState.applications,
+            borrowers = borrowerUiState.borrowers,
             onBackClick = { backStack.removeLastOrNull() },
             onViewApplication = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
@@ -587,7 +696,32 @@ fun FieldCRMApp(appViewModel: AppViewModel = koinViewModel()) {
             }
         }
 
-        // Exhaustive — compiler will warn if a new Screen subtype is added without a case
+        Screen.PasscodeSetup -> PasscodeScreen(
+            mode = PasscodeMode.SETUP,
+            onSetupComplete = { hash ->
+                appViewModel.setPasscodeHash(hash)
+                backStack.removeLastOrNull()
+            },
+            onBackClick = { backStack.removeLastOrNull() }
+        )
+
+        Screen.PasscodeLogin -> PasscodeScreen(
+            mode = PasscodeMode.LOGIN,
+            storedHash = appUiState.passcodeHash,
+            onLoginSuccess = {
+                loginViewModel.restoreStoredSession(
+                    onSuccess = { session ->
+                        appViewModel.setSession(session)
+                        NotificationSyncWorker.schedule(context)
+                        backStack.clear()
+                        backStack.add(Screen.Dashboard)
+                    },
+                    onError = { backStack.removeLastOrNull() }
+                )
+            },
+            onBackClick = { backStack.removeLastOrNull() }
+        )
+
         else -> {}
     }
 }

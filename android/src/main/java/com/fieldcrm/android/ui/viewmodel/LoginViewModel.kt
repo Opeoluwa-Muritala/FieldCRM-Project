@@ -121,6 +121,11 @@ class LoginViewModel(
         }
     }
 
+    fun restoreStoredSession(onSuccess: (UserSession) -> Unit, onError: () -> Unit) {
+        val stored = sessionStore.load()
+        if (stored != null) onSuccess(stored) else onError()
+    }
+
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }

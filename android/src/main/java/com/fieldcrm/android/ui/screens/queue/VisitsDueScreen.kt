@@ -18,6 +18,8 @@ import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.shared.model.BorrowerModel
+import com.fieldcrm.shared.model.LoanApplicationModel
 
 private data class VisitDueItem(
     val borrowerName: String,
@@ -26,17 +28,31 @@ private data class VisitDueItem(
 )
 
 private val placeholderVisits = listOf(
-    VisitDueItem("Adaeze Okonkwo", "12 Adeola Odeku St, Victoria Island, Lagos", "visit_001"),
-    VisitDueItem("Emeka Chukwu", "45 Allen Avenue, Ikeja, Lagos", "visit_002"),
-    VisitDueItem("Ngozi Adeyemi", "7 Wuse Zone 5, Abuja", "visit_003"),
-    VisitDueItem("Fatima Bello", "22 Awolowo Road, Ikoyi, Lagos", "visit_004")
+    VisitDueItem("Adaeze Okonkwo", "12 Adeola Odeku St, Victoria Island, Lagos", ""),
+    VisitDueItem("Emeka Chukwu", "45 Allen Avenue, Ikeja, Lagos", ""),
+    VisitDueItem("Ngozi Adeyemi", "7 Wuse Zone 5, Abuja", ""),
+    VisitDueItem("Fatima Bello", "22 Awolowo Road, Ikoyi, Lagos", "")
 )
 
 @Composable
 fun VisitsDueScreen(
+    applications: List<LoanApplicationModel> = emptyList(),
+    borrowers: List<BorrowerModel> = emptyList(),
     onBackClick: () -> Unit,
     onStartVisit: (String) -> Unit = {}
 ) {
+    val visits = remember(applications, borrowers) {
+        if (applications.isNotEmpty()) {
+            applications.map { app ->
+                val borrower = borrowers.find { it.id == app.borrower_id }
+                VisitDueItem(
+                    borrowerName = borrower?.name ?: "Unknown Applicant",
+                    address = "Awaiting address confirmation",
+                    visitId = app.id
+                )
+            }
+        } else placeholderVisits
+    }
     var isLoading by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -70,7 +86,7 @@ fun VisitsDueScreen(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "${placeholderVisits.size} DUE",
+                            text = "${visits.size} DUE",
                             style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
                             color = FieldTheme.colors.statusWarning
                         )
@@ -110,7 +126,7 @@ fun VisitsDueScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(placeholderVisits) { visit ->
+                    items(visits) { visit ->
                         FieldCard(modifier = Modifier.fillMaxWidth()) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -141,7 +157,7 @@ fun VisitsDueScreen(
                                                 FieldTheme.colors.purple400,
                                                 RoundedCornerShape(6.dp)
                                             )
-                                            .clickable { onStartVisit(visit.visitId) }
+                                            .clickable(enabled = visit.visitId.isNotEmpty()) { onStartVisit(visit.visitId) }
                                             .padding(horizontal = 12.dp, vertical = 6.dp)
                                     ) {
                                         Text(

@@ -98,7 +98,15 @@ sealed class Screen : NavKey {
     data object ComplianceFlags : Screen()
     @Serializable
     data object OcrReview : Screen()
+    @Serializable
+    data object PasscodeSetup : Screen()
+    @Serializable
+    data object PasscodeLogin : Screen()
 }
+
+// ── Biometric action intent ────────────────────────────────────────────────────
+
+enum class BiometricAction { ENROLL, LOGIN }
 
 // ── App-level UI state (session + selection only — nav lives in the back stack) ──
 
@@ -109,15 +117,28 @@ data class AppUiState(
     val selectedApplication: LoanApplicationModel? = null,
     val isSessionExpired: Boolean = false,
     val hasEnrolledBiometrics: Boolean = false,
+    val hasSeenBiometricEnrollment: Boolean = false,
     val hasSeenOnboarding: Boolean = false,
     val hasSeenPermissions: Boolean = false,
+    val hasPasscode: Boolean = false,
+    val passcodeHash: String? = null,
+    val pendingBiometricAction: BiometricAction? = null,
     val successTitle: String = "",
     val successSubtitle: String = "",
     val successDestination: Screen = Screen.Dashboard
 )
 
 class AppViewModel(private val sessionStore: SessionStore) : ViewModel() {
-    private val _uiState = MutableStateFlow(AppUiState())
+    private val _uiState = MutableStateFlow(
+        AppUiState(
+            hasEnrolledBiometrics = sessionStore.isBiometricEnrolled(),
+            hasSeenBiometricEnrollment = sessionStore.hasBiometricEnrollmentBeenShown(),
+            hasSeenOnboarding = sessionStore.hasSeenOnboarding(),
+            hasSeenPermissions = sessionStore.hasSeenPermissions(),
+            hasPasscode = sessionStore.hasPasscode(),
+            passcodeHash = sessionStore.getPasscodeHash()
+        )
+    )
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
 
     fun setSession(session: UserSession) {
@@ -137,15 +158,37 @@ class AppViewModel(private val sessionStore: SessionStore) : ViewModel() {
     }
 
     fun setBiometricsEnrolled(enrolled: Boolean) {
+        sessionStore.setBiometricEnrolled(enrolled)
         _uiState.update { it.copy(hasEnrolledBiometrics = enrolled) }
     }
 
     fun setOnboardingSeen(seen: Boolean) {
+        if (seen) sessionStore.setOnboardingSeen()
         _uiState.update { it.copy(hasSeenOnboarding = seen) }
     }
 
     fun setPermissionsSeen(seen: Boolean) {
+        if (seen) sessionStore.setPermissionsSeen()
         _uiState.update { it.copy(hasSeenPermissions = seen) }
+    }
+
+    fun markBiometricEnrollmentShown() {
+        sessionStore.markBiometricEnrollmentShown()
+        _uiState.update { it.copy(hasSeenBiometricEnrollment = true) }
+    }
+
+    fun setPasscodeHash(hash: String) {
+        sessionStore.savePasscodeHash(hash)
+        _uiState.update { it.copy(hasPasscode = true, passcodeHash = hash) }
+    }
+
+    fun clearPasscode() {
+        sessionStore.clearPasscode()
+        _uiState.update { it.copy(hasPasscode = false, passcodeHash = null) }
+    }
+
+    fun setBiometricAction(action: BiometricAction?) {
+        _uiState.update { it.copy(pendingBiometricAction = action) }
     }
 
     fun triggerSuccessScreen(title: String, subtitle: String, destination: Screen) {

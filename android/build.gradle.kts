@@ -101,6 +101,10 @@ dependencies {
     implementation("androidx.navigation3:navigation3-ui:1.0.0-alpha04")
     implementation("androidx.lifecycle:lifecycle-viewmodel-navigation3:1.0.0-alpha04")
 
+    // Biometric authentication
+    implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.appcompat:appcompat:1.7.1")
+
     // Background execution
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 

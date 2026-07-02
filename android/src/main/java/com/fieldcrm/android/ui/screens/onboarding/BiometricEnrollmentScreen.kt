@@ -5,10 +5,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fieldcrm.android.ui.components.FieldCard
@@ -40,8 +39,7 @@ fun BiometricEnrollmentScreen(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Fingerprint Circle Badge
+
                     Box(
                         modifier = Modifier
                             .size(64.dp)
@@ -55,7 +53,7 @@ fun BiometricEnrollmentScreen(
                             modifier = Modifier.size(32.dp)
                         )
                     }
-                    
+
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Text(
@@ -66,12 +64,12 @@ fun BiometricEnrollmentScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Use biometric lock to access FieldCRM quickly and securely without typing your password.",
+                        text = "Use fingerprint or face recognition to access FieldCRM quickly and securely without typing your password.",
                         style = FieldTheme.typography.body,
                         color = FieldTheme.colors.gray400,
                         textAlign = TextAlign.Center
                     )
-                    
+
                     Spacer(modifier = Modifier.height(32.dp))
 
                     PrimaryButton(
@@ -79,7 +77,7 @@ fun BiometricEnrollmentScreen(
                         onClick = onEnableClick,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    
+
                     Spacer(modifier = Modifier.height(12.dp))
 
                     SecondaryButton(
@@ -87,6 +85,8 @@ fun BiometricEnrollmentScreen(
                         onClick = onNotNowClick,
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }

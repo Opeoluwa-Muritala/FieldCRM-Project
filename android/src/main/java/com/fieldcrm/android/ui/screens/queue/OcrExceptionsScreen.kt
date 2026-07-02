@@ -18,6 +18,8 @@ import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.shared.model.BorrowerModel
+import com.fieldcrm.shared.model.LoanApplicationModel
 
 private data class OcrExceptionItem(
     val fieldName: String,
@@ -27,18 +29,33 @@ private data class OcrExceptionItem(
 )
 
 private val placeholderOcrExceptions = listOf(
-    OcrExceptionItem("BVN", "Adaeze Okonkwo", 42, "exc_001"),
-    OcrExceptionItem("Guarantor Signature", "Emeka Chukwu", 28, "exc_002"),
-    OcrExceptionItem("Loan Amount", "Ngozi Adeyemi", 55, "exc_003"),
-    OcrExceptionItem("Applicant Full Name", "Fatima Bello", 38, "exc_004"),
-    OcrExceptionItem("NIN", "Chukwuemeka Eze", 47, "exc_005")
+    OcrExceptionItem("BVN", "Adaeze Okonkwo", 42, ""),
+    OcrExceptionItem("Guarantor Signature", "Emeka Chukwu", 28, ""),
+    OcrExceptionItem("Loan Amount", "Ngozi Adeyemi", 55, ""),
+    OcrExceptionItem("Applicant Full Name", "Fatima Bello", 38, ""),
+    OcrExceptionItem("NIN", "Chukwuemeka Eze", 47, "")
 )
 
 @Composable
 fun OcrExceptionsScreen(
+    applications: List<LoanApplicationModel> = emptyList(),
+    borrowers: List<BorrowerModel> = emptyList(),
     onBackClick: () -> Unit,
     onResolveException: (String) -> Unit = {}
 ) {
+    val exceptions = remember(applications, borrowers) {
+        if (applications.isNotEmpty()) {
+            applications.map { app ->
+                val borrower = borrowers.find { it.id == app.borrower_id }
+                OcrExceptionItem(
+                    fieldName = "Document Review",
+                    applicantName = borrower?.name ?: "Unknown Applicant",
+                    confidencePct = 45,
+                    exceptionId = app.id
+                )
+            }
+        } else placeholderOcrExceptions
+    }
     var isLoading by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -72,7 +89,7 @@ fun OcrExceptionsScreen(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "${placeholderOcrExceptions.size} EXCEPTIONS",
+                            text = "${exceptions.size} EXCEPTIONS",
                             style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
                             color = FieldTheme.colors.statusDanger
                         )
@@ -112,7 +129,7 @@ fun OcrExceptionsScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(placeholderOcrExceptions) { exc ->
+                    items(exceptions) { exc ->
                         val confidenceFraction = exc.confidencePct / 100f
                         FieldCard(modifier = Modifier.fillMaxWidth()) {
                             Column {
@@ -150,7 +167,7 @@ fun OcrExceptionsScreen(
                                             FieldTheme.colors.statusDanger.copy(alpha = 0.4f),
                                             RoundedCornerShape(6.dp)
                                         )
-                                        .clickable { onResolveException(exc.exceptionId) }
+                                        .clickable(enabled = exc.exceptionId.isNotEmpty()) { onResolveException(exc.exceptionId) }
                                         .padding(horizontal = 12.dp, vertical = 6.dp)
                                 ) {
                                     Text(

@@ -249,8 +249,8 @@ class ApplicationRepository(
         return apiService.approveApplication(id) != null
     }
 
-    suspend fun returnApplication(id: String, reason: String, notes: String): Boolean {
-        return apiService.returnApplication(id, reason, notes) != null
+    suspend fun returnApplication(id: String, reason: String, corrections: List<String> = emptyList(), notes: String): Boolean {
+        return apiService.returnApplication(id, reason, corrections, notes) != null
     }
 
     suspend fun submitCreditReview(id: String, decision: String, notes: String): Boolean {
