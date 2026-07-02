@@ -44,18 +44,24 @@ import kotlinx.coroutines.delay
 fun LoginScreenView(
     viewModel: LoginViewModel,
     hasEnrolledBiometrics: Boolean,
+    hasPasscode: Boolean,
     onLoginSuccess: (UserSession) -> Unit,
-    onForgotPasswordClick: () -> Unit
+    onForgotPasswordClick: () -> Unit,
+    onBiometricClick: () -> Unit,
+    onPasscodeClick: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
 
     LoginScreenContent(
         state = state,
         hasEnrolledBiometrics = hasEnrolledBiometrics,
+        hasPasscode = hasPasscode,
         onEmailChange = { viewModel.setEmail(it) },
         onPasswordChange = { viewModel.setPassword(it) },
         onLoginClick = { viewModel.login(onSuccess = onLoginSuccess) },
-        onForgotPasswordClick = onForgotPasswordClick
+        onForgotPasswordClick = onForgotPasswordClick,
+        onBiometricClick = onBiometricClick,
+        onPasscodeClick = onPasscodeClick
     )
 }
 
@@ -63,10 +69,13 @@ fun LoginScreenView(
 fun LoginScreenContent(
     state: LoginUiState,
     hasEnrolledBiometrics: Boolean,
+    hasPasscode: Boolean = false,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onLoginClick: () -> Unit,
-    onForgotPasswordClick: () -> Unit
+    onForgotPasswordClick: () -> Unit,
+    onBiometricClick: () -> Unit = {},
+    onPasscodeClick: () -> Unit = {}
 ) {
     var emailError by remember { mutableStateOf<String?>(null) }
     var passwordError by remember { mutableStateOf<String?>(null) }
@@ -258,16 +267,32 @@ fun LoginScreenContent(
                                 .alpha(if (inputsFilled) 1f else 0.4f)
                         )
  
-                        // Biometric option (shown on second+ login only)
+                        // Biometric option (shown after first login + enrollment)
                         if (hasEnrolledBiometrics) {
                             Spacer(modifier = Modifier.height(12.dp))
                             SecondaryButton(
                                 text = "Use Face ID / Touch ID",
-                                onClick = {},
-                                enabled = false,
+                                onClick = onBiometricClick,
                                 leadingIcon = {
                                     Icon(
                                         imageVector = FieldIcons.FingerprintOutlined,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+
+                        // Passcode option
+                        if (hasPasscode) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            SecondaryButton(
+                                text = "Enter Passcode",
+                                onClick = onPasscodeClick,
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = FieldIcons.LockOutlined,
                                         contentDescription = null,
                                         modifier = Modifier.size(20.dp)
                                     )

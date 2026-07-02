@@ -20,6 +20,7 @@ import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
 
@@ -31,18 +32,33 @@ private data class MyQueueItem(
 )
 
 private val placeholderItems = listOf(
-    MyQueueItem("Adaeze Okonkwo", "Intake", "₦250,000", "app_001"),
-    MyQueueItem("Emeka Chukwu", "OCR Review", "₦1,200,000", "app_002"),
-    MyQueueItem("Ngozi Adeyemi", "Intake", "₦500,000", "app_003"),
-    MyQueueItem("Chukwuemeka Eze", "Needs Review", "₦750,000", "app_004"),
-    MyQueueItem("Fatima Bello", "Intake", "₦320,000", "app_005")
+    MyQueueItem("Adaeze Okonkwo", "Intake", "₦250,000", ""),
+    MyQueueItem("Emeka Chukwu", "OCR Review", "₦1,200,000", ""),
+    MyQueueItem("Ngozi Adeyemi", "Intake", "₦500,000", ""),
+    MyQueueItem("Chukwuemeka Eze", "Needs Review", "₦750,000", ""),
+    MyQueueItem("Fatima Bello", "Intake", "₦320,000", "")
 )
 
 @Composable
 fun MyQueueScreen(
+    applications: List<LoanApplicationModel> = emptyList(),
+    borrowers: List<BorrowerModel> = emptyList(),
     onBackClick: () -> Unit,
     onViewApplication: (String) -> Unit = {}
 ) {
+    val queueItems = remember(applications, borrowers) {
+        if (applications.isNotEmpty()) {
+            applications.map { app ->
+                val borrower = borrowers.find { it.id == app.borrower_id }
+                MyQueueItem(
+                    applicantName = borrower?.name ?: "Unknown Applicant",
+                    stage = app.status.replaceFirstChar { it.uppercase(Locale.getDefault()) },
+                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount)}",
+                    appId = app.id
+                )
+            }
+        } else placeholderItems
+    }
     var isLoading by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -76,7 +92,7 @@ fun MyQueueScreen(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "${placeholderItems.size} ITEMS",
+                            text = "${queueItems.size} ITEMS",
                             style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
                             color = FieldTheme.colors.purple400
                         )
@@ -120,7 +136,7 @@ fun MyQueueScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(placeholderItems) { item ->
+                    items(queueItems) { item ->
                         val chipVariant = when (item.stage.lowercase(Locale.getDefault())) {
                             "intake" -> StatusChipVariant.Verified
                             "ocr review" -> StatusChipVariant.NeedsReview
@@ -133,7 +149,7 @@ fun MyQueueScreen(
                         FieldCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onViewApplication(item.appId) }
+                                .clickable(enabled = item.appId.isNotEmpty()) { onViewApplication(item.appId) }
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),

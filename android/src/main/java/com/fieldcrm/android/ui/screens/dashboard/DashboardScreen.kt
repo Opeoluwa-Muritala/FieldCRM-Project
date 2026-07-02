@@ -42,7 +42,6 @@ fun DashboardScreenView(
     onNavigateToBorrowers: () -> Unit,
     onNavigateToCreateApplication: () -> Unit = {},
     onNavigateToApplication: (appId: String) -> Unit = {},
-    onNavigateToOfflineQueue: () -> Unit,
     onLogout: () -> Unit,
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToSearchResults: () -> Unit = {},
@@ -64,7 +63,6 @@ fun DashboardScreenView(
 
     var selectedTab by remember { mutableStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
-    var syncInProgress by remember { mutableStateOf(false) }
     var showSignOutConfirmation by remember { mutableStateOf(false) }
 
     val dashboardViewModel: DashboardViewModel = koinViewModel()
@@ -163,7 +161,7 @@ fun DashboardScreenView(
         when (actionType) {
             "REG_BORROWER" -> onNavigateToBorrowers()
             "NEW_APP" -> onNavigateToCreateApplication()
-            "SYNC_QUEUE" -> onNavigateToOfflineQueue()
+            "SYNC_QUEUE" -> { /* auto-sync — no manual trigger needed */ }
             "VISITS" -> selectedTab = 1
             "NOTIFICATIONS" -> onNavigateToNotifications()
             "SEARCH" -> onNavigateToSearchResults()
@@ -261,7 +259,6 @@ fun DashboardScreenView(
             val sideRailItems = listOf(
                 NavigationItem("Home", FieldIcons.HomeOutlined, FieldIcons.HomeFilled),
                 NavigationItem("Queue", FieldIcons.QueueOutlined, FieldIcons.QueueFilled),
-                NavigationItem("Sync", FieldIcons.SyncOutlined, FieldIcons.SyncFilled),
                 NavigationItem("Settings", FieldIcons.SettingsOutlined, FieldIcons.SettingsFilled)
             )
 
@@ -288,18 +285,12 @@ fun DashboardScreenView(
                             queueItems = filteredQueueItems,
                             onItemClick = { appId -> onQueueItemClick(appId) }
                         )
-                        2 -> SyncTab(
-                            syncInProgress = syncInProgress,
-                            onStartSync = {
-                                syncInProgress = true
-                            }
-                        )
-                        3 -> SettingsScreen(
+                        2 -> SettingsScreen(
                             userName = userName,
                             userEmail = userEmail,
                             role = resolvedRole,
                             onBackClick = { selectedTab = 0 },
-                            onNavigateToOfflineQueue = onNavigateToOfflineQueue,
+                            onNavigateToOfflineQueue = {},
                             onSignOutClick = { showSignOutConfirmation = true }
                         )
                     }
@@ -310,7 +301,6 @@ fun DashboardScreenView(
             val bottomBarItems = listOf(
                 NavigationItem("Home", FieldIcons.HomeOutlined, FieldIcons.HomeFilled),
                 NavigationItem("Queue", FieldIcons.QueueOutlined, FieldIcons.QueueFilled),
-                NavigationItem("Sync", FieldIcons.SyncOutlined, FieldIcons.SyncFilled),
                 NavigationItem("Settings", FieldIcons.SettingsOutlined, FieldIcons.SettingsFilled)
             )
 
@@ -344,18 +334,12 @@ fun DashboardScreenView(
                             queueItems = filteredQueueItems,
                             onItemClick = { appId -> onQueueItemClick(appId) }
                         )
-                        2 -> SyncTab(
-                            syncInProgress = syncInProgress,
-                            onStartSync = {
-                                syncInProgress = true
-                            }
-                        )
-                        3 -> SettingsScreen(
+                        2 -> SettingsScreen(
                             userName = userName,
                             userEmail = userEmail,
                             role = resolvedRole,
                             onBackClick = { selectedTab = 0 },
-                            onNavigateToOfflineQueue = onNavigateToOfflineQueue,
+                            onNavigateToOfflineQueue = {},
                             onSignOutClick = { showSignOutConfirmation = true }
                         )
                     }
@@ -364,13 +348,6 @@ fun DashboardScreenView(
         }
     }
 
-    // Simulate Sync Progress
-    LaunchedEffect(syncInProgress) {
-        if (syncInProgress) {
-            kotlinx.coroutines.delay(2000)
-            syncInProgress = false
-        }
-    }
 }
 
 // ==========================================
@@ -563,21 +540,18 @@ fun PhoneDashboardHome(
                             item { ShuttleChip("New Loan", FieldIcons.AddOutlined) { onQuickActionClick("NEW_APP") } }
                             item { ShuttleChip("My Queue", FieldIcons.QueueOutlined) { onQuickActionClick("MY_QUEUE") } }
                             item { ShuttleChip("Visits Due", FieldIcons.MapOutlined) { onQuickActionClick("VISITS_DUE") } }
-                            item { ShuttleChip("Offline Sync", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") } }
                         }
                         UserRole.BRANCH_MANAGER -> {
                             item { ShuttleChip("Pending Signoffs", FieldIcons.PenOutlined) { onQuickActionClick("PENDING_SIGNOFFS") } }
                             item { ShuttleChip("Awaiting Concurrence", FieldIcons.CheckCircleOutlined) { onQuickActionClick("AWAITING_CONCURRENCE") } }
                             item { ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") } }
                             item { ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") } }
-                            item { ShuttleChip("Offline Database", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") } }
                         }
                         UserRole.CREDIT_OFFICER -> {
                             item { ShuttleChip("Credit Queue", FieldIcons.CheckCircleOutlined) { onQuickActionClick("CREDIT_REVIEW_QUEUE") } }
                             item { ShuttleChip("OCR Exceptions", FieldIcons.CameraOutlined) { onQuickActionClick("OCR_EXCEPTIONS") } }
                             item { ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") } }
                             item { ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") } }
-                            item { ShuttleChip("Offline Queue", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") } }
                         }
                         UserRole.AUDITOR -> {
                             item { ShuttleChip("Audit Trail", FieldIcons.DocumentOutlined) { onQuickActionClick("AUDIT_TRAIL") } }
@@ -741,21 +715,18 @@ fun TabletDashboardHome(
                             ShuttleChip("New Loan", FieldIcons.AddOutlined) { onQuickActionClick("NEW_APP") }
                             ShuttleChip("My Queue", FieldIcons.QueueOutlined) { onQuickActionClick("MY_QUEUE") }
                             ShuttleChip("Visits Due", FieldIcons.MapOutlined) { onQuickActionClick("VISITS_DUE") }
-                            ShuttleChip("Offline Sync", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") }
                         }
                         UserRole.BRANCH_MANAGER -> {
                             ShuttleChip("Pending Signoffs", FieldIcons.PenOutlined) { onQuickActionClick("PENDING_SIGNOFFS") }
                             ShuttleChip("Concurrence", FieldIcons.CheckCircleOutlined) { onQuickActionClick("AWAITING_CONCURRENCE") }
                             ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") }
                             ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") }
-                            ShuttleChip("Offline Db", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") }
                         }
                         UserRole.CREDIT_OFFICER -> {
                             ShuttleChip("Credit Queue", FieldIcons.CheckCircleOutlined) { onQuickActionClick("CREDIT_REVIEW_QUEUE") }
                             ShuttleChip("OCR Exceptions", FieldIcons.CameraOutlined) { onQuickActionClick("OCR_EXCEPTIONS") }
                             ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") }
                             ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") }
-                            ShuttleChip("Offline Queue", FieldIcons.SyncOutlined) { onQuickActionClick("SYNC_QUEUE") }
                         }
                         UserRole.AUDITOR -> {
                             ShuttleChip("Audit Trail", FieldIcons.DocumentOutlined) { onQuickActionClick("AUDIT_TRAIL") }
@@ -897,73 +868,6 @@ fun QueueTab(
 }
 
 // ==========================================
-// OFFLINE SYNC TAB VIEW
-// ==========================================
-@Composable
-fun SyncTab(
-    syncInProgress: Boolean,
-    onStartSync: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .size(80.dp)
-                .background(FieldTheme.colors.purple900.copy(alpha = 0.1f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (syncInProgress) FieldIcons.SyncFilled else FieldIcons.SyncOutlined,
-                contentDescription = "Sync Queue",
-                tint = FieldTheme.colors.purple600,
-                modifier = Modifier.size(40.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = if (syncInProgress) "Syncing Database..." else "Offline Sync Manager",
-            style = FieldTheme.typography.display.copy(fontSize = 22.sp),
-            color = FieldTheme.colors.gray100,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = if (syncInProgress) {
-                "Uploading cached intake logs and verification records to Mainstreet core banking database..."
-            } else {
-                "You have 2 pending loan applications and 3 biometric logs cached locally. Sync now to push changes."
-            },
-            style = FieldTheme.typography.body,
-            color = FieldTheme.colors.gray400,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.widthIn(max = 300.dp)
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        if (syncInProgress) {
-            CircularProgressIndicator(
-                color = FieldTheme.colors.purple600,
-                modifier = Modifier.size(36.dp)
-            )
-        } else {
-            PrimaryButton(
-                text = "Sync Database (5 items)",
-                onClick = onStartSync,
-                modifier = Modifier.widthIn(max = 280.dp)
-            )
-        }
-    }
-}
-
-// ==========================================
 // SUB COMPONENT: METRIC CARD
 // ==========================================
 @Composable
@@ -1049,7 +953,9 @@ fun ActionFeedCard(
     item: QueueItem,
     onActionClick: () -> Unit
 ) {
-    FieldCard(modifier = Modifier.fillMaxWidth()) {
+    FieldCard(modifier = Modifier.fillMaxWidth()
+                            .clickable(onClick = onActionClick)
+) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -1086,7 +992,6 @@ fun ActionFeedCard(
                     style = FieldTheme.typography.label.copy(fontSize = 10.sp),
                     color = FieldTheme.colors.purple600,
                     modifier = Modifier
-                        .clickable(onClick = onActionClick)
                         .padding(4.dp)
                 )
             }

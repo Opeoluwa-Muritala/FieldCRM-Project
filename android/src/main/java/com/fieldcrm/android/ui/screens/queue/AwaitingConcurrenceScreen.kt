@@ -19,6 +19,8 @@ import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.shared.model.BorrowerModel
+import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
 
 private data class ConcurrenceItem(
@@ -30,17 +32,33 @@ private data class ConcurrenceItem(
 )
 
 private val placeholderConcurrenceItems = listOf(
-    ConcurrenceItem("Adaeze Okonkwo", "Samuel Okeke", "₦500,000", "2026-07-01 09:14", "app_001"),
-    ConcurrenceItem("Emeka Chukwu", "Grace Nwosu", "₦1,200,000", "2026-07-01 08:45", "app_002"),
-    ConcurrenceItem("Fatima Bello", "Samuel Okeke", "₦320,000", "2026-06-30 17:30", "app_003"),
-    ConcurrenceItem("Chukwuemeka Eze", "Aisha Mohammed", "₦750,000", "2026-06-30 16:00", "app_004")
+    ConcurrenceItem("Adaeze Okonkwo", "Samuel Okeke", "₦500,000", "2026-07-01 09:14", ""),
+    ConcurrenceItem("Emeka Chukwu", "Grace Nwosu", "₦1,200,000", "2026-07-01 08:45", ""),
+    ConcurrenceItem("Fatima Bello", "Samuel Okeke", "₦320,000", "2026-06-30 17:30", ""),
+    ConcurrenceItem("Chukwuemeka Eze", "Aisha Mohammed", "₦750,000", "2026-06-30 16:00", "")
 )
 
 @Composable
 fun AwaitingConcurrenceScreen(
+    applications: List<LoanApplicationModel> = emptyList(),
+    borrowers: List<BorrowerModel> = emptyList(),
     onBackClick: () -> Unit,
     onViewApplication: (String) -> Unit = {}
 ) {
+    val concurrenceItems = remember(applications, borrowers) {
+        if (applications.isNotEmpty()) {
+            applications.map { app ->
+                val borrower = borrowers.find { it.id == app.borrower_id }
+                ConcurrenceItem(
+                    applicantName = borrower?.name ?: "Unknown Applicant",
+                    loanOfficer = "Loan Officer",
+                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount)}",
+                    submittedAt = "—",
+                    appId = app.id
+                )
+            }
+        } else placeholderConcurrenceItems
+    }
     var isLoading by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -74,7 +92,7 @@ fun AwaitingConcurrenceScreen(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "${placeholderConcurrenceItems.size} PENDING",
+                            text = "${concurrenceItems.size} PENDING",
                             style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
                             color = FieldTheme.colors.statusWarning
                         )
@@ -118,11 +136,11 @@ fun AwaitingConcurrenceScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(placeholderConcurrenceItems) { item ->
+                    items(concurrenceItems) { item ->
                         FieldCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onViewApplication(item.appId) }
+                                .clickable(enabled = item.appId.isNotEmpty()) { onViewApplication(item.appId) }
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),

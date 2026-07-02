@@ -19,6 +19,8 @@ import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.shared.model.BorrowerModel
+import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
 
 private data class PipelineEntry(
@@ -29,28 +31,56 @@ private data class PipelineEntry(
 )
 
 private val placeholderPipelineEntries = listOf(
-    PipelineEntry("Adaeze Okonkwo", "₦250,000", "Intake", "app_001"),
-    PipelineEntry("Fatima Bello", "₦320,000", "Intake", "app_002"),
-    PipelineEntry("Emeka Chukwu", "₦1,200,000", "OCR Review", "app_003"),
-    PipelineEntry("Chinedu Obi", "₦450,000", "OCR Review", "app_004"),
-    PipelineEntry("Ngozi Adeyemi", "₦350,000", "Credit Review", "app_005"),
-    PipelineEntry("Chukwuemeka Eze", "₦750,000", "Credit Review", "app_006"),
-    PipelineEntry("Amaka Okafor", "₦600,000", "Approved", "app_007"),
-    PipelineEntry("Bola Tinubu-Adeyemi", "₦900,000", "Disbursed", "app_008")
+    PipelineEntry("Adaeze Okonkwo", "₦250,000", "Intake", ""),
+    PipelineEntry("Fatima Bello", "₦320,000", "Intake", ""),
+    PipelineEntry("Emeka Chukwu", "₦1,200,000", "OCR Review", ""),
+    PipelineEntry("Chinedu Obi", "₦450,000", "OCR Review", ""),
+    PipelineEntry("Ngozi Adeyemi", "₦350,000", "Credit Review", ""),
+    PipelineEntry("Chukwuemeka Eze", "₦750,000", "Credit Review", ""),
+    PipelineEntry("Amaka Okafor", "₦600,000", "Approved", ""),
+    PipelineEntry("Bola Tinubu-Adeyemi", "₦900,000", "Disbursed", "")
 )
 
 private val stageOrder = listOf("Intake", "OCR Review", "Credit Review", "Approved", "Disbursed")
 
+private val stageMapping = mapOf(
+    "intake" to "Intake",
+    "ocr_review" to "OCR Review",
+    "ocr review" to "OCR Review",
+    "credit_review" to "Credit Review",
+    "credit review" to "Credit Review",
+    "approved" to "Approved",
+    "bm_approved" to "Approved",
+    "bm approved" to "Approved",
+    "disbursed" to "Disbursed"
+)
+
 @Composable
 fun PipelineScreen(
+    applications: List<LoanApplicationModel> = emptyList(),
+    borrowers: List<BorrowerModel> = emptyList(),
     onBackClick: () -> Unit,
     onViewApplication: (String) -> Unit = {}
 ) {
     var isLoading by remember { mutableStateOf(false) }
 
-    val groupedByStage = remember(placeholderPipelineEntries) {
+    val pipelineEntries = remember(applications, borrowers) {
+        if (applications.isNotEmpty()) {
+            applications.map { app ->
+                val borrower = borrowers.find { it.id == app.borrower_id }
+                PipelineEntry(
+                    applicantName = borrower?.name ?: "Unknown Applicant",
+                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount)}",
+                    stage = stageMapping[app.status.lowercase(Locale.getDefault())] ?: "Intake",
+                    appId = app.id
+                )
+            }
+        } else placeholderPipelineEntries
+    }
+
+    val groupedByStage = remember(pipelineEntries) {
         stageOrder.associateWith { stage ->
-            placeholderPipelineEntries.filter { it.stage == stage }
+            pipelineEntries.filter { it.stage == stage }
         }
     }
 
@@ -186,7 +216,7 @@ fun PipelineScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(bottom = 8.dp)
-                                        .clickable { onViewApplication(entry.appId) }
+                                        .clickable(enabled = entry.appId.isNotEmpty()) { onViewApplication(entry.appId) }
                                 ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),

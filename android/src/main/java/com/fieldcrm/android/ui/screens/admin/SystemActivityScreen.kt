@@ -19,6 +19,9 @@ import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.shared.model.BorrowerModel
+import com.fieldcrm.shared.model.LoanApplicationModel
+import java.util.Locale
 
 private data class ControlQueueItem(
     val applicantName: String,
@@ -29,18 +32,35 @@ private data class ControlQueueItem(
 )
 
 private val placeholderControlItems = listOf(
-    ControlQueueItem("Amaka Okafor", "₦600,000", "Final Control", "Kemi Adeleke", "app_007"),
-    ControlQueueItem("Bola Adeyemi", "₦900,000", "Final Control", "Kemi Adeleke", "app_008"),
-    ControlQueueItem("Ifeanyi Obi", "₦1,500,000", "Final Control", "Tunde Bakare", "app_009"),
-    ControlQueueItem("Chioma Eze", "₦250,000", "Final Control", "Kemi Adeleke", "app_010")
+    ControlQueueItem("Amaka Okafor", "₦600,000", "Final Control", "Kemi Adeleke", ""),
+    ControlQueueItem("Bola Adeyemi", "₦900,000", "Final Control", "Kemi Adeleke", ""),
+    ControlQueueItem("Ifeanyi Obi", "₦1,500,000", "Final Control", "Tunde Bakare", ""),
+    ControlQueueItem("Chioma Eze", "₦250,000", "Final Control", "Kemi Adeleke", "")
 )
 
 @Composable
 fun SystemActivityScreen(
+    applications: List<LoanApplicationModel> = emptyList(),
+    borrowers: List<BorrowerModel> = emptyList(),
     onBackClick: () -> Unit,
     onViewApplication: (String) -> Unit = {}
 ) {
     var isLoading by remember { mutableStateOf(false) }
+
+    val controlItems = remember(applications, borrowers) {
+        if (applications.isNotEmpty()) {
+            applications.map { app ->
+                val borrower = borrowers.find { it.id == app.borrower_id }
+                ControlQueueItem(
+                    applicantName = borrower?.name ?: "Unknown Applicant",
+                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount)}",
+                    currentStage = "Final Control",
+                    handledBy = "Control Officer",
+                    appId = app.id
+                )
+            }
+        } else placeholderControlItems
+    }
 
     Scaffold(
         modifier = Modifier
@@ -73,7 +93,7 @@ fun SystemActivityScreen(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "${placeholderControlItems.size} IN QUEUE",
+                            text = "${controlItems.size} IN QUEUE",
                             style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
                             color = FieldTheme.colors.purple400
                         )
@@ -117,11 +137,11 @@ fun SystemActivityScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(placeholderControlItems) { item ->
+                    items(controlItems) { item ->
                         FieldCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onViewApplication(item.appId) }
+                                .clickable(enabled = item.appId.isNotEmpty()) { onViewApplication(item.appId) }
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
