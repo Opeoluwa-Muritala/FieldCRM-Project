@@ -23,7 +23,7 @@ import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.viewmodel.SearchViewModel
 import org.koin.androidx.compose.koinViewModel
 
-data class SearchResultApplication(val name: String, val refNo: String)
+data class SearchResultApplication(val name: String, val refNo: String, val id: String = refNo)
 data class SearchResultDocument(val title: String, val type: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,7 +44,7 @@ fun SearchResultsScreen(
     val recentSearches = listOf("Kalu", "MMFB-041", "Adaeze", "Guarantor")
 
     val filteredApps = searchState.results?.applications?.map {
-        SearchResultApplication(it.borrower_name, it.ref_no)
+        SearchResultApplication(name = it.borrower_name, refNo = it.ref_no, id = it.id)
     } ?: emptyList()
 
     val filteredDocs = emptyList<SearchResultDocument>()
@@ -239,7 +239,7 @@ fun SearchResultsScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(horizontal = 16.dp, vertical = 6.dp)
-                                        .clickable { onNavigateToApplication(app.refNo) },
+                                        .clickable { onNavigateToApplication(app.id) },
                                     colors = CardDefaults.cardColors(containerColor = FieldTheme.colors.gray900),
                                     shape = RoundedCornerShape(FieldTheme.shapes.cardRadius)
                                 ) {

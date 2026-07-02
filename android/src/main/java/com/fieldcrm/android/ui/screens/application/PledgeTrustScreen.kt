@@ -29,6 +29,10 @@ import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 
 private data class PledgeItem(
     val name: String = "",
@@ -50,13 +54,12 @@ fun PledgeTrustScreen(
         borrower = borrower,
         onBackClick = onBackClick,
         onExecute = { witnessName, totalCollateralValue ->
-            val updatedApp = application.copy(
-                collateral_desc = "Pledge & Trust Receipt Executed (Witness: $witnessName)",
-                collateral_value = totalCollateralValue
+            applicationViewModel.executePledge(
+                id = application.id,
+                witnessName = witnessName,
+                collateralValue = totalCollateralValue,
+                onSuccess = onSignComplete
             )
-            applicationViewModel.updateApplicationLocal(updatedApp) {
-                onSignComplete()
-            }
         }
     )
 }
@@ -68,6 +71,20 @@ fun PledgeTrustContent(
     onBackClick: () -> Unit,
     onExecute: (witnessName: String, totalCollateralValue: Double) -> Unit
 ) {
+    val context = LocalContext.current
+    var selectedAlternativeDocName by remember { mutableStateOf<String?>(null) }
+    val documentPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            val name = context.contentResolver.query(it, null, null, null, null)?.use { cursor ->
+                val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (cursor.moveToFirst() && idx >= 0) cursor.getString(idx) else "document"
+            } ?: "document"
+            selectedAlternativeDocName = name
+        }
+    }
+
     val configViewModel: ConfigViewModel = koinViewModel()
     val configState by configViewModel.uiState.collectAsState()
     val pledgeFormCode = configState.config?.pledge_form_code ?: "MMFB/CRM/02"
@@ -313,20 +330,20 @@ fun PledgeTrustContent(
                                         Icon(
                                             imageVector = FieldIcons.DocumentOutlined,
                                             contentDescription = null,
-                                            tint = FieldTheme.colors.gray600,
+                                            tint = if (selectedAlternativeDocName != null) FieldTheme.colors.purple400 else FieldTheme.colors.gray600,
                                             modifier = Modifier.size(32.dp)
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
-                                            text = "Tap to upload collateral valuation report or inventory document",
+                                            text = selectedAlternativeDocName?.let { "Selected file: $it" } ?: "Tap to upload collateral valuation report or inventory document",
                                             style = FieldTheme.typography.body.copy(fontSize = 12.sp),
-                                            color = FieldTheme.colors.gray500,
+                                            color = if (selectedAlternativeDocName != null) FieldTheme.colors.gray100 else FieldTheme.colors.gray500,
                                             textAlign = TextAlign.Center
                                         )
                                         Spacer(modifier = Modifier.height(12.dp))
                                         SecondaryButton(
-                                            text = "Select Document",
-                                            onClick = {},
+                                            text = if (selectedAlternativeDocName != null) "Change Document" else "Select Document",
+                                            onClick = { documentPickerLauncher.launch("*/*") },
                                             modifier = Modifier.fillMaxWidth()
                                         )
                                     }

@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val appUiState by appViewModel.uiState.collectAsState()
-            FieldCRMTheme(role = appUiState.session?.role) {
+            FieldCRMTheme(role = appUiState.session?.role, darkTheme = appUiState.isDarkMode) {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     FieldCRMApp(appViewModel, promptManager)
                 }
@@ -307,11 +307,8 @@ fun FieldCRMApp(
 
         Screen.SearchResults -> SearchResultsScreen(
             onBackClick = { backStack.removeLastOrNull() },
-            onNavigateToApplication = { refNo ->
-                val app = applicationUiState.applications.find { it.id == refNo }
-                    ?: applicationUiState.applications.find {
-                        it.ref_no.equals(refNo, ignoreCase = true)
-                    }
+            onNavigateToApplication = { appId ->
+                val app = applicationUiState.applications.find { it.id == appId }
                 if (app != null) appViewModel.setSelectedApplication(app)
                 backStack.add(Screen.ApplicationDetail)
             }
@@ -421,23 +418,27 @@ fun FieldCRMApp(
                 },
                 onNavigateToAuditTrail = { backStack.add(Screen.WorkflowEventAudit) },
                 onNavigateToFormWizard = { backStack.add(Screen.LoanApplicationForm) },
-                onNavigateToDocumentViewer = { backStack.add(Screen.DocumentViewer) }
+                onNavigateToDocumentViewer = { backStack.add(Screen.DocumentViewer) },
+                onNavigateToOcrReview = { backStack.add(Screen.OcrReview) }
             )
         }
 
         Screen.CreateApplication -> CreateApplicationScreenView(
             viewModel = applicationViewModel,
             borrowers = borrowerUiState.borrowers,
-            onApplicationCreated = { newApp ->
+            onApplicationCreated = { newApp, borrower ->
                 appViewModel.setSelectedApplication(newApp)
-                backStack.add(Screen.ApplicationDetail)
+                appViewModel.setSelectedBorrower(borrower)
+                borrowerViewModel.refreshBorrowers()
+                backStack.removeLastOrNull()
+                backStack.add(Screen.LoanApplicationForm)
             },
             onBackClick = { backStack.removeLastOrNull() }
         )
 
         Screen.LoanApplicationForm -> {
             val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id }
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id } ?: appUiState.selectedBorrower
             if (app != null) {
                 LoanApplicationFormScreen(
                     application = app,
@@ -445,7 +446,8 @@ fun FieldCRMApp(
                     applicationViewModel = applicationViewModel,
                     borrowerViewModel = borrowerViewModel,
                     appViewModel = appViewModel,
-                    onBackClick = { backStack.removeLastOrNull() }
+                    onBackClick = { backStack.removeLastOrNull() },
+                    onNavigateToGuarantorsForm = { backStack.add(Screen.GuarantorsForm) }
                 )
             } else {
                 backStack.removeLastOrNull()
@@ -685,11 +687,14 @@ fun FieldCRMApp(
         Screen.OcrReview -> {
             val app = appUiState.selectedApplication
             if (app != null) {
-                OcrReviewScreen(
+                com.fieldcrm.android.ui.screens.application.OcrReviewScreen(
                     application = app,
+                    applicationViewModel = applicationViewModel,
                     onBackClick = { backStack.removeLastOrNull() },
-                    onVerified = { backStack.removeLastOrNull() },
-                    onReturnForReupload = { backStack.removeLastOrNull() }
+                    onVerified = {
+                        backStack.removeLastOrNull()
+                        backStack.add(Screen.CreditOfficerReview)
+                    }
                 )
             } else {
                 backStack.removeLastOrNull()

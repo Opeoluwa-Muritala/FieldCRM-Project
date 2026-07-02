@@ -55,7 +55,8 @@ fun DashboardScreenView(
     onNavigateToUsers: () -> Unit = {},
     onNavigateToSystemActivity: () -> Unit = {},
     onNavigateToAuditTrail: () -> Unit = {},
-    onNavigateToComplianceFlags: () -> Unit = {}
+    onNavigateToComplianceFlags: () -> Unit = {},
+    onNavigateToOfflineQueue: () -> Unit = {}
 ) {
     val resolvedRole = role ?: UserRole.LOAN_OFFICER
     val configuration = LocalConfiguration.current
@@ -277,7 +278,8 @@ fun DashboardScreenView(
                             metrics = metrics,
                             queueItems = filteredQueueItems,
                             onQuickActionClick = onQuickActionClick,
-                            onQueueItemClick = onQueueItemClick
+                            onQueueItemClick = onQueueItemClick,
+                            onNavigateToCreateApplication = onNavigateToCreateApplication
                         )
                         1 -> QueueTab(
                             searchQuery = searchQuery,
@@ -290,7 +292,7 @@ fun DashboardScreenView(
                             userEmail = userEmail,
                             role = resolvedRole,
                             onBackClick = { selectedTab = 0 },
-                            onNavigateToOfflineQueue = {},
+                            onNavigateToOfflineQueue = onNavigateToOfflineQueue,
                             onSignOutClick = { showSignOutConfirmation = true }
                         )
                     }
@@ -326,7 +328,8 @@ fun DashboardScreenView(
                             metrics = metrics,
                             queueItems = filteredQueueItems,
                             onQuickActionClick = onQuickActionClick,
-                            onQueueItemClick = onQueueItemClick
+                            onQueueItemClick = onQueueItemClick,
+                            onNavigateToCreateApplication = onNavigateToCreateApplication
                         )
                         1 -> QueueTab(
                             searchQuery = searchQuery,
@@ -339,7 +342,7 @@ fun DashboardScreenView(
                             userEmail = userEmail,
                             role = resolvedRole,
                             onBackClick = { selectedTab = 0 },
-                            onNavigateToOfflineQueue = {},
+                            onNavigateToOfflineQueue = onNavigateToOfflineQueue,
                             onSignOutClick = { showSignOutConfirmation = true }
                         )
                     }
@@ -382,7 +385,8 @@ fun PhoneDashboardHome(
     metrics: List<MetricData>,
     queueItems: List<QueueItem>,
     onQuickActionClick: (String) -> Unit,
-    onQueueItemClick: (appId: String) -> Unit = {}
+    onQueueItemClick: (appId: String) -> Unit = {},
+    onNavigateToCreateApplication: () -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier
@@ -426,7 +430,30 @@ fun PhoneDashboardHome(
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    if (metrics.any { it.value == "—" }) {
+                        Row(
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            modifier = Modifier
+                                .background(FieldTheme.colors.statusWarning.copy(alpha = 0.12f), androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = FieldIcons.SyncOutlined,
+                                contentDescription = "Offline",
+                                tint = FieldTheme.colors.statusWarning,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "OFFLINE",
+                                style = FieldTheme.typography.label,
+                                color = FieldTheme.colors.statusWarning,
+                                fontSize = 10.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
                     IconButton(
                         onClick = { onQuickActionClick("SEARCH") },
                         modifier = Modifier
@@ -581,6 +608,12 @@ fun PhoneDashboardHome(
                 )
                 if (queueItems.isEmpty()) {
                     EmptyState(text = "No borrowers found. Register a new client to begin.")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    PrimaryButton(
+                        text = "Start New Application",
+                        onClick = onNavigateToCreateApplication,
+                        modifier = Modifier.fillMaxWidth(0.7f)
+                    )
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         queueItems.forEach { item ->
@@ -603,7 +636,8 @@ fun TabletDashboardHome(
     metrics: List<MetricData>,
     queueItems: List<QueueItem>,
     onQuickActionClick: (String) -> Unit,
-    onQueueItemClick: (appId: String) -> Unit = {}
+    onQueueItemClick: (appId: String) -> Unit = {},
+    onNavigateToCreateApplication: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -767,6 +801,12 @@ fun TabletDashboardHome(
                     if (queueItems.isEmpty()) {
                         item {
                             EmptyState(text = "No borrowers found. Register a new client to begin.")
+                            Spacer(modifier = Modifier.height(12.dp))
+                            PrimaryButton(
+                                text = "Start New Application",
+                                onClick = onNavigateToCreateApplication,
+                                modifier = Modifier.fillMaxWidth(0.7f)
+                            )
                         }
                     } else {
                         items(queueItems) { item ->

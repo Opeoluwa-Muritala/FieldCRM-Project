@@ -41,7 +41,8 @@ fun ApplicationDetailScreenView(
     onNavigateToReview: () -> Unit = {},
     onNavigateToAuditTrail: () -> Unit = {},
     onNavigateToFormWizard: () -> Unit = {},
-    onNavigateToDocumentViewer: () -> Unit = {}
+    onNavigateToDocumentViewer: () -> Unit = {},
+    onNavigateToOcrReview: () -> Unit = {}
 ) {
     val auditTrailVm: AuditTrailViewModel = koinViewModel()
     val auditUiState by auditTrailVm.uiState.collectAsState()
@@ -52,7 +53,7 @@ fun ApplicationDetailScreenView(
 
     var isBorrowerSectionExpanded by remember { mutableStateOf(true) }
     var isCollateralSectionExpanded by remember { mutableStateOf(true) }
-    var isAuditSectionExpanded by remember { mutableStateOf(false) }
+    var isAuditSectionExpanded by remember { mutableStateOf(true) }
 
     BoxWithConstraints(
         modifier = Modifier
@@ -85,7 +86,9 @@ fun ApplicationDetailScreenView(
                     ApplicationActionFooter(
                         role = role,
                         onNavigateToFormWizard = onNavigateToFormWizard,
-                        onNavigateToReview = onNavigateToReview
+                        onNavigateToReview = onNavigateToReview,
+                        application = application,
+                        onNavigateToOcrReview = onNavigateToOcrReview
                     )
                 }
             },
@@ -331,6 +334,8 @@ fun ApplicationDetailScreenView(
                             role = role,
                             onNavigateToFormWizard = onNavigateToFormWizard,
                             onNavigateToReview = onNavigateToReview,
+                            application = application,
+                            onNavigateToOcrReview = onNavigateToOcrReview,
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -447,7 +452,9 @@ fun ApplicationActionFooter(
     role: UserRole?,
     onNavigateToFormWizard: () -> Unit,
     onNavigateToReview: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    application: LoanApplicationModel? = null,
+    onNavigateToOcrReview: () -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -457,6 +464,14 @@ fun ApplicationActionFooter(
     ) {
         when (role) {
             null, UserRole.LOAN_OFFICER -> {
+                if (application != null && application.current_stage == 2) {
+                    PrimaryButton(
+                        text = "Verify OCR & Advance to Credit",
+                        onClick = onNavigateToOcrReview,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
                 PrimaryButton(
                     text = "Continue Application Form",
                     onClick = onNavigateToFormWizard

@@ -65,7 +65,7 @@ val appModule = module {
     viewModel { AppViewModel(get()) }
     viewModel { LoginViewModel(get(), get()) }
     viewModel { BorrowerViewModel(androidApplication(), get()) }
-    viewModel { ApplicationViewModel(androidApplication(), get()) }
+    viewModel { ApplicationViewModel(androidApplication(), get(), get()) }
     viewModel { NotificationsViewModel(get()) }
     viewModel { ConfigViewModel(get()) }
     viewModel { DashboardViewModel(get()) }

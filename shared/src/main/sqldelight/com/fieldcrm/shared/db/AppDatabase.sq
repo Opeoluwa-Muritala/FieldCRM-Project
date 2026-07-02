@@ -13,6 +13,20 @@ CREATE TABLE LoanApplication (
     product_type TEXT NOT NULL
 );
 
+-- Encrypted document cache — files stored in filesDir/field_docs/{id}.enc (AES-GCM via Android KeyStore)
+CREATE TABLE LocalDocument (
+    id          TEXT    NOT NULL PRIMARY KEY,
+    loan_id     TEXT    NOT NULL,
+    doc_type    TEXT    NOT NULL,
+    filename    TEXT    NOT NULL,
+    mime_type   TEXT    NOT NULL DEFAULT 'image/jpeg',
+    enc_path    TEXT    NOT NULL,       -- absolute path to encrypted file
+    iv_b64      TEXT    NOT NULL,       -- "tink_managed" (key managed by Android KeyStore)
+    size_bytes  INTEGER NOT NULL,
+    uploaded_at INTEGER NOT NULL,      -- epoch millis
+    synced      INTEGER NOT NULL DEFAULT 0  -- 0=pending upload, 1=uploaded
+);
+
 -- Offline Synchronisation Replay Queue
 CREATE TABLE SyncQueue (
     id TEXT NOT NULL PRIMARY KEY,
@@ -29,6 +43,26 @@ SELECT * FROM LoanApplication;
 insertApplication:
 INSERT OR REPLACE INTO LoanApplication (id, borrower_id, applicant_name, org_id, current_stage, current_owner_id, status, amount, tenure, product_type)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Local Document Operations
+insertLocalDocument:
+INSERT OR REPLACE INTO LocalDocument (id, loan_id, doc_type, filename, mime_type, enc_path, iv_b64, size_bytes, uploaded_at, synced)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+selectLocalDocumentsByLoan:
+SELECT * FROM LocalDocument WHERE loan_id = ? ORDER BY uploaded_at DESC;
+
+selectPendingDocumentUploads:
+SELECT * FROM LocalDocument WHERE synced = 0;
+
+markDocumentSynced:
+UPDATE LocalDocument SET synced = 1 WHERE id = ?;
+
+deleteLocalDocument:
+DELETE FROM LocalDocument WHERE id = ?;
+
+deleteLocalDocumentsByLoan:
+DELETE FROM LocalDocument WHERE loan_id = ?;
 
 -- Queue Operations
 selectQueuedItems:

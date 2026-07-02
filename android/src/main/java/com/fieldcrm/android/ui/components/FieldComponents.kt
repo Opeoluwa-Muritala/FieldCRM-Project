@@ -486,15 +486,19 @@ fun FieldAmountField(
     errorText: String? = null,
     helperText: String? = null
 ) {
+    val displayValue = remember(value) {
+        val digits = value.filter { it.isDigit() }
+        if (digits.isEmpty()) "" else java.text.NumberFormat.getNumberInstance(java.util.Locale.US).format(digits.toLongOrNull() ?: 0L)
+    }
     FieldTextField(
-        value = value,
-        onValueChange = onValueChange,
+        value = displayValue,
+        onValueChange = { onValueChange(it.filter { c -> c.isDigit() }) },
         label = label,
         isRequired = isRequired,
         errorText = errorText,
         helperText = helperText,
         keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-        trailingIcon = {
+        leadingIcon = {
             Text(
                 text = "₦",
                 style = FieldTheme.typography.mono.copy(
@@ -502,10 +506,64 @@ fun FieldAmountField(
                     fontWeight = FontWeight.Bold
                 ),
                 color = FieldTheme.colors.gray400,
-                modifier = Modifier.padding(end = 12.dp)
+                modifier = Modifier.padding(start = 12.dp)
             )
         },
         visualTransformation = VisualTransformation.None,
+        modifier = modifier
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FieldDateField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    isRequired: Boolean = false,
+    errorText: String? = null
+) {
+    var showPicker by remember { mutableStateOf(false) }
+
+    if (showPicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val millis = datePickerState.selectedDateMillis
+                    if (millis != null) {
+                        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                        onValueChange(sdf.format(java.util.Date(millis)))
+                    }
+                    showPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    FieldTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label,
+        isRequired = isRequired,
+        errorText = errorText,
+        placeholder = "YYYY-MM-DD",
+        trailingIcon = {
+            IconButton(onClick = { showPicker = true }) {
+                Icon(
+                    imageVector = FieldIcons.DocumentOutlined,
+                    contentDescription = "Pick date",
+                    tint = FieldTheme.colors.gray400
+                )
+            }
+        },
         modifier = modifier
     )
 }

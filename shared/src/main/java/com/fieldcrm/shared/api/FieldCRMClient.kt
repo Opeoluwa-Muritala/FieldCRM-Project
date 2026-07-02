@@ -16,10 +16,10 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.fieldcrm.shared.model.LoanApplicationModel
 
-class FieldCRMClient(private val baseUrl: String) {
+class FieldCRMClient(internal val baseUrl: String) {
     private var accessToken: String? = null
 
-    val client = HttpClient {
+    internal val httpClient = HttpClient {
         install(ContentNegotiation) {
             json(Json {
                 prettyPrint = true
@@ -39,8 +39,14 @@ class FieldCRMClient(private val baseUrl: String) {
         }
     }
 
+    internal fun authHeader(builder: HttpRequestBuilder) {
+        accessToken?.let {
+            builder.header(HttpHeaders.Authorization, "Bearer $it")
+        }
+    }
+
     suspend fun createApplication(app: LoanApplicationModel): HttpResponse {
-        return client.post("$baseUrl/api/v1/mobile/applications") {
+        return httpClient.post("$baseUrl/api/v1/mobile/applications") {
             contentType(ContentType.Application.Json)
             secureHeaders()
             setBody(
@@ -57,7 +63,7 @@ class FieldCRMClient(private val baseUrl: String) {
     }
 
     suspend fun fetchApplications(): List<LoanApplicationModel> {
-        val response = client.get("$baseUrl/api/v1/mobile/applications") {
+        val response = httpClient.get("$baseUrl/api/v1/mobile/applications") {
             secureHeaders()
         }
         return if (response.status == HttpStatusCode.OK) {

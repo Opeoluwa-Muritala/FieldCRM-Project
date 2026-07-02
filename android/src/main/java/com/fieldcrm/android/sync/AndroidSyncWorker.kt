@@ -34,7 +34,7 @@ class AndroidSyncWorker(
             val client = FieldCRMClient(baseUrl = "https://fieldcrm.onrender.com")
             client.setToken(session.token)
 
-            val mobileApi = MobileApiServiceImpl(client.client, "https://fieldcrm.onrender.com")
+            val mobileApi = MobileApiServiceImpl(client.httpClient, "https://fieldcrm.onrender.com")
             mobileApi.setToken(session.token)
             if (mobileApi.getMe() == null) {
                 return@withContext Result.failure()
@@ -64,6 +64,24 @@ class AndroidSyncWorker(
                 }
             } catch (_: Exception) {
                 // Pull failure is non-fatal — cached data is still valid
+            }
+
+            // Phase 3 — UPLOAD: push pending encrypted documents to backend
+            try {
+                val docRepo = com.fieldcrm.android.data.repository.LocalDocumentRepository(applicationContext, database)
+                val pending = docRepo.getPendingUploads()
+                for (doc in pending) {
+                    val bytes = doc.decryptWith(docRepo.getStore()) ?: continue
+                    val ok = mobileApi.uploadDocument(
+                        id = doc.loanId,
+                        category = doc.docType,
+                        fileBytes = bytes,
+                        fileName = doc.filename
+                    )
+                    if (ok != null) docRepo.markSynced(doc.id)
+                }
+            } catch (_: Exception) {
+                // Document upload failure is non-fatal
             }
 
             if (pushSuccess) Result.success() else Result.retry()
