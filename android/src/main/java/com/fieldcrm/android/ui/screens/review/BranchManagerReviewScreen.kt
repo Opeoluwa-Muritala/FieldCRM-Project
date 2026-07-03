@@ -1,6 +1,7 @@
 package com.fieldcrm.android.ui.screens.review
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -68,6 +69,52 @@ fun BranchManagerReviewScreen(
                 }
             )
         },
+        bottomBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(FieldTheme.colors.gray950)
+                    .border(width = 0.5.dp, color = FieldTheme.colors.gray800)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                PrimaryButton(
+                    text = if (appState.isLoading) "Processing Approval..." else "Approve & Push to Board",
+                    onClick = {
+                        applicationViewModel.approveApplication(application.id) {
+                            onDecisionSubmitted()
+                        }
+                    },
+                    enabled = isKycAttested && isCollateralAttested && managerComment.isNotEmpty() && !appState.isLoading,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    SecondaryButton(
+                        text = "Return to Pool",
+                        onClick = {
+                            applicationViewModel.returnApplication(application.id, selectedReason, emptyList(), managerComment) {
+                                onDecisionSubmitted()
+                            }
+                        },
+                        enabled = !appState.isLoading,
+                        modifier = Modifier.weight(1f)
+                    )
+                    DangerButton(
+                        text = "Reject Dossier",
+                        onClick = {
+                            applicationViewModel.returnApplication(application.id, "REJECTED: $selectedReason", emptyList(), managerComment) {
+                                onDecisionSubmitted()
+                            }
+                        },
+                        enabled = !appState.isLoading,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        },
         containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
         BoxWithConstraints(
@@ -80,21 +127,42 @@ fun BranchManagerReviewScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(bottom = 140.dp) // extra padding for bottom bar
             ) {
-                Box(
+                // High-End Header
+                Column(
                     modifier = Modifier
-                        .widthIn(max = 600.dp)
                         .fillMaxWidth()
-                        .align(Alignment.CenterHorizontally)
+                        .background(FieldTheme.colors.purple600.copy(alpha = 0.05f))
+                        .border(width = 0.5.dp, color = FieldTheme.colors.purple600.copy(alpha = 0.1f))
+                        .padding(horizontal = 24.dp, vertical = 24.dp)
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text(
-                            text = "Branch Manager Decision Gates",
-                            style = FieldTheme.typography.title,
-                            color = FieldTheme.colors.gray100
-                        )
+                    Text(
+                        text = "Decision Gates",
+                        style = FieldTheme.typography.title.copy(fontSize = 28.sp),
+                        color = FieldTheme.colors.gray100
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Final branch-level authorization. Please audit all KYC and collateral checks.",
+                        style = FieldTheme.typography.body.copy(fontSize = 14.sp),
+                        color = FieldTheme.colors.gray400
+                    )
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .widthIn(max = 600.dp)
+                            .fillMaxWidth()
+                            .align(Alignment.CenterHorizontally)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         
                         // Borrower overview summary card
                         FieldCard {
@@ -205,35 +273,6 @@ fun BranchManagerReviewScreen(
                             )
                         }
                         
-                        // Action buttons
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            PrimaryButton(
-                                text = if (appState.isLoading) "Processing Approval..." else "Approve & Push to Board",
-                                onClick = {
-                                    applicationViewModel.approveApplication(application.id) {
-                                        onDecisionSubmitted()
-                                    }
-                                },
-                                enabled = isKycAttested && isCollateralAttested && managerComment.isNotEmpty() && !appState.isLoading
-                            )
-                            SecondaryButton(
-                                text = "Return to Underwriting Pool",
-                                onClick = {
-                                    applicationViewModel.returnApplication(application.id, selectedReason, emptyList(), managerComment) {
-                                        onDecisionSubmitted()
-                                    }
-                                },
-                                enabled = !appState.isLoading
-                            )
-                            DangerButton(
-                                text = "Reject & Deactivate Dossier",
-                                onClick = {
-                                    applicationViewModel.returnApplication(application.id, "REJECTED: $selectedReason", emptyList(), managerComment) {
-                                        onDecisionSubmitted()
-                                    }
-                                },
-                                enabled = !appState.isLoading
-                            )
                         }
                     }
                 }

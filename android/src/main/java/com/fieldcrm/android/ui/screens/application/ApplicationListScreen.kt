@@ -3,9 +3,11 @@ package com.fieldcrm.android.ui.screens.application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import com.fieldcrm.android.ui.theme.FieldIcons
@@ -94,21 +96,6 @@ fun ApplicationListContent(
                             tint = FieldTheme.colors.gray400
                         )
                     }
-                },
-                actions = {
-                    // Quick stats pill
-                    Box(
-                        modifier = Modifier
-                            .background(FieldTheme.colors.gray800, RoundedCornerShape(FieldTheme.shapes.cardRadius))
-                            .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(FieldTheme.shapes.cardRadius))
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = "${filteredApps.size} DOSSIERS",
-                            style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
-                            color = FieldTheme.colors.purple400
-                        )
-                    }
                 }
             )
         },
@@ -117,7 +104,8 @@ fun ApplicationListContent(
                 onClick = onAddApplication,
                 containerColor = FieldTheme.colors.purple600,
                 contentColor = Color.White,
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.padding(16.dp)
             ) {
                 Icon(FieldIcons.AddOutlined, contentDescription = "Create Application")
             }
@@ -128,80 +116,122 @@ fun ApplicationListContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
         ) {
+            // Pipeline Stats Header
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(FieldTheme.colors.purple600.copy(alpha = 0.05f))
+                    .border(width = 0.5.dp, color = FieldTheme.colors.purple600.copy(alpha = 0.1f))
+                    .padding(24.dp)
+            ) {
+                Text(
+                    text = "Pipeline Overview",
+                    style = FieldTheme.typography.title.copy(fontSize = 28.sp),
+                    color = FieldTheme.colors.gray100
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    PipelineStatBox(
+                        label = "TOTAL DOSSIERS",
+                        value = "${applications.size}",
+                        color = FieldTheme.colors.purple400
+                    )
+                    PipelineStatBox(
+                        label = "IN REVIEW",
+                        value = "${applications.count { it.status.lowercase(Locale.getDefault()).contains("review") }}",
+                        color = FieldTheme.colors.statusWarning
+                    )
+                    PipelineStatBox(
+                        label = "APPROVED",
+                        value = "${applications.count { it.status.lowercase(Locale.getDefault()).contains("approved") }}",
+                        color = FieldTheme.colors.statusSuccess
+                    )
+                }
+            }
+            
             Spacer(modifier = Modifier.height(16.dp))
             
             // Search Input Block
-            FieldTextField(
-                value = searchQuery,
-                onValueChange = onSearchQueryChange,
-                label = "Filter Queue by Applicant Name or Reference",
-                placeholder = "Search Emeka, Adaeze, or ref...",
-                trailingIcon = {
-                    Icon(
-                        imageVector = FieldIcons.SearchOutlined,
-                        contentDescription = "Search",
-                        tint = FieldTheme.colors.gray500
-                    )
-                }
-            )
+            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                FieldTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    label = "",
+                    placeholder = "Search applicant or ref...",
+                    trailingIcon = {
+                        Icon(
+                            imageVector = FieldIcons.SearchOutlined,
+                            contentDescription = "Search",
+                            tint = FieldTheme.colors.gray500
+                        )
+                    }
+                )
+            }
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Filter Horizontal Chips Scroll
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 val stages = listOf("All Stages", "Intake", "OCR Review", "Credit Review", "BM Approved")
                 stages.forEach { stage ->
                     val isSelected = selectedFilterStage == stage
-                    val chipBg = if (isSelected) FieldTheme.colors.purple950 else FieldTheme.colors.gray850
+                    val chipBg = if (isSelected) FieldTheme.colors.purple600.copy(alpha = 0.2f) else FieldTheme.colors.gray900
                     val chipBorder = if (isSelected) FieldTheme.colors.purple400 else FieldTheme.colors.gray700
-                    val chipText = if (isSelected) FieldTheme.colors.purple200 else FieldTheme.colors.gray400
+                    val chipText = if (isSelected) FieldTheme.colors.purple400 else FieldTheme.colors.gray400
                     
                     Box(
                         modifier = Modifier
-                            .background(chipBg, RoundedCornerShape(6.dp))
-                            .border(0.5.dp, chipBorder, RoundedCornerShape(6.dp))
+                            .background(chipBg, RoundedCornerShape(16.dp))
+                            .border(1.dp, chipBorder, RoundedCornerShape(16.dp))
                             .clickable { onFilterStageChange(stage) }
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = stage.uppercase(Locale.getDefault()),
-                            style = FieldTheme.typography.label.copy(fontSize = 10.sp),
+                            text = stage,
+                            style = FieldTheme.typography.bodyStrong.copy(fontSize = 13.sp),
                             color = chipText
                         )
                     }
                 }
             }
             
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
             if (isLoading) {
-                // Shimmer loading layout instead of spinning circles
+                // Shimmer loading layout
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 100.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(6) {
                         FieldCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(72.dp)
+                                .height(88.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxSize(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                LoadingSkeleton(height = 48.dp, width = 48.dp, cornerRadius = 24.dp)
+                                Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     LoadingSkeleton(height = 16.dp, width = 140.dp)
                                     Spacer(modifier = Modifier.height(6.dp))
                                     LoadingSkeleton(height = 12.dp, width = 80.dp)
                                 }
-                                LoadingSkeleton(height = 20.dp, width = 60.dp, cornerRadius = 10.dp)
+                                LoadingSkeleton(height = 24.dp, width = 80.dp, cornerRadius = 12.dp)
                             }
                         }
                     }
@@ -214,16 +244,19 @@ fun ApplicationListContent(
                 )
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 100.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(filteredApps) { app ->
                         val borrower = borrowers.find { it.id == app.borrower_id }
-                        val name = borrower?.name ?: "Adaeze Okonkwo"
+                        val name = borrower?.name ?: "Unknown Profile"
+                        val initials = name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
+                        
                         val stateCode = when (app.status.lowercase(Locale.getDefault())) {
                             "approved", "bm approved" -> StatusChipVariant.Approved
                             "intake" -> StatusChipVariant.Verified
-                            "needs review" -> StatusChipVariant.NeedsReview
+                            "needs review", "ocr review", "credit review" -> StatusChipVariant.NeedsReview
                             "low confidence" -> StatusChipVariant.LowConfidence
                             "returned" -> StatusChipVariant.Returned
                             else -> StatusChipVariant.NeedsReview
@@ -236,13 +269,30 @@ fun ApplicationListContent(
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                // Avatar
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .background(FieldTheme.colors.purple600.copy(alpha = 0.15f), RoundedCornerShape(24.dp))
+                                        .border(1.dp, FieldTheme.colors.purple600.copy(alpha = 0.3f), RoundedCornerShape(24.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = initials,
+                                        style = FieldTheme.typography.title.copy(fontSize = 18.sp),
+                                        color = FieldTheme.colors.purple400
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.width(16.dp))
+                                
+                                // Details
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = name,
-                                        style = FieldTheme.typography.bodyStrong,
+                                        style = FieldTheme.typography.bodyStrong.copy(fontSize = 16.sp),
                                         color = FieldTheme.colors.gray100
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
@@ -250,19 +300,22 @@ fun ApplicationListContent(
                                         Text(
                                             text = "₦${String.format(Locale.US, "%,.0f", app.amount)}",
                                             style = FieldTheme.typography.mono.copy(
-                                                fontSize = 13.sp,
+                                                fontSize = 14.sp,
                                                 fontWeight = FontWeight.Bold
                                             ),
-                                            color = FieldTheme.colors.gray300
+                                            color = FieldTheme.colors.purple200
                                         )
-                                        Spacer(modifier = Modifier.width(12.dp))
                                         Text(
-                                            text = "${app.tenure} MONTHS",
-                                            style = FieldTheme.typography.label.copy(fontSize = 10.sp),
+                                            text = " • ${app.product_type}",
+                                            style = FieldTheme.typography.label.copy(fontSize = 12.sp),
                                             color = FieldTheme.colors.gray500
                                         )
                                     }
                                 }
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                // Status
                                 StatusChip(variant = stateCode)
                             }
                         }
@@ -270,6 +323,23 @@ fun ApplicationListContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun PipelineStatBox(label: String, value: String, color: Color) {
+    Column {
+        Text(
+            text = value,
+            style = FieldTheme.typography.title.copy(fontSize = 24.sp),
+            color = color
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            style = FieldTheme.typography.label.copy(fontSize = 10.sp),
+            color = FieldTheme.colors.gray500
+        )
     }
 }
 

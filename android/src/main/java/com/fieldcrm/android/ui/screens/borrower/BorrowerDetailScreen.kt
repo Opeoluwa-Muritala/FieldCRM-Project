@@ -1,6 +1,7 @@
 package com.fieldcrm.android.ui.screens.borrower
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
@@ -24,13 +25,19 @@ fun BorrowerDetailScreenView(
     onBackClick: () -> Unit,
     onCreateApplication: () -> Unit
 ) {
+    val initials = remember(borrower.name) {
+        borrower.name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
+    }
+    
+    val isActive = borrower.status.lowercase(Locale.getDefault()) == "active"
+
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
             .background(FieldTheme.colors.gray950),
         topBar = {
             FieldTopAppBar(
-                title = borrower.name,
+                title = "Client Profile",
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -41,143 +48,219 @@ fun BorrowerDetailScreenView(
                     }
                 },
                 actions = {
-                    StatusChip(
-                        variant = if (borrower.status.lowercase(Locale.getDefault()) == "active") {
-                            StatusChipVariant.Verified
-                        } else {
-                            StatusChipVariant.NeedsReview
-                        }
-                    )
+                    IconButton(onClick = { /* Edit Action */ }) {
+                        Icon(
+                            imageVector = FieldIcons.PenOutlined,
+                            contentDescription = "Edit Profile",
+                            tint = FieldTheme.colors.gray400
+                        )
+                    }
                 }
             )
         },
+        bottomBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(FieldTheme.colors.gray900)
+                    .border(width = 0.5.dp, color = FieldTheme.colors.gray800)
+                    .padding(16.dp)
+            ) {
+                PrimaryButton(
+                    text = "Initiate Loan Application",
+                    onClick = onCreateApplication,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
         containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
-        BoxWithConstraints(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentAlignment = Alignment.TopCenter
+            contentPadding = PaddingValues(bottom = 32.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                LazyColumn(
+            // High-Impact Profile Header
+            item {
+                Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .widthIn(max = 600.dp)
-                        .fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .fillMaxWidth()
+                        .background(FieldTheme.colors.purple600.copy(alpha = 0.05f))
+                        .padding(horizontal = 24.dp, vertical = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    item {
-                        Spacer(modifier = Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(96.dp)
+                            .background(
+                                color = if (isActive) FieldTheme.colors.purple600.copy(alpha = 0.15f) else FieldTheme.colors.gray800,
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(48.dp)
+                            )
+                            .border(
+                                width = 2.dp,
+                                color = if (isActive) FieldTheme.colors.purple600 else FieldTheme.colors.gray700,
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(48.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            text = "IDENTITY VERIFICATION CREDENTIALS",
-                            style = FieldTheme.typography.label,
-                            color = FieldTheme.colors.gray500
+                            text = initials,
+                            style = FieldTheme.typography.title.copy(fontSize = 36.sp),
+                            color = if (isActive) FieldTheme.colors.purple400 else FieldTheme.colors.gray400
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        ConfidenceBar(percentage = 0.96f)
-                    }
-
-                    // Card 1: Primary Profile Information
-                    item {
-                        FieldCard {
-                            Text(
-                                text = "Personal Profile",
-                                style = FieldTheme.typography.title,
-                                color = FieldTheme.colors.gray100
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            Row(modifier = Modifier.fillMaxWidth()) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    DetailItem(label = "Phone Number", value = borrower.phone)
-                                    DetailItem(label = "BVN Reference (Mono)", value = borrower.bvn, isMono = true)
-                                }
-                                Column(modifier = Modifier.weight(1f)) {
-                                    DetailItem(label = "NIN Reference (Mono)", value = borrower.nin, isMono = true)
-                                    DetailItem(label = "Home Address", value = borrower.physical_address ?: "Lagos LGA")
-                                }
-                            }
-                        }
-                    }
-
-                    // Card 2: Employment & Income Information
-                    item {
-                        FieldCard {
-                            Text(
-                                text = "Employment & Income Details",
-                                style = FieldTheme.typography.title,
-                                color = FieldTheme.colors.gray100
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            Row(modifier = Modifier.fillMaxWidth()) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    DetailItem(label = "Status", value = borrower.employment_status ?: "Self Employed")
-                                    DetailItem(label = "Monthly Income Estimation", value = "₦ ${borrower.monthly_income ?: 0.0}", isMono = true)
-                                }
-                                Column(modifier = Modifier.weight(1f)) {
-                                    DetailItem(label = "Employer/Business", value = borrower.employer_name ?: "Private Trade")
-                                }
-                            }
-                        }
-                    }
-
-                    // Card 3: Banking Account
-                    item {
-                        FieldCard {
-                            Text(
-                                text = "Banking Settlement Account",
-                                style = FieldTheme.typography.title,
-                                color = FieldTheme.colors.gray100
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            Row(modifier = Modifier.fillMaxWidth()) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    DetailItem(label = "Settlement Bank", value = borrower.bank_name ?: "Unknown Bank")
-                                }
-                                Column(modifier = Modifier.weight(1f)) {
-                                    DetailItem(label = "Account Number", value = borrower.account_number ?: "0000000000", isMono = true)
-                                }
-                            }
-                        }
                     }
                     
-                    // Card 4: Guarantor details
-                    item {
-                        FieldCard {
-                            Text(
-                                text = "Emergency Contact / Guarantor",
-                                style = FieldTheme.typography.title,
-                                color = FieldTheme.colors.gray100
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = borrower.name,
+                        style = FieldTheme.typography.title.copy(fontSize = 24.sp),
+                        color = FieldTheme.colors.gray100
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    StatusChip(
+                        variant = if (isActive) StatusChipVariant.Verified else StatusChipVariant.NeedsReview
+                    )
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
+                    
+                    // Quick Action Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        QuickActionItem(icon = FieldIcons.PhoneOutlined, label = "Call")
+                        QuickActionItem(icon = FieldIcons.CheckCircleOutlined, label = "Verify ID")
+                        QuickActionItem(icon = FieldIcons.ShieldOutlined, label = "Documents")
+                    }
+                }
+            }
+
+            // Identity Trust Score
+            item {
+                Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {
+                    Text(
+                        text = "IDENTITY VERIFICATION CREDENTIALS",
+                        style = FieldTheme.typography.label.copy(color = FieldTheme.colors.purple400)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldCard {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = FieldIcons.ShieldFilled, // Safe fallback
+                                contentDescription = null,
+                                tint = FieldTheme.colors.statusSuccess,
+                                modifier = Modifier.size(32.dp)
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            Row(modifier = Modifier.fillMaxWidth()) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    DetailItem(label = "Guarantor Full Name", value = borrower.guarantor_name ?: "Unspecified")
-                                }
-                                Column(modifier = Modifier.weight(1f)) {
-                                    DetailItem(label = "Guarantor Phone", value = borrower.guarantor_phone ?: "Unspecified")
-                                }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("High Confidence Profile", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray100)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                ConfidenceBar(percentage = 0.96f)
                             }
                         }
                     }
+                }
+            }
 
-                    item {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        PrimaryButton(
-                            text = "Initiate New Loan Application",
-                            onClick = onCreateApplication
+            // Structured Details Cards
+            item {
+                Column(
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    DetailSectionCard(
+                        title = "Personal Profile",
+                        items = listOf(
+                            Triple("Phone Number", borrower.phone, false),
+                            Triple("BVN Reference", borrower.bvn, true),
+                            Triple("NIN Reference", borrower.nin, true),
+                            Triple("Home Address", borrower.physical_address ?: "Lagos LGA", false)
                         )
-                        Spacer(modifier = Modifier.height(40.dp))
+                    )
+
+                    DetailSectionCard(
+                        title = "Employment & Income",
+                        items = listOf(
+                            Triple("Status", borrower.employment_status ?: "Self Employed", false),
+                            Triple("Employer/Business", borrower.employer_name ?: "Private Trade", false),
+                            Triple("Monthly Income", "₦ ${borrower.monthly_income ?: 0.0}", true)
+                        )
+                    )
+
+                    DetailSectionCard(
+                        title = "Banking Settlement",
+                        items = listOf(
+                            Triple("Bank Name", borrower.bank_name ?: "Unknown Bank", false),
+                            Triple("Account Number", borrower.account_number ?: "0000000000", true)
+                        )
+                    )
+
+                    DetailSectionCard(
+                        title = "Emergency Contact",
+                        items = listOf(
+                            Triple("Guarantor Name", borrower.guarantor_name ?: "Unspecified", false),
+                            Triple("Guarantor Phone", borrower.guarantor_phone ?: "Unspecified", false)
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun QuickActionItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .background(
+                    color = FieldTheme.colors.gray800,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp)
+                )
+                .border(
+                    width = 1.dp,
+                    color = FieldTheme.colors.gray700,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = FieldTheme.colors.gray100,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = label, style = FieldTheme.typography.label, color = FieldTheme.colors.gray400)
+    }
+}
+
+@Composable
+fun DetailSectionCard(title: String, items: List<Triple<String, String, Boolean>>) {
+    FieldCard {
+        Text(
+            text = title,
+            style = FieldTheme.typography.title,
+            color = FieldTheme.colors.gray100
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        items.chunked(2).forEachIndexed { index, rowItems ->
+            if (index > 0) Spacer(modifier = Modifier.height(16.dp))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                rowItems.forEach { (label, value, isMono) ->
+                    Column(modifier = Modifier.weight(1f)) {
+                        DetailItem(label = label, value = value, isMono = isMono)
                     }
+                }
+                if (rowItems.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }

@@ -220,16 +220,30 @@ fun PipelineScreen(
                                 ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
+                                        val initials = entry.applicantName.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .background(FieldTheme.colors.gray800, RoundedCornerShape(20.dp))
+                                                .border(1.dp, FieldTheme.colors.gray700, RoundedCornerShape(20.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = initials,
+                                                style = FieldTheme.typography.title.copy(fontSize = 14.sp),
+                                                color = FieldTheme.colors.gray300
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = entry.applicantName,
-                                                style = FieldTheme.typography.bodyStrong,
+                                                style = FieldTheme.typography.bodyStrong.copy(fontSize = 15.sp),
                                                 color = FieldTheme.colors.gray100
                                             )
-                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Spacer(modifier = Modifier.height(2.dp))
                                             Text(
                                                 text = entry.amount,
                                                 style = FieldTheme.typography.mono.copy(

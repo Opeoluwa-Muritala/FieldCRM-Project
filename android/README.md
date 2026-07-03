@@ -1,49 +1,44 @@
 # FieldCRM Android App
 
-This module contains FieldCRM's native Android application for field and
-back-office lending workflows. It is written in Kotlin with Jetpack Compose
-and depends on the repository's `shared` module for models, API access,
-SQLDelight storage, and synchronization foundations.
+The `android` module contains FieldCRM's native Android application for field and back-office lending workflows. It is built with Kotlin, Jetpack Compose, and depends on the shared Kotlin Multiplatform module for models, API access, local storage, and synchronization foundations.
 
-## Current Capabilities
+## What This App Does
 
-The app includes screens for:
+The Android app supports core mobile workflows for FieldCRM:
 
-- Login and role-aware dashboards
-- Borrower listing, details, and creation
-- Loan application listing, details, and creation
-- Loan application forms
-- Guarantor and pledge/trust forms
+- Authentication with password, passcode, and biometric sign-in
+- Role-aware dashboards and queue entry points
+- Borrower search, detail, and creation
+- Loan application list, detail, and draft creation
+- Loan intake form workflows
 - Document upload and viewing
-- Visitation reports
-- Credit, branch manager, auditor, and final approval reviews
-- Workflow audit history
-- Offline queue and settings
+- Guarantor verification and pledge/trust capture
+- Visitation report capture and signoff
+- Review screens for credit officers, branch managers, auditors, and admins
+- Audit event inspection
+- Settings and offline queue management
 
-The Android app is under active development. Some authentication, camera,
-offline queue, and API flows are mocked or scaffolded. The shared client also
-references borrower and application REST endpoints that are not all exposed by
-the current backend. Check the backend OpenAPI page before integrating a flow.
+Some flows are still under development. Certain backend API endpoints and offline sync behaviors are scaffolded or in progress.
 
 ## Technology
 
 - Kotlin 1.9.22
 - Android Gradle Plugin 8.2.2
-- Jetpack Compose and Material 3
+- Jetpack Compose + Material 3
 - Android ViewModel and lifecycle components
-- WorkManager
-- Ktor client
-- SQLDelight
-- Repository `shared` module
+- WorkManager for background sync
+- Ktor HTTP client
+- SQLDelight local storage
+- Shared Kotlin Multiplatform module
 
 ## Requirements
 
 - Android Studio
 - Android SDK 34
-- JDK 17 for running Gradle
-- An Android device or emulator with API 24 or newer
+- JDK 17
+- Physical device or emulator with API 24+
 
-The app configuration is:
+Current app configuration:
 
 | Setting | Value |
 | --- | --- |
@@ -74,8 +69,9 @@ android/
             `-- viewmodel/
 ```
 
-Navigation is currently managed by the `Screen` state in `AppViewModel` and a
-`when` expression in `MainActivity.kt`, rather than Jetpack Navigation.
+## Navigation Model
+
+Navigation is driven by a central `Screen` sealed class in `AppViewModel` and a back stack managed in `MainActivity.kt`. The app does not currently use Jetpack Navigation; instead, each screen transition is explicit and the visible back arrow follows the user-defined back stack.
 
 ## Screen Navigation
 

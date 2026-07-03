@@ -66,7 +66,7 @@ class SyncRepository(
                             val payload = kotlinx.serialization.json.Json.parseToJsonElement(item.payload_json).jsonObject
                             val appId = payload["id"]!!.jsonPrimitive.content
                             val response = client.httpClient.post("${client.baseUrl}/api/v1/mobile/applications/$appId/ocr-review") {
-                                io.ktor.http.contentType(ContentType.Application.Json)
+                                contentType(ContentType.Application.Json)
                                 client.authHeader(this)
                                 setBody("""{"action":"verify","corrections":{}}""")
                             }
@@ -79,7 +79,7 @@ class SyncRepository(
                             val appId = payload["id"]!!.jsonPrimitive.content
                             val bodyStr = payload["body"]?.jsonPrimitive?.content ?: "{}"
                             val response = client.httpClient.put("${client.baseUrl}/api/v1/mobile/applications/$appId/visitation") {
-                                io.ktor.http.contentType(ContentType.Application.Json)
+                                contentType(ContentType.Application.Json)
                                 client.authHeader(this)
                                 setBody(bodyStr)
                             }
@@ -92,7 +92,7 @@ class SyncRepository(
                             val appId = payload["id"]!!.jsonPrimitive.content
                             val bodyStr = payload["body"]?.jsonPrimitive?.content ?: "{}"
                             val response = client.httpClient.patch("${client.baseUrl}/api/v1/mobile/applications/$appId") {
-                                io.ktor.http.contentType(ContentType.Application.Json)
+                                contentType(ContentType.Application.Json)
                                 client.authHeader(this)
                                 setBody(bodyStr)
                             }
@@ -105,7 +105,7 @@ class SyncRepository(
                             val appId = payload["id"]!!.jsonPrimitive.content
                             val bodyStr = payload["body"]?.jsonPrimitive?.content ?: "{}"
                             val response = client.httpClient.patch("${client.baseUrl}/api/v1/mobile/applications/$appId") {
-                                io.ktor.http.contentType(ContentType.Application.Json)
+                                contentType(ContentType.Application.Json)
                                 client.authHeader(this)
                                 setBody(bodyStr)
                             }

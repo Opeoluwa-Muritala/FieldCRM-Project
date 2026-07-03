@@ -89,7 +89,14 @@ class SessionStore(context: Context) {
     }
 
     fun clear() {
-        prefs.edit().clear().apply()
+        prefs.edit()
+            .remove(KEY_TOKEN)
+            .remove(KEY_EMAIL)
+            .remove(KEY_NAME)
+            .remove(KEY_ROLE)
+            .remove(KEY_ORG_ID)
+            .remove(KEY_EXPIRES_AT)
+            .apply()
     }
 
     fun isStored(): Boolean {

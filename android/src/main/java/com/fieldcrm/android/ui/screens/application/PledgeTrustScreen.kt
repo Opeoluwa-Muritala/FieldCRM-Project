@@ -126,6 +126,22 @@ fun PledgeTrustContent(
                 }
             )
         },
+        bottomBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(FieldTheme.colors.gray950)
+                    .border(width = 0.5.dp, color = FieldTheme.colors.gray800)
+                    .padding(16.dp)
+            ) {
+                PrimaryButton(
+                    text = "Execute Pledge & Trust Receipt",
+                    onClick = { onExecute(witnessName, totalPledgeValue) },
+                    enabled = isFormValid,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
         containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
         BoxWithConstraints(
@@ -138,7 +154,7 @@ fun PledgeTrustContent(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Box(
@@ -149,11 +165,32 @@ fun PledgeTrustContent(
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
-                        Text(
-                            text = "Legal Pledge & Trust Receipt — $pledgeFormCode",
-                            style = FieldTheme.typography.title,
-                            color = FieldTheme.colors.gray100
-                        )
+                        // High-End Header
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(FieldTheme.colors.purple600.copy(alpha = 0.05f))
+                                .border(width = 0.5.dp, color = FieldTheme.colors.purple600.copy(alpha = 0.1f))
+                                .padding(horizontal = 24.dp, vertical = 24.dp)
+                        ) {
+                            Text(
+                                text = "Legal Pledge & Trust Receipt",
+                                style = FieldTheme.typography.title.copy(fontSize = 28.sp),
+                                color = FieldTheme.colors.gray100
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Form Code: $pledgeFormCode",
+                                style = FieldTheme.typography.mono.copy(fontSize = 12.sp),
+                                color = FieldTheme.colors.purple400
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Formal recording of collateral assets, including valuation, verification, and legal obligor acceptance.",
+                                style = FieldTheme.typography.body.copy(fontSize = 14.sp),
+                                color = FieldTheme.colors.gray400
+                            )
+                        }
 
                         // Auto-filled pledge header
                         FieldCard {
@@ -562,14 +599,6 @@ fun PledgeTrustContent(
                                     .height(160.dp)
                             )
                         }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        PrimaryButton(
-                            text = "Execute Pledge & Trust Receipt",
-                            onClick = { onExecute(witnessName, totalPledgeValue) },
-                            enabled = isFormValid
-                        )
                     }
                 }
             }
