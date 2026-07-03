@@ -85,61 +85,118 @@ fun OcrReviewScreen(
                 }
             )
         },
+        bottomBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(FieldTheme.colors.gray950)
+                    .border(width = 0.5.dp, color = FieldTheme.colors.gray800)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                PrimaryButton(
+                    text = "Mark as Verified",
+                    onClick = onVerified,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    SecondaryButton(
+                        text = "Save Corrections",
+                        onClick = { /* corrections saved */ },
+                        modifier = Modifier.weight(1f)
+                    )
+                    DangerButton(
+                        text = "Return for Re-upload",
+                        onClick = onReturnForReupload,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        },
         containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(bottom = 120.dp), // extra padding for bottom bar
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // High-End Header
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(FieldTheme.colors.purple600.copy(alpha = 0.05f))
+                        .border(width = 0.5.dp, color = FieldTheme.colors.purple600.copy(alpha = 0.1f))
+                        .padding(horizontal = 24.dp, vertical = 24.dp)
+                ) {
+                    Text(
+                        text = "OCR Verification Console",
+                        style = FieldTheme.typography.title.copy(fontSize = 28.sp),
+                        color = FieldTheme.colors.gray100
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Audit automated text extraction data against original documents before proceeding.",
+                        style = FieldTheme.typography.body.copy(fontSize = 14.sp),
+                        color = FieldTheme.colors.gray400
+                    )
+                }
+            }
+
             item { Spacer(modifier = Modifier.height(4.dp)) }
 
             // Card 1: Document Image Preview
             item {
-                FieldCard(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "DOCUMENT IMAGE",
-                        style = FieldTheme.typography.label.copy(
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = FieldTheme.colors.purple400
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                            .background(
-                                FieldTheme.colors.gray800,
-                                RoundedCornerShape(FieldTheme.shapes.cardRadius)
-                            )
-                            .border(
-                                0.5.dp,
-                                FieldTheme.colors.gray700,
-                                RoundedCornerShape(FieldTheme.shapes.cardRadius)
+                Box(modifier = Modifier.widthIn(max = 600.dp).padding(horizontal = 16.dp)) {
+                    FieldCard(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "DOCUMENT IMAGE",
+                            style = FieldTheme.typography.label.copy(
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
                             ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                            color = FieldTheme.colors.purple400
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .background(
+                                    FieldTheme.colors.gray800,
+                                    RoundedCornerShape(FieldTheme.shapes.cardRadius)
+                                )
+                                .border(
+                                    0.5.dp,
+                                    FieldTheme.colors.gray700,
+                                    RoundedCornerShape(FieldTheme.shapes.cardRadius)
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = FieldIcons.InfoOutlined,
-                                contentDescription = "Document Preview",
-                                tint = FieldTheme.colors.gray600,
-                                modifier = Modifier.size(36.dp)
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Document image preview",
-                                style = FieldTheme.typography.body.copy(fontSize = 13.sp),
-                                color = FieldTheme.colors.gray500,
-                                textAlign = TextAlign.Center
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = FieldIcons.InfoOutlined,
+                                    contentDescription = "Document Preview",
+                                    tint = FieldTheme.colors.gray600,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Document image preview",
+                                    style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                                    color = FieldTheme.colors.gray500,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
                     }
                 }
@@ -147,92 +204,73 @@ fun OcrReviewScreen(
 
             // Card 2: OCR Extracted Fields
             item {
-                FieldCard(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "OCR EXTRACTED FIELDS",
-                        style = FieldTheme.typography.label.copy(
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = FieldTheme.colors.purple400
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    ocrFields.forEachIndexed { index, field ->
-                        val currentValue = fieldValues[field.label] ?: field.initialValue
-
-                        FieldTextField(
-                            value = currentValue,
-                            onValueChange = { fieldValues[field.label] = it },
-                            label = field.label
+                Box(modifier = Modifier.widthIn(max = 600.dp).padding(horizontal = 16.dp)) {
+                    FieldCard(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "OCR EXTRACTED FIELDS",
+                            style = FieldTheme.typography.label.copy(
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = FieldTheme.colors.purple400
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                        // Confidence progress bar using LinearProgressIndicator
-                        Column {
-                            LinearProgressIndicator(
-                                progress = { field.confidence },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(4.dp),
-                                color = when {
-                                    field.confidence >= 0.8f -> FieldTheme.colors.statusSuccess
-                                    field.confidence >= 0.5f -> FieldTheme.colors.statusWarning
-                                    else -> FieldTheme.colors.statusDanger
-                                },
-                                trackColor = FieldTheme.colors.gray700
+                        ocrFields.forEachIndexed { index, field ->
+                            val currentValue = fieldValues[field.label] ?: field.initialValue
+
+                            FieldTextField(
+                                value = currentValue,
+                                onValueChange = { fieldValues[field.label] = it },
+                                label = field.label
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Confidence: ${(field.confidence * 100).toInt()}%",
-                                    style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Confidence progress bar using LinearProgressIndicator
+                            Column {
+                                LinearProgressIndicator(
+                                    progress = { field.confidence },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(4.dp),
                                     color = when {
                                         field.confidence >= 0.8f -> FieldTheme.colors.statusSuccess
                                         field.confidence >= 0.5f -> FieldTheme.colors.statusWarning
                                         else -> FieldTheme.colors.statusDanger
-                                    }
+                                    },
+                                    trackColor = FieldTheme.colors.gray700
                                 )
-                                SourceTag(source = "OCR")
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Confidence: ${(field.confidence * 100).toInt()}%",
+                                        style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
+                                        color = when {
+                                            field.confidence >= 0.8f -> FieldTheme.colors.statusSuccess
+                                            field.confidence >= 0.5f -> FieldTheme.colors.statusWarning
+                                            else -> FieldTheme.colors.statusDanger
+                                        }
+                                    )
+                                    SourceTag(source = "OCR")
+                                }
+                            }
+
+                            if (index < ocrFields.size - 1) {
+                                Spacer(modifier = Modifier.height(20.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(0.5.dp)
+                                        .background(FieldTheme.colors.gray700.copy(alpha = 0.4f))
+                                )
+                                Spacer(modifier = Modifier.height(20.dp))
                             }
                         }
-
-                        if (index < ocrFields.size - 1) {
-                            Spacer(modifier = Modifier.height(20.dp))
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(0.5.dp)
-                                    .background(FieldTheme.colors.gray700.copy(alpha = 0.4f))
-                            )
-                            Spacer(modifier = Modifier.height(20.dp))
-                        }
                     }
-                }
-            }
-
-            // Bottom action buttons
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    PrimaryButton(
-                        text = "Mark as Verified",
-                        onClick = onVerified
-                    )
-                    PrimaryButton(
-                        text = "Save Corrections",
-                        onClick = { /* corrections saved — wired separately */ }
-                    )
-                    SecondaryButton(
-                        text = "Return for Re-upload",
-                        onClick = onReturnForReupload
-                    )
                 }
             }
 

@@ -91,7 +91,11 @@ async def seed():
         users = [
             (u_lo1, "Chidi Okafor",        "chidi@mmfb.com",    "loan_officer",    pw),
             (u_lo2, "Ngozi Eze",            "ngozi@mmfb.com",    "loan_officer",    pw),
+            (uid(), "John Doe",             "john@mmfb.com",     "loan_officer",    pw),
+            (uid(), "Jane Doe",             "jane@mmfb.com",     "loan_officer",    pw),
+            (uid(), "Mike Smith",           "mike@mmfb.com",     "loan_officer",    pw),
             (u_co,  "Fatima Al-Hassan",     "fatima@mmfb.com",   "credit_officer",  pw),
+            (uid(), "Aisha Bello",          "aisha@mmfb.com",    "credit_officer",  pw),
             (u_bm,  "Samuel Adebayo",       "samuel@mmfb.com",   "branch_manager",  pw),
             (u_aud, "Amaka Nwosu",          "amaka@mmfb.com",    "auditor",         pw),
             (u_adm, "Emeka Obi",            "emeka@mmfb.com",    "system_admin",    pw),
@@ -136,6 +140,25 @@ async def seed():
         id_10 = add_app(ref(10), "Nnamdi Egwu",        "disbursed",           1_500_000,  "enterprise", days_ago=20, created_by=u_lo1, credit_officer=u_co, branch_manager=u_bm)
         id_11 = add_app(ref(11), "Blessing Nwankwo",   "returned",              300_000,  "msef",       days_ago=12, created_by=u_lo2)
         id_12 = add_app(ref(12), "Taiwo Oladele",      "rejected",              850_000,  "enterprise", days_ago=15, created_by=u_lo1, credit_officer=u_co)
+
+        import random
+        stages_pool = ["intake", "ocr_review", "credit_review", "branch_approval", "disbursement_ready", "disbursed", "returned", "rejected"]
+        loan_types = ["enterprise", "msef", "payee"]
+        
+        for i in range(13, 51):
+            stage = random.choice(stages_pool)
+            days = random.randint(1, 30)
+            add_app(
+                ref(i), 
+                f"Generated Borrower {i}", 
+                stage, 
+                random.randint(10, 500) * 10000, 
+                random.choice(loan_types), 
+                created_by=random.choice([u_lo1, u_lo2]),
+                credit_officer=u_co if stage in ["credit_review", "branch_approval", "disbursement_ready", "disbursed", "rejected"] else None,
+                branch_manager=u_bm if stage in ["branch_approval", "disbursement_ready", "disbursed", "returned"] else None,
+                days_ago=days
+            )
 
         for a in apps:
             await conn.execute(

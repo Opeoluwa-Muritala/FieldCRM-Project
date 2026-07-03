@@ -1,6 +1,7 @@
 package com.fieldcrm.android.ui.screens.review
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -64,6 +65,31 @@ fun AuditorComplianceScreen(
                 }
             )
         },
+        bottomBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(FieldTheme.colors.gray950)
+                    .border(width = 0.5.dp, color = FieldTheme.colors.gray800)
+                    .padding(16.dp)
+            ) {
+                PrimaryButton(
+                    text = if (auditState.isSaving) "Saving..." else "Log Auditor Sign-Off",
+                    onClick = {
+                        viewModel.saveChecklist(
+                            applicationId,
+                            AuditChecklist(
+                                consent_verified = isConsentVerified,
+                                signature_matched = isSignatureMatched,
+                                exhibits_verified = isExhibitsVerified
+                            )
+                        ) { onAuditComplete() }
+                    },
+                    enabled = allChecksPassed && !auditState.isSaving,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
         containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
         BoxWithConstraints(
@@ -76,26 +102,42 @@ fun AuditorComplianceScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(bottom = 100.dp) // extra padding for bottom bar
             ) {
-                Box(
+                // High-End Header
+                Column(
                     modifier = Modifier
-                        .widthIn(max = 600.dp)
                         .fillMaxWidth()
-                        .align(Alignment.CenterHorizontally)
+                        .background(FieldTheme.colors.purple600.copy(alpha = 0.05f))
+                        .border(width = 0.5.dp, color = FieldTheme.colors.purple600.copy(alpha = 0.1f))
+                        .padding(horizontal = 24.dp, vertical = 24.dp)
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text(
-                            text = "Auditing Compliance Checklists",
-                            style = FieldTheme.typography.title,
-                            color = FieldTheme.colors.gray100
-                        )
-                        Text(
-                            text = "Verify legal and administrative compliance checklist items. Log observations prior to official sign-off.",
-                            style = FieldTheme.typography.body,
-                            color = FieldTheme.colors.gray400
-                        )
+                    Text(
+                        text = "Auditor Verification Board",
+                        style = FieldTheme.typography.title.copy(fontSize = 28.sp),
+                        color = FieldTheme.colors.gray100
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Verify legal and administrative compliance checklist items. Log observations prior to official sign-off.",
+                        style = FieldTheme.typography.body.copy(fontSize = 14.sp),
+                        color = FieldTheme.colors.gray400
+                    )
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .widthIn(max = 600.dp)
+                            .fillMaxWidth()
+                            .align(Alignment.CenterHorizontally)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         
                         // Consent & Verification Check Card
                         FieldCard {
@@ -186,22 +228,7 @@ fun AuditorComplianceScreen(
                             )
                         }
                         
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        PrimaryButton(
-                            text = if (auditState.isSaving) "Saving..." else "Log Auditor Sign-Off",
-                            onClick = {
-                                viewModel.saveChecklist(
-                                    applicationId,
-                                    AuditChecklist(
-                                        consent_verified = isConsentVerified,
-                                        signature_matched = isSignatureMatched,
-                                        exhibits_verified = isExhibitsVerified
-                                    )
-                                ) { onAuditComplete() }
-                            },
-                            enabled = allChecksPassed && !auditState.isSaving
-                        )
+                        }
                     }
                 }
             }

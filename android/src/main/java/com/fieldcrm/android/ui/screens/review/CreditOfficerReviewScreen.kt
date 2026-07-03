@@ -66,6 +66,26 @@ fun CreditOfficerReviewScreen(
                 }
             )
         },
+        bottomBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(FieldTheme.colors.gray950)
+                    .border(width = 0.5.dp, color = FieldTheme.colors.gray800)
+                    .padding(16.dp)
+            ) {
+                PrimaryButton(
+                    text = if (appState.isLoading) "Submitting Verdict..." else "Submit Credit Evaluation",
+                    onClick = {
+                        applicationViewModel.submitCreditReview(application.id, recommendationDecision, recommendationNotes) {
+                            onCompleteReview()
+                        }
+                    },
+                    enabled = !isDtiLimitExceeded && creditScores[creditScoreIndex].second != StatusChipVariant.Missing && recommendationNotes.isNotEmpty() && !appState.isLoading,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
         containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
         BoxWithConstraints(
@@ -78,27 +98,42 @@ fun CreditOfficerReviewScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(bottom = 100.dp) // extra padding for bottom bar
             ) {
-                Box(
+                // High-End Header
+                Column(
                     modifier = Modifier
-                        .widthIn(max = 600.dp)
                         .fillMaxWidth()
-                        .align(Alignment.CenterHorizontally)
+                        .background(FieldTheme.colors.purple600.copy(alpha = 0.05f))
+                        .border(width = 0.5.dp, color = FieldTheme.colors.purple600.copy(alpha = 0.1f))
+                        .padding(horizontal = 24.dp, vertical = 24.dp)
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text(
-                            text = "Credit Risk Verification Matrix",
-                            style = FieldTheme.typography.title,
-                            color = FieldTheme.colors.gray100
-                        )
+                    Text(
+                        text = "Credit Risk Matrix",
+                        style = FieldTheme.typography.title.copy(fontSize = 28.sp),
+                        color = FieldTheme.colors.gray100
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Verify applicant leverage metrics and guarantor signatures prior to manager recommendation.",
+                        style = FieldTheme.typography.body.copy(fontSize = 14.sp),
+                        color = FieldTheme.colors.gray400
+                    )
+                }
 
-                        Text(
-                            text = "Verify applicant leverage metrics and guarantor signatures prior to manager recommendation.",
-                            style = FieldTheme.typography.body,
-                            color = FieldTheme.colors.gray400
-                        )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .widthIn(max = 600.dp)
+                            .fillMaxWidth()
+                            .align(Alignment.CenterHorizontally)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
                         // Application Summary Card
                         FieldCard {
@@ -551,17 +586,7 @@ fun CreditOfficerReviewScreen(
                             )
                         }
                         
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        PrimaryButton(
-                            text = if (appState.isLoading) "Submitting Verdict..." else "Submit Credit Evaluation",
-                            onClick = {
-                                applicationViewModel.submitCreditReview(application.id, recommendationDecision, recommendationNotes) {
-                                    onCompleteReview()
-                                }
-                            },
-                            enabled = !isDtiLimitExceeded && creditScores[creditScoreIndex].second != StatusChipVariant.Missing && recommendationNotes.isNotEmpty() && !appState.isLoading
-                        )
+                        }
                     }
                 }
             }

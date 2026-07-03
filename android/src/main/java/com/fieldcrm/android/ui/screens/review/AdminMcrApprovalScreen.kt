@@ -53,6 +53,34 @@ fun AdminMcrApprovalScreen(
                 }
             )
         },
+        bottomBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(FieldTheme.colors.gray950)
+                    .border(width = 0.5.dp, color = FieldTheme.colors.gray800)
+                    .padding(16.dp)
+            ) {
+                if (isDisbursedState) {
+                    PrimaryButton(
+                        text = "Complete & Exit",
+                        onClick = onDisburseTriggered,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    PrimaryButton(
+                        text = if (appState.isLoading) "Transmitting..." else "Trigger Ledger Disbursement",
+                        onClick = {
+                            applicationViewModel.approveApplication(application.id) {
+                                isDisbursedState = true
+                            }
+                        },
+                        enabled = hasQuorum && !appState.isLoading,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
         containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
         BoxWithConstraints(
@@ -65,132 +93,138 @@ fun AdminMcrApprovalScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(bottom = 100.dp) // extra padding for bottom bar
             ) {
-                Box(
+                // High-End Header
+                Column(
                     modifier = Modifier
-                        .widthIn(max = 600.dp)
                         .fillMaxWidth()
-                        .align(Alignment.CenterHorizontally)
+                        .background(FieldTheme.colors.purple600.copy(alpha = 0.05f))
+                        .border(width = 0.5.dp, color = FieldTheme.colors.purple600.copy(alpha = 0.1f))
+                        .padding(horizontal = 24.dp, vertical = 24.dp)
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text(
-                            text = "MCR Board Approval Gate",
-                            style = FieldTheme.typography.title,
-                            color = FieldTheme.colors.gray100
-                        )
-                        
-                        // Committee Votes Card
-                        FieldCard {
-                            Text("COMMITTEE VOTE TRACKER", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("Affirmative Committee Votes", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray300)
-                                Text("$yesVotes / $totalCommitteeVotes", style = FieldTheme.typography.mono.copy(fontSize = 18.sp, fontWeight = FontWeight.Bold), color = if (hasQuorum) FieldTheme.colors.statusSuccess else FieldTheme.colors.statusDanger)
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            ConfidenceBar(percentage = yesVotes.toFloat() / totalCommitteeVotes.toFloat())
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            // Interactive Voting Adjuster
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("Adjust Affirmative Board Count", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    SecondaryButton(
-                                        text = "-",
-                                        onClick = { if (yesVotes > 0) yesVotes-- },
-                                        modifier = Modifier.width(48.dp)
-                                    )
-                                    SecondaryButton(
-                                        text = "+",
-                                        onClick = { if (yesVotes < totalCommitteeVotes) yesVotes++ },
-                                        modifier = Modifier.width(48.dp)
-                                    )
-                                }
-                            }
-                        }
-                        
-                        // Disbursement Readiness Checklist
-                        FieldCard {
-                            Text("DISBURSEMENT STATUS GATES", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            ReadinessChecklist(
-                                gates = listOf(
-                                    ChecklistGate("Branch Manager Approval Logged", true, StatusChipVariant.Approved),
-                                    ChecklistGate("External Audit Trail Sign-off Verified", true, StatusChipVariant.Verified),
-                                    ChecklistGate("Committee Quorum Satisfied (3+ Votes)", hasQuorum, if (hasQuorum) StatusChipVariant.Verified else StatusChipVariant.Missing)
-                                )
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        if (isDisbursedState) {
-                            FieldCard(modifier = Modifier.border(0.5.dp, FieldTheme.colors.statusSuccess, RoundedCornerShape(FieldTheme.shapes.cardRadius))) {
-                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = FieldIcons.CheckCircleOutlined,
-                                            contentDescription = "Success",
-                                            tint = FieldTheme.colors.statusSuccess,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Column {
-                                            Text("DISBURSEMENT TRANSMITTED", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray100)
-                                            Text("Funding instruction transmitted to bank ledger system.", style = FieldTheme.typography.body.copy(fontSize = 12.sp), color = FieldTheme.colors.gray400)
-                                        }
-                                    }
-                                    FieldDivider()
-                                    
-                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        Text("TRANSACTION DETAILS", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Tx Ref", style = FieldTheme.typography.body.copy(fontSize = 13.sp), color = FieldTheme.colors.gray400)
-                                            Text("TX-MMFB-2849102-LOAN", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300)
-                                        }
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Ledger Hash", style = FieldTheme.typography.body.copy(fontSize = 13.sp), color = FieldTheme.colors.gray400)
-                                            Text("0x7d8a9f4c3b2a1e...", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300)
-                                        }
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Disbursed Amount", style = FieldTheme.typography.body.copy(fontSize = 13.sp), color = FieldTheme.colors.gray400)
-                                            Text("₦${String.format(java.util.Locale.US, "%,.0f", application.amount)}", style = FieldTheme.typography.mono.copy(fontWeight = FontWeight.Bold), color = FieldTheme.colors.purple400)
-                                        }
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Recipient", style = FieldTheme.typography.body.copy(fontSize = 13.sp), color = FieldTheme.colors.gray400)
-                                            Text("${borrower?.name ?: "Adaeze Okonkwo"} (${borrower?.bank_name ?: "Access Bank"})", style = FieldTheme.typography.bodyStrong.copy(fontSize = 13.sp), color = FieldTheme.colors.gray300)
-                                        }
-                                    }
+                    Text(
+                        text = "MCR Board Matrix",
+                        style = FieldTheme.typography.title.copy(fontSize = 28.sp),
+                        color = FieldTheme.colors.gray100
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Final executive disbursement controls. A committee quorum of 3+ votes is strictly required.",
+                        style = FieldTheme.typography.body.copy(fontSize = 14.sp),
+                        color = FieldTheme.colors.gray400
+                    )
+                }
 
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    PrimaryButton(
-                                        text = "Complete",
-                                        onClick = onDisburseTriggered
-                                    )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .widthIn(max = 600.dp)
+                            .fillMaxWidth()
+                            .align(Alignment.CenterHorizontally)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            
+                            // Committee Votes Card
+                            FieldCard {
+                                Text("COMMITTEE VOTE TRACKER", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Affirmative Committee Votes", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray300)
+                                    Text("$yesVotes / $totalCommitteeVotes", style = FieldTheme.typography.mono.copy(fontSize = 18.sp, fontWeight = FontWeight.Bold), color = if (hasQuorum) FieldTheme.colors.statusSuccess else FieldTheme.colors.statusDanger)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                ConfidenceBar(percentage = yesVotes.toFloat() / totalCommitteeVotes.toFloat())
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                // Interactive Voting Adjuster
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Adjust Affirmative Board Count", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        SecondaryButton(
+                                            text = "-",
+                                            onClick = { if (yesVotes > 0) yesVotes-- },
+                                            modifier = Modifier.width(48.dp)
+                                        )
+                                        SecondaryButton(
+                                            text = "+",
+                                            onClick = { if (yesVotes < totalCommitteeVotes) yesVotes++ },
+                                            modifier = Modifier.width(48.dp)
+                                        )
+                                    }
                                 }
                             }
-                        } else {
-                            PrimaryButton(
-                                text = if (appState.isLoading) "Transmitting..." else "Trigger Ledger Disbursement",
-                                onClick = {
-                                    applicationViewModel.approveApplication(application.id) {
-                                        isDisbursedState = true
+                            
+                            // Disbursement Readiness Checklist
+                            FieldCard {
+                                Text("DISBURSEMENT STATUS GATES", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                ReadinessChecklist(
+                                    gates = listOf(
+                                        ChecklistGate("Branch Manager Approval Logged", true, StatusChipVariant.Approved),
+                                        ChecklistGate("External Audit Trail Sign-off Verified", true, StatusChipVariant.Verified),
+                                        ChecklistGate("Committee Quorum Satisfied (3+ Votes)", hasQuorum, if (hasQuorum) StatusChipVariant.Verified else StatusChipVariant.Missing)
+                                    )
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            if (isDisbursedState) {
+                                FieldCard(modifier = Modifier.border(0.5.dp, FieldTheme.colors.statusSuccess, RoundedCornerShape(FieldTheme.shapes.cardRadius))) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = FieldIcons.CheckCircleOutlined,
+                                                contentDescription = "Success",
+                                                tint = FieldTheme.colors.statusSuccess,
+                                                modifier = Modifier.size(32.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Column {
+                                                Text("DISBURSEMENT TRANSMITTED", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray100)
+                                                Text("Funding instruction transmitted to bank ledger system.", style = FieldTheme.typography.body.copy(fontSize = 12.sp), color = FieldTheme.colors.gray400)
+                                            }
+                                        }
+                                        FieldDivider()
+                                        
+                                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            Text("TRANSACTION DETAILS", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                Text("Tx Ref", style = FieldTheme.typography.body.copy(fontSize = 13.sp), color = FieldTheme.colors.gray400)
+                                                Text("TX-MMFB-2849102-LOAN", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300)
+                                            }
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                Text("Ledger Hash", style = FieldTheme.typography.body.copy(fontSize = 13.sp), color = FieldTheme.colors.gray400)
+                                                Text("0x7d8a9f4c3b2a1e...", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300)
+                                            }
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                Text("Disbursed Amount", style = FieldTheme.typography.body.copy(fontSize = 13.sp), color = FieldTheme.colors.gray400)
+                                                Text("₦${String.format(java.util.Locale.US, "%,.0f", application.amount)}", style = FieldTheme.typography.mono.copy(fontWeight = FontWeight.Bold), color = FieldTheme.colors.purple400)
+                                            }
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                Text("Recipient", style = FieldTheme.typography.body.copy(fontSize = 13.sp), color = FieldTheme.colors.gray400)
+                                                Text("${borrower?.name ?: "Adaeze Okonkwo"} (${borrower?.bank_name ?: "Access Bank"})", style = FieldTheme.typography.bodyStrong.copy(fontSize = 13.sp), color = FieldTheme.colors.gray300)
+                                            }
+                                        }
                                     }
-                                },
-                                enabled = hasQuorum && !appState.isLoading
-                            )
+                                }
+                            }
                         }
                     }
                 }

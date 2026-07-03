@@ -19,7 +19,7 @@ import com.fieldcrm.shared.model.LoanApplicationModel
 class FieldCRMClient(internal val baseUrl: String) {
     private var accessToken: String? = null
 
-    internal val httpClient = HttpClient {
+    val httpClient = HttpClient {
         install(ContentNegotiation) {
             json(Json {
                 prettyPrint = true

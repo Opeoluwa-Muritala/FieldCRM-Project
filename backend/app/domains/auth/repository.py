@@ -6,8 +6,17 @@ class AuthRepository(BaseRepository):
     domain = "auth"
 
     async def get_user_by_email(self, email: str) -> UserRow | None:
-        row = await self.conn.fetchrow(self.sql("get_user_by_email"), email.strip().lower())
-        return UserRow(**row) if row else None
+        email_clean = email.strip().lower()
+        rows = await self.conn.fetch(self.sql("get_user_by_email"), email_clean)
+        
+        if not rows:
+            return None
+            
+        if "@" not in email_clean:
+            if len(rows) > 1:
+                return None
+                
+        return UserRow(**rows[0])
 
     async def get_user_by_id(self, user_id: str):
         return await self.conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)

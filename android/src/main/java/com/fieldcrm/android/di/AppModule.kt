@@ -49,8 +49,7 @@ val appModule = module {
     single { FieldCRMClient("https://fieldcrm.onrender.com") }
 
     // HttpClient and MobileApiService
-    single { get<FieldCRMClient>().client }
-    single<MobileApiService> { MobileApiServiceImpl(get(), "https://fieldcrm.onrender.com") }
+    single<MobileApiService> { MobileApiServiceImpl(get<FieldCRMClient>().httpClient, "https://fieldcrm.onrender.com") }
 
     // Repositories
     single { BorrowerRepository(get(), get()) }

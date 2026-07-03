@@ -111,6 +111,28 @@ fun ApplicationDetailScreenView(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         item {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(FieldTheme.colors.purple600.copy(alpha = 0.05f))
+                                    .border(width = 0.5.dp, color = FieldTheme.colors.purple600.copy(alpha = 0.1f))
+                                    .padding(horizontal = 24.dp, vertical = 24.dp)
+                            ) {
+                                Text(
+                                    text = "Application Dossier Master",
+                                    style = FieldTheme.typography.title.copy(fontSize = 28.sp),
+                                    color = FieldTheme.colors.gray100
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Comprehensive review of the lending application profile, borrower identity, collateral, and compliance gates.",
+                                    style = FieldTheme.typography.body.copy(fontSize = 14.sp),
+                                    color = FieldTheme.colors.gray400
+                                )
+                            }
+                        }
+
+                        item {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = "LENDING FLOW POSITION",

@@ -40,8 +40,7 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
         freeCompilerArgs = freeCompilerArgs + listOf(
-            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-            "-opt-in=androidx.navigation3.runtime.ExperimentalNavigation3Api"
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api"
         )
     }
 
@@ -97,9 +96,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 
     // Jetpack Navigation 3
-    implementation("androidx.navigation3:navigation3-runtime:1.0.0-alpha04")
-    implementation("androidx.navigation3:navigation3-ui:1.0.0-alpha04")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-navigation3:1.0.0-alpha04")
+    implementation("androidx.navigation3:navigation3-runtime:1.0.0")
+    implementation("androidx.navigation3:navigation3-ui:1.0.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-navigation3:2.10.0")
 
     // Biometric authentication
     implementation("androidx.biometric:biometric:1.1.0")

@@ -264,6 +264,62 @@ fun LoanApplicationFormContent(
                     }
                 )
             },
+            bottomBar = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(FieldTheme.colors.gray950)
+                        .border(width = 0.5.dp, color = FieldTheme.colors.gray800)
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        SecondaryButton(
+                            text = "Previous",
+                            onClick = { if (currentTab > 0) currentTab-- },
+                            enabled = currentTab > 0,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        if (currentTab == 8) {
+                            SecondaryButton(
+                                text = "Save Draft",
+                                onClick = {
+                                    onSubmit(
+                                        nameInput, phoneInput, bvnInput, addressInput, dobInput, maritalInput,
+                                        employmentInput, employerInput, incomeInput, amountInput, tenureInput,
+                                        productInput, collateralDescInput, collateralValInput, gNameInput, gPhoneInput,
+                                        bankInput, accInput
+                                    )
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            PrimaryButton(
+                                text = "Submit for Credit Review",
+                                onClick = {
+                                    onSubmit(
+                                        nameInput, phoneInput, bvnInput, addressInput, dobInput, maritalInput,
+                                        employmentInput, employerInput, incomeInput, amountInput, tenureInput,
+                                        productInput, collateralDescInput, collateralValInput, gNameInput, gPhoneInput,
+                                        bankInput, accInput
+                                    )
+                                },
+                                enabled = consentBureauDisclosure && consentCreditCheck && consentChequeRecovery && consentGsi && step9SignatureData != null,
+                                modifier = Modifier.weight(1f)
+                            )
+                        } else {
+                            PrimaryButton(
+                                text = "Next Step",
+                                onClick = { currentTab++ },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            },
             containerColor = FieldTheme.colors.gray950
         ) { paddingValues ->
             Row(
@@ -375,6 +431,7 @@ fun LoanApplicationFormContent(
                         modifier = Modifier
                             .weight(1f)
                             .verticalScroll(rememberScrollState())
+                            .padding(bottom = 100.dp)
                     ) {
                         WizardTabContent(
                             tabIndex = currentTab,
@@ -438,55 +495,6 @@ fun LoanApplicationFormContent(
                             consentGsi = consentGsi, onConsentGsiChange = { consentGsi = it },
                             step9SignatureData = step9SignatureData, onStep9SignatureConfirm = { step9SignatureData = it }, onStep9SignatureClear = { step9SignatureData = null }
                         )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        SecondaryButton(
-                            text = "Previous",
-                            onClick = { if (currentTab > 0) currentTab-- },
-                            enabled = currentTab > 0,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        if (currentTab == 8) {
-                            SecondaryButton(
-                                text = "Save Draft",
-                                onClick = {
-                                    onSubmit(
-                                        nameInput, phoneInput, bvnInput, addressInput, dobInput, maritalInput,
-                                        employmentInput, employerInput, incomeInput, amountInput, tenureInput,
-                                        productInput, collateralDescInput, collateralValInput, gNameInput, gPhoneInput,
-                                        bankInput, accInput
-                                    )
-                                },
-                                modifier = Modifier.weight(1f)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            PrimaryButton(
-                                text = "Submit for Credit Review",
-                                onClick = {
-                                    onSubmit(
-                                        nameInput, phoneInput, bvnInput, addressInput, dobInput, maritalInput,
-                                        employmentInput, employerInput, incomeInput, amountInput, tenureInput,
-                                        productInput, collateralDescInput, collateralValInput, gNameInput, gPhoneInput,
-                                        bankInput, accInput
-                                    )
-                                },
-                                enabled = consentBureauDisclosure && consentCreditCheck && consentChequeRecovery && consentGsi && step9SignatureData != null,
-                                modifier = Modifier.weight(1f)
-                            )
-                        } else {
-                            PrimaryButton(
-                                text = "Next Step",
-                                onClick = { currentTab++ },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
                     }
                 }
             }

@@ -1,89 +1,167 @@
 # FieldCRM
 
-FieldCRM is a loan origination and processing CRM for microfinance and retail lending teams. It manages the loan workflow from borrower intake through document review, OCR checks, credit review, branch approval, disbursement readiness, and audit.
+FieldCRM is a loan origination and processing CRM for microfinance and retail lending teams. It combines a FastAPI backend, server-rendered role-aware web dashboards, and a native Android app to support loan intake, review, approval, and audit workflows.
 
-The project contains:
+## What This Project Includes
 
-- A FastAPI backend with REST endpoints and server-rendered Jinja pages
-- Role-aware web dashboards for field and back-office staff
-- A native Android app built with Kotlin and Jetpack Compose
-- A Kotlin Multiplatform `shared` module for mobile models, API access, local storage, and sync foundations
+- `backend/`: FastAPI application with domain routers, services, repositories, migrations, authentication, and templates.
+- `frontend/`: Jinja2 templates, responsive CSS, JavaScript, and role-aware page shells.
+- `android/`: Kotlin + Jetpack Compose native Android app.
+- `shared/`: Kotlin Multiplatform module with models, shared API logic, SQLDelight storage, and sync foundations.
+- `gradle/`: Gradle wrapper and dependency version catalog.
+- `test_imports.py`: Simple backend import smoke test.
 
-## What This App Does
+## Core Functionality
 
-FieldCRM tracks applications through a controlled lending workflow:
+FieldCRM supports the full loan workflow:
 
-1. Loan officers create borrowers and start loan applications.
-2. Required borrower, guarantor, pledge, visitation, and document information is collected.
-3. Uploaded documents can move through OCR review and correction.
-4. Credit officers review risk, documents, and recommendations.
-5. Branch managers review and approve or return applications.
-6. Auditors and system admins review compliance, audit history, and operational activity.
+- Borrower intake and registration
+- Loan application creation and intake forms
+- Document upload and OCR review
+- Guarantor verification and pledge/trust capture
+- Visitation reporting and signoff
+- Credit officer review and recommendation
+- Branch manager approval readiness and decisioning
+- Auditor compliance checks and audit trail review
+- System administrator user and activity management
 
-The web app is role-aware and device-aware. The same backend renders different dashboard pages and navigation for loan officers, branch managers, credit officers, auditors, and system admins. Mobile web users receive mobile shells and tab bars; desktop users receive desktop shells and sidebars.
+## User Roles and Navigation
 
-## Repository Layout
+### Loan Officer
+
+Main screens:
+- Dashboard: personal queue, drafts, returned items, visits, and upload shortcuts.
+- My Queue: active applications assigned to the officer.
+- Applications: list and filter all applications.
+- New Application: starts the loan intake wizard.
+- Drafts / Returned: resume incomplete or corrected applications.
+- Visit Schedule: view and complete visitation tasks.
+- OCR Review Queue: view applications in OCR review.
+
+### Credit Officer
+
+Main screens:
+- Dashboard: review queue, OCR exception alerts, and loan summaries.
+- My Reviews: credit review queue for active applications.
+- OCR Exceptions: exceptions from OCR extraction needing validation.
+- Borrowers / Current Loans: view borrower and loan details.
+
+### Branch Manager
+
+Main screens:
+- Dashboard: approval readiness and branch workflow summaries.
+- Awaiting Me: applications needing branch manager approval.
+- Visit Signoffs: pending visit signoffs requiring concurrence.
+- Pipeline: stage-based application pipeline view.
+- Borrowers: current loans and borrower details.
+
+### Auditor
+
+Main screens:
+- Dashboard: compliance flags and audit activity.
+- Compliance Flags: flagged applications and documents.
+- Audit Trail: historical action review.
+- Borrowers: loan details and related applications.
+
+### System Admin
+
+Main screens:
+- Dashboard: system activity and final control summaries.
+- Users: manage staff accounts and roles.
+- System Activity: audit and control queue.
+- Audit Trail: read-only history for compliance review.
+
+## Web Screen Flow
+
+### Authentication and entry
+
+- `/login`: shared login flow for all users.
+- `/dashboard`: role-aware home page after login.
+- `/logout`: clears session and returns to login.
+
+### Application workflow
+
+- `/applications`: application list with stage filters.
+- `/applications/new`: create a new loan application draft.
+- `/applications/{id}`: application details and task hub.
+- `/applications/{id}/step/{1-9}`: loan intake wizard for draft applications.
+- `/applications/{id}/guarantors/{slot}/step/{1-8}`: guarantor wizard.
+- `/applications/{id}/documents/upload`: upload files and trigger OCR.
+- `/applications/{id}/ocr-review`: OCR review and correction screens.
+- `/applications/{id}/credit-review`: credit review and recommendation.
+- `/applications/{id}/approve`: approval readiness for branch managers.
+- `/applications/{id}/return`: return application workflow.
+
+### Supporting screens
+
+- `/pipeline`: branch manager pipeline view.
+- `/borrowers`: borrower and loan list view.
+- `/audit`: auditor workflow page.
+- `/audit-trail`: audit history.
+- `/compliance-flags`: auditor/system admin flag list.
+- `/users`: system admin user management.
+- `/system-activity`: system admin activity and control view.
+
+## Android Screen and Navigation Flow
+
+The Android app uses a central `Screen` sealed class state and back stack in `MainActivity.kt`. Navigation is explicit, and each screen generally returns to the previous screen.
+
+### Main mobile flow
+
+- Login → Dashboard
+- Dashboard → Borrower List / Application List / Offline Queue / Settings
+- Borrower List → Borrower Detail → Create Borrower / Create Application
+- Application List → Application Detail → child task screens
+- Application Detail → Loan Application Form / Document Upload / Document Viewer / Guarantors / Pledge & Trust / Visitation Report / Review / Audit Trail
+
+### Key mobile screens
+
+- `LoginScreen`: user login with password, passcode, or biometric options.
+- `DashboardScreen`: home screen with role-specific shortcuts.
+- `BorrowerListScreen`: list registered borrowers.
+- `BorrowerDetailScreen`: borrower summary and create application.
+- `CreateBorrowerScreen`: add a new borrower.
+- `ApplicationListScreen`: list active applications.
+- `ApplicationDetailScreen`: application hub with workflows and review actions.
+- `CreateApplicationScreen`: create a new draft application.
+- `LoanApplicationFormScreen`: process loan intake in wizard steps.
+- `DocumentUploadScreen`: upload application documents.
+- `DocumentViewerScreen`: view uploaded documents.
+- `GuarantorsFormScreen`: add or edit guarantor details.
+- `PledgeTrustScreen`: manage pledge/trust requirements.
+- `VisitationReportScreen`: capture visit reports.
+- `CreditOfficerReviewScreen`: credit review flow.
+- `BranchManagerReviewScreen`: branch approval flow.
+- `AuditorComplianceScreen`: auditor compliance review.
+- `AdminMcrApprovalScreen`: admin final approval flow.
+- `WorkflowEventAuditScreen`: audit event history.
+- `SettingsScreen`: theme, passcode, and sign-out.
+- `OfflineQueueScreen`: local queue and retry management.
+
+## Project Structure
 
 ```text
 FieldCRM/
-|-- backend/                  FastAPI app, domain routers, services, repositories, migrations
-|-- frontend/                 Jinja templates, static CSS, JavaScript, and images
-|-- android/                  Android Jetpack Compose app
-|-- shared/                   Kotlin Multiplatform module used by Android
-|-- gradle/                   Gradle wrapper files
-|-- build.gradle.kts          Root Gradle plugin configuration
-|-- settings.gradle.kts       Gradle module includes
-|-- test_imports.py           Backend import smoke test
+|-- backend/
+|-- frontend/
+|-- android/
+|-- shared/
+|-- gradle/
+|-- build.gradle.kts
+|-- settings.gradle.kts
+|-- test_imports.py
 `-- README.md
 ```
 
-## Main Technologies
-
-Backend:
-
-- Python
-- FastAPI
-- Jinja2
-- asyncpg / psycopg2
-- SQL files grouped by domain
-- Pydantic settings and schemas
-
-Web frontend:
-
-- Server-rendered Jinja templates
-- Vanilla CSS and JavaScript
-- Separate desktop and mobile shells
-- Role-specific dashboards and navigation
-
-Android:
-
-- Kotlin
-- Jetpack Compose
-- Material 3
-- ViewModels
-- WorkManager
-- Kotlin Multiplatform shared module
-- SQLDelight in the shared module
-- Ktor client scaffolding in the shared module
-
 ## Backend Setup
 
-Run these commands from the repository root.
-
-### 1. Create And Activate A Virtual Environment
+From the repository root:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-```
-
-### 2. Install Backend Dependencies
-
-```powershell
 pip install -r backend\requirements.txt
 ```
-
-### 3. Configure Environment Variables
 
 Create `backend/.env`:
 
@@ -93,21 +171,13 @@ JWT_SECRET_KEY=replace-with-a-long-random-secret
 COOKIE_SECURE=false
 ```
 
-The app can fall back to a local SQLite path if no database URL is provided, but the bundled migration and seed scripts are PostgreSQL-oriented. Use PostgreSQL for the full demo dataset.
-
-### 4. Run Migrations And Seed Data
+Run migrations and seed demo data:
 
 ```powershell
 python backend\migrations\run_migration.py
 ```
 
-This runs:
-
-- `001_full_schema.sql`
-- `002_ref_no_sequence.sql`
-- `003_seed_demo.sql`
-
-### 5. Start The Web App And API
+Start the backend:
 
 ```powershell
 uvicorn app.main:app --app-dir backend --reload
@@ -115,66 +185,26 @@ uvicorn app.main:app --app-dir backend --reload
 
 Open:
 
-- Web app: `http://127.0.0.1:8000/login`
-- API docs: `http://127.0.0.1:8000/api/docs`
-- ReDoc: `http://127.0.0.1:8000/api/redoc`
-- Health check: `http://127.0.0.1:8000/api/v1/health`
-
-## Demo Login Accounts
-
-Seeded users all use this password:
-
-```text
-password123
-```
-
-| Role | Email |
-| --- | --- |
-| System Admin | `admin@mmfb.com` |
-| Branch Manager | `adebayo@mmfb.com` |
-| Loan Officer | `chidi@mmfb.com` |
-| Credit Officer | `fatima@mmfb.com` |
-| Auditor | `samuel@mmfb.com` |
-
-## Web Routes To Try
-
-After logging in, useful routes include:
-
-- `/dashboard`
-- `/applications`
-- `/applications/new`
-- `/pipeline`
-- `/borrowers`
-- `/audit`
-- `/audit-trail`
-- `/compliance-flags`
-- `/users`
-- `/system-activity`
-
-Some routes are role-gated. If a user does not have the required role, the backend redirects or returns an authorization error.
+- `http://127.0.0.1:8000/login`
+- `http://127.0.0.1:8000/api/docs`
+- `http://127.0.0.1:8000/api/redoc`
+- `http://127.0.0.1:8000/api/v1/health`
 
 ## Android Setup
 
-The Android app is in the `android` module and depends on the `shared` Kotlin Multiplatform module.
-
-Recommended local tools:
+Recommended tools:
 
 - Android Studio
-- Android SDK installed locally
+- Android SDK
 - JDK 17
-- Gradle wrapper from this repository
 
-Create a local `local.properties` file if Android Studio has not already created one:
+Create `local.properties` in the repository root if needed:
 
 ```properties
 sdk.dir=C\:\\Users\\YOUR_USER\\AppData\\Local\\Android\\Sdk
 ```
 
-Do not commit `local.properties`; it is machine-specific.
-
-### Compile The Android App
-
-On Windows:
+Compile the Android app:
 
 ```powershell
 .\gradlew.bat :android:compileDebugKotlin
@@ -186,78 +216,35 @@ Build a debug APK:
 .\gradlew.bat :android:assembleDebug
 ```
 
-Open the project in Android Studio if you want to run it on an emulator or physical device.
-
-## Android App Structure
-
-```text
-android/src/main/java/com/fieldcrm/android/
-|-- MainActivity.kt
-|-- core/
-|   |-- network/
-|   `-- session/
-|-- data/repository/
-|-- sync/
-`-- ui/
-    |-- screens/
-    `-- viewmodel/
-```
-
-Current mobile screens include:
-
-- Login
-- Dashboard
-- Borrower list
-- Borrower details
-- Create borrower
-- Application list
-- Application details
-- Create application
-
-The Android implementation is still a work in progress. Some repositories, sync paths, and authentication flows are scaffolded or mocked while the backend API contract is being aligned.
-
 ## Shared Module
 
-The `shared` module contains cross-platform pieces used by the Android app:
+The `shared` module provides:
 
 - Borrower and loan application models
 - Ktor API client scaffolding
-- SQLDelight schema for local/offline storage
-- Sync repository foundations
-
-The module is configured for Android and has iOS target scaffolding for future use.
+- SQLDelight local storage
+- Sync and repository foundations
 
 ## Running Checks
 
-Backend import smoke test:
-
 ```powershell
 python test_imports.py
-```
-
-HTTP check after starting the backend:
-
-```powershell
 python backend\test_http.py
-```
-
-Role and mobile/desktop render check after starting the backend with seeded data:
-
-```powershell
 python backend\test_routes_render.py
 ```
 
-Android Kotlin compile:
+## Demo Login Accounts
 
-```powershell
-.\gradlew.bat :android:compileDebugKotlin
-```
+Seeded users all use password `password123`.
 
-## Configuration Reference
+| Role | Email |
+| --- | --- |
+| System Admin | `admin@mmfb.com` |
+| Branch Manager | `adebayo@mmfb.com` |
+| Loan Officer | `chidi@mmfb.com` |
+| Credit Officer | `fatima@mmfb.com` |
+| Auditor | `samuel@mmfb.com` |
 
-Common backend variables:
-
-| Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` | Full database connection string |
 | `POSTGRES_SERVER` | PostgreSQL server used when building a default URL |

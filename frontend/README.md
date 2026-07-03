@@ -1,12 +1,8 @@
 # FieldCRM Web Frontend
 
-This folder contains FieldCRM's server-rendered web interface. It provides
-role-aware, responsive screens for loan officers, credit officers, branch
-managers, auditors, and system administrators.
+This folder contains the server-rendered web interface for FieldCRM. It delivers role-aware dashboards and workflow pages to loan officers, credit officers, branch managers, auditors, and system administrators.
 
-The frontend is built with Jinja2 templates, vanilla CSS, and vanilla
-JavaScript. It does not run as a separate development server: the FastAPI
-application in `../backend` renders the templates and serves the static files.
+The frontend is built with Jinja2 templates, vanilla CSS, and vanilla JavaScript. It does not run independently; the FastAPI backend in `../backend` renders the templates and serves the static assets.
 
 ## Technology
 
@@ -21,23 +17,23 @@ application in `../backend` renders the templates and serves the static files.
 ```text
 frontend/
 |-- static/
-|   |-- css/                 Shared, responsive, login, and role theme styles
-|   |-- img/                 Logos and other image assets
-|   `-- js/                  Dashboard and mobile interactions
+|   |-- css/                 Responsive application and role theme styles
+|   |-- img/                 Logos and image assets
+|   `-- js/                  Dashboard and mobile interaction scripts
 `-- templates/
-    |-- base/                Desktop, mobile, and shared page shells
-    |-- components/          Role-specific sidebars, tab bars, and top bars
-    |-- shared/              Shared workflow and form pages
-    |-- loan_officer/        Loan officer pages
-    |-- credit_officer/      Credit officer pages
-    |-- branch_manager/      Branch manager pages
-    |-- auditor/             Auditor pages
-    `-- system_admin/        System administrator pages
+    |-- base/                Desktop, mobile, and shared layout shells
+    |-- components/          Role-specific sidebars, tab bars, top bars, and reusable fragments
+    |-- shared/              Shared workflow pages and forms
+    |-- loan_officer/        Loan officer-specific pages
+    |-- credit_officer/      Credit officer-specific pages
+    |-- branch_manager/      Branch manager-specific pages
+    |-- auditor/             Auditor-specific pages
+    `-- system_admin/        System administrator-specific pages
 ```
 
-## Run the Frontend
+## Running the Frontend
 
-Set up and start the backend from the repository root:
+The frontend runs as part of the backend. From the repository root:
 
 ```powershell
 python -m venv .venv
@@ -46,40 +42,37 @@ pip install -r backend\requirements.txt
 uvicorn app.main:app --app-dir backend --reload
 ```
 
-Then open:
+Open the app in a browser:
 
 - Login: `http://127.0.0.1:8000/login`
-- Dashboard after login: `http://127.0.0.1:8000/dashboard`
+- Dashboard: `http://127.0.0.1:8000/dashboard`
 
-The backend expects its database and environment variables to be configured.
-See `../backend/README.md` for the full setup and seeded demo accounts.
+The backend must be configured with a database and environment variables. See `../backend/README.md` for full setup details and demo accounts.
 
 ## How Rendering Works
 
-FastAPI configures these directories in `backend/app/main.py`:
+FastAPI configures template and static directories in `backend/app/main.py`:
 
 ```python
 templates = Jinja2Templates(directory="frontend/templates")
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 ```
 
-Requests are rendered according to both the authenticated user's role and the
-request's device type:
+The backend chooses the rendered page by:
 
-- Desktop requests use a desktop shell and role-specific sidebar.
-- Mobile requests use a mobile shell, top bar, and role-specific tab bar.
-- Shared workflow pages are reused where the process is common across roles.
-- Role-specific dashboards and detail views isolate actions and information.
+- user role (`Loan Officer`, `Credit Officer`, `Branch Manager`, `Auditor`, `System Admin`)
+- request device type (desktop or mobile)
+- workflow stage for a selected application
+
+Mobile clients receive a mobile shell and role-specific tab bar, while desktop users receive a desktop shell with a role-specific sidebar.
 
 ## Template Conventions
 
-- Put reusable layout markup in `templates/base/`.
-- Put reusable navigation in `templates/components/`.
-- Put workflow pages used by multiple roles in `templates/shared/`.
-- Put role-only views in the matching role directory.
-- Extend the existing shells instead of copying full HTML page structures.
-- Use Jinja variables supplied by the backend; do not place business logic in
-  templates.
+- Use `templates/base/` for layout shells.
+- Use `templates/components/` for navigation, headers, and reusable UI fragments.
+- Use `templates/shared/` for workflow pages used by multiple roles.
+- Use role-specific subfolders for views only one role should see.
+- Keep business logic in Python, not in templates.
 
 Typical page structure:
 
@@ -89,175 +82,151 @@ Typical page structure:
 {% block title %}Page title{% endblock %}
 
 {% block content %}
-    <!-- Page content -->
+    <!-- page content -->
 {% endblock %}
 ```
 
-Check an existing page in the same role before adding a new one because some
-shell blocks and context names differ between desktop and mobile views.
-
 ## Styling
 
-The main stylesheets are:
+Key stylesheets:
 
 | File | Purpose |
 | --- | --- |
-| `static/css/dashboard.css` | Core desktop layout, components, and workflow UI |
-| `static/css/mobile.css` | Mobile shells and responsive behavior |
-| `static/css/role-themes.css` | Accent colors and role-aware presentation |
-| `static/css/login.css` | Login page |
-| `static/css/borrowers.css` | Borrower-related views |
+| `static/css/dashboard.css` | Shared desktop dashboard and workflow styles |
+| `static/css/mobile.css` | Mobile shells, bottom tab bars, and responsive layouts |
+| `static/css/role-themes.css` | Role-specific colors and visual branding |
+| `static/css/login.css` | Login page styling |
+| `static/css/borrowers.css` | Borrower and application detail styles |
 
-The authenticated role is added to the document as a `data-role` attribute.
-Prefer extending this mechanism when adding role-specific visual treatment.
+Role information is passed to the DOM via a `data-role` attribute. Use this for conditional visual styling rather than hardcoding role logic in templates.
 
 ## JavaScript
 
-- `static/js/dashboard.js` handles role shells, guided tours, generated forms,
-  badge polling, UI effects, and common dashboard behavior.
-- `static/js/mobile.js` contains mobile-specific behavior.
+- `static/js/dashboard.js` manages dashboard interactions, badge polling, guided tours, and shared behavior.
+- `static/js/mobile.js` handles mobile-specific UI interactions.
 
-Keep server data and authorization decisions in the backend. Frontend checks
-may improve presentation, but they must not be treated as access control.
+The backend must remain the source of truth for authentication and authorization. JavaScript is only for presentation and client-side enhancements.
 
-## Screen Navigation
+## Screen and Navigation Overview
 
-Navigation is role-aware. Desktop users navigate with the left sidebar, while
-mobile web users navigate with the bottom tab bar. Workflow screens may hide
-the normal navigation so the user completes or exits the current task first.
+The web frontend is organized around shared workflow screens and role-specific queue pages. Navigation is role-aware:
 
-### Shared Entry and Core Screens
+- desktop uses a left sidebar for core navigation
+- mobile uses a bottom tab bar and simplified shell
+- some workflow screens hide normal navigation until the task completes
 
-| Screen | Route | How to open it | Main navigation |
-| --- | --- | --- | --- |
-| Login | `/login` | Open the site, visit `/`, or follow an authentication redirect | Successful login opens the requested `next` page or `/dashboard`. |
-| Dashboard | `/dashboard` | Login, Home tab, or Dashboard sidebar item | Opens the role's queues and shortcuts. Logout returns to Login. |
-| Applications | `/applications` | Dashboard links, application-related sidebar items, or mobile Upload/Applications tab | Select an application to open its detail/workflow; New Application opens `/applications/new`. |
-| New Application | `/applications/new` | New Application sidebar item, mobile New tab, floating action button, or Applications page | Submit customer and loan type to create a draft and open intake Step 1. Intended for Loan Officers and System Admins. |
-| Pipeline | `/pipeline` | Pipeline sidebar/tab or dashboard pipeline links | Select a stage/card to filter or open its applications. Branch Managers receive a branch-specific pipeline view. |
-| Current Loans | `/borrowers` | Current Loans/Loans navigation for Branch Manager, Credit Officer, Auditor, or System Admin | Select a loan row to open Application Detail. |
-| Compliance Audit | `/audit` | Legacy/shared audit navigation where exposed | Select an event to open the related Application Detail. |
-| Logout | `/logout` | Header logout action or mobile Logout tab | Clears the session and opens Login. Inactivity logout preserves the current page as the post-login destination. |
+### Core shared screens
 
-### Application Detail and Workflow Screens
+| Screen | Route | Purpose |
+| --- | --- | --- |
+| Login | `/login` | User authentication and redirect to the requested page or dashboard |
+| Dashboard | `/dashboard` | Role-specific home page with cards, queue summaries, and action shortcuts |
+| Applications | `/applications` | Application list with stage, type, and search filters |
+| New Application | `/applications/new` | Start a new loan application draft |
+| Application Detail | `/applications/{id}` | Central workflow hub for a selected application |
+| Pipeline | `/pipeline` | Stage-based application pipeline, primarily for branch managers |
+| Borrowers | `/borrowers` | Loan and borrower list for users with loan review or audit access |
+| Audit | `/audit` | Audit and compliance workflow entry page |
+| Audit Trail | `/audit-trail` | Read-only audit history for auditors and system admins |
+| Compliance Flags | `/compliance-flags` | Auditor/system admin flag review page |
+| Users | `/users` | System admin user management |
+| System Activity | `/system-activity` | System admin final-control activity and audit queue |
 
-`{id}` below is the selected loan application ID.
+### Workflow screens by route
 
-| Screen | Route | How to open it | Main navigation |
-| --- | --- | --- | --- |
-| Application Detail | `/applications/{id}` | Select an application, loan, audit event, flag, or dashboard card | Desktop renders a role-specific workstation. Mobile redirects by stage: intake to Step 1, OCR to OCR Review, credit stage to Credit Review, and later stages to Approval Readiness. |
-| Intake Wizard | `/applications/{id}/step/{1-9}` | Create a new application, open an intake-stage application on mobile, or choose an incomplete step from Loan Officer detail | Back opens the previous step. Save/continue opens the next step. Step 9 advances to OCR Review. |
-| Guarantor Wizard | `/applications/{id}/guarantors/{1-2}/step/{1-8}` | Open a guarantor task from the intake wizard | Back opens the previous guarantor step. Completing Step 8 returns to application intake Step 3. |
-| Document Upload | `/applications/{id}/documents/upload?type={type}` | Select an upload action from intake, application detail, guarantor, or credit review | Successful upload returns to Application Detail. |
-| OCR Review | `/applications/{id}/ocr-review` | Finish intake, open an OCR-stage application, select an OCR exception, or choose Review Extracted Data | Verify advances to Credit Review. Other completion paths return to Application Detail. A return action opens Return Application. |
-| Visitation Report | `/applications/{id}/visitation` | Visit Schedule, Visit Signoffs, Application Detail, or Approval Readiness | Submit/concur returns to Application Detail. The page also has Back to Application. |
-| Credit Review | `/applications/{id}/credit-review` | Credit Officer review queue, a credit-stage application on mobile, or verified OCR Review | Submit a recommendation and return to Dashboard. Back to Profile opens Application Detail. |
-| Approval Readiness | `/applications/{id}/approve` | Branch Manager Awaiting Me, System Admin control queue, later-stage mobile application, or Application Detail | Fix links open the relevant intake, OCR, or visitation screen. Approve returns to Dashboard. Return links open Return Application. |
-| Return Application | `/applications/{id}/return` | Approval, OCR, or role-specific Application Detail actions | Submit returns the application to the returned stage and opens Dashboard. Cancel returns to Application Detail. |
+| Screen | Route | Action |
+| --- | --- | --- |
+| Intake Wizard | `/applications/{id}/step/{1-9}` | Loan officer intake wizard for draft applications |
+| Guarantor Wizard | `/applications/{id}/guarantors/{slot}/step/{1-8}` | Guarantor intake and verification wizard |
+| Document Upload | `/applications/{id}/documents/upload` | Upload files and trigger OCR processing |
+| OCR Review | `/applications/{id}/ocr-review` | Verify and correct OCR-extracted documents |
+| Credit Review | `/applications/{id}/credit-review` | Credit officer review, recommendation, and decision capture |
+| Approval Readiness | `/applications/{id}/approve` | Branch manager approval readiness screen |
+| Return Application | `/applications/{id}/return` | Return or reject application workflows |
+| Visitation Report | `/applications/{id}/visitation` | Capture visits, GPS notes, and signoffs |
 
-### Loan Officer Screens
+### Loan Officer flow
 
-Desktop sidebar: Dashboard, My Queue, New Application, Drafts, Returned, Visit
-Schedule, My Visitation Reports, Upload Form, and OCR Review Queue.
+Loan officers focus on intake and field tasks:
 
-Mobile tabs: Home, My Queue, New, Upload, and Visits.
+1. Login → Dashboard
+2. Dashboard → My Queue / Drafts / Applications
+3. Create new application or resume draft
+4. Complete intake steps and guarantor workflows
+5. Upload documents and move the application to OCR review
+6. View returned applications for correction
 
-| Screen | Route | How to open it | Where items lead |
-| --- | --- | --- | --- |
-| Loan Officer Dashboard | `/dashboard` | Home/Dashboard | Application activity opens Application Detail; View All opens Applications; stage segments open filtered Applications; New action opens New Application. |
-| My Queue | `/my-queue` | My Queue sidebar or mobile Queue tab | Select an item to open Application Detail. New/FAB opens New Application. |
-| Drafts | `/applications?stage=intake` | Drafts sidebar item | Select an item to continue Application Detail or the mobile intake wizard. |
-| Returned | `/applications?stage=returned` | Returned sidebar item | Select an item to review corrections from Application Detail. |
-| Visit Schedule | `/visits` | Visit Schedule sidebar or mobile Visits tab | Select a visit to open its Visitation Report. |
-| My Visitation Reports | `/applications` | Sidebar item | Select an application, then open its visitation task from Application Detail. |
-| Upload Form | `/applications` | Sidebar item or mobile Upload tab | Select an application, then choose a document upload action. |
-| OCR Review Queue | `/applications?stage=ocr_review` | OCR Review Queue sidebar item | Select an application to open its detail or mobile OCR Review. |
+Desktop navigation uses sidebar items such as My Queue, New Application, Drafts, Returned, Visits, and OCR Review Queue. Mobile users access the same workflow through tab bar items and page-level actions.
 
-### Credit Officer Screens
+### Credit Officer flow
 
-Desktop sidebar: Dashboard, My Reviews, OCR Exceptions, and Current Loans.
+Credit officers inspect application quality and OCR exceptions:
 
-Mobile tabs: Home, Reviews, OCR, Loans, and Logout.
+1. Login → Dashboard
+2. Dashboard → My Reviews / OCR Exceptions / Current Loans
+3. Open application detail or direct Credit Review screens
+4. Validate OCR exceptions and submit recommendations
 
-| Screen | Route | How to open it | Where items lead |
-| --- | --- | --- | --- |
-| Credit Officer Dashboard | `/dashboard` | Home/Dashboard | Review items open Credit Review; OCR issue items open OCR Review. |
-| My Reviews | `/my-reviews` | Reviews tab/sidebar or dashboard View All | Select an item to open Credit Review. |
-| OCR Exceptions | `/ocr-exceptions` | OCR tab/sidebar or dashboard Open | Select an exception to open OCR Review for its application. |
-| Current Loans | `/borrowers` | Loans tab or Current Loans sidebar | Select a loan to open Application Detail. |
+Credit officers access review queues from the sidebar or mobile tabs, then move to `/credit-review` or `/ocr-review` for task completion.
 
-### Branch Manager Screens
+### Branch Manager flow
 
-Desktop sidebar: Dashboard, Awaiting Me, Visit Signoffs, Pipeline, and Current
-Loans.
+Branch managers approve applications and sign off visits:
 
-Mobile tabs: Home, Awaiting, Signoffs, Pipeline, and Logout.
+1. Login → Dashboard
+2. Dashboard → Awaiting Me / Pipeline / Visit Signoffs
+3. Open application detail or Approval Readiness screens
+4. Approve, return, or request corrections
 
-| Screen | Route | How to open it | Where items lead |
-| --- | --- | --- | --- |
-| Branch Manager Dashboard | `/dashboard` | Home/Dashboard | Priority approvals open Approval Readiness; pipeline summaries open Pipeline. |
-| Awaiting Me | `/awaiting-me` | Awaiting tab/sidebar or dashboard Open Queue | Select an item to open Approval Readiness. |
-| Visit Signoffs | `/pending-signoffs` | Signoffs tab/sidebar | Select an item to open its Visitation Report for concurrence. |
-| Branch Pipeline | `/pipeline` | Pipeline tab/sidebar or dashboard Open | Select a stage to open filtered Applications. |
-| Current Loans | `/borrowers` | Current Loans sidebar | Select a loan to open Application Detail. |
+The pipeline and signoff screens are the primary entry points for branch manager decisions.
 
-### Auditor Screens
+### Auditor flow
 
-Desktop sidebar: Dashboard, Compliance Flags, Audit Trail, and Current Loans.
+Auditors review compliance and history:
 
-Mobile tabs: Home, Flags, Audit, Loans, and Logout.
+1. Login → Dashboard
+2. Dashboard → Compliance Flags / Audit Trail / Borrowers
+3. Open flagged applications or audit events
+4. Inspect details and verify workflow compliance
 
-| Screen | Route | How to open it | Where items lead |
-| --- | --- | --- | --- |
-| Auditor Dashboard | `/dashboard` | Home/Dashboard | Compliance items open Application Detail; Audit Activity opens Audit Trail. |
-| Compliance Flags | `/compliance-flags` | Flags tab/sidebar or dashboard Open Flags | Select a flag to open the related Application Detail. |
-| Audit Trail | `/audit-trail` | Audit tab/sidebar or dashboard Audit Activity | Review immutable activity and open related applications where linked. |
-| Current Loans | `/borrowers` | Loans tab or Current Loans sidebar | Select a loan to open Application Detail. |
+Auditors use the same shared application and detail pages, with audit-specific task access from `/audit`, `/audit-trail`, and `/compliance-flags`.
 
-### System Admin Screens
+### System Admin flow
 
-Desktop sidebar: Dashboard, Users, System Activity, and Audit Trail.
+System admins monitor users and system activity:
 
-Mobile tabs: Home, Users, Activity, Audit, and Logout.
+1. Login → Dashboard
+2. Dashboard → Users / System Activity / Audit Trail
+3. Manage staff, review activity, and inspect queues
 
-| Screen | Route | How to open it | Where items lead |
-| --- | --- | --- | --- |
-| System Admin Dashboard | `/dashboard` | Home/Dashboard | Final-control items open Approval Readiness; role counts open Users; activity shortcuts open System Activity. |
-| Users | `/users` | Users tab/sidebar, Manage Users, or role-count cards | Manage organization users and inspect role totals; use global navigation to leave. |
-| System Activity | `/system-activity` | Activity tab/sidebar or dashboard Open | Control-queue items open Approval Readiness. |
-| Audit Trail | `/audit-trail` | Audit tab/sidebar | Uses the system activity presentation for read-only audit history and linked application controls. |
-| Compliance Flags | `/compliance-flags` | Direct authorized route | Inspect flags and select one to open Application Detail. |
+System administrators use user management and system activity pages to maintain org configuration and compliance.
 
-### Access and Back-Navigation Rules
+## Navigation rules
 
-- Unauthenticated page requests redirect to Login and preserve the requested
-  URL in `next`.
-- Role-only queue routes reject users without the required role.
-- Browser Back follows normal browser history, but workflow buttons use the
-  explicit destinations listed above.
-- Mobile Application Detail is a routing gateway rather than a detail page.
-- Desktop Application Detail remains open as the central workstation for most
-  role-specific actions.
-- Workflow submission commonly returns to Application Detail or Dashboard,
-  depending on whether the action merely saves task data or advances ownership.
+- Role-restricted routes redirect unauthorized users to the login page or an error page.
+- The `next` parameter preserves requested destinations across authentication.
+- Desktop pages keep the sidebar active while workflow pages may hide it for focus.
+- Mobile pages use a top bar and bottom tab bar for compact navigation.
+- Application detail acts as a gateway for role-specific review screens.
+- Submissions often return users to Dashboard or Application Detail depending on the workflow.
 
-## Testing Changes
+## Testing the frontend
 
-With the backend running and seeded:
+With the backend running:
 
 ```powershell
 python backend\test_http.py
 python backend\test_routes_render.py
 ```
 
-`test_routes_render.py` logs in as each seeded role and verifies that desktop
-and mobile shells render correctly. Also test changed pages manually at both
-desktop and narrow mobile widths.
+`test_routes_render.py` validates desktop and mobile rendering for seeded demo users.
 
-## Development Notes
+## Development notes
 
-- Keep the UI usable with keyboard navigation and visible focus states.
-- Preserve the existing reduced-motion behavior for animations.
+- Keep templates small and reusable.
+- Avoid embedding business logic in templates.
+- Reuse shared workflow pages across roles where possible.
+- Test both desktop and mobile views after layout changes.
 - Reuse established classes and components before adding new variants.
 - Store static assets under `static/` and reference them with `/static/...`.
 - Restarting Uvicorn is normally unnecessary when `--reload` is enabled;

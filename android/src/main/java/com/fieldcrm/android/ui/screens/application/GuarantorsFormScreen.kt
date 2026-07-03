@@ -201,14 +201,96 @@ fun GuarantorsFormContent(
                 }
             )
         },
+        bottomBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(FieldTheme.colors.gray950)
+                    .border(width = 0.5.dp, color = FieldTheme.colors.gray800)
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    SecondaryButton(
+                        text = "Back",
+                        onClick = {
+                            if (currentStep > 1) {
+                                currentStep--
+                            } else {
+                                onBackClick()
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    when {
+                        currentStep < 8 -> {
+                            PrimaryButton(
+                                text = "Next",
+                                onClick = { currentStep++ },
+                                enabled = if (currentStep == 6) step6NextEnabled else true,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        currentStep == 8 && currentSlot == 1 -> {
+                            PrimaryButton(
+                                text = "Proceed to Guarantor 2",
+                                onClick = {
+                                    currentSlot = 2
+                                    currentStep = 1
+                                },
+                                enabled = step8CompleteEnabled,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        else -> {
+                            PrimaryButton(
+                                text = "Complete",
+                                onClick = { onSaveComplete(g1FullName, g1Phone) },
+                                enabled = step8CompleteEnabled,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+        },
         containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
+                .padding(bottom = 100.dp) // Leave space for bottom bar
         ) {
+            // High-End Header
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(FieldTheme.colors.purple600.copy(alpha = 0.05f))
+                    .border(width = 0.5.dp, color = FieldTheme.colors.purple600.copy(alpha = 0.1f))
+                    .padding(horizontal = 24.dp, vertical = 24.dp)
+            ) {
+                Text(
+                    text = "Guarantor Profile Intake",
+                    style = FieldTheme.typography.title.copy(fontSize = 28.sp),
+                    color = FieldTheme.colors.gray100
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Detailed compliance screening and documentation for legal credit guarantees.",
+                    style = FieldTheme.typography.body.copy(fontSize = 14.sp),
+                    color = FieldTheme.colors.gray400
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
             // ── Step progress bar ──────────────────────────────────────────────
             Row(
                 modifier = Modifier
@@ -665,54 +747,6 @@ fun GuarantorsFormContent(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // ── Navigation buttons ────────────────────────────────────────────
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                SecondaryButton(
-                    text = "Back",
-                    onClick = {
-                        if (currentStep > 1) {
-                            currentStep--
-                        } else {
-                            onBackClick()
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                when {
-                    currentStep < 8 -> {
-                        PrimaryButton(
-                            text = "Next",
-                            onClick = { currentStep++ },
-                            enabled = if (currentStep == 6) step6NextEnabled else true,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    currentStep == 8 && currentSlot == 1 -> {
-                        PrimaryButton(
-                            text = "Proceed to Guarantor 2",
-                            onClick = {
-                                currentSlot = 2
-                                currentStep = 1
-                            },
-                            enabled = step8CompleteEnabled,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    else -> {
-                        PrimaryButton(
-                            text = "Complete",
-                            onClick = { onSaveComplete(g1FullName, g1Phone) },
-                            enabled = step8CompleteEnabled,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
             }
         }
     }

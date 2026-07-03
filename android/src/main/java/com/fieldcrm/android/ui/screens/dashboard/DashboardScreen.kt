@@ -3,6 +3,7 @@ package com.fieldcrm.android.ui.screens.dashboard
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -872,9 +873,23 @@ fun QueueTab(
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            val initials = item.name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(FieldTheme.colors.gray800, RoundedCornerShape(24.dp))
+                                    .border(1.dp, FieldTheme.colors.gray700, RoundedCornerShape(24.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = initials,
+                                    style = FieldTheme.typography.title.copy(fontSize = 16.sp),
+                                    color = FieldTheme.colors.gray300
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
@@ -882,7 +897,7 @@ fun QueueTab(
                                 ) {
                                     Text(
                                         text = item.name,
-                                        style = FieldTheme.typography.bodyStrong,
+                                        style = FieldTheme.typography.bodyStrong.copy(fontSize = 16.sp),
                                         color = FieldTheme.colors.gray100
                                     )
                                     Text(
@@ -894,7 +909,7 @@ fun QueueTab(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = item.detail,
-                                    style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                                    style = FieldTheme.typography.body.copy(fontSize = 14.sp),
                                     color = FieldTheme.colors.gray400
                                 )
                             }
@@ -993,13 +1008,31 @@ fun ActionFeedCard(
     item: QueueItem,
     onActionClick: () -> Unit
 ) {
-    FieldCard(modifier = Modifier.fillMaxWidth()
-                            .clickable(onClick = onActionClick)
-) {
+    val initials = item.name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
+    FieldCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onActionClick)
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Avatar
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(FieldTheme.colors.gray800, RoundedCornerShape(20.dp))
+                    .border(1.dp, FieldTheme.colors.gray700, RoundedCornerShape(20.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = initials,
+                    style = FieldTheme.typography.title.copy(fontSize = 14.sp),
+                    color = FieldTheme.colors.gray300
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -1007,12 +1040,12 @@ fun ActionFeedCard(
                 ) {
                     Text(
                         text = item.name,
-                        style = FieldTheme.typography.bodyStrong,
+                        style = FieldTheme.typography.bodyStrong.copy(fontSize = 15.sp),
                         color = FieldTheme.colors.gray100
                     )
                     Text(
                         text = item.refNo,
-                        style = FieldTheme.typography.mono.copy(fontSize = 11.sp),
+                        style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
                         color = FieldTheme.colors.purple400
                     )
                 }
@@ -1026,15 +1059,14 @@ fun ActionFeedCard(
             Spacer(modifier = Modifier.width(8.dp))
             Column(horizontalAlignment = Alignment.End) {
                 StatusChip(variant = item.status)
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "ACTION",
-                    style = FieldTheme.typography.label.copy(fontSize = 10.sp),
-                    color = FieldTheme.colors.purple600,
-                    modifier = Modifier
-                        .padding(4.dp)
-                )
             }
+            Spacer(modifier = Modifier.width(12.dp))
+            Icon(
+                imageVector = FieldIcons.ChevronRightOutlined,
+                contentDescription = "View",
+                tint = FieldTheme.colors.gray500,
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -145,33 +146,36 @@ fun LoginScreenContent(
                     ) {
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        // Centered Shield + M Logo Mark, 64dp, Gray900 (White surface in Light Theme)
+                        // Premium Shield Logo Mark
                         Box(
                             modifier = Modifier
-                                .size(64.dp)
-                                .background(FieldTheme.colors.gray900, RoundedCornerShape(FieldTheme.shapes.cardRadius)),
+                                .size(72.dp)
+                                .background(FieldTheme.colors.purple900.copy(alpha = 0.15f), RoundedCornerShape(18.dp))
+                                .border(0.5.dp, FieldTheme.colors.purple600.copy(alpha = 0.3f), RoundedCornerShape(18.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = FieldIcons.ShieldOutlined,
                                 contentDescription = "Shield Logo",
-                                tint = FieldTheme.colors.purple600,
+                                tint = FieldTheme.colors.purple400,
                                 modifier = Modifier.size(36.dp)
                             )
                         }
                         
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
                         
                         Text(
-                            text = "Mainstreet",
-                            style = FieldTheme.typography.display,
+                            text = "Institutional Portal",
+                            style = FieldTheme.typography.title.copy(fontSize = 24.sp, fontWeight = FontWeight.SemiBold),
                             color = FieldTheme.colors.gray100,
                             textAlign = TextAlign.Center
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "MICROFINANCE BANK",
+                            text = "SECURE STAFF AUTHENTICATION",
                             style = FieldTheme.typography.label.copy(
-                                color = FieldTheme.colors.gray500
+                                color = FieldTheme.colors.purple400,
+                                letterSpacing = 1.sp
                             ),
                             textAlign = TextAlign.Center
                         )

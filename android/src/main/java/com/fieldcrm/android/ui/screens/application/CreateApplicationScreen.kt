@@ -84,6 +84,12 @@ fun CreateApplicationContent(
     onCreateClick: () -> Unit,
     onBackClick: () -> Unit
 ) {
+    val isFormValid = if (customerType == "New Customer") {
+        newCustomerName.isNotEmpty() && newCustomerPhone.isNotEmpty() && newCustomerBvn.isNotEmpty() && newCustomerNin.isNotEmpty()
+    } else {
+        selectedBorrower != null
+    }
+
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
@@ -102,189 +108,219 @@ fun CreateApplicationContent(
                 }
             )
         },
+        bottomBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(FieldTheme.colors.gray900)
+                    .border(width = 0.5.dp, color = FieldTheme.colors.gray800)
+                    .padding(16.dp)
+            ) {
+                PrimaryButton(
+                    text = if (isLoading) "Creating Draft..." else "Begin Application",
+                    onClick = onCreateClick,
+                    enabled = !isLoading && isFormValid,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
         containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
-        BoxWithConstraints(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentAlignment = Alignment.TopCenter
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
         ) {
+            // Rich Header
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
+                    .fillMaxWidth()
+                    .background(FieldTheme.colors.purple600.copy(alpha = 0.05f))
+                    .padding(vertical = 32.dp, horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
                     modifier = Modifier
-                        .widthIn(max = 480.dp)
-                        .fillMaxWidth()
+                        .size(72.dp)
+                        .background(
+                            color = FieldTheme.colors.purple600.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(36.dp)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = FieldTheme.colors.purple600.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(36.dp)
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    FieldCard {
-                        Text(
-                            text = "New Application",
-                            style = FieldTheme.typography.title,
-                            color = FieldTheme.colors.gray100
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "START NEW LOAN VERIFICATION SEQUENCE",
-                            style = FieldTheme.typography.label.copy(color = FieldTheme.colors.purple400)
-                        )
-                        
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        // Select Customer Type TabRow
-                        val activeTab = if (customerType == "New Customer") 0 else 1
-                        TabRow(
-                            selectedTabIndex = activeTab,
-                            containerColor = FieldTheme.colors.gray900,
-                            contentColor = FieldTheme.colors.purple400,
-                            modifier = Modifier.clip(RoundedCornerShape(4.dp))
-                        ) {
-                            listOf("New Customer", "Existing Customer").forEachIndexed { i, label ->
-                                Tab(
-                                    selected = activeTab == i,
-                                    onClick = {
-                                        onCustomerTypeChange(label)
-                                    },
-                                    text = {
-                                        Text(
-                                            text = label,
-                                            color = if (activeTab == i) FieldTheme.colors.purple400 else FieldTheme.colors.gray400,
-                                            style = FieldTheme.typography.bodyStrong.copy(fontSize = 14.sp)
-                                        )
-                                    }
+                    Icon(
+                        imageVector = FieldIcons.ShieldOutlined, // Using Shield as primary trusted action icon
+                        contentDescription = "Intake",
+                        tint = FieldTheme.colors.purple400,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    text = "Loan Origination",
+                    style = FieldTheme.typography.title,
+                    color = FieldTheme.colors.gray100
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Select product category and client profile to begin application draft.",
+                    style = FieldTheme.typography.body.copy(fontSize = 14.sp),
+                    color = FieldTheme.colors.gray400,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+
+            // Form Section
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                Text(
+                    text = "APPLICATION SETUP",
+                    style = FieldTheme.typography.label.copy(color = FieldTheme.colors.purple400)
+                )
+
+                // Select Loan Category Dropdown
+                FieldDropdown(
+                    value = loanCategory,
+                    options = listOf("Enterprise Loan", "MSEF", "PAYEE", "Other Option"),
+                    onOptionSelected = onLoanCategoryChange,
+                    label = "Select Loan Category",
+                    isRequired = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "CLIENT SELECTION",
+                    style = FieldTheme.typography.label.copy(color = FieldTheme.colors.purple400)
+                )
+
+                // Tabs for Customer Type
+                val activeTab = if (customerType == "New Customer") 0 else 1
+                TabRow(
+                    selectedTabIndex = activeTab,
+                    containerColor = FieldTheme.colors.gray900,
+                    contentColor = FieldTheme.colors.purple400,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                ) {
+                    listOf("New Customer", "Existing Customer").forEachIndexed { i, label ->
+                        Tab(
+                            selected = activeTab == i,
+                            onClick = { onCustomerTypeChange(label) },
+                            text = {
+                                Text(
+                                    text = label,
+                                    color = if (activeTab == i) FieldTheme.colors.purple400 else FieldTheme.colors.gray400,
+                                    style = FieldTheme.typography.bodyStrong.copy(fontSize = 14.sp)
                                 )
                             }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Select Loan Category Dropdown
-                        FieldDropdown(
-                            value = loanCategory,
-                            options = listOf("Enterprise Loan", "MSEF", "PAYEE", "Other Option"),
-                            onOptionSelected = onLoanCategoryChange,
-                            label = "Select Loan Category",
-                            isRequired = true
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        if (customerType == "Existing Customer") {
-                            // Select Borrower Dropdown
-                            val borrowerNames = borrowers.map { it.name }
-                            val selectedName = selectedBorrower?.name ?: ""
-                            
-                            FieldDropdown(
-                                value = selectedName,
-                                options = borrowerNames,
-                                onOptionSelected = { name ->
-                                    borrowers.find { it.name == name }?.let { onBorrowerSelected(it) }
-                                },
-                                label = "Select Borrower Profile",
-                                isRequired = true
-                            )
-                        } else {
-                            // New Customer Fields
-                            Text(
-                                text = "NEW BORROWER REGISTRATION",
-                                style = FieldTheme.typography.label,
-                                color = FieldTheme.colors.gray500
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            FieldTextField(
-                                value = newCustomerName,
-                                onValueChange = onNewCustomerNameChange,
-                                label = "Full Name",
-                                placeholder = "Adaeze Okonkwo",
-                                isRequired = true,
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = FieldIcons.PersonOutlined,
-                                        contentDescription = "Name",
-                                        tint = FieldTheme.colors.gray500
-                                    )
-                                }
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            FieldTextField(
-                                value = newCustomerPhone,
-                                onValueChange = onNewCustomerPhoneChange,
-                                label = "Primary Phone",
-                                placeholder = "e.g. +234 80...",
-                                isRequired = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone),
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = FieldIcons.PhoneOutlined,
-                                        contentDescription = "Phone",
-                                        tint = FieldTheme.colors.gray500
-                                    )
-                                }
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            FieldTextField(
-                                value = newCustomerBvn,
-                                onValueChange = onNewCustomerBvnChange,
-                                label = "Bank Verification Number (BVN)",
-                                placeholder = "11-digit numeric code",
-                                isRequired = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = FieldIcons.FingerprintOutlined,
-                                        contentDescription = "BVN",
-                                        tint = FieldTheme.colors.gray500
-                                    )
-                                }
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            FieldTextField(
-                                value = newCustomerNin,
-                                onValueChange = onNewCustomerNinChange,
-                                label = "National Identification Number (NIN)",
-                                placeholder = "11-digit numeric code",
-                                isRequired = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = FieldIcons.BadgeOutlined,
-                                        contentDescription = "NIN",
-                                        tint = FieldTheme.colors.gray500
-                                    )
-                                }
-                            )
-                        }
-                        
-                        if (errorMessage != null) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = errorMessage,
-                                style = FieldTheme.typography.body.copy(fontSize = 12.sp),
-                                color = FieldTheme.colors.statusDanger
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(32.dp))
-                        
-                        val isFormValid = if (customerType == "New Customer") {
-                            newCustomerName.isNotEmpty() && newCustomerPhone.isNotEmpty() && newCustomerBvn.isNotEmpty() && newCustomerNin.isNotEmpty()
-                        } else {
-                            selectedBorrower != null
-                        }
-                        
-                        PrimaryButton(
-                            text = if (isLoading) "Creating Draft..." else "Begin Application",
-                            onClick = onCreateClick,
-                            enabled = !isLoading && isFormValid
                         )
                     }
                 }
+
+                if (customerType == "Existing Customer") {
+                    val borrowerNames = borrowers.map { it.name }
+                    val selectedName = selectedBorrower?.name ?: ""
+                    
+                    FieldDropdown(
+                        value = selectedName,
+                        options = borrowerNames,
+                        onOptionSelected = { name ->
+                            borrowers.find { it.name == name }?.let { onBorrowerSelected(it) }
+                        },
+                        label = "Select Registered Profile",
+                        isRequired = true
+                    )
+                } else {
+                    // New Customer Embedded Fields
+                    FieldTextField(
+                        value = newCustomerName,
+                        onValueChange = onNewCustomerNameChange,
+                        label = "Legal Full Name",
+                        placeholder = "Adaeze Okonkwo",
+                        isRequired = true,
+                        leadingIcon = {
+                            Icon(imageVector = FieldIcons.PersonOutlined, contentDescription = null, tint = FieldTheme.colors.gray500)
+                        }
+                    )
+                    FieldTextField(
+                        value = newCustomerPhone,
+                        onValueChange = onNewCustomerPhoneChange,
+                        label = "Primary Phone",
+                        placeholder = "e.g. +234 80...",
+                        isRequired = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone),
+                        leadingIcon = {
+                            Icon(imageVector = FieldIcons.PhoneOutlined, contentDescription = null, tint = FieldTheme.colors.gray500)
+                        }
+                    )
+                    FieldTextField(
+                        value = newCustomerBvn,
+                        onValueChange = onNewCustomerBvnChange,
+                        label = "Bank Verification Number (BVN)",
+                        placeholder = "11-digit BVN",
+                        isRequired = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        leadingIcon = {
+                            Icon(imageVector = FieldIcons.FingerprintOutlined, contentDescription = null, tint = FieldTheme.colors.gray500)
+                        }
+                    )
+                    FieldTextField(
+                        value = newCustomerNin,
+                        onValueChange = onNewCustomerNinChange,
+                        label = "National Identification Number (NIN)",
+                        placeholder = "11-digit NIN",
+                        isRequired = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        leadingIcon = {
+                            Icon(imageVector = FieldIcons.BadgeOutlined, contentDescription = null, tint = FieldTheme.colors.gray500)
+                        }
+                    )
+                }
+
+                if (errorMessage != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = FieldTheme.colors.statusDanger.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = FieldTheme.colors.statusDanger.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = FieldIcons.AlertOutlined,
+                            contentDescription = "Error",
+                            tint = FieldTheme.colors.statusDanger,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = errorMessage,
+                            style = FieldTheme.typography.body.copy(fontSize = 14.sp),
+                            color = FieldTheme.colors.statusDanger
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }

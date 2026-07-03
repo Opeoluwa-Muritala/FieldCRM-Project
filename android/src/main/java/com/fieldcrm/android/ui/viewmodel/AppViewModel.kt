@@ -209,6 +209,14 @@ class AppViewModel(private val sessionStore: SessionStore) : ViewModel() {
 
     fun logout() {
         sessionStore.clear()
-        _uiState.value = AppUiState()
+        _uiState.value = AppUiState(
+            hasEnrolledBiometrics = sessionStore.isBiometricEnrolled(),
+            hasSeenBiometricEnrollment = sessionStore.hasBiometricEnrollmentBeenShown(),
+            hasSeenOnboarding = sessionStore.hasSeenOnboarding(),
+            hasSeenPermissions = sessionStore.hasSeenPermissions(),
+            hasPasscode = sessionStore.hasPasscode(),
+            passcodeHash = sessionStore.getPasscodeHash(),
+            isDarkMode = sessionStore.isDarkMode()
+        )
     }
 }

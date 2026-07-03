@@ -67,34 +67,13 @@ fun MyQueueScreen(
             .background(FieldTheme.colors.gray950),
         topBar = {
             FieldTopAppBar(
-                title = "My Queue",
+                title = "Action Required",
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = FieldIcons.ArrowBackOutlined,
                             contentDescription = "Back",
                             tint = FieldTheme.colors.gray400
-                        )
-                    }
-                },
-                actions = {
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                FieldTheme.colors.gray800,
-                                RoundedCornerShape(FieldTheme.shapes.cardRadius)
-                            )
-                            .border(
-                                0.5.dp,
-                                FieldTheme.colors.gray700,
-                                RoundedCornerShape(FieldTheme.shapes.cardRadius)
-                            )
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = "${queueItems.size} ITEMS",
-                            style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
-                            color = FieldTheme.colors.purple400
                         )
                     }
                 }
@@ -106,45 +85,69 @@ fun MyQueueScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
         ) {
+            // High-End Priority Header
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(FieldTheme.colors.purple600.copy(alpha = 0.05f))
+                    .border(width = 0.5.dp, color = FieldTheme.colors.purple600.copy(alpha = 0.1f))
+                    .padding(horizontal = 24.dp, vertical = 24.dp)
+            ) {
+                Text(
+                    text = "My Active Tasks",
+                    style = FieldTheme.typography.title.copy(fontSize = 28.sp),
+                    color = FieldTheme.colors.gray100
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "You have ${queueItems.size} dossiers requiring immediate review or processing.",
+                    style = FieldTheme.typography.body.copy(fontSize = 14.sp),
+                    color = FieldTheme.colors.gray400
+                )
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             if (isLoading) {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 100.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(5) {
-                        FieldCard(modifier = Modifier.fillMaxWidth().height(80.dp)) {
+                        FieldCard(modifier = Modifier.fillMaxWidth().height(88.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxSize(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                LoadingSkeleton(height = 48.dp, width = 48.dp, cornerRadius = 24.dp)
+                                Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     LoadingSkeleton(height = 16.dp, width = 140.dp)
                                     Spacer(modifier = Modifier.height(6.dp))
                                     LoadingSkeleton(height = 12.dp, width = 90.dp)
                                 }
-                                LoadingSkeleton(height = 20.dp, width = 60.dp, cornerRadius = 10.dp)
+                                LoadingSkeleton(height = 24.dp, width = 24.dp, cornerRadius = 12.dp)
                             }
                         }
                     }
                 }
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 100.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(queueItems) { item ->
                         val chipVariant = when (item.stage.lowercase(Locale.getDefault())) {
                             "intake" -> StatusChipVariant.Verified
-                            "ocr review" -> StatusChipVariant.NeedsReview
-                            "needs review" -> StatusChipVariant.NeedsReview
-                            "approved" -> StatusChipVariant.Approved
+                            "ocr review", "credit review", "needs review" -> StatusChipVariant.NeedsReview
+                            "approved", "bm approved" -> StatusChipVariant.Approved
                             "returned" -> StatusChipVariant.Returned
                             else -> StatusChipVariant.NeedsReview
                         }
+                        val initials = item.applicantName.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
 
                         FieldCard(
                             modifier = Modifier
@@ -153,48 +156,61 @@ fun MyQueueScreen(
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
+                                // Avatar Circle
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .background(FieldTheme.colors.gray800, RoundedCornerShape(24.dp))
+                                        .border(1.dp, FieldTheme.colors.gray700, RoundedCornerShape(24.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     Text(
-                                        text = item.applicantName,
-                                        style = FieldTheme.typography.bodyStrong,
-                                        color = FieldTheme.colors.gray100
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = item.amount,
-                                        style = FieldTheme.typography.mono.copy(
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold
-                                        ),
+                                        text = initials,
+                                        style = FieldTheme.typography.title.copy(fontSize = 18.sp),
                                         color = FieldTheme.colors.gray300
                                     )
                                 }
-                                Column(horizontalAlignment = Alignment.End) {
-                                    StatusChip(variant = chipVariant)
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Box(
-                                        modifier = Modifier
-                                            .background(
-                                                FieldTheme.colors.purple950,
-                                                RoundedCornerShape(6.dp)
-                                            )
-                                            .border(
-                                                0.5.dp,
-                                                FieldTheme.colors.purple400,
-                                                RoundedCornerShape(6.dp)
-                                            )
-                                            .clickable { onViewApplication(item.appId) }
-                                            .padding(horizontal = 12.dp, vertical = 4.dp)
-                                    ) {
+                                
+                                Spacer(modifier = Modifier.width(16.dp))
+                                
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = item.applicantName,
+                                        style = FieldTheme.typography.bodyStrong.copy(fontSize = 16.sp),
+                                        color = FieldTheme.colors.gray100
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
-                                            text = "VIEW",
-                                            style = FieldTheme.typography.label.copy(fontSize = 10.sp),
+                                            text = item.amount,
+                                            style = FieldTheme.typography.mono.copy(
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold
+                                            ),
                                             color = FieldTheme.colors.purple200
                                         )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        StatusChip(variant = chipVariant)
                                     }
+                                }
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                // Action chevron instead of clunky box
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .background(FieldTheme.colors.purple600.copy(alpha = 0.1f), RoundedCornerShape(18.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = FieldIcons.ChevronRightOutlined,
+                                        contentDescription = "View Task",
+                                        tint = FieldTheme.colors.purple400,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
                             }
                         }
