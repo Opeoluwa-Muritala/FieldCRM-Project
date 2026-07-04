@@ -48,12 +48,16 @@ fun FieldCRMApp(
     val loginViewModel: LoginViewModel = koinViewModel()
     val borrowerViewModel: BorrowerViewModel = koinViewModel()
     val applicationViewModel: ApplicationViewModel = koinViewModel()
+    val servicingViewModel: ServicingViewModel = koinViewModel()
+    val crmReviewViewModel: CrmReviewViewModel = koinViewModel()
 
     val appUiState by appViewModel.uiState.collectAsState()
     val borrowerUiState by borrowerViewModel.uiState.collectAsState()
     val applicationUiState by applicationViewModel.uiState.collectAsState()
     val loginUiState by loginViewModel.uiState.collectAsState()
     val restoredSession by loginViewModel.restoredSession.collectAsState()
+    val servicingUiState by servicingViewModel.uiState.collectAsState()
+    val crmReviewUiState by crmReviewViewModel.uiState.collectAsState()
 
     val backStack = rememberNavBackStack(Screen.Login)
 
@@ -321,7 +325,10 @@ fun FieldCRMApp(
             onNavigateToSystemActivity = { backStack.add(Screen.SystemActivity) },
             onNavigateToAuditTrail = { backStack.add(Screen.AuditTrail) },
             onNavigateToComplianceFlags = { backStack.add(Screen.ComplianceFlags) },
-            onNavigateToOfflineQueue = { backStack.add(Screen.OfflineQueue) }
+            onNavigateToOfflineQueue = { backStack.add(Screen.OfflineQueue) },
+            onNavigateToCrmQueue = { backStack.add(Screen.CrmReview) },
+            onNavigateToExecutiveQueue = { backStack.add(Screen.ExecutiveApproval) },
+            onNavigateToParDashboard = { servicingViewModel.loadParDashboard(); backStack.add(Screen.ParDashboard) }
         )
 
         Screen.Settings -> {
@@ -388,7 +395,8 @@ fun FieldCRMApp(
                         UserRole.BRANCH_MANAGER -> Screen.BranchManagerReview
                         UserRole.CREDIT_OFFICER -> Screen.CreditOfficerReview
                         UserRole.AUDITOR -> Screen.AuditorCompliance
-                        UserRole.ADMIN_MCR -> Screen.AdminMcrApproval
+                        UserRole.CRM -> Screen.CrmReview
+                        UserRole.EXECUTIVE -> Screen.ExecutiveApproval
                         else -> Screen.CreditOfficerReview
                     }
                     backStack.add(reviewScreen)
@@ -703,6 +711,88 @@ fun FieldCRMApp(
             },
             onBackClick = { backStack.removeLastOrNull() }
         )
+
+        Screen.CrmReview -> {
+            val app = appUiState.selectedApplication
+            if (app != null) {
+                CrmReviewScreen(
+                    application = app,
+                    isSubmitting = crmReviewUiState.isSubmitting,
+                    onAdvanceToExecutive = {
+                        crmReviewViewModel.submitCrmReview(
+                            applicationId = app.id,
+                            decision = "advance",
+                            notes = "",
+                            onDone = { backStack.removeLastOrNull() }
+                        )
+                    },
+                    onReturnToBranchManager = {
+                        crmReviewViewModel.submitCrmReview(
+                            applicationId = app.id,
+                            decision = "return",
+                            notes = "",
+                            onDone = { backStack.removeLastOrNull() }
+                        )
+                    },
+                    onBack = { backStack.removeLastOrNull() }
+                )
+            } else {
+                backStack.removeLastOrNull()
+            }
+        }
+
+        Screen.ExecutiveApproval -> {
+            val app = appUiState.selectedApplication
+            if (app != null) {
+                ExecutiveApprovalScreen(
+                    application = app,
+                    isSubmitting = crmReviewUiState.isSubmitting,
+                    onIssueInstruction = {
+                        crmReviewViewModel.submitExecutiveApprove(
+                            applicationId = app.id,
+                            onDone = { backStack.removeLastOrNull() }
+                        )
+                    },
+                    onBack = { backStack.removeLastOrNull() }
+                )
+            } else {
+                backStack.removeLastOrNull()
+            }
+        }
+
+        Screen.RepaymentSchedule -> {
+            val app = appUiState.selectedApplication
+            val role = appUiState.session?.role
+            val canRecord = role == UserRole.CRM || role == UserRole.SYSTEM_ADMIN
+            RepaymentScheduleScreen(
+                applicantName = app?.applicantName ?: "—",
+                refNo = app?.refNo ?: "—",
+                schedule = servicingUiState.schedule,
+                payments = servicingUiState.payments,
+                totalDue = servicingUiState.totalDue,
+                totalPaid = servicingUiState.totalPaid,
+                outstanding = servicingUiState.outstanding,
+                canRecordPayment = canRecord,
+                onRecordPayment = { /* TODO: wire record-payment bottom sheet */ },
+                onBack = { backStack.removeLastOrNull() }
+            )
+        }
+
+        Screen.ParDashboard -> {
+            ParDashboardScreen(
+                par = servicingUiState.par,
+                isLoading = servicingUiState.isLoading,
+                onBack = { backStack.removeLastOrNull() },
+                onOpenSchedule = { loanId ->
+                    val app = applicationUiState.applications.find { it.id == loanId }
+                    if (app != null) {
+                        appViewModel.setSelectedApplication(app)
+                        servicingViewModel.loadRepaymentSchedule(loanId)
+                        backStack.add(Screen.RepaymentSchedule)
+                    }
+                }
+            )
+        }
 
             else -> {}
         }

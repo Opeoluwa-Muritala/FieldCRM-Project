@@ -14,10 +14,12 @@ import com.fieldcrm.android.ui.viewmodel.ApplicationViewModel
 import com.fieldcrm.android.ui.viewmodel.AuditTrailViewModel
 import com.fieldcrm.android.ui.viewmodel.BorrowerViewModel
 import com.fieldcrm.android.ui.viewmodel.ConfigViewModel
+import com.fieldcrm.android.ui.viewmodel.CrmReviewViewModel
 import com.fieldcrm.android.ui.viewmodel.DashboardViewModel
 import com.fieldcrm.android.ui.viewmodel.LoginViewModel
 import com.fieldcrm.android.ui.viewmodel.NotificationsViewModel
 import com.fieldcrm.android.ui.viewmodel.SearchViewModel
+import com.fieldcrm.android.ui.viewmodel.ServicingViewModel
 import com.fieldcrm.android.core.session.SessionStore
 import com.fieldcrm.shared.api.FieldCRMClient
 import com.fieldcrm.shared.db.AppDatabase
@@ -72,4 +74,6 @@ val appModule = module {
     viewModel { AuditTrailViewModel(get()) }
     viewModel { com.fieldcrm.android.ui.viewmodel.DocumentUploadViewModel(get()) }
     viewModel { com.fieldcrm.android.ui.viewmodel.SyncViewModel(get(), get()) }
+    viewModel { ServicingViewModel(get()) }
+    viewModel { CrmReviewViewModel(get()) }
 }

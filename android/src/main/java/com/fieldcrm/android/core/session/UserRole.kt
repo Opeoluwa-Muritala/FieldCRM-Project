@@ -42,7 +42,7 @@ enum class UserRole {
                 "adebayo" in normalized -> BRANCH_MANAGER
                 "fatima" in normalized -> CREDIT_OFFICER
                 "samuel" in normalized -> AUDITOR
-                "admin" in normalized -> ADMIN_MCR
+                "admin" in normalized -> SYSTEM_ADMIN
                 else -> LOAN_OFFICER
             }
         }
