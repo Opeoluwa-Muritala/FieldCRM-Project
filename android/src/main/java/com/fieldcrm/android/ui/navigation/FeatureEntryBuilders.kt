@@ -52,6 +52,8 @@ internal fun EntryProviderScope<NavKey>.applicationEntryBuilder(
     entry<Screen.VisitationReport> { content(it) }
     entry<Screen.OfflineQueue> { content(it) }
     entry<Screen.OcrReview> { content(it) }
+    entry<Screen.RepaymentSchedule> { content(it) }
+    entry<Screen.ParDashboard> { content(it) }
 }
 
 internal fun EntryProviderScope<NavKey>.documentEntryBuilder(
@@ -71,6 +73,8 @@ internal fun EntryProviderScope<NavKey>.reviewEntryBuilder(
     entry<Screen.WorkflowEventAudit> { content(it) }
     entry<Screen.AuditTrail> { content(it) }
     entry<Screen.ComplianceFlags> { content(it) }
+    entry<Screen.CrmReview> { content(it) }
+    entry<Screen.ExecutiveApproval> { content(it) }
 }
 
 internal fun EntryProviderScope<NavKey>.queueEntryBuilder(
