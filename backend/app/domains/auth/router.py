@@ -29,7 +29,7 @@ async def login_cookie(
         httponly=True,
         secure=is_secure,
         samesite="strict",
-        max_age=30 * 60,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/"
     )
     return {"access_token": token, "token_type": "bearer"}
@@ -40,6 +40,18 @@ async def login_bearer(
     service: AuthService = Depends(get_auth_service)
 ):
     token = await service.authenticate_user(form_data.username, form_data.password)
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@router.post("/login-mobile", response_model=Token)
+async def login_mobile(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    service: AuthService = Depends(get_auth_service)
+):
+    """Mobile/biometric login — issues a 30-day token stored in encrypted device storage."""
+    token = await service.authenticate_user(
+        form_data.username, form_data.password, session_type="mobile"
+    )
     return {"access_token": token, "token_type": "bearer"}
 
 @router.post("/logout")

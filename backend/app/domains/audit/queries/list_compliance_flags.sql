@@ -50,5 +50,5 @@ FROM (
     WHERE we.org_id = $1
       AND we.event_type IN ('loan.returned', 'loan.rejected')
 ) flags
-ORDER BY created_at DESC
+ORDER BY 7 DESC
 LIMIT $2 OFFSET $3;

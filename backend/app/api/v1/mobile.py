@@ -111,9 +111,11 @@ def _role(user) -> str:
 def _mobile_role(user) -> str:
     role = _role(user)
     role_map = {
-        "system_admin": "admin_mcr",
-        "admin": "admin_mcr",
-        "mcr": "admin_mcr",
+        "admin_mcr": "system_admin",
+        "mcr":       "system_admin",
+        "admin":     "system_admin",
+        "md":        "executive",
+        "ed":        "executive",
     }
     return role_map.get(role, role)
 
@@ -124,10 +126,12 @@ def _stage_number(stage: str | None) -> int:
         "ocr_review": 2,
         "credit_review": 3,
         "branch_approval": 4,
-        "disbursement_ready": 5,
-        "disbursed": 6,
-        "returned": 7,
-        "rejected": 8,
+        "crm_review": 5,
+        "executive_approval": 6,
+        "disbursement_ready": 7,
+        "disbursed": 8,
+        "returned": 9,
+        "rejected": 10,
     }.get(stage or "intake", 1)
 
 
@@ -137,6 +141,8 @@ def _stage_status(stage: str | None) -> str:
         "ocr_review": "OCR Review",
         "credit_review": "Credit Review",
         "branch_approval": "Branch Approval",
+        "crm_review": "CRM Review",
+        "executive_approval": "Executive Approval",
         "disbursement_ready": "Disbursement Ready",
         "disbursed": "Disbursed",
         "returned": "Returned",
@@ -344,6 +350,8 @@ async def get_mobile_queue(
         "ocr-exceptions",
         "compliance-flags",
         "system-control",
+        "crm-review",
+        "executive-approval",
     ],
     stage: str | None = None,
     limit: int = Query(50, ge=1, le=100),
@@ -373,6 +381,12 @@ async def get_mobile_queue(
     elif queue_name == "compliance-flags":
         _ensure_roles(current_user, {"auditor", "system_admin"})
         items = await dashboard.get_compliance_flags(current_user, limit=limit, offset=offset)
+    elif queue_name == "crm-review":
+        _ensure_roles(current_user, {"crm", "system_admin"})
+        items = await dashboard.get_crm_queue(current_user)
+    elif queue_name == "executive-approval":
+        _ensure_roles(current_user, {"md", "ed", "system_admin"})
+        items = await dashboard.get_executive_queue(current_user)
     else:
         _ensure_roles(current_user, {"system_admin"})
         items = await dashboard.get_system_control_queue(current_user, limit=limit, offset=offset)
@@ -1133,11 +1147,25 @@ _ONBOARDING_SLIDES: dict[str, list[dict]] = {
         {"title": "Audit Checklist", "subtitle": "Structured Compliance Review",
          "body": "Complete the audit checklist for each reviewed application. Verify consent documentation, signature matching, and exhibit compliance."},
     ],
-    "admin_mcr": [
-        {"title": "System Control", "subtitle": "Administrative Overview",
-         "body": "Monitor all applications across branches, manage user assignments, and review system-level metrics and alert escalations."},
-        {"title": "MCR Disbursement", "subtitle": "Final Disbursement Control",
-         "body": "Review applications in disbursement-ready status, verify committee votes, and authorize final disbursement to borrower accounts."},
+    "system_admin": [
+        {"title": "System Administration", "subtitle": "Technical Support Console",
+         "body": "Manage users, correct data errors, monitor system health, and provide technical support across all branches. You do not participate in the loan approval pipeline."},
+        {"title": "User Management", "subtitle": "Create & Manage Accounts",
+         "body": "Create officer accounts, assign roles, reset passwords, and deactivate users. All changes are logged in the audit trail."},
+    ],
+    "crm": [
+        {"title": "CRM Review Console", "subtitle": "Pre-Disbursement Review",
+         "body": "Review loan files approved by the branch manager. Verify credit file completeness — bureau evidence, CRMS search, NCR registration — before advancing to the Executive."},
+        {"title": "Disbursement Processing", "subtitle": "Record & Schedule",
+         "body": "Once executive instruction is issued, record the disbursement details, generate the repayment schedule, and track collections."},
+        {"title": "Portfolio Tracking", "subtitle": "PAR & Loan Classification",
+         "body": "Monitor the PAR dashboard daily. Record repayments, track overdue accounts, and ensure CBN classification is up to date."},
+    ],
+    "executive": [
+        {"title": "Executive Dashboard", "subtitle": "Portfolio Overview",
+         "body": "Review the PAR dashboard, disbursement queue, and portfolio health metrics. Your approval is required to release disbursement instructions to the CRM."},
+        {"title": "Disbursement Instruction", "subtitle": "Issue or Decline",
+         "body": "Review the CRM-prepared loan file and issue the disbursement instruction. This action is logged, irreversible, and triggers the CRM to process payment."},
     ],
 }
 
@@ -1199,3 +1227,181 @@ async def save_mobile_ocr_corrections(
         user_id=current_user.id,
     )
     return {"message": "OCR corrections saved."}
+
+
+# ---------------------------------------------------------------------------
+# CRM Review endpoints
+# ---------------------------------------------------------------------------
+
+class CrmReviewRequest(BaseModel):
+    decision: Literal["advance", "return"]
+    notes: str = ""
+
+
+@router.get("/applications/{application_id}/crm-review")
+async def get_mobile_crm_review(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"crm", "system_admin"})
+    app = await _get_application_or_404(conn, application_id, current_user)
+    documents = await DocumentRepository(conn).get_by_loan(application_id, current_user.org_id)
+    return {"application": app, "documents": documents}
+
+
+@router.post("/applications/{application_id}/crm-review")
+async def submit_mobile_crm_review(
+    application_id: UUID,
+    payload: CrmReviewRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"crm", "system_admin"})
+    app = await _get_application_or_404(conn, application_id, current_user)
+    repo = LoanRepository(conn)
+    if payload.decision == "advance":
+        updated = await repo.advance_to_executive_approval(
+            loan_id=application_id,
+            org_id=current_user.org_id,
+            crm_officer_id=current_user.id,
+            notes=payload.notes,
+        )
+        next_stage = "executive_approval"
+    else:
+        updated = await repo.mark_returned(application_id, current_user.org_id, payload.notes, current_user.id)
+        next_stage = "returned"
+    await AuditService(conn).log(
+        application_id=str(application_id),
+        org_id=str(current_user.org_id),
+        action="CRM Review",
+        from_stage=app.stage,
+        to_stage=next_stage,
+        actor_id=str(current_user.id),
+        actor_role=current_user.role,
+        reason=payload.notes,
+    )
+    return {"application": updated, "stage": next_stage}
+
+
+# ---------------------------------------------------------------------------
+# Executive approval endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/applications/{application_id}/executive-review")
+async def get_mobile_executive_review(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"md", "ed", "system_admin"})
+    app = await _get_application_or_404(conn, application_id, current_user)
+    documents = await DocumentRepository(conn).get_by_loan(application_id, current_user.org_id)
+    return {"application": app, "documents": documents}
+
+
+@router.post("/applications/{application_id}/executive-approve")
+async def submit_mobile_executive_approve(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"md", "ed", "system_admin"})
+    app = await _get_application_or_404(conn, application_id, current_user)
+    updated = await LoanRepository(conn).executive_approve(
+        loan_id=application_id,
+        org_id=current_user.org_id,
+        executive_id=current_user.id,
+    )
+    if not updated:
+        raise HTTPException(status_code=409, detail="Application not in executive_approval stage")
+    await AuditService(conn).log(
+        application_id=str(application_id),
+        org_id=str(current_user.org_id),
+        action="Executive Disbursement Instruction",
+        from_stage=app.stage,
+        to_stage="disbursement_ready",
+        actor_id=str(current_user.id),
+        actor_role=current_user.role,
+    )
+    return {"application": updated, "stage": "disbursement_ready"}
+
+
+# ---------------------------------------------------------------------------
+# Repayment schedule + payments
+# ---------------------------------------------------------------------------
+
+@router.get("/applications/{application_id}/repayment-schedule")
+async def get_mobile_repayment_schedule(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    await _get_application_or_404(conn, application_id, current_user)
+    from app.services.loan_servicing_service import LoanServicingService
+    svc = LoanServicingService(conn)
+    schedule = await svc.get_schedule(loan_id=application_id, org_id=current_user.org_id)
+    payments = await svc.get_payments(loan_id=application_id, org_id=current_user.org_id)
+    total_due = sum(float(r.get("total_due", 0)) for r in schedule)
+    total_paid = sum(float(p.get("amount_paid", 0)) for p in payments)
+    return {
+        "schedule": schedule,
+        "payments": payments,
+        "total_due": total_due,
+        "total_paid": total_paid,
+        "outstanding": max(0.0, total_due - total_paid),
+    }
+
+
+class RecordPaymentRequest(BaseModel):
+    amount_paid: float
+    channel: Literal["cash", "bank_transfer", "pos", "mobile_money", "other"] = "cash"
+    bank_ref: str | None = None
+    payment_date: str | None = None
+
+
+@router.post("/applications/{application_id}/payments")
+async def record_mobile_payment(
+    application_id: UUID,
+    payload: RecordPaymentRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"crm", "system_admin"})
+    await _get_application_or_404(conn, application_id, current_user)
+    from app.services.loan_servicing_service import LoanServicingService
+    from datetime import date
+    payment_date = date.today()
+    if payload.payment_date:
+        try:
+            payment_date = date.fromisoformat(payload.payment_date)
+        except ValueError:
+            pass
+    svc = LoanServicingService(conn)
+    record = await svc.record_payment(
+        loan_id=application_id,
+        org_id=current_user.org_id,
+        amount_paid=payload.amount_paid,
+        channel=payload.channel,
+        bank_ref=payload.bank_ref,
+        recorded_by=current_user.id,
+        payment_date=payment_date,
+    )
+    return {"payment": record}
+
+
+# ---------------------------------------------------------------------------
+# PAR dashboard
+# ---------------------------------------------------------------------------
+
+@router.get("/reports/par")
+async def get_mobile_par_dashboard(
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"crm", "md", "ed", "auditor", "system_admin"})
+    from app.services.loan_servicing_service import LoanServicingService
+    svc = LoanServicingService(conn)
+    par = await svc.get_par_summary(org_id=current_user.org_id)
+    loans = await LoanRepository(conn).list_disbursed(org_id=current_user.org_id)
+    return {"par": par, "loans": [dict(l) if hasattr(l, 'keys') else l for l in loans]}

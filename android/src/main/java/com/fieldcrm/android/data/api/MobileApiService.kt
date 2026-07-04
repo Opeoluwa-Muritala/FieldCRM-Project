@@ -11,6 +11,7 @@ import kotlinx.serialization.json.JsonElement
 
 interface MobileApiService {
     fun setToken(token: String)
+    /** Full credential login — calls /auth/login-mobile and returns a 30-day token for biometric reuse. */
     suspend fun login(username: String, password: String): TokenResponse?
     suspend fun getMe(): MobileUser?
     suspend fun getDashboard(): String?
@@ -44,6 +45,22 @@ interface MobileApiService {
     suspend fun getOnboarding(role: String): List<OnboardingSlide>
     suspend fun forgotPassword(email: String): Boolean
     suspend fun resetPassword(token: String, newPassword: String): Boolean
+
+    // CRM review
+    suspend fun submitCrmReview(id: String, decision: String, notes: String): String?
+
+    // Executive approval
+    suspend fun submitExecutiveApprove(id: String): String?
+
+    // Repayment schedule & payments
+    suspend fun getRepaymentSchedule(id: String): RepaymentScheduleResponse?
+    suspend fun recordPayment(id: String, amountPaid: Double, channel: String, bankRef: String?, paymentDate: String?): String?
+
+    // PAR dashboard
+    suspend fun getParDashboard(): String?
+
+    // Multi-page document upload (PDF assembled on device)
+    suspend fun uploadDocumentPdf(id: String, category: String, pdfBytes: ByteArray, fileName: String): String?
 }
 
 @kotlinx.serialization.Serializable
@@ -185,7 +202,7 @@ class MobileApiServiceImpl(
     override suspend fun login(username: String, password: String): TokenResponse? {
         return try {
             val response: HttpResponse = client.submitForm(
-                url = "$baseUrl/api/v1/auth/login-bearer",
+                url = "$baseUrl/api/v1/auth/login-mobile",
                 formParameters = parameters {
                     append("username", username)
                     append("password", password)
@@ -559,5 +576,74 @@ class MobileApiServiceImpl(
             }
             response.status == HttpStatusCode.OK
         } catch (e: Exception) { false }
+    }
+
+    override suspend fun submitCrmReview(id: String, decision: String, notes: String): String? {
+        return try {
+            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/applications/$id/crm-review") {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(CrmReviewRequest(decision, notes))
+            }
+            if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun submitExecutiveApprove(id: String): String? {
+        return try {
+            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/applications/$id/executive-approve") {
+                authHeader()
+            }
+            if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun getRepaymentSchedule(id: String): RepaymentScheduleResponse? {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/applications/$id/repayment-schedule") {
+                authHeader()
+            }
+            if (response.status == HttpStatusCode.OK) response.body() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun recordPayment(
+        id: String, amountPaid: Double, channel: String, bankRef: String?, paymentDate: String?
+    ): String? {
+        return try {
+            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/applications/$id/payments") {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(RecordPaymentRequest(amountPaid, channel, bankRef, paymentDate))
+            }
+            if (response.status == HttpStatusCode.OK || response.status == HttpStatusCode.Created)
+                response.bodyAsText() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun getParDashboard(): String? {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/reports/par") {
+                authHeader()
+            }
+            if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun uploadDocumentPdf(id: String, category: String, pdfBytes: ByteArray, fileName: String): String? {
+        return try {
+            val response: HttpResponse = client.submitFormWithBinaryData(
+                url = "$baseUrl/api/v1/mobile/applications/$id/documents",
+                formData = formData {
+                    append("doc_type", category)
+                    append("file", pdfBytes, io.ktor.http.Headers.build {
+                        append(HttpHeaders.ContentType, ContentType.Application.Pdf.toString())
+                        append(HttpHeaders.ContentDisposition, "form-data; name=\"file\"; filename=\"$fileName\"")
+                    })
+                }
+            ) { authHeader() }
+            if (response.status == HttpStatusCode.OK || response.status == HttpStatusCode.Created)
+                response.bodyAsText() else null
+        } catch (e: Exception) { null }
     }
 }

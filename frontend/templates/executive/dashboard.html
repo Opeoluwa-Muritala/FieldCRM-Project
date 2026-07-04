@@ -1,0 +1,69 @@
+{% set mobile_title_text = "Executive Dashboard" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+{% block title %}Executive Dashboard - FieldCRM{% endblock %}
+{% block page_title %}Executive Dashboard{% endblock %}
+{% block breadcrumb %}Executive -> Dashboard{% endblock %}
+{% block content %}
+<div class="queue-page-header">
+  <div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">{{ current_user.display_role }} Dashboard</h1></div>
+</div>
+
+<div class="metrics-row" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px;">
+  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
+    <div class="metric-value">{{ metrics.exec_queue or 0 }}</div>
+    <div class="metric-label">Awaiting Instruction</div>
+  </div>
+  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
+    <div class="metric-value" style="color:{% if (metrics.par1_pct or 0) > 2 %}#c62828{% else %}#2e7d32{% endif %}">{{ metrics.par1_pct or 0 }}%</div>
+    <div class="metric-label">PAR-1</div>
+  </div>
+  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
+    <div class="metric-value" style="color:{% if (metrics.par30_pct or 0) > 5 %}#c62828{% else %}#2e7d32{% endif %}">{{ metrics.par30_pct or 0 }}%</div>
+    <div class="metric-label">PAR-30</div>
+  </div>
+  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
+    <div class="metric-value" style="color:{% if (metrics.par90_pct or 0) > 2 %}#c62828{% else %}#388e3c{% endif %}">{{ metrics.par90_pct or 0 }}%</div>
+    <div class="metric-label">PAR-90</div>
+  </div>
+</div>
+
+<div class="page-card" style="margin-bottom:20px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h2 class="page-card-title" style="margin:0;">Awaiting Disbursement Instruction</h2>
+    <a href="/executive-queue" class="btn btn-primary" style="font-size:13px;padding:6px 14px;">View All</a>
+  </div>
+  <div class="queue-cards">
+    {% for item in exec_queue[:5] %}
+    <a href="/applications/{{ item.id }}/executive-approve" class="queue-card">
+      <span class="queue-card-name">{{ item.applicant_name }}</span>
+      <span class="queue-card-meta">{{ item.ref_no }} — CRM: {{ item.crm_name or '—' }}</span>
+      <span class="queue-card-amount">{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}No amount{% endif %}</span>
+      <span class="status-badge queue-card-badge needs-review">{{ item.days_waiting }}d</span>
+    </a>
+    {% else %}<div class="lo-empty-state">No applications awaiting executive approval.</div>{% endfor %}
+  </div>
+</div>
+
+<div class="page-card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h2 class="page-card-title" style="margin:0;">Portfolio at Risk</h2>
+    <a href="/reports/par" class="btn btn-secondary" style="font-size:13px;padding:6px 14px;">Full Report</a>
+  </div>
+  {% if par %}
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;">
+    <div style="background:#f5f5f5;border-radius:8px;padding:14px;text-align:center;">
+      <div style="font-size:22px;font-weight:700;">{{ par.total_loans }}</div><div style="font-size:12px;color:var(--text-muted)">Total Active Loans</div>
+    </div>
+    <div style="background:#e8f5e9;border-radius:8px;padding:14px;text-align:center;">
+      <div style="font-size:22px;font-weight:700;color:#2e7d32;">{{ par.par1_pct }}%</div><div style="font-size:12px;color:var(--text-muted)">PAR-1 ({{ par.par1_count }} loans)</div>
+    </div>
+    <div style="background:#fff8e1;border-radius:8px;padding:14px;text-align:center;">
+      <div style="font-size:22px;font-weight:700;color:#f57f17;">{{ par.par30_pct }}%</div><div style="font-size:12px;color:var(--text-muted)">PAR-30 ({{ par.par30_count }} loans)</div>
+    </div>
+    <div style="background:#fce4ec;border-radius:8px;padding:14px;text-align:center;">
+      <div style="font-size:22px;font-weight:700;color:#c62828;">{{ par.par90_pct }}%</div><div style="font-size:12px;color:var(--text-muted)">PAR-90 ({{ par.par90_count }} loans)</div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

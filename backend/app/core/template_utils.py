@@ -20,6 +20,9 @@ _VALID_ROLES = frozenset({
     "branch_manager",
     "auditor",
     "system_admin",
+    "crm",
+    "md",
+    "ed",
 })
 
 

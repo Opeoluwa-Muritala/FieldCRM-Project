@@ -88,8 +88,14 @@ async def render_dashboard(
     else:
         applications = await repo.list_recent(current_user.org_id, limit=10)
 
-    # Resolve role-specific template (e.g. "loan_officer/dashboard.html")
     role = current_user.role.lower().replace(" ", "_")
+
+    # CRM and executive roles have dedicated dashboard routes
+    if role == "crm":
+        return RedirectResponse(url="/crm-dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    if role in ("md", "ed"):
+        return RedirectResponse(url="/executive-dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
     template_name = get_role_template(role, "dashboard.html")
 
     ctx = build_template_context(
@@ -455,6 +461,11 @@ async def render_application_detail(
     # Load and filter audit events
     all_audit_events = await repo.list_workflow_events(current_user.org_id)
     audit_events = [e for e in all_audit_events if str(e.get("loan_id")) == application_id]
+    
+    # Load and filter compliance flags
+    dashboard_svc = DashboardService(conn)
+    all_flags = await dashboard_svc.get_compliance_flags(current_user, limit=1000)
+    flags = [f for f in all_flags if str(f.get("loan_id")) == application_id]
 
     ctx = build_template_context(
         request,
@@ -470,6 +481,7 @@ async def render_application_detail(
         visitation_data=visitation_data,
         summary=readiness_summary,
         audit_events=audit_events,
+        flags=flags,
         active_tab="applications",
         active_page="applications",
     )
@@ -658,7 +670,7 @@ async def process_ocr_review(
     application_id: str,
     action: str = Form(...),
     conn = Depends(db_conn),
-    current_user = Depends(get_current_user)
+    current_user = Depends(RoleChecker(["Credit Officer", "System Admin"]))
 ):
     """POST processor for OCR validation overrides."""
     repo = LoanRepository(conn)
@@ -715,7 +727,7 @@ async def process_visitation_report(
     application_id: str,
     action: str = Form(...),
     service: VisitationService = Depends(get_visitation_service),
-    current_user = Depends(get_current_user)
+    current_user = Depends(RoleChecker(["Loan Officer", "Branch Manager", "System Admin"]))
 ):
     """POST processor for Field visitation report."""
     form_data = await request.form()
@@ -778,7 +790,7 @@ async def process_credit_review(
     recommendation_decision: str = Form(...),
     recommendation_notes: str = Form(...),
     conn = Depends(db_conn),
-    current_user = Depends(get_current_user)
+    current_user = Depends(RoleChecker(["Credit Officer", "System Admin"]))
 ):
     """POST processor for credit underwriting recommendation."""
     repo = LoanRepository(conn)
@@ -839,7 +851,7 @@ async def process_approval_readiness(
     request: Request,
     application_id: str,
     conn = Depends(db_conn),
-    current_user = Depends(get_current_user)
+    current_user = Depends(RoleChecker(["Branch Manager", "System Admin"]))
 ):
     """POST processor to complete branch approval."""
     form_data = await request.form()
@@ -863,7 +875,7 @@ async def process_approval_readiness(
         org_id=str(current_user.org_id),
         action="Branch Final Approval",
         from_stage="branch_approval",
-        to_stage="disbursement_ready",
+        to_stage="crm_review",
         actor_id=str(current_user.id),
         actor_role=current_user.role
     )
@@ -893,7 +905,7 @@ async def process_return_page(
     reason_category: str = Form(...),
     notes: str = Form(...),
     conn = Depends(db_conn),
-    current_user = Depends(get_current_user)
+    current_user = Depends(RoleChecker(["Branch Manager", "Credit Officer", "System Admin"]))
 ):
     """POST processor to return application to draft stage."""
     repo = LoanRepository(conn)
@@ -1117,3 +1129,397 @@ async def render_compliance_audit(
         active_page="audit",
     )
     return templates.TemplateResponse(request, "shared/audit.html", ctx)
+
+
+# =============================================================================
+# CRM QUEUE
+# =============================================================================
+
+@router.get("/crm-review-queue")
+async def render_crm_queue(
+    request: Request,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+):
+    dashboard_svc = DashboardService(conn)
+    queue = await dashboard_svc.get_crm_queue(current_user)
+    par = await dashboard_svc.get_par_summary(current_user)
+    ctx = build_template_context(
+        request, current_user,
+        queue=queue, par=par,
+        active_tab="crm_queue", active_page="crm_queue",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "crm/crm_queue.html", ctx)
+
+
+@router.get("/applications/{application_id}/crm-review")
+async def render_crm_review(
+    request: Request,
+    application_id: str,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+):
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    doc_svc = get_document_service(conn)
+    documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
+    readiness = await repo.get_readiness_summary(UUID(application_id), current_user.org_id)
+    ctx = build_template_context(
+        request, current_user,
+        app=app, app_id=application_id,
+        documents=documents, summary=readiness,
+        active_tab="crm_queue", active_page="crm_queue",
+    )
+    return templates.TemplateResponse(request, "crm/crm_review.html", ctx)
+
+
+@router.post("/applications/{application_id}/crm-review")
+async def process_crm_review(
+    application_id: str,
+    action: str = Form(...),
+    crm_notes: str = Form(""),
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+):
+    repo = LoanRepository(conn)
+    if action == "advance":
+        app = await repo.advance_to_executive_approval(
+            UUID(application_id), current_user.org_id, current_user.id, crm_notes
+        )
+        if not app:
+            raise HTTPException(status_code=400, detail="Application not in crm_review stage")
+        audit = AuditService(conn)
+        await audit.log(
+            application_id=application_id,
+            org_id=str(current_user.org_id),
+            action="CRM Dossier Review Complete",
+            from_stage="crm_review",
+            to_stage="executive_approval",
+            actor_id=str(current_user.id),
+            actor_role=current_user.role,
+            reason=crm_notes,
+        )
+    elif action == "return":
+        await repo.mark_returned(UUID(application_id), current_user.org_id, crm_notes or "Returned by CRM", current_user.id)
+    return RedirectResponse(url="/crm-review-queue", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# =============================================================================
+# EXECUTIVE QUEUE
+# =============================================================================
+
+@router.get("/executive-queue")
+async def render_executive_queue(
+    request: Request,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["md", "ed", "system_admin"])),
+):
+    dashboard_svc = DashboardService(conn)
+    queue = await dashboard_svc.get_executive_queue(current_user)
+    par = await dashboard_svc.get_par_summary(current_user)
+    ctx = build_template_context(
+        request, current_user,
+        queue=queue, par=par,
+        active_tab="exec_queue", active_page="exec_queue",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "executive/executive_queue.html", ctx)
+
+
+@router.get("/applications/{application_id}/executive-approve")
+async def render_executive_approve(
+    request: Request,
+    application_id: str,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["md", "ed"])),
+):
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    doc_svc = get_document_service(conn)
+    documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
+    ctx = build_template_context(
+        request, current_user,
+        app=app, app_id=application_id, documents=documents,
+        active_tab="exec_queue", active_page="exec_queue",
+    )
+    return templates.TemplateResponse(request, "executive/executive_approve.html", ctx)
+
+
+@router.post("/applications/{application_id}/executive-approve")
+async def process_executive_approve(
+    application_id: str,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["md", "ed"])),
+):
+    repo = LoanRepository(conn)
+    app = await repo.executive_approve(UUID(application_id), current_user.org_id, current_user.id)
+    if not app:
+        raise HTTPException(status_code=400, detail="Application not in executive_approval stage")
+    audit = AuditService(conn)
+    await audit.log(
+        application_id=application_id,
+        org_id=str(current_user.org_id),
+        action="Executive Disbursement Instruction",
+        from_stage="executive_approval",
+        to_stage="disbursement_ready",
+        actor_id=str(current_user.id),
+        actor_role=current_user.role,
+    )
+    return RedirectResponse(url="/executive-queue", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# =============================================================================
+# DISBURSEMENT (CRM records and schedule generated)
+# =============================================================================
+
+@router.get("/applications/{application_id}/disburse")
+async def render_disburse(
+    request: Request,
+    application_id: str,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+):
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    ctx = build_template_context(
+        request, current_user,
+        app=app, app_id=application_id,
+        active_tab="crm_queue", active_page="crm_queue",
+    )
+    return templates.TemplateResponse(request, "crm/disburse.html", ctx)
+
+
+@router.post("/applications/{application_id}/disburse")
+async def process_disburse(
+    application_id: str,
+    disbursed_amount: float = Form(...),
+    disbursement_method: str = Form(...),
+    disbursed_bank_ref: str = Form(""),
+    payment_date: str = Form(...),
+    interest_rate: float = Form(...),
+    repayment_frequency: str = Form(...),
+    schedule_method: str = Form("flat_rate"),
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+):
+    import secrets
+    from datetime import datetime as dt
+    from app.services.loan_servicing_service import LoanServicingService
+
+    repo = LoanRepository(conn)
+    loan_uuid = UUID(application_id)
+
+    # Generate unique disbursement ref
+    disbursement_ref = f"DIS-{datetime.now().strftime('%Y%m%d')}-{secrets.token_hex(4).upper()}"
+
+    app = await repo.disburse(
+        loan_id=loan_uuid,
+        org_id=current_user.org_id,
+        disbursed_amount=disbursed_amount,
+        disbursement_method=disbursement_method,
+        disbursed_bank_ref=disbursed_bank_ref or None,
+        disbursement_ref=disbursement_ref,
+        interest_rate=interest_rate,
+        repayment_frequency=repayment_frequency,
+        schedule_method=schedule_method,
+    )
+    if not app:
+        raise HTTPException(status_code=400, detail="Application not in disbursement_ready stage")
+
+    # Generate repayment schedule internally
+    try:
+        disbursement_date = dt.strptime(payment_date, "%Y-%m-%d").date()
+    except ValueError:
+        disbursement_date = dt.today().date()
+
+    svc = LoanServicingService(conn)
+    await svc.create_schedule(
+        loan_id=loan_uuid,
+        org_id=current_user.org_id,
+        principal=disbursed_amount,
+        annual_rate=interest_rate,
+        tenor_months=app.tenor_months or 12,
+        frequency=repayment_frequency,
+        method=schedule_method,
+        disbursement_date=disbursement_date,
+    )
+
+    audit = AuditService(conn)
+    await audit.log(
+        application_id=application_id,
+        org_id=str(current_user.org_id),
+        action="Disbursement Recorded",
+        from_stage="disbursement_ready",
+        to_stage="disbursed",
+        actor_id=str(current_user.id),
+        actor_role=current_user.role,
+    )
+    return RedirectResponse(
+        url=f"/applications/{application_id}/repayment-schedule",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+# =============================================================================
+# REPAYMENT SCHEDULE
+# =============================================================================
+
+@router.get("/applications/{application_id}/repayment-schedule")
+async def render_repayment_schedule(
+    request: Request,
+    application_id: str,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    from app.services.loan_servicing_service import LoanServicingService
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    svc = LoanServicingService(conn)
+    schedule = await svc.get_schedule(UUID(application_id), current_user.org_id)
+    payments = await svc.get_payments(UUID(application_id), current_user.org_id)
+    total_paid = sum(p["amount_paid"] for p in payments)
+    total_due = sum(r["total_due"] for r in schedule)
+    ctx = build_template_context(
+        request, current_user,
+        app=app, app_id=application_id,
+        schedule=schedule, payments=payments,
+        total_paid=total_paid, total_due=total_due,
+        outstanding=total_due - total_paid,
+        active_page="applications",
+    )
+    return templates.TemplateResponse(request, "shared/repayment_schedule.html", ctx)
+
+
+# =============================================================================
+# REPAYMENT COLLECTIONS
+# =============================================================================
+
+@router.get("/applications/{application_id}/payments")
+async def render_record_payment(
+    request: Request,
+    application_id: str,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+):
+    from app.services.loan_servicing_service import LoanServicingService
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    svc = LoanServicingService(conn)
+    payments = await svc.get_payments(UUID(application_id), current_user.org_id)
+    ctx = build_template_context(
+        request, current_user,
+        app=app, app_id=application_id, payments=payments,
+        active_page="applications",
+    )
+    return templates.TemplateResponse(request, "crm/record_payment.html", ctx)
+
+
+@router.post("/applications/{application_id}/payments")
+async def process_record_payment(
+    application_id: str,
+    payment_date: str = Form(...),
+    amount_paid: float = Form(...),
+    channel: str = Form(...),
+    bank_ref: str = Form(""),
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+):
+    from datetime import datetime as dt
+    from app.services.loan_servicing_service import LoanServicingService
+    try:
+        pdate = dt.strptime(payment_date, "%Y-%m-%d").date()
+    except ValueError:
+        pdate = dt.today().date()
+    svc = LoanServicingService(conn)
+    await svc.record_payment(
+        loan_id=UUID(application_id),
+        org_id=current_user.org_id,
+        payment_date=pdate,
+        amount_paid=amount_paid,
+        channel=channel,
+        bank_ref=bank_ref or None,
+        recorded_by=current_user.id,
+    )
+    return RedirectResponse(
+        url=f"/applications/{application_id}/repayment-schedule",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+# =============================================================================
+# PAR DASHBOARD
+# =============================================================================
+
+@router.get("/reports/par")
+async def render_par_dashboard(
+    request: Request,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["md", "ed", "auditor", "system_admin", "crm"])),
+):
+    dashboard_svc = DashboardService(conn)
+    par = await dashboard_svc.get_par_summary(current_user)
+    repo = LoanRepository(conn)
+    disbursed = await repo.list_disbursed(current_user.org_id)
+    ctx = build_template_context(
+        request, current_user,
+        par=par, loans=disbursed,
+        active_page="par",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "shared/par_dashboard.html", ctx)
+
+
+# =============================================================================
+# DASHBOARDS for new roles
+# =============================================================================
+
+@router.get("/crm-dashboard")
+async def render_crm_dashboard(
+    request: Request,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+):
+    dashboard_svc = DashboardService(conn)
+    data = await dashboard_svc.get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request, current_user,
+        data=data,
+        crm_queue=data.get("crm_queue", []),
+        recent_disbursements=data.get("recent_disbursements", []),
+        par=data.get("par", {}),
+        metrics=data.get("metrics", {}),
+        active_tab="dashboard", active_page="dashboard",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "crm/dashboard.html", ctx)
+
+
+@router.get("/executive-dashboard")
+async def render_executive_dashboard(
+    request: Request,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["md", "ed", "system_admin"])),
+):
+    dashboard_svc = DashboardService(conn)
+    data = await dashboard_svc.get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request, current_user,
+        data=data,
+        exec_queue=data.get("exec_queue", []),
+        par=data.get("par", {}),
+        metrics=data.get("metrics", {}),
+        active_tab="dashboard", active_page="dashboard",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "executive/dashboard.html", ctx)

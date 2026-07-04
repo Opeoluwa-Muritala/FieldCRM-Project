@@ -1,0 +1,49 @@
+{% set mobile_title_text = "CRM Review" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+{% block title %}CRM Review - FieldCRM{% endblock %}
+{% block page_title %}CRM Dossier Review{% endblock %}
+{% block breadcrumb %}CRM -> Review -> {{ app.ref_no }}{% endblock %}
+{% block content %}
+<div class="page-card" style="margin-bottom:20px;">
+  <h2 class="page-card-title">{{ app.applicant_name }} — {{ app.ref_no }}</h2>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;">
+    <div><span style="color:var(--text-muted)">Amount</span><br><strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}—{% endif %}</strong></div>
+    <div><span style="color:var(--text-muted)">Tenor</span><br><strong>{{ app.tenor_months or '—' }} months</strong></div>
+    <div><span style="color:var(--text-muted)">BVN</span><br><strong>{{ app.bvn or '—' }}</strong></div>
+    <div><span style="color:var(--text-muted)">Stage</span><br><span class="status-badge needs-review">{{ app.status }}</span></div>
+  </div>
+</div>
+
+<div class="page-card" style="margin-bottom:20px;">
+  <h3 style="margin-bottom:12px;">Document Checklist</h3>
+  <table class="custom-table">
+    <thead><tr><th>Document</th><th>Quality</th><th>Verified</th></tr></thead>
+    <tbody>
+    {% for doc in documents %}
+    <tr>
+      <td>{{ doc.doc_type.replace('_',' ').title() }}<br><small style="color:var(--text-muted)">{{ doc.original_name }}</small></td>
+      <td><span class="status-badge {% if doc.quality_status == 'clear' %}approved{% else %}needs-review{% endif %}">{{ doc.quality_status }}</span></td>
+      <td>{% if doc.verified %}<span style="color:#2e7d32">&#10003; Verified</span>{% else %}<span style="color:#c62828">&#10007; Unverified</span>{% endif %}</td>
+    </tr>
+    {% else %}<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">No documents uploaded.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="page-card">
+  <h3 style="margin-bottom:12px;">CRM Decision</h3>
+  <form method="post" action="/applications/{{ app_id }}/crm-review">
+    <div style="margin-bottom:16px;">
+      <label for="crm_notes" style="display:block;margin-bottom:6px;font-weight:600;">Notes for Executive (optional)</label>
+      <textarea id="crm_notes" name="crm_notes" rows="4"
+        style="width:100%;padding:10px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;"
+        placeholder="Summarise dossier completeness and any flags…"></textarea>
+    </div>
+    <div style="display:flex;gap:12px;">
+      <button type="submit" name="action" value="advance" class="btn btn-primary">Advance to Executive Approval</button>
+      <button type="submit" name="action" value="return" class="btn btn-secondary"
+        onclick="return confirm('Return this application to the branch?')">Return Application</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

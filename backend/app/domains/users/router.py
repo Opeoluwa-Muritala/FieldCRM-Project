@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from app.core.database import db_conn
 from app.domains.users.repository import UserRepository
 from app.domains.users.service import UserService
 from app.domains.users.schemas import UserResponse, UserCreate, UserRow
 from app.core.dependencies import get_current_user, RoleChecker
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -18,8 +19,15 @@ async def register_organisation(
     admin_name: str,
     admin_email: str,
     admin_password: str,
+    x_registration_secret: str = Header(default=""),
     service: UserService = Depends(get_user_service)
 ):
+    required = settings.ORG_REGISTRATION_SECRET
+    if not required or x_registration_secret != required:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or missing registration secret.",
+        )
     user = await service.register_organisation(
         org_name=org_name,
         org_type=org_type,

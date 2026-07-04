@@ -10,7 +10,7 @@ class AuthService:
     def __init__(self, repo: AuthRepository):
         self.repo = repo
 
-    async def authenticate_user(self, email: str, password: str) -> str:
+    async def authenticate_user(self, email: str, password: str, session_type: str = "web") -> str:
         """Authenticate a user by email and password, return JWT token."""
         user = await self.repo.get_user_by_email(email)
         if not user or not user.is_active:
@@ -19,7 +19,7 @@ class AuthService:
         if not verify_password(password, user.hashed_password):
             raise DomainException("Incorrect email or password.", 401)
 
-        token = create_access_token(user.id, role=user.role, org_id=user.org_id)
+        token = create_access_token(user.id, role=user.role, org_id=user.org_id, session_type=session_type)
         return token
 
     async def request_password_reset(self, email: str) -> None:

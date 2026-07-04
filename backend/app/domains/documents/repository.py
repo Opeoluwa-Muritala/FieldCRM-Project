@@ -18,6 +18,8 @@ class DocumentRepository(BaseRepository):
         mime_type: str,
         size_bytes: int,
         uploaded_by: UUID,
+        cloud_public_id: str | None = None,
+        cloud_preview_url: str | None = None,
     ) -> dict:
         row = await self.conn.fetchrow(
             self.sql("create"),
@@ -30,6 +32,8 @@ class DocumentRepository(BaseRepository):
             mime_type,
             size_bytes,
             uploaded_by,
+            cloud_public_id,
+            cloud_preview_url,
         )
         return dict(row)
 

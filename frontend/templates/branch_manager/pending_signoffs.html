@@ -20,7 +20,7 @@
 <div class="custom-table-container queue-table-wrap page-card">
     <table class="custom-table"><thead><tr><th>Applicant</th><th>Officer</th><th>Met With</th><th>Status</th><th>Updated</th></tr></thead><tbody>
     {% for item in signoffs %}
-    <tr onclick="window.location.href='/applications/{{ item.loan_id }}/visitation'"><td>{{ item.applicant_name }}</td><td>{{ item.visiting_officer_name or '-' }}</td><td>{{ item.met_with or '-' }}</td><td>{{ item.status|title }}</td><td>{{ item.updated_at.strftime('%d %b') if item.updated_at else '' }}</td></tr>
+    <tr onclick="window.location.href='/applications/{{ item.loan_id }}/visitation'"><td>{{ item.applicant_name }}</td><td>{{ item.visiting_officer_name or '-' }}</td><td>{{ item.met_with or '-' }}</td><td>{{ item.status|title }}</td><td>{{ item.updated_at.strftime('%d %b %Y, %H:%M') if item.updated_at else '' }}</td></tr>
     {% else %}<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No submitted visits awaiting signoff.</td></tr>{% endfor %}
     </tbody></table>
 </div>

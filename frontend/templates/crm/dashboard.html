@@ -1,0 +1,63 @@
+{% set mobile_title_text = "CRM Dashboard" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+{% block title %}CRM Dashboard - FieldCRM{% endblock %}
+{% block page_title %}CRM Dashboard{% endblock %}
+{% block breadcrumb %}CRM -> Dashboard{% endblock %}
+{% block content %}
+<div class="queue-page-header">
+  <div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">CRM Officer Dashboard</h1></div>
+</div>
+
+<div class="metrics-row" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px;">
+  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
+    <div class="metric-value">{{ metrics.crm_queue or 0 }}</div>
+    <div class="metric-label">Dossiers to Review</div>
+  </div>
+  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
+    <div class="metric-value">{{ metrics.disbursed_total or 0 }}</div>
+    <div class="metric-label">Active Loans</div>
+  </div>
+  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
+    <div class="metric-value" style="color:{% if (metrics.par30_pct or 0) > 5 %}#c62828{% else %}#2e7d32{% endif %}">{{ metrics.par30_pct or 0 }}%</div>
+    <div class="metric-label">PAR-30</div>
+  </div>
+</div>
+
+<div class="page-card" style="margin-bottom:20px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h2 class="page-card-title" style="margin:0;">Dossier Review Queue</h2>
+    <a href="/crm-review-queue" class="btn btn-primary" style="font-size:13px;padding:6px 14px;">View All</a>
+  </div>
+  <div class="queue-cards">
+    {% for item in crm_queue[:5] %}
+    <a href="/applications/{{ item.id }}/crm-review" class="queue-card">
+      <span class="queue-card-name">{{ item.applicant_name }}</span>
+      <span class="queue-card-meta">{{ item.ref_no }} — {{ item.officer_name or '—' }}</span>
+      <span class="queue-card-amount">{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}No amount{% endif %}</span>
+      <span class="status-badge queue-card-badge needs-review">{{ item.days_waiting }}d</span>
+    </a>
+    {% else %}<div class="lo-empty-state">No dossiers awaiting CRM review.</div>{% endfor %}
+  </div>
+</div>
+
+<div class="page-card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h2 class="page-card-title" style="margin:0;">Recent Disbursements</h2>
+    <a href="/reports/par" class="btn btn-secondary" style="font-size:13px;padding:6px 14px;">PAR Report</a>
+  </div>
+  <table class="custom-table">
+    <thead><tr><th>Borrower</th><th>Ref</th><th>Amount</th><th>Classification</th><th>Action</th></tr></thead>
+    <tbody>
+    {% for loan in recent_disbursements %}
+    <tr>
+      <td>{{ loan.applicant_name }}</td>
+      <td>{{ loan.ref_no }}</td>
+      <td>{% if loan.disbursed_amount %}&#x20A6;{{ "{:,.0f}".format(loan.disbursed_amount) }}{% else %}—{% endif %}</td>
+      <td><span class="status-badge {% if loan.classification == 'current' %}approved{% else %}needs-review{% endif %}">{{ loan.classification|upper }}</span></td>
+      <td><a href="/applications/{{ loan.id }}/repayment-schedule">Schedule</a> | <a href="/applications/{{ loan.id }}/payments">Payment</a></td>
+    </tr>
+    {% else %}<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No disbursed loans yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
