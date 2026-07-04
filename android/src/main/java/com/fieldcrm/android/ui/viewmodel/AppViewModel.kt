@@ -102,6 +102,14 @@ sealed class Screen : NavKey {
     data object PasscodeSetup : Screen()
     @Serializable
     data object PasscodeLogin : Screen()
+    @Serializable
+    data object CrmReview : Screen()
+    @Serializable
+    data object ExecutiveApproval : Screen()
+    @Serializable
+    data object RepaymentSchedule : Screen()
+    @Serializable
+    data object ParDashboard : Screen()
 }
 
 // ── Biometric action intent ────────────────────────────────────────────────────

@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     # Secrets
     JWT_SECRET_KEY: str = resolve_jwt_secret()
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 Days for field operations
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # 1 hour for web sessions; mobile uses 30-day tokens
     
     # Database
     POSTGRES_SERVER: str = os.getenv("POSTGRES_SERVER", "")
@@ -77,13 +77,25 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = ["http://localhost:8000", "http://127.0.0.1:8000"]
     COOKIE_SECURE: bool = os.getenv("COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
 
-    # Document uploads
+    # Organisation registration guard — set this in production to a strong random string
+    ORG_REGISTRATION_SECRET: str = os.getenv("ORG_REGISTRATION_SECRET", "")
+
+    # Document uploads (local fallback)
     DOCUMENT_UPLOAD_DIR: str = os.getenv(
         "DOCUMENT_UPLOAD_DIR",
         str(ROOT_DIR / "frontend" / "static" / "uploads"),
     )
     DOCUMENT_MAX_UPLOAD_BYTES: int = int(os.getenv("DOCUMENT_MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
     DOCUMENT_ALLOWED_MIME_TYPES: List[str] = ["application/pdf", "image/jpeg", "image/png"]
+
+    # Cloudinary (optional — set all three to enable cloud storage)
+    CLOUDINARY_CLOUD_NAME: str = os.getenv("CLOUDINARY_CLOUD_NAME", "")
+    CLOUDINARY_API_KEY: str = os.getenv("CLOUDINARY_API_KEY", "")
+    CLOUDINARY_API_SECRET: str = os.getenv("CLOUDINARY_API_SECRET", "")
+
+    @property
+    def cloudinary_enabled(self) -> bool:
+        return bool(self.CLOUDINARY_CLOUD_NAME and self.CLOUDINARY_API_KEY and self.CLOUDINARY_API_SECRET)
 
     @model_validator(mode="after")
     def normalize_database_url(self):

@@ -1,0 +1,20 @@
+{% if flags %}
+<div class="page-card" style="margin-bottom: 16px; background-color: rgba(220, 38, 38, 0.05); border: 1px solid var(--accent-danger);">
+    <h3 style="font-size: 14px; font-weight: 600; color: var(--accent-danger); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 16px;">⚠</span> Open Compliance Flags
+    </h3>
+    <ul style="font-size: 13px; color: var(--text-main); padding-left: 0; list-style: none; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+        {% for flag in flags %}
+            <li style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 8px; border-bottom: 1px solid rgba(220,38,38,0.1);">
+                <div>
+                    <span style="font-weight: 600; color: var(--accent-danger);">{{ flag.flag_type|title }}:</span> 
+                    {{ flag.flag_label }}
+                </div>
+                <span class="status-badge" style="background-color: var(--accent-danger); color: white;">
+                    {{ flag.flag_status|replace('_', ' ')|title }}
+                </span>
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}

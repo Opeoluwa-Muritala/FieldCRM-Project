@@ -180,3 +180,69 @@ The shape language is **Soft (0.25rem)**. This subtle rounding provides a modern
 - **Brand Mark:** The 64dp Shield + M logo must always be placed with at least 24px of clear space. It is the primary anchor for the top-left of the navigation bar.
 - **Cards:** Used as the primary container for data groups. Cards have no border but use the ambient shadow defined in the Elevation section.
 - **Chips:** For status display (e.g., "Pending," "Approved"). Use high-contrast text on a 10% opacity background of the semantic color (e.g., Success Green text on a light green tint).
+- **SectionCard:** Titled white card wrapper used in detail and review screens. 16dp padding, 8dp radius, 1dp elevation.
+- **LabelValue:** Two-column row (muted label left, value right) for displaying read-only loan fields inside a SectionCard.
+- **StatusChip (string overload):** Accepts `label`, `isPositive`, `isDanger`, `small`. Renders coloured pill: green for positive, red for danger, amber for neutral/warning.
+
+## Mobile Screens
+
+### Roles and Navigation
+| Role | Server value | Mobile enum | Home screen |
+|---|---|---|---|
+| Loan Officer | `loan_officer` | `LOAN_OFFICER` | Dashboard → MyQueue |
+| Credit Officer | `credit_officer` | `CREDIT_OFFICER` | Dashboard → CreditReviewQueue |
+| Branch Manager | `branch_manager` | `BRANCH_MANAGER` | Dashboard → PendingSignoffs |
+| Auditor | `auditor` | `AUDITOR` | Dashboard → ComplianceFlags |
+| CRM Officer | `crm` | `CRM` | Dashboard → CrmReview queue |
+| Executive (MD/ED) | `md` / `ed` | `EXECUTIVE` | Dashboard → ExecutiveApproval queue |
+| System Admin | `system_admin` | `SYSTEM_ADMIN` | Dashboard → SystemActivity |
+
+### New Screens (v2)
+
+#### `CrmReviewScreen`
+- **Route:** `Screen.CrmReview`
+- **Access:** `CRM`, `SYSTEM_ADMIN`
+- **Purpose:** Pre-disbursement credit file completeness review. CRM checks 4 CBN §1.6 gates (bureau 1, bureau 2, CRMS search, NCR reg) via checkboxes before advancing to the Executive.
+- **Actions:** Advance to Executive Approval (all 4 checked) | Return to Branch Manager
+- **Layout:** SectionCard (loan summary) → SectionCard (uploaded docs with quality chips) → SectionCard (checklist) → SectionCard (notes textarea) → PrimaryButton + SecondaryButton
+
+#### `ExecutiveApprovalScreen`
+- **Route:** `Screen.ExecutiveApproval`
+- **Access:** `EXECUTIVE`, `SYSTEM_ADMIN`
+- **Purpose:** MD/ED issues or declines disbursement instruction. Action is irreversible and logged.
+- **Actions:** Issue Disbursement Instruction (confirm dialog) | Cancel
+- **Layout:** SectionCard (loan summary) → SectionCard (CRM notes, shown if present) → SectionCard (document summary) → Green authorisation card → PrimaryButton + SecondaryButton
+
+#### `RepaymentScheduleScreen`
+- **Route:** `Screen.RepaymentSchedule`
+- **Access:** All roles
+- **Purpose:** Shows full amortisation table with per-row Paid/Partial/Due status computed from cumulative payments, plus payment history list.
+- **Actions:** Record Payment button (CRM / SYSTEM_ADMIN only)
+- **Layout:** SectionCard (totals + classification chip + days-overdue) → PrimaryButton (if CRM) → SectionCard (schedule table) → SectionCard (payment history)
+
+#### `ParDashboardScreen`
+- **Route:** `Screen.ParDashboard`
+- **Access:** `CRM`, `EXECUTIVE`, `AUDITOR`, `SYSTEM_ADMIN`
+- **Purpose:** PAR-1/30/90 metric cards, CBN classification breakdown (Current/OLEM/Substandard/Doubtful/Lost with provision rates), full active loan portfolio table.
+- **Layout:** 2×2 metric card grid → SectionCard (classification table) → SectionCard (portfolio table with DPD column)
+
+### Document Scanner (DOCUMENT_SCAN mode)
+- **Trigger:** `CameraOcrScanner(mode = "DOCUMENT_SCAN", onPdfReady = { pdfBytes -> ... })`
+- **Flow:** A4-ratio viewfinder overlay → Capture Page (crops to A4, adds to page list) → thumbnail strip in top-right → Done button assembles `PdfDocument` and calls `onPdfReady`
+- **PDF spec:** Each page rendered at 1240×1754px (A4 @ 150 DPI). Multi-page PDFs assembled on-device using Android `PdfDocument` API, then uploaded via `uploadDocumentPdf()`.
+- **Server OCR:** After upload, backend fires async OCR extraction (pdfplumber → pytesseract fallback) and auto-fills `stage_data` with ≥80% confidence fields.
+
+## Document Storage
+
+Documents can be stored locally (default) or on **Cloudinary** (production).
+
+Set these three environment variables to enable Cloudinary:
+```
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+```
+
+When enabled, `stored_path` in the `documents` table is the Cloudinary `secure_url`. The `cloud_public_id` and `cloud_preview_url` columns store the Cloudinary identifiers for transforms (e.g. page-1 thumbnail at `.jpg`).
+
+When Cloudinary is not configured, files are saved to `DOCUMENT_UPLOAD_DIR` (local disk) and `stored_path` is a `/static/uploads/…` path.

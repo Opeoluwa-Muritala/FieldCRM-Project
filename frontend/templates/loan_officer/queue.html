@@ -50,7 +50,7 @@
                 <td>{{ app.ref_no }}</td>
                 <td>{{ app.stage|replace('_', ' ')|title }}</td>
                 <td>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}-{% endif %}</td>
-                <td>{{ app.updated_at.strftime('%d %b') if app.updated_at else '' }}</td>
+                <td>{{ app.updated_at.strftime('%d %b %Y, %H:%M') if app.updated_at else '' }}</td>
             </tr>
             {% else %}
             <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No active applications in your queue.</td></tr>

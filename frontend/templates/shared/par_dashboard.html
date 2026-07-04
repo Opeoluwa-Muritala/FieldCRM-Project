@@ -1,0 +1,75 @@
+{% set mobile_title_text = "PAR Dashboard" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+{% block title %}Portfolio at Risk - FieldCRM{% endblock %}
+{% block page_title %}Portfolio at Risk (PAR){% endblock %}
+{% block breadcrumb %}Reports -> PAR Dashboard{% endblock %}
+{% block content %}
+<div class="queue-page-header">
+  <div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">Portfolio at Risk Dashboard</h1></div>
+</div>
+
+{% if par %}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px;">
+  <div class="page-card" style="text-align:center;">
+    <div style="font-size:28px;font-weight:700;">{{ par.total_loans }}</div>
+    <div style="color:var(--text-muted);font-size:13px;">Total Disbursed Loans</div>
+    <div style="font-size:14px;margin-top:4px;">&#x20A6;{{ "{:,.0f}".format(par.total_portfolio) }}</div>
+  </div>
+  <div class="page-card" style="text-align:center;background:#e8f5e9;">
+    <div style="font-size:28px;font-weight:700;color:#2e7d32;">{{ par.par1_pct }}%</div>
+    <div style="color:var(--text-muted);font-size:13px;">PAR-1 ({{ par.par1_count }} loans)</div>
+    <div style="font-size:13px;color:#555;margin-top:4px;">&#x20A6;{{ "{:,.0f}".format(par.par1_amount) }}</div>
+  </div>
+  <div class="page-card" style="text-align:center;background:#fff8e1;">
+    <div style="font-size:28px;font-weight:700;color:#f57f17;">{{ par.par30_pct }}%</div>
+    <div style="color:var(--text-muted);font-size:13px;">PAR-30 ({{ par.par30_count }} loans)</div>
+    <div style="font-size:13px;color:#555;margin-top:4px;">&#x20A6;{{ "{:,.0f}".format(par.par30_amount) }}</div>
+  </div>
+  <div class="page-card" style="text-align:center;background:#fce4ec;">
+    <div style="font-size:28px;font-weight:700;color:#c62828;">{{ par.par90_pct }}%</div>
+    <div style="color:var(--text-muted);font-size:13px;">PAR-90 ({{ par.par90_count }} loans)</div>
+    <div style="font-size:13px;color:#555;margin-top:4px;">&#x20A6;{{ "{:,.0f}".format(par.par90_amount) }}</div>
+  </div>
+</div>
+
+<div class="page-card" style="margin-bottom:20px;">
+  <h3 style="margin-bottom:12px;">CBN Classification Breakdown</h3>
+  <table class="custom-table">
+    <thead><tr><th>Classification</th><th>Days Past Due</th><th>Provision Rate</th><th>Count</th></tr></thead>
+    <tbody>
+    <tr><td><span class="status-badge approved">CURRENT</span></td><td>0</td><td>1%</td><td>{{ (par.total_loans - par.olem_count - par.substandard_count - par.doubtful_count - par.lost_count) }}</td></tr>
+    <tr><td><span class="status-badge needs-review">OLEM</span></td><td>1–30</td><td>5%</td><td>{{ par.olem_count }}</td></tr>
+    <tr><td><span class="status-badge needs-review">SUBSTANDARD</span></td><td>31–90</td><td>20%</td><td>{{ par.substandard_count }}</td></tr>
+    <tr><td><span class="status-badge needs-review">DOUBTFUL</span></td><td>91–180</td><td>50%</td><td>{{ par.doubtful_count }}</td></tr>
+    <tr><td><span class="status-badge needs-review" style="background:#c62828;">LOST</span></td><td>181+</td><td>100%</td><td>{{ par.lost_count }}</td></tr>
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="lo-empty-state page-card">No disbursed loans found for this organisation.</div>
+{% endif %}
+
+{% if loans %}
+<div class="page-card">
+  <h3 style="margin-bottom:12px;">Active Loan Portfolio</h3>
+  <div style="overflow-x:auto;">
+    <table class="custom-table">
+      <thead><tr><th>Ref</th><th>Borrower</th><th>Disbursed</th><th>Sector</th><th>Classification</th><th>Days Overdue</th><th></th></tr></thead>
+      <tbody>
+      {% for loan in loans %}
+      <tr>
+        <td>{{ loan.ref_no }}</td>
+        <td>{{ loan.applicant_name }}</td>
+        <td>{% if loan.disbursed_amount %}&#x20A6;{{ "{:,.0f}".format(loan.disbursed_amount) }}{% else %}—{% endif %}</td>
+        <td>{{ loan.sector or '—' }}</td>
+        <td><span class="status-badge {% if loan.classification == 'current' %}approved{% else %}needs-review{% endif %}">{{ (loan.classification or 'current')|upper }}</span></td>
+        <td>{{ loan.days_past_due or 0 }}</td>
+        <td><a href="/applications/{{ loan.id }}/repayment-schedule" style="font-size:12px;">Schedule</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

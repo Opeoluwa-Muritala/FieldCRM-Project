@@ -1,0 +1,80 @@
+{% set mobile_title_text = "Repayment Schedule" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+{% block title %}Repayment Schedule - FieldCRM{% endblock %}
+{% block page_title %}Repayment Schedule{% endblock %}
+{% block breadcrumb %}{{ app.ref_no }} -> Repayment Schedule{% endblock %}
+{% block content %}
+<div class="page-card" style="margin-bottom:20px;">
+  <h2 class="page-card-title">{{ app.applicant_name }} — {{ app.ref_no }}</h2>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;">
+    <div><span style="color:var(--text-muted)">Total Due</span><br><strong>&#x20A6;{{ "{:,.2f}".format(total_due) }}</strong></div>
+    <div><span style="color:var(--text-muted)">Total Paid</span><br><strong style="color:#2e7d32">&#x20A6;{{ "{:,.2f}".format(total_paid) }}</strong></div>
+    <div><span style="color:var(--text-muted)">Outstanding</span><br><strong style="color:{% if outstanding > 0 %}#c62828{% else %}#2e7d32{% endif %}">&#x20A6;{{ "{:,.2f}".format(outstanding) }}</strong></div>
+    <div><span style="color:var(--text-muted)">Classification</span><br><span class="status-badge {% if app.classification == 'current' %}approved{% else %}needs-review{% endif %}">{{ (app.classification or 'current')|upper }}</span></div>
+    {% if app.days_past_due %}<div><span style="color:var(--text-muted)">Days Past Due</span><br><strong style="color:#c62828">{{ app.days_past_due }}</strong></div>{% endif %}
+  </div>
+  {% if user_role in ('crm', 'system_admin') %}
+  <div style="margin-top:16px;">
+    <a href="/applications/{{ app_id }}/payments" class="btn btn-primary" style="font-size:13px;padding:8px 16px;">Record Payment</a>
+    <a href="/applications/{{ app_id }}/disburse" class="btn btn-secondary" style="margin-left:10px;font-size:13px;padding:8px 16px;">Disbursement Details</a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="page-card" style="margin-bottom:20px;">
+  <h3 style="margin-bottom:12px;">Repayment Schedule</h3>
+  {% if schedule %}
+  <div style="overflow-x:auto;">
+    <table class="custom-table">
+      <thead><tr><th>#</th><th>Due Date</th><th>Principal</th><th>Interest</th><th>Total Due</th><th>Status</th></tr></thead>
+      <tbody>
+      {% set ns = namespace(cumulative=0) %}
+      {% for row in schedule %}
+        {% set ns.cumulative = ns.cumulative + row.total_due %}
+        {% if total_paid >= ns.cumulative %}
+          {% set row_status = "paid" %}
+        {% elif total_paid > (ns.cumulative - row.total_due) %}
+          {% set row_status = "partial" %}
+        {% else %}
+          {% set row_status = "due" %}
+        {% endif %}
+      <tr style="{% if row_status == 'paid' %}background:#f1f8e9;{% elif row_status == 'partial' %}background:#fff8e1;{% endif %}">
+        <td>{{ row.installment_no }}</td>
+        <td>{{ row.due_date }}</td>
+        <td>&#x20A6;{{ "{:,.2f}".format(row.principal_due) }}</td>
+        <td>&#x20A6;{{ "{:,.2f}".format(row.interest_due) }}</td>
+        <td>&#x20A6;{{ "{:,.2f}".format(row.total_due) }}</td>
+        <td>
+          {% if row_status == 'paid' %}<span class="status-badge approved">Paid</span>
+          {% elif row_status == 'partial' %}<span class="status-badge needs-review">Partial</span>
+          {% else %}<span class="status-badge">Due</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="lo-empty-state">No schedule generated yet.</div>
+  {% endif %}
+</div>
+
+{% if payments %}
+<div class="page-card">
+  <h3 style="margin-bottom:12px;">Payment History</h3>
+  <table class="custom-table">
+    <thead><tr><th>Date</th><th>Amount Paid</th><th>Channel</th><th>Reference</th></tr></thead>
+    <tbody>
+    {% for p in payments %}
+    <tr>
+      <td>{{ p.payment_date }}</td>
+      <td>&#x20A6;{{ "{:,.2f}".format(p.amount_paid) }}</td>
+      <td>{{ p.channel.replace('_',' ').title() }}</td>
+      <td>{{ p.bank_ref or '—' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

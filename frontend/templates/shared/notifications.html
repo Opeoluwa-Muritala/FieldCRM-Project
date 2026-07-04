@@ -26,7 +26,7 @@
             <div style="flex:1;">
                 <div class="queue-card-name">{{ n.title }}</div>
                 <div class="queue-card-meta" style="margin-top:4px;">{{ n.message }}</div>
-                <div class="queue-card-amount" style="margin-top:4px; color:var(--color-text-muted, #6b7280);">{{ n.created_at }}</div>
+                <div class="queue-card-amount" style="margin-top:4px; color:var(--color-text-muted, #6b7280);">{{ n.created_at.strftime('%d %b %Y, %H:%M') if n.created_at else '' }}</div>
                 {% if n.application_id %}
                 <a href="/applications/{{ n.application_id }}" class="queue-card-meta" style="color:var(--color-primary,#7c3aed); margin-top:4px; display:inline-block;">View Application &rarr;</a>
                 {% endif %}

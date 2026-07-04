@@ -90,7 +90,7 @@ class LoginViewModel(
                 orgId = me?.org_id ?: "org_1",
                 userEmail = me?.email ?: state.email,
                 userName = me?.full_name ?: state.email.substringBefore("@"),
-                loginExpiresAt = System.currentTimeMillis() + 48L * 60 * 60 * 1000
+                loginExpiresAt = System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000
             )
 
             sessionStore.save(session)

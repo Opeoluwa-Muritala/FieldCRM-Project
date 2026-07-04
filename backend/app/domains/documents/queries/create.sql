@@ -2,7 +2,8 @@
 -- Creates a document metadata row after upload/storage.
 -- Params: $1=loan_id, $2=org_id, $3=doc_type, $4=form_code,
 --         $5=original_name, $6=stored_path, $7=mime_type,
---         $8=size_bytes, $9=uploaded_by
+--         $8=size_bytes, $9=uploaded_by,
+--         $10=cloud_public_id (nullable), $11=cloud_preview_url (nullable)
 
 INSERT INTO documents (
     loan_id,
@@ -14,10 +15,13 @@ INSERT INTO documents (
     mime_type,
     size_bytes,
     quality_status,
-    uploaded_by
+    uploaded_by,
+    cloud_public_id,
+    cloud_preview_url
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'clear', $9)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'clear', $9, $10, $11)
 RETURNING
     id, loan_id, org_id, guarantor_id, doc_type, form_code, original_name,
-    stored_path, mime_type, size_bytes, quality_status, verified,
+    stored_path, cloud_public_id, cloud_preview_url,
+    mime_type, size_bytes, quality_status, verified,
     verified_by, verified_at, uploaded_by, uploaded_at, deleted_at;

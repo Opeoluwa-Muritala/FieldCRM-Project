@@ -63,3 +63,62 @@ data class ReturnApplicationRequest(
     val corrections: List<String> = emptyList(),
     val notes: String
 )
+
+@Serializable
+data class CrmReviewRequest(
+    val decision: String, // "advance" or "return"
+    val notes: String = ""
+)
+
+@Serializable
+data class RecordPaymentRequest(
+    val amount_paid: Double,
+    val channel: String = "cash",
+    val bank_ref: String? = null,
+    val payment_date: String? = null
+)
+
+@Serializable
+data class RepaymentScheduleRow(
+    val installment_no: Int,
+    val due_date: String,
+    val principal_due: Double,
+    val interest_due: Double,
+    val total_due: Double
+)
+
+@Serializable
+data class PaymentRecord(
+    val payment_date: String,
+    val amount_paid: Double,
+    val channel: String,
+    val bank_ref: String? = null
+)
+
+@Serializable
+data class RepaymentScheduleResponse(
+    val schedule: List<RepaymentScheduleRow> = emptyList(),
+    val payments: List<PaymentRecord> = emptyList(),
+    val total_due: Double = 0.0,
+    val total_paid: Double = 0.0,
+    val outstanding: Double = 0.0
+)
+
+@Serializable
+data class ParSummary(
+    val total_loans: Int = 0,
+    val total_portfolio: Double = 0.0,
+    val par1_count: Int = 0,
+    val par1_amount: Double = 0.0,
+    val par1_pct: Double = 0.0,
+    val par30_count: Int = 0,
+    val par30_amount: Double = 0.0,
+    val par30_pct: Double = 0.0,
+    val par90_count: Int = 0,
+    val par90_amount: Double = 0.0,
+    val par90_pct: Double = 0.0,
+    val olem_count: Int = 0,
+    val substandard_count: Int = 0,
+    val doubtful_count: Int = 0,
+    val lost_count: Int = 0
+)

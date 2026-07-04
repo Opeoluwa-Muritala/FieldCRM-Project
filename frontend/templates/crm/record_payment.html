@@ -1,0 +1,65 @@
+{% set mobile_title_text = "Record Payment" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+{% block title %}Record Payment - FieldCRM{% endblock %}
+{% block page_title %}Record Repayment{% endblock %}
+{% block breadcrumb %}CRM -> {{ app.ref_no }} -> Record Payment{% endblock %}
+{% block content %}
+<div class="page-card" style="margin-bottom:20px;">
+  <h2 class="page-card-title">{{ app.applicant_name }} — {{ app.ref_no }}</h2>
+</div>
+
+<div class="page-card" style="margin-bottom:20px;">
+  <h3 style="margin-bottom:16px;">Record Collection</h3>
+  <form method="post" action="/applications/{{ app_id }}/payments">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      <div>
+        <label style="display:block;margin-bottom:6px;font-weight:600;">Payment Date *</label>
+        <input type="date" name="payment_date" required
+          style="width:100%;padding:10px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;">
+      </div>
+      <div>
+        <label style="display:block;margin-bottom:6px;font-weight:600;">Amount Paid (&#x20A6;) *</label>
+        <input type="number" name="amount_paid" step="0.01" min="0.01" required
+          style="width:100%;padding:10px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;">
+      </div>
+      <div>
+        <label style="display:block;margin-bottom:6px;font-weight:600;">Channel *</label>
+        <select name="channel" required style="width:100%;padding:10px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;">
+          <option value="bank_transfer">Bank Transfer</option>
+          <option value="cash">Cash</option>
+          <option value="cheque">Cheque</option>
+          <option value="pos">POS</option>
+          <option value="direct_debit">Direct Debit</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:block;margin-bottom:6px;font-weight:600;">Bank/Teller Reference</label>
+        <input type="text" name="bank_ref" placeholder="Optional"
+          style="width:100%;padding:10px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Save Payment</button>
+    <a href="/applications/{{ app_id }}/repayment-schedule" class="btn btn-secondary" style="margin-left:10px;">Cancel</a>
+  </form>
+</div>
+
+{% if payments %}
+<div class="page-card">
+  <h3 style="margin-bottom:12px;">Payment History</h3>
+  <table class="custom-table">
+    <thead><tr><th>Date</th><th>Amount</th><th>Channel</th><th>Reference</th><th>Recorded By</th></tr></thead>
+    <tbody>
+    {% for p in payments %}
+    <tr>
+      <td>{{ p.payment_date }}</td>
+      <td>&#x20A6;{{ "{:,.2f}".format(p.amount_paid) }}</td>
+      <td>{{ p.channel.replace('_',' ').title() }}</td>
+      <td>{{ p.bank_ref or '—' }}</td>
+      <td>{{ p.recorded_by_name or '—' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

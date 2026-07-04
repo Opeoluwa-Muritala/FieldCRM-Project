@@ -71,23 +71,27 @@ def get_password_hash(password: str) -> str:
     )
 
 def create_access_token(
-    subject: Union[str, Any], 
-    role: str = "loan_officer", 
+    subject: Union[str, Any],
+    role: str = "loan_officer",
     org_id: str = "",
-    expires_delta: Union[timedelta, None] = None
+    expires_delta: Union[timedelta, None] = None,
+    session_type: str = "web",
 ) -> str:
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
+    elif session_type == "mobile":
+        expire = datetime.utcnow() + timedelta(days=30)
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        
+
     to_encode = {
         "sub": str(subject),
         "role": role,
         "org_id": str(org_id) if org_id else "",
         "exp": expire,
         "iat": datetime.utcnow(),
-        "type": "access"
+        "type": "access",
+        "session_type": session_type,
     }
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt

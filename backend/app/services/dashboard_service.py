@@ -32,7 +32,11 @@ class DashboardService:
             return await self._auditor_data(user)
         elif role == "system_admin":
             return await self._system_admin_data(user)
-        # Fallback — should never reach here with proper RBAC
+        elif role == "crm":
+            return await self._crm_data(user)
+        elif role in ("md", "ed"):
+            return await self._executive_data(user)
+        # Fallback
         return await self._loan_officer_data(user)
 
     async def _loan_officer_data(self, user) -> dict:
@@ -105,6 +109,8 @@ class DashboardService:
             "ocr_review": "OCR Review",
             "credit_review": "Credit Review",
             "branch_approval": "Branch Approval",
+            "crm_review": "CRM Review",
+            "executive_approval": "Executive Approval",
             "disbursement_ready": "Disbursement Ready",
             "disbursed": "Disbursed",
             "returned": "Returned",
@@ -259,6 +265,54 @@ class DashboardService:
             offset,
         )
         return [self._with_stage_display(dict(r)) for r in rows] if rows else []
+
+    async def _crm_data(self, user) -> dict:
+        """CRM dashboard: dossier review queue, recent disbursements, PAR."""
+        from app.domains.loans.repository import LoanRepository
+        repo = LoanRepository(self.conn)
+        crm_queue = await repo.list_crm_queue(user.org_id, limit=20)
+        disbursed = await repo.list_disbursed(user.org_id)
+        par = await self.get_par_summary(user)
+        return {
+            "metrics": {
+                "crm_queue": len(crm_queue),
+                "disbursed_total": len(disbursed),
+                "par30_pct": par.get("par30_pct", 0),
+            },
+            "crm_queue": crm_queue,
+            "recent_disbursements": disbursed[:10],
+            "par": par,
+        }
+
+    async def _executive_data(self, user) -> dict:
+        """MD/ED dashboard: executive approval queue and PAR."""
+        from app.domains.loans.repository import LoanRepository
+        repo = LoanRepository(self.conn)
+        exec_queue = await repo.list_executive_queue(user.org_id, limit=20)
+        par = await self.get_par_summary(user)
+        return {
+            "metrics": {
+                "exec_queue": len(exec_queue),
+                "par1_pct": par.get("par1_pct", 0),
+                "par30_pct": par.get("par30_pct", 0),
+                "par90_pct": par.get("par90_pct", 0),
+            },
+            "exec_queue": exec_queue,
+            "par": par,
+        }
+
+    async def get_par_summary(self, user) -> dict:
+        from app.services.loan_servicing_service import LoanServicingService
+        svc = LoanServicingService(self.conn)
+        return await svc.get_par_summary(user.org_id)
+
+    async def get_crm_queue(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
+        from app.domains.loans.repository import LoanRepository
+        return await LoanRepository(self.conn).list_crm_queue(user.org_id, limit, offset)
+
+    async def get_executive_queue(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
+        from app.domains.loans.repository import LoanRepository
+        return await LoanRepository(self.conn).list_executive_queue(user.org_id, limit, offset)
 
     async def _fetch_one(self, domain: str, query: str, *args) -> dict:
         row = await self.conn.fetchrow(load_sql(domain, query), *args)

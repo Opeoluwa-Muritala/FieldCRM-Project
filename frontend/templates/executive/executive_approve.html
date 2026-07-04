@@ -1,0 +1,57 @@
+{% set mobile_title_text = "Issue Instruction" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+{% block title %}Executive Approval - FieldCRM{% endblock %}
+{% block page_title %}Issue Disbursement Instruction{% endblock %}
+{% block breadcrumb %}Executive -> Approval -> {{ app.ref_no }}{% endblock %}
+{% block content %}
+<div class="page-card" style="margin-bottom:20px;">
+  <h2 class="page-card-title">{{ app.applicant_name }}</h2>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;">
+    <div><span style="color:var(--text-muted)">Ref</span><br><strong>{{ app.ref_no }}</strong></div>
+    <div><span style="color:var(--text-muted)">Amount</span><br><strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}—{% endif %}</strong></div>
+    <div><span style="color:var(--text-muted)">Tenor</span><br><strong>{{ app.tenor_months or '—' }} months</strong></div>
+    <div><span style="color:var(--text-muted)">BVN</span><br><strong>{{ app.bvn or '—' }}</strong></div>
+    <div><span style="color:var(--text-muted)">Type</span><br><strong>{{ app.loan_type|upper }}</strong></div>
+  </div>
+</div>
+
+{% if app.crm_notes %}
+<div class="page-card" style="margin-bottom:20px;background:#f3f8ff;border:1px solid #90caf9;">
+  <strong>CRM Notes:</strong>
+  <p style="margin:8px 0 0;color:var(--text-secondary);">{{ app.crm_notes }}</p>
+</div>
+{% endif %}
+
+<div class="page-card" style="margin-bottom:20px;">
+  <h3 style="margin-bottom:12px;">Document Summary</h3>
+  <table class="custom-table">
+    <thead><tr><th>Document</th><th>Quality</th><th>Verified</th></tr></thead>
+    <tbody>
+    {% for doc in documents %}
+    <tr>
+      <td>{{ doc.doc_type.replace('_',' ').title() }}</td>
+      <td><span class="status-badge {% if doc.quality_status == 'clear' %}approved{% else %}needs-review{% endif %}">{{ doc.quality_status }}</span></td>
+      <td>{% if doc.verified %}&#10003;{% else %}<span style="color:#c62828">&#10007;</span>{% endif %}</td>
+    </tr>
+    {% else %}<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">No documents.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="page-card" style="background:#e8f5e9;border:1px solid #a5d6a7;">
+  <h3 style="margin-bottom:12px;">Issue Disbursement Instruction</h3>
+  <p style="margin-bottom:16px;color:var(--text-secondary);font-size:14px;">
+    By submitting, you authorise the CRM to proceed with disbursement of
+    <strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}the approved amount{% endif %}</strong>
+    to <strong>{{ app.applicant_name }}</strong>. This action is logged and cannot be undone.
+  </p>
+  <form method="post" action="/applications/{{ app_id }}/executive-approve">
+    <button type="submit" class="btn btn-primary"
+      onclick="return confirm('Issue disbursement instruction for {{ app.applicant_name }}?')"
+      style="font-size:15px;padding:12px 28px;">
+      &#10003; Issue Disbursement Instruction
+    </button>
+    <a href="/executive-queue" class="btn btn-secondary" style="margin-left:12px;">Cancel</a>
+  </form>
+</div>
+{% endblock %}

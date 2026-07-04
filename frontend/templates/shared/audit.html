@@ -24,7 +24,7 @@
                 {{ event.from_stage|replace("_", " ")|title if event.from_stage else "Start" }} &rarr;
                 {{ event.to_stage|replace("_", " ")|title if event.to_stage else "No stage change" }}
             </div>
-            <div class="queue-card-amount">{{ event.timestamp.strftime("%Y-%m-%d %H:%M") if event.timestamp else "Timestamp unavailable" }}</div>
+            <div class="queue-card-amount">{{ event.timestamp.strftime("%d %b %Y, %H:%M") if event.timestamp else "Timestamp unavailable" }}</div>
         </a>
         {% else %}
         <div class="flat-card">No audit events have been recorded.</div>

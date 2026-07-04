@@ -728,6 +728,65 @@ fun StatusChip(
     }
 }
 
+/** Convenience overload — accepts a plain label string with positive/danger flags. */
+@Composable
+fun StatusChip(
+    label: String,
+    isPositive: Boolean = false,
+    isDanger: Boolean = false,
+    small: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    val (bgColor, textColor) = when {
+        isPositive -> FieldTheme.colors.statusSuccess.copy(alpha = 0.18f) to FieldTheme.colors.statusSuccess
+        isDanger   -> FieldTheme.colors.statusDanger.copy(alpha = 0.18f)  to FieldTheme.colors.statusDanger
+        else       -> FieldTheme.colors.statusWarning.copy(alpha = 0.18f) to FieldTheme.colors.statusWarning
+    }
+    val height = if (small) 18.dp else 22.dp
+    val fontSize = if (small) 8.sp else 9.sp
+    Box(
+        modifier = modifier
+            .height(height)
+            .background(bgColor, RoundedCornerShape(height / 2))
+            .border(0.5.dp, textColor.copy(alpha = 0.4f), RoundedCornerShape(height / 2))
+            .padding(horizontal = if (small) 6.dp else 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = FieldTheme.typography.label.copy(fontSize = fontSize, fontWeight = FontWeight.Bold),
+            color = textColor
+        )
+    }
+}
+
+/** Simple label–value row used in detail cards. */
+@Composable
+fun LabelValue(label: String, value: String) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, style = FieldTheme.typography.label, color = FieldTheme.colors.gray400, modifier = Modifier.weight(1f))
+        Text(value, style = FieldTheme.typography.body,  modifier = Modifier.weight(1.5f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+    }
+}
+
+/** Titled card section wrapper. */
+@Composable
+fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text(title, style = FieldTheme.typography.title, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(10.dp))
+            content()
+        }
+    }
+}
+
 @Composable
 fun ConfidenceBar(
     percentage: Float, // value between 0.0f and 1.0f

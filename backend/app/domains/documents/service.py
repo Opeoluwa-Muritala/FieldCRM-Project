@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import mimetypes
 import re
 from pathlib import Path
@@ -8,6 +10,8 @@ from fastapi import HTTPException, UploadFile, status
 from app.core.audit import AuditService
 from app.core.config import settings
 from app.domains.documents.repository import DocumentRepository
+
+log = logging.getLogger(__name__)
 
 
 FORM_CODES = {
@@ -71,7 +75,20 @@ class DocumentService:
         target_path = target_dir / stored_name
         target_path.write_bytes(content)
 
-        stored_path = "/static/uploads/" + (relative_dir / stored_name).as_posix()
+        # Attempt Cloudinary upload; fall back to local path if not configured
+        from app.services.cloud_storage_service import upload_document as _cloud_upload
+        cloud_result = _cloud_upload(
+            file_bytes=content,
+            mime_type=mime_type,
+            org_id=str(org_id),
+            loan_id=str(loan_id),
+            doc_type=safe_doc_type,
+            filename_stem=uuid4().hex,
+        )
+        stored_path = cloud_result.stored_path if cloud_result else (
+            "/static/uploads/" + (relative_dir / stored_name).as_posix()
+        )
+
         document = await self.repo.create(
             loan_id=loan_id,
             org_id=org_id,
@@ -82,6 +99,8 @@ class DocumentService:
             mime_type=mime_type,
             size_bytes=len(content),
             uploaded_by=uploaded_by,
+            cloud_public_id=cloud_result.public_id if cloud_result else None,
+            cloud_preview_url=cloud_result.preview_url if cloud_result else None,
         )
         await self._audit_upload(
             document=document,
@@ -90,7 +109,24 @@ class DocumentService:
             user_role=user_role,
             doc_type=doc_type,
         )
+        # Trigger server-side OCR asynchronously (fire-and-forget)
+        asyncio.create_task(self._run_ocr(document, mime_type))
         return document
+
+    async def _run_ocr(self, document: dict, mime_type: str) -> None:
+        try:
+            from app.services.ocr_extraction_service import OcrExtractionService
+            from uuid import UUID as _UUID
+            await OcrExtractionService(self.repo.conn).process_document(
+                document_id=_UUID(str(document["id"])),
+                loan_id=_UUID(str(document["loan_id"])),
+                doc_type=document["doc_type"],
+                stored_path=document["stored_path"],
+                mime_type=mime_type,
+                upload_dir=settings.DOCUMENT_UPLOAD_DIR,
+            )
+        except Exception as e:
+            log.warning("OCR background task failed for doc %s: %s", document.get("id"), e)
 
     async def save_mock_upload(
         self,

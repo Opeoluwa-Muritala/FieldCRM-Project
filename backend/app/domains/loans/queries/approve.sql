@@ -1,11 +1,10 @@
 -- loans/queries/approve.sql
--- Atomically transitions a loan to disbursement_ready.
--- Fails silently if the loan is not at branch_approval stage.
+-- Branch manager approval: branch_approval -> crm_review.
 -- Params: $1=loan_id, $2=org_id, $3=approved_by
 
 UPDATE loan_applications
 SET
-    stage        = 'disbursement_ready',
+    stage        = 'crm_review',
     approved_by  = $3,
     approved_at  = NOW(),
     updated_at   = NOW()

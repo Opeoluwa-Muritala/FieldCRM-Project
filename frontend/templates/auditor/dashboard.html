@@ -23,7 +23,7 @@
         </div></section>
         <section class="page-card"><div class="role-section-head"><h2>Audit Activity</h2><a href="/audit-trail">Open</a></div><div class="role-card-list">
             {% for item in data.activity %}
-            <div class="role-list-card"><strong>{{ item.action }}</strong><span>{{ item.user_name or item.user_role }} - {{ item.entity_type }}</span><em>{{ item.created_at.strftime('%d %b %H:%M') if item.created_at else '' }}</em></div>
+            <div class="role-list-card"><strong>{{ item.action }}</strong><span>{{ item.user_name or item.user_role }} - {{ item.entity_type }}</span><em>{{ item.created_at.strftime('%d %b %Y, %H:%M') if item.created_at else '' }}</em></div>
             {% else %}<div class="lo-empty-state">No audit activity.</div>{% endfor %}
         </div></section>
     </div>

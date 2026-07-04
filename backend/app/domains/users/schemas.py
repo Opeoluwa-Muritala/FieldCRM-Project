@@ -73,6 +73,9 @@ class UserRow(BaseModel):
             "branch_manager": "Branch Manager",
             "auditor": "Auditor",
             "system_admin": "System Admin",
+            "crm": "CRM Officer",
+            "md": "Managing Director",
+            "ed": "Executive Director",
         }
         key = self.role.lower().replace(" ", "_")
         return mapping.get(key, self.role)

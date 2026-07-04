@@ -101,10 +101,12 @@ class LoanRow(BaseModel):
             'ocr_review': 2,
             'credit_review': 3,
             'branch_approval': 4,
-            'disbursement_ready': 5,
-            'disbursed': 6,
-            'returned': 7,
-            'rejected': 8
+            'crm_review': 5,
+            'executive_approval': 6,
+            'disbursement_ready': 7,
+            'disbursed': 8,
+            'returned': 9,
+            'rejected': 10,
         }
         return mapping.get(self.stage, 1)
 
@@ -115,10 +117,12 @@ class LoanRow(BaseModel):
             'ocr_review': 'OCR Review',
             'credit_review': 'Credit Review',
             'branch_approval': 'Branch Approval',
+            'crm_review': 'CRM Review',
+            'executive_approval': 'Executive Approval',
             'disbursement_ready': 'Disbursement Ready',
             'disbursed': 'Disbursed',
             'returned': 'Returned',
-            'rejected': 'Rejected'
+            'rejected': 'Rejected',
         }
         return mapping.get(self.stage, 'Draft')
 
@@ -172,10 +176,12 @@ class LoanListItem(BaseModel):
             'ocr_review': 2,
             'credit_review': 3,
             'branch_approval': 4,
-            'disbursement_ready': 5,
-            'disbursed': 6,
-            'returned': 7,
-            'rejected': 8
+            'crm_review': 5,
+            'executive_approval': 6,
+            'disbursement_ready': 7,
+            'disbursed': 8,
+            'returned': 9,
+            'rejected': 10,
         }
         return mapping.get(self.stage, 1)
 
@@ -186,10 +192,12 @@ class LoanListItem(BaseModel):
             'ocr_review': 'OCR Review',
             'credit_review': 'Credit Review',
             'branch_approval': 'Branch Approval',
+            'crm_review': 'CRM Review',
+            'executive_approval': 'Executive Approval',
             'disbursement_ready': 'Disbursement Ready',
             'disbursed': 'Disbursed',
             'returned': 'Returned',
-            'rejected': 'Rejected'
+            'rejected': 'Rejected',
         }
         return mapping.get(self.stage, 'Draft')
 
@@ -214,6 +222,49 @@ class LoanListItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+class RepaymentScheduleRow(BaseModel):
+    id: UUID
+    loan_id: UUID
+    org_id: UUID
+    installment_no: int
+    due_date: Any
+    principal_due: float
+    interest_due: float
+    total_due: float
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class RepaymentRecordRow(BaseModel):
+    id: UUID
+    loan_id: UUID
+    org_id: UUID
+    payment_date: Any
+    amount_paid: float
+    channel: str
+    bank_ref: Optional[str] = None
+    recorded_by: UUID
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class RecordPaymentRequest(BaseModel):
+    payment_date: str
+    amount_paid: float
+    channel: str
+    bank_ref: Optional[str] = None
+
+class DisburseRequest(BaseModel):
+    disbursed_amount: float
+    disbursement_method: str
+    disbursed_bank_ref: Optional[str] = None
+    payment_date: str
+    interest_rate: float
+    repayment_frequency: str
+    schedule_method: str = "flat_rate"
 
 class StageCount(BaseModel):
     stage: str

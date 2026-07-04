@@ -140,6 +140,58 @@ class LoanRepository(BaseRepository):
             data["data_json"] = json.loads(data["data_json"])
         return data
 
+    async def advance_to_crm_review(self, loan_id: UUID, org_id: UUID, approved_by: UUID) -> LoanRow | None:
+        row = await self.conn.fetchrow(
+            self.sql("advance_to_crm_review"), loan_id, org_id, approved_by
+        )
+        return LoanRow(**row) if row else None
+
+    async def advance_to_executive_approval(
+        self, loan_id: UUID, org_id: UUID, crm_user_id: UUID, crm_notes: str
+    ) -> LoanRow | None:
+        row = await self.conn.fetchrow(
+            self.sql("advance_to_executive_approval"), loan_id, org_id, crm_user_id, crm_notes
+        )
+        return LoanRow(**row) if row else None
+
+    async def executive_approve(self, loan_id: UUID, org_id: UUID, executive_id: UUID) -> LoanRow | None:
+        row = await self.conn.fetchrow(
+            self.sql("executive_approve"), loan_id, org_id, executive_id
+        )
+        return LoanRow(**row) if row else None
+
+    async def disburse(
+        self,
+        loan_id: UUID,
+        org_id: UUID,
+        disbursed_amount: float,
+        disbursement_method: str,
+        disbursed_bank_ref: str | None,
+        disbursement_ref: str,
+        interest_rate: float,
+        repayment_frequency: str,
+        schedule_method: str,
+    ) -> LoanRow | None:
+        row = await self.conn.fetchrow(
+            self.sql("disburse"),
+            loan_id, org_id, disbursed_amount, disbursement_method,
+            disbursed_bank_ref, disbursement_ref, interest_rate,
+            repayment_frequency, schedule_method,
+        )
+        return LoanRow(**row) if row else None
+
+    async def list_crm_queue(self, org_id: UUID, limit: int = 50, offset: int = 0) -> list[dict]:
+        rows = await self.conn.fetch(self.sql("list_crm_queue"), org_id, limit, offset)
+        return [dict(r) for r in rows]
+
+    async def list_executive_queue(self, org_id: UUID, limit: int = 50, offset: int = 0) -> list[dict]:
+        rows = await self.conn.fetch(self.sql("list_executive_queue"), org_id, limit, offset)
+        return [dict(r) for r in rows]
+
+    async def list_disbursed(self, org_id: UUID) -> list[dict]:
+        rows = await self.conn.fetch(self.sql("list_disbursed"), org_id)
+        return [dict(r) for r in rows]
+
     async def save_stage_data(self, loan_id: UUID, stage: str, data: dict, user_id: UUID) -> dict:
         existing = await self.get_stage_data(loan_id, stage)
         payload = json.dumps(data)
