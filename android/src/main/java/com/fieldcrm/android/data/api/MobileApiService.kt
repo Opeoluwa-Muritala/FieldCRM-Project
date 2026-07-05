@@ -9,10 +9,18 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.serialization.json.JsonElement
 
+sealed interface LoginOutcome {
+    data class Success(val token: String) : LoginOutcome
+    data object InvalidCredentials : LoginOutcome
+    data object NetworkError : LoginOutcome
+    data class ServerError(val code: Int) : LoginOutcome
+}
+
 interface MobileApiService {
     fun setToken(token: String)
     /** Full credential login — calls /auth/login-mobile and returns a 30-day token for biometric reuse. */
     suspend fun login(username: String, password: String): TokenResponse?
+    suspend fun loginWithResult(username: String, password: String): LoginOutcome
     suspend fun getMe(): MobileUser?
     suspend fun getDashboard(): String?
     suspend fun getDashboardMetrics(): DashboardMetrics?
@@ -22,6 +30,7 @@ interface MobileApiService {
     suspend fun createApplication(customerType: String, loanType: String, applicantName: String): String?
     suspend fun getApplicationDetail(id: String): String?
     suspend fun saveIntakeStep(id: String, step: Int, data: Map<String, JsonElement>): String?
+    suspend fun getGuarantorData(id: String, slot: Int): String?
     suspend fun saveGuarantorStep(id: String, slot: Int, step: Int, data: Map<String, JsonElement>): String?
     suspend fun uploadDocument(id: String, category: String, fileBytes: ByteArray? = null, fileName: String = "document"): String?
     suspend fun submitOcrReview(id: String, corrections: Map<String, String>): String?
@@ -220,6 +229,38 @@ class MobileApiServiceImpl(
         }
     }
 
+    override suspend fun loginWithResult(username: String, password: String): LoginOutcome {
+        return try {
+            val response: HttpResponse = client.submitForm(
+                url = "$baseUrl/api/v1/auth/login-mobile",
+                formParameters = parameters {
+                    append("username", username)
+                    append("password", password)
+                }
+            )
+            when {
+                response.status == HttpStatusCode.OK -> {
+                    val tokenResponse = response.body<TokenResponse>()
+                    setToken(tokenResponse.access_token)
+                    LoginOutcome.Success(tokenResponse.access_token)
+                }
+                response.status == HttpStatusCode.Unauthorized || response.status == HttpStatusCode.Forbidden ->
+                    LoginOutcome.InvalidCredentials
+                else -> LoginOutcome.ServerError(response.status.value)
+            }
+        } catch (_: io.ktor.client.plugins.HttpRequestTimeoutException) {
+            LoginOutcome.NetworkError
+        } catch (_: io.ktor.client.network.sockets.ConnectTimeoutException) {
+            LoginOutcome.NetworkError
+        } catch (_: java.net.UnknownHostException) {
+            LoginOutcome.NetworkError
+        } catch (_: java.net.ConnectException) {
+            LoginOutcome.NetworkError
+        } catch (_: Exception) {
+            LoginOutcome.NetworkError
+        }
+    }
+
     override suspend fun getMe(): MobileUser? {
         return try {
             val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/me") {
@@ -317,6 +358,15 @@ class MobileApiServiceImpl(
         } catch (e: Exception) {
             null
         }
+    }
+
+    override suspend fun getGuarantorData(id: String, slot: Int): String? {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/applications/$id/guarantors/$slot") {
+                authHeader()
+            }
+            if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
+        } catch (e: Exception) { null }
     }
 
     override suspend fun saveGuarantorStep(id: String, slot: Int, step: Int, data: Map<String, JsonElement>): String? {

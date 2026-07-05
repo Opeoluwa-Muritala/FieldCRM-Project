@@ -30,7 +30,18 @@ fun ExecutiveApprovalScreen(
 
     Scaffold(
         topBar = {
-            FieldTopAppBar(title = "Disbursement Instruction", onBackClick = onBack)
+            FieldTopAppBar(
+                title = "Disbursement Instruction",
+                navigationIcon = {
+                    androidx.compose.material3.IconButton(onClick = onBack) {
+                        androidx.compose.material3.Icon(
+                            imageVector = com.fieldcrm.android.ui.theme.FieldIcons.ArrowBackOutlined, 
+                            contentDescription = "Back", 
+                            tint = androidx.compose.ui.graphics.Color.White
+                        )
+                    }
+                }
+            )
         }
     ) { padding ->
         Column(
@@ -42,11 +53,11 @@ fun ExecutiveApprovalScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             SectionCard(title = "Loan Summary") {
-                LabelValue("Applicant", application.applicantName)
-                LabelValue("Ref",       application.refNo ?: "—")
+                LabelValue("Applicant", application.applicant_name)
+                LabelValue("Ref",       application.id.take(8))
                 LabelValue("Amount",    application.amount?.let { "₦%,.0f".format(it) } ?: "—")
                 LabelValue("Tenor",     application.tenure?.let { "$it months" } ?: "—")
-                LabelValue("Type",      application.productType?.uppercase() ?: "—")
+                LabelValue("Type",      application.product_type?.uppercase() ?: "—")
             }
 
             if (crmNotes.isNotBlank()) {
@@ -82,7 +93,7 @@ fun ExecutiveApprovalScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFE8F5E9)
+                    containerColor = androidx.compose.ui.graphics.Color(0xFFE8F5E9)
                 )
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -94,7 +105,7 @@ fun ExecutiveApprovalScreen(
                     Text(
                         "By confirming, you authorise the CRM to proceed with disbursement of " +
                         "${application.amount?.let { "₦%,.0f".format(it) } ?: "the approved amount"} " +
-                        "to ${application.applicantName}. This action is logged and cannot be undone.",
+                        "to ${application.applicant_name}. This action is logged and cannot be undone.",
                         style = FieldTheme.typography.body,
                         color = FieldTheme.colors.gray400
                     )
@@ -121,7 +132,7 @@ fun ExecutiveApprovalScreen(
             onDismissRequest = { showConfirmDialog = false },
             title = { Text("Confirm Disbursement Instruction") },
             text = {
-                Text("Issue disbursement instruction for ${application.applicantName}? This cannot be reversed.")
+                Text("Issue disbursement instruction for ${application.applicant_name}? This cannot be reversed.")
             },
             confirmButton = {
                 TextButton(onClick = {

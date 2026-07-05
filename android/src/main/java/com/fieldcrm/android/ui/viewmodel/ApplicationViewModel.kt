@@ -11,11 +11,14 @@ import com.fieldcrm.shared.api.FieldCRMClient
 import com.fieldcrm.shared.db.AppDatabase
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.fieldcrm.android.data.repository.ApplicationDetailResult
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 @Immutable
@@ -33,7 +36,9 @@ data class ApplicationUiState(
     val newAppAmount: String = "",
     val newAppTenure: String = "",
     val newAppInterestRate: String = "18.5",
-    val newAppProductType: String = "PERSONAL_LOAN"
+    val newAppProductType: String = "PERSONAL_LOAN",
+    val selectedAppDetail: ApplicationDetailResult? = null,
+    val isLoadingDetail: Boolean = false
 )
 
 class ApplicationViewModel(
@@ -49,10 +54,24 @@ class ApplicationViewModel(
     }
 
     private fun loadApplications() {
-        _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            val list = repository.getAllApplications()
-            _uiState.update { it.copy(applications = list, isLoading = false) }
+            // Show cached data immediately — no spinner, no waiting for network
+            val cached = withContext(Dispatchers.IO) { repository.getCachedApplications() }
+            if (cached.isNotEmpty()) {
+                _uiState.update { it.copy(applications = cached) }
+            }
+            // Fetch fresh data from network in the background
+            _uiState.update { it.copy(isLoading = cached.isEmpty()) }
+            val fresh = repository.getAllApplications()
+            _uiState.update { it.copy(applications = fresh, isLoading = false) }
+        }
+    }
+
+    fun loadApplicationDetail(id: String) {
+        _uiState.update { it.copy(isLoadingDetail = true, selectedAppDetail = null) }
+        viewModelScope.launch {
+            val detail = repository.getFullDetail(id)
+            _uiState.update { it.copy(selectedAppDetail = detail, isLoadingDetail = false) }
         }
     }
 
@@ -208,6 +227,7 @@ class ApplicationViewModel(
     }
 
     fun syncQueue(onComplete: (Boolean) -> Unit) {
+        _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             val success = repository.syncWithServer()
             loadApplications()

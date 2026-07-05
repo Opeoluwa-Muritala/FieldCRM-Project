@@ -50,6 +50,7 @@ fun FieldCRMApp(
     val applicationViewModel: ApplicationViewModel = koinViewModel()
     val servicingViewModel: ServicingViewModel = koinViewModel()
     val crmReviewViewModel: CrmReviewViewModel = koinViewModel()
+    val syncViewModel: com.fieldcrm.android.ui.viewmodel.SyncViewModel = koinViewModel()
 
     val appUiState by appViewModel.uiState.collectAsState()
     val borrowerUiState by borrowerViewModel.uiState.collectAsState()
@@ -58,6 +59,7 @@ fun FieldCRMApp(
     val restoredSession by loginViewModel.restoredSession.collectAsState()
     val servicingUiState by servicingViewModel.uiState.collectAsState()
     val crmReviewUiState by crmReviewViewModel.uiState.collectAsState()
+    val syncUiState by syncViewModel.uiState.collectAsState()
 
     val backStack = rememberNavBackStack(Screen.Login)
 
@@ -92,9 +94,10 @@ fun FieldCRMApp(
                             backStack.add(Screen.Dashboard)
                         },
                         onError = {
-                            appViewModel.setBiometricsEnrolled(false)
+                            // Biometric hardware is valid — only the stored token is gone (user signed out).
+                            // Do NOT disable biometrics; just ask them to log in with password.
                             activity?.runOnUiThread {
-                                android.widget.Toast.makeText(activity, "Session invalid. Please log in with your password.", android.widget.Toast.LENGTH_LONG).show()
+                                android.widget.Toast.makeText(activity, "Please log in with your password first.", android.widget.Toast.LENGTH_LONG).show()
                             }
                         }
                     )
@@ -133,7 +136,10 @@ fun FieldCRMApp(
     BackHandler(enabled = true) {
         val onRoot = backStack.isEmpty() ||
             backStack.last() == Screen.Dashboard ||
-            backStack.last() == Screen.Login
+            backStack.last() == Screen.Login ||
+            backStack.last() == Screen.BiometricEnrollment ||
+            backStack.last() == Screen.PermissionsPrimer ||
+            backStack.last() == Screen.Onboarding
         when {
             !onRoot -> { backStack.removeLastOrNull(); backPressedOnce = false }
             backPressedOnce -> activity?.finish()
@@ -299,6 +305,7 @@ fun FieldCRMApp(
             role = appUiState.session?.role,
             borrowers = borrowerUiState.borrowers,
             applications = applicationUiState.applications,
+            isLoading = applicationUiState.isLoading,
             sessionEmail = appUiState.session?.userEmail,
             onNavigateToBorrowers = { backStack.add(Screen.BorrowerList) },
             onNavigateToCreateApplication = { backStack.add(Screen.CreateApplication) },
@@ -326,8 +333,8 @@ fun FieldCRMApp(
             onNavigateToAuditTrail = { backStack.add(Screen.AuditTrail) },
             onNavigateToComplianceFlags = { backStack.add(Screen.ComplianceFlags) },
             onNavigateToOfflineQueue = { backStack.add(Screen.OfflineQueue) },
-            onNavigateToCrmQueue = { backStack.add(Screen.CrmReview) },
-            onNavigateToExecutiveQueue = { backStack.add(Screen.ExecutiveApproval) },
+            onNavigateToCrmQueue = { backStack.add(Screen.CrmQueue) },
+            onNavigateToExecutiveQueue = { backStack.add(Screen.ExecutiveQueue) },
             onNavigateToParDashboard = { servicingViewModel.loadParDashboard(); backStack.add(Screen.ParDashboard) }
         )
 
@@ -381,10 +388,13 @@ fun FieldCRMApp(
         )
 
         Screen.ApplicationDetail -> appUiState.selectedApplication?.let { app ->
+            LaunchedEffect(app.id) { applicationViewModel.loadApplicationDetail(app.id) }
             ApplicationDetailScreenView(
                 application = app,
                 borrower = borrowerUiState.borrowers.find { it.id == app.borrower_id },
                 role = appUiState.session?.role,
+                appDetail = applicationUiState.selectedAppDetail,
+                isLoadingDetail = applicationUiState.isLoadingDetail,
                 onBackClick = { backStack.removeLastOrNull() },
                 onNavigateToDocumentUpload = { backStack.add(Screen.DocumentUpload) },
                 onNavigateToPledgeTrust = { backStack.add(Screen.PledgeTrust) },
@@ -737,7 +747,7 @@ fun FieldCRMApp(
                     onBack = { backStack.removeLastOrNull() }
                 )
             } else {
-                backStack.removeLastOrNull()
+                LaunchedEffect(Unit) { backStack.removeLastOrNull() }
             }
         }
 
@@ -756,7 +766,7 @@ fun FieldCRMApp(
                     onBack = { backStack.removeLastOrNull() }
                 )
             } else {
-                backStack.removeLastOrNull()
+                LaunchedEffect(Unit) { backStack.removeLastOrNull() }
             }
         }
 
@@ -765,8 +775,8 @@ fun FieldCRMApp(
             val role = appUiState.session?.role
             val canRecord = role == UserRole.CRM || role == UserRole.SYSTEM_ADMIN
             RepaymentScheduleScreen(
-                applicantName = app?.applicantName ?: "—",
-                refNo = app?.refNo ?: "—",
+                applicantName = app?.applicant_name ?: "—",
+                refNo = app?.id?.take(8) ?: "—",
                 schedule = servicingUiState.schedule,
                 payments = servicingUiState.payments,
                 totalDue = servicingUiState.totalDue,
@@ -793,6 +803,28 @@ fun FieldCRMApp(
                 }
             )
         }
+
+        Screen.CrmQueue -> CrmQueueScreen(
+            applications = applicationUiState.applications,
+            borrowers = borrowerUiState.borrowers,
+            onBackClick = { backStack.removeLastOrNull() },
+            onReviewApplication = { appId ->
+                val app = applicationUiState.applications.find { it.id == appId }
+                if (app != null) appViewModel.setSelectedApplication(app)
+                backStack.add(Screen.CrmReview)
+            }
+        )
+
+        Screen.ExecutiveQueue -> ExecutiveQueueScreen(
+            applications = applicationUiState.applications,
+            borrowers = borrowerUiState.borrowers,
+            onBackClick = { backStack.removeLastOrNull() },
+            onReviewApplication = { appId ->
+                val app = applicationUiState.applications.find { it.id == appId }
+                if (app != null) appViewModel.setSelectedApplication(app)
+                backStack.add(Screen.ExecutiveApproval)
+            }
+        )
 
             else -> {}
         }

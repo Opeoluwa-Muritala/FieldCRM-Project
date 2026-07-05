@@ -108,13 +108,19 @@ fun LoginScreenContent(
         }
     }
 
-    // Capture when validation error changes
+    val errorMessage = when (state.error) {
+        "network_error" -> "No internet connection. Check your network and try again."
+        "invalid_credentials" -> "Incorrect email or password. Please try again."
+        null -> null
+        else -> state.error
+    }
+    val isNetworkError = state.error == "network_error"
+
     LaunchedEffect(state.error) {
-        if (state.error != null) {
-            passwordError = state.error
-            triggerShake = true
-        } else {
-            passwordError = null
+        when {
+            state.error == null -> passwordError = null
+            isNetworkError -> { passwordError = null; triggerShake = false }
+            else -> { passwordError = errorMessage; triggerShake = true }
         }
     }
 
@@ -180,8 +186,37 @@ fun LoginScreenContent(
                             textAlign = TextAlign.Center
                         )
  
-                        Spacer(modifier = Modifier.height(32.dp))
- 
+                        Spacer(modifier = Modifier.height(if (isNetworkError) 16.dp else 32.dp))
+
+                        // Network / server error banner (shown above fields, not tied to a specific input)
+                        if (isNetworkError) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        FieldTheme.colors.statusWarning.copy(alpha = 0.1f),
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .border(0.5.dp, FieldTheme.colors.statusWarning.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = FieldIcons.InfoOutlined,
+                                    contentDescription = null,
+                                    tint = FieldTheme.colors.statusWarning,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "No internet connection. Check your network and try again.",
+                                    style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                                    color = FieldTheme.colors.statusWarning
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
                         // Email or Staff ID Field with Blur Validation
                         FieldTextField(
                             value = state.email,

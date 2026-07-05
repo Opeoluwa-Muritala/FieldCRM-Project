@@ -6,7 +6,23 @@ import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import com.fieldcrm.shared.repository.SyncRepository
 import com.fieldcrm.android.data.api.MobileApiService
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+
+data class ApplicationDetailResult(
+    val readiness: Map<String, Any> = emptyMap(),
+    val documents: List<Map<String, Any>> = emptyList(),
+    val intake: Map<String, Any> = emptyMap(),
+    val visitation: Map<String, Any> = emptyMap()
+)
 
 class BorrowerRepository(
     private val database: AppDatabase,
@@ -81,6 +97,7 @@ class BorrowerRepository(
 private object NoopMobileApiService : MobileApiService {
     override fun setToken(token: String) = Unit
     override suspend fun login(username: String, password: String) = null
+    override suspend fun loginWithResult(username: String, password: String) = com.fieldcrm.android.data.api.LoginOutcome.NetworkError
     override suspend fun getMe() = null
     override suspend fun getDashboard(): String? = null
     override suspend fun getDashboardMetrics() = null
@@ -88,6 +105,7 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun createApplication(customerType: String, loanType: String, applicantName: String): String? = null
     override suspend fun getApplicationDetail(id: String): String? = null
     override suspend fun saveIntakeStep(id: String, step: Int, data: Map<String, JsonElement>): String? = null
+    override suspend fun getGuarantorData(id: String, slot: Int): String? = null
     override suspend fun saveGuarantorStep(id: String, slot: Int, step: Int, data: Map<String, JsonElement>): String? = null
     override suspend fun uploadDocument(id: String, category: String, fileBytes: ByteArray?, fileName: String): String? = null
     override suspend fun submitOcrReview(id: String, corrections: Map<String, String>): String? = null
@@ -95,6 +113,7 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun submitVisitationReport(id: String, metWith: String, premises: String, direction: String): String? = null
     override suspend fun submitVisitationSignoff(id: String, decision: String, notes: String): String? = null
     override suspend fun submitCreditReview(id: String, decision: String, notes: String): String? = null
+    override suspend fun submitCrmReview(id: String, decision: String, notes: String): String? = null
     override suspend fun approveApplication(id: String): String? = null
     override suspend fun returnApplication(id: String, reason: String, corrections: List<String>, notes: String): String? = null
     override suspend fun getBorrowers(): String? = null
@@ -113,6 +132,11 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun getOnboarding(role: String) = emptyList<com.fieldcrm.android.data.api.OnboardingSlide>()
     override suspend fun forgotPassword(email: String): Boolean = false
     override suspend fun resetPassword(token: String, newPassword: String): Boolean = false
+    override suspend fun submitExecutiveApprove(id: String): String? = null
+    override suspend fun getRepaymentSchedule(id: String): com.fieldcrm.android.data.api.RepaymentScheduleResponse? = null
+    override suspend fun recordPayment(id: String, amountPaid: Double, channel: String, bankRef: String?, paymentDate: String?): String? = null
+    override suspend fun getParDashboard(): String? = null
+    override suspend fun uploadDocumentPdf(id: String, category: String, pdfBytes: ByteArray, fileName: String): String? = null
 }
 
 class ApplicationRepository(
@@ -122,6 +146,107 @@ class ApplicationRepository(
 ) {
     private val queries = database.appDatabaseQueries
     private val syncRepository = SyncRepository(database, client)
+
+    fun getCachedApplications(): List<LoanApplicationModel> {
+        return queries.selectAllApplications().executeAsList().map { row ->
+            LoanApplicationModel(
+                id = row.id,
+                borrower_id = row.borrower_id,
+                applicant_name = row.applicant_name,
+                org_id = row.org_id,
+                current_stage = row.current_stage.toInt(),
+                current_owner_id = row.current_owner_id,
+                status = row.status,
+                amount = row.amount,
+                tenure = row.tenure.toInt(),
+                product_type = row.product_type,
+                interest_rate = 15.0,
+                repayment_frequency = "Monthly",
+                created_at = ""
+            )
+        }
+    }
+
+    suspend fun getFullDetail(id: String): ApplicationDetailResult? {
+        val json = apiService.getApplicationDetail(id) ?: return null
+        return try {
+            val root = Json.parseToJsonElement(json).jsonObject
+
+            fun safeValue(el: JsonElement): Any? = when (el) {
+                is JsonNull -> null
+                is JsonPrimitive -> el.booleanOrNull ?: el.intOrNull ?: el.doubleOrNull ?: el.content
+                is JsonObject -> el["value"]?.let { inner ->
+                    when (inner) {
+                        is JsonNull -> null
+                        is JsonPrimitive -> inner.booleanOrNull ?: inner.intOrNull ?: inner.doubleOrNull ?: inner.content
+                        else -> null
+                    }
+                }
+                else -> null
+            }
+
+            fun JsonElement.asObjEntries() = (this as? JsonObject)?.entries
+
+            val readiness: Map<String, Any> = root["readiness"]?.asObjEntries()
+                ?.mapNotNull { (k, v) -> safeValue(v)?.let { k to it } }
+                ?.toMap() ?: emptyMap()
+
+            val documents: List<Map<String, Any>> = (root["documents"] as? JsonArray)?.mapNotNull { docEl ->
+                val d = docEl as? JsonObject ?: return@mapNotNull null
+                val url = (d["secure_url"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
+                    ?: (d["file_url"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
+                    ?: (d["cloud_preview_url"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
+                    ?: (d["stored_path"] as? JsonPrimitive)?.content ?: ""
+                mapOf(
+                    "doc_type" to ((d["doc_type"] as? JsonPrimitive)?.content ?: ""),
+                    "verified" to ((d["verified"] as? JsonPrimitive)?.booleanOrNull ?: false),
+                    "secure_url" to url,
+                    "file_url" to url
+                )
+            } ?: emptyList()
+
+            var intake: Map<String, Any> = root["intake"]?.asObjEntries()
+                ?.mapNotNull { (k, v) -> safeValue(v)?.let { k to it } }
+                ?.toMap() ?: emptyMap()
+
+            // If intake lacks flat guarantor keys (web-submitted apps store guarantors separately),
+            // fetch from the now-open guarantor endpoint and merge as guarantor_1_*/guarantor_2_*
+            if (!intake.containsKey("guarantor_1_name")) {
+                val merged = intake.toMutableMap()
+                for (slot in 1..2) {
+                    val gJson = apiService.getGuarantorData(id, slot) ?: continue
+                    try {
+                        val gRoot = Json.parseToJsonElement(gJson).jsonObject
+                        val gData = gRoot["data"]?.asObjEntries() ?: continue
+                        val prefix = "guarantor_${slot}_"
+                        gData.forEach { (k, v) ->
+                            val flatKey = when (k) {
+                                "guarantor_full_name" -> "${prefix}name"
+                                "phone_number" -> "${prefix}phone"
+                                "residential_address" -> "${prefix}address"
+                                "bvn" -> "${prefix}bvn"
+                                "nin" -> "${prefix}nin"
+                                "employer_name", "business_name" -> "${prefix}employer"
+                                "bank_name" -> "${prefix}bank"
+                                "account_number" -> "${prefix}account"
+                                else -> "$prefix$k"
+                            }
+                            safeValue(v)?.let { merged[flatKey] = it }
+                        }
+                    } catch (_: Exception) {}
+                }
+                intake = merged
+            }
+
+            val visitation: Map<String, Any> = root["visitation"]?.asObjEntries()
+                ?.mapNotNull { (k, v) -> safeValue(v)?.let { k to it } }
+                ?.toMap() ?: emptyMap()
+
+            ApplicationDetailResult(readiness, documents, intake, visitation)
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     suspend fun getAllApplications(): List<LoanApplicationModel> {
         return try {
@@ -142,23 +267,7 @@ class ApplicationRepository(
             }
             remote
         } catch (e: Exception) {
-            queries.selectAllApplications().executeAsList().map { row ->
-                LoanApplicationModel(
-                    id = row.id,
-                    borrower_id = row.borrower_id,
-                    applicant_name = row.applicant_name,
-                    org_id = row.org_id,
-                    current_stage = row.current_stage.toInt(),
-                    current_owner_id = row.current_owner_id,
-                    status = row.status,
-                    amount = row.amount,
-                    tenure = row.tenure.toInt(),
-                    product_type = row.product_type,
-                    interest_rate = 15.0,
-                    repayment_frequency = "Monthly",
-                    created_at = ""
-                )
-            }
+            getCachedApplications()
         }
     }
 
@@ -309,36 +418,30 @@ class AuthRepository(
     private val client: FieldCRMClient,
     private val apiService: MobileApiService
 ) {
-    // Returns the token on success, null on any failure. Offline login fails closed.
-    suspend fun authenticate(username: String, password: String): String? {
-        return try {
-            val token = apiService.login(username, password)?.access_token ?: return null
-            client.setToken(token)
-            apiService.setToken(token)
-            token
-        } catch (e: Exception) {
-            null
+    suspend fun authenticate(username: String, password: String): com.fieldcrm.android.data.api.LoginOutcome {
+        val outcome = apiService.loginWithResult(username, password)
+        if (outcome is com.fieldcrm.android.data.api.LoginOutcome.Success) {
+            client.setToken(outcome.token)
         }
+        return outcome
     }
 
-    // Fetch the authenticated user's profile — role, name, orgId
     suspend fun fetchMe(): com.fieldcrm.android.data.api.MobileUser? {
-        return try {
-            apiService.getMe()
-        } catch (e: Exception) {
-            null
-        }
+        return try { apiService.getMe() } catch (_: Exception) { null }
     }
 
-    // Re-validate a stored token against the API — returns true if still accepted
-    suspend fun validateToken(token: String): Boolean {
+    // Returns null on network error (caller should treat as "still valid"),
+    // false only on a definitive 401/403 from the server.
+    suspend fun validateToken(token: String): Boolean? {
         return try {
             client.setToken(token)
             apiService.setToken(token)
             val me = apiService.getMe()
-            me != null
-        } catch (e: Exception) {
-            false
-        }
+            if (me != null) true else false
+        } catch (_: java.net.UnknownHostException) { null }
+        catch (_: java.net.ConnectException) { null }
+        catch (_: io.ktor.client.plugins.HttpRequestTimeoutException) { null }
+        catch (_: io.ktor.client.network.sockets.ConnectTimeoutException) { null }
+        catch (_: Exception) { null }
     }
 }

@@ -13,11 +13,12 @@ import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.viewmodel.AppViewModel
 import com.fieldcrm.android.ui.viewmodel.LoginViewModel
 import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class MainActivity : AppCompatActivity() {
 
     private val loginViewModel: LoginViewModel by inject()
-    private val appViewModel: AppViewModel by inject()
+    private val appViewModel: AppViewModel by viewModel()
 
     private val promptManager by lazy { BiometricPromptManager(this) }
 

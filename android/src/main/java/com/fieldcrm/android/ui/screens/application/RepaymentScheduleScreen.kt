@@ -40,7 +40,18 @@ fun RepaymentScheduleScreen(
 ) {
     Scaffold(
         topBar = {
-            FieldTopAppBar(title = "Repayment Schedule", onBackClick = onBack)
+            FieldTopAppBar(
+                title = "Repayment Schedule",
+                navigationIcon = {
+                    androidx.compose.material3.IconButton(onClick = onBack) {
+                        androidx.compose.material3.Icon(
+                            imageVector = com.fieldcrm.android.ui.theme.FieldIcons.ArrowBackOutlined, 
+                            contentDescription = "Back", 
+                            tint = androidx.compose.ui.graphics.Color.White
+                        )
+                    }
+                }
+            )
         }
     ) { padding ->
         Column(

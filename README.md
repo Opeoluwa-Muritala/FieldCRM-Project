@@ -1,17 +1,16 @@
 # FieldCRM
 
-FieldCRM is a loan origination and processing CRM for microfinance and retail lending teams. It combines a FastAPI backend, server-rendered role-aware web dashboards, and a native Android app to support loan intake, review, approval, and audit workflows.
+FieldCRM is a multi-platform loan origination and servicing workflow for microfinance and retail lending teams. The repository combines a FastAPI backend, server-rendered role-based web dashboards, and a Kotlin/Jetpack Compose Android app.
 
-## What This Project Includes
+## What is in this repository
 
-- `backend/`: FastAPI application with domain routers, services, repositories, migrations, authentication, and templates.
-- `frontend/`: Jinja2 templates, responsive CSS, JavaScript, and role-aware page shells.
-- `android/`: Kotlin + Jetpack Compose native Android app.
-- `shared/`: Kotlin Multiplatform module with models, shared API logic, SQLDelight storage, and sync foundations.
-- `gradle/`: Gradle wrapper and dependency version catalog.
-- `test_imports.py`: Simple backend import smoke test.
+- backend/: FastAPI application, domain services, repositories, SQL migrations, authentication, and API routes.
+- frontend/: Jinja2 templates, shared page shells, CSS, and JavaScript for the web experience.
+- android/: Native Android app with explicit screen navigation and offline-friendly workflow support.
+- shared/: Kotlin Multiplatform module for models, API client scaffolding, SQLDelight storage, and sync foundations.
+- scripts/: Helper utilities for seeding demo data, checking database state, and scanning the backend.
 
-## Core Functionality
+## Core workflow
 
 FieldCRM supports the full loan workflow:
 
