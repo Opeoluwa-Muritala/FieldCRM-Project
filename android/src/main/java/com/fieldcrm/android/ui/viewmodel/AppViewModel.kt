@@ -105,7 +105,11 @@ sealed class Screen : NavKey {
     @Serializable
     data object CrmReview : Screen()
     @Serializable
+    data object CrmQueue : Screen()
+    @Serializable
     data object ExecutiveApproval : Screen()
+    @Serializable
+    data object ExecutiveQueue : Screen()
     @Serializable
     data object RepaymentSchedule : Screen()
     @Serializable

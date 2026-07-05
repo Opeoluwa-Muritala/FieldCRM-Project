@@ -31,6 +31,7 @@ import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.viewmodel.DashboardViewModel
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
+import androidx.activity.compose.BackHandler
 import org.koin.androidx.compose.koinViewModel
 import java.util.Locale
 
@@ -39,6 +40,7 @@ fun DashboardScreenView(
     role: UserRole?,
     borrowers: List<BorrowerModel> = emptyList(),
     applications: List<LoanApplicationModel> = emptyList(),
+    isLoading: Boolean = false,
     sessionEmail: String? = null,
     onNavigateToBorrowers: () -> Unit,
     onNavigateToCreateApplication: () -> Unit = {},
@@ -67,8 +69,21 @@ fun DashboardScreenView(
     val isTablet = configuration.screenWidthDp >= 600
 
     var selectedTab by remember { mutableStateOf(0) }
+    val tabHistory = remember { mutableStateListOf<Int>() }
     var searchQuery by remember { mutableStateOf("") }
     var showSignOutConfirmation by remember { mutableStateOf(false) }
+
+    fun navigateToTab(index: Int) {
+        if (index != selectedTab) {
+            tabHistory.add(selectedTab)
+        }
+        selectedTab = index
+    }
+
+    // Back pops to previous tab; if no history, let the outer handler handle exit
+    BackHandler(enabled = tabHistory.isNotEmpty()) {
+        selectedTab = tabHistory.removeLast()
+    }
 
     val dashboardViewModel: DashboardViewModel = koinViewModel()
     val dashboardState by dashboardViewModel.uiState.collectAsState()
@@ -138,12 +153,33 @@ fun DashboardScreenView(
         )
     }
 
-    // Build queue from real borrowers + applications (merged view)
-    val rawQueueItems = remember(borrowers, applications) {
-        borrowers.map { borrower ->
+    // Role-based status sets — values must match backend _stage_status() output (title-case)
+    val relevantStatuses: Set<String> = remember(resolvedRole) {
+        when (resolvedRole) {
+            UserRole.LOAN_OFFICER -> setOf("draft", "ocr review", "returned", "rejected")
+            UserRole.CREDIT_OFFICER -> setOf("ocr review", "credit review")
+            UserRole.BRANCH_MANAGER -> setOf("credit review", "branch approval", "returned")
+            UserRole.CRM -> setOf("branch approval", "crm review", "disbursement ready")
+            UserRole.EXECUTIVE -> setOf("crm review", "executive approval", "disbursement ready")
+            UserRole.AUDITOR, UserRole.SYSTEM_ADMIN -> emptySet()
+        }
+    }
+
+    // Build queue from real borrowers + applications (merged view), filtered by role
+    val rawQueueItems = remember(borrowers, applications, resolvedRole) {
+        borrowers.mapNotNull { borrower ->
             val app = applications
                 .filter { it.borrower_id == borrower.id }
                 .maxByOrNull { it.current_stage }
+
+            // Apply role-based visibility: empty set means show all
+            val statusLower = app?.status?.lowercase(Locale.getDefault()) ?: ""
+            val isVisible = relevantStatuses.isEmpty() ||
+                app == null ||
+                statusLower in relevantStatuses
+
+            if (!isVisible) return@mapNotNull null
+
             QueueItem(
                 name = borrower.name,
                 borrowerId = borrower.id,
@@ -155,9 +191,9 @@ fun DashboardScreenView(
                     "No active application",
                 status = when {
                     app == null -> StatusChipVariant.NeedsReview
-                    app.status.lowercase(Locale.getDefault()) in listOf("approved", "bm approved") -> StatusChipVariant.Approved
-                    app.status.lowercase(Locale.getDefault()) == "returned" -> StatusChipVariant.Returned
-                    app.status.lowercase(Locale.getDefault()) in listOf("ocr_review", "ocr review", "credit_review", "credit review") -> StatusChipVariant.LowConfidence
+                    statusLower in listOf("approved", "bm approved") -> StatusChipVariant.Approved
+                    statusLower == "returned" -> StatusChipVariant.Returned
+                    statusLower in listOf("ocr_review", "ocr review", "credit_review", "credit review") -> StatusChipVariant.LowConfidence
                     else -> StatusChipVariant.NeedsReview
                 }
             )
@@ -181,7 +217,7 @@ fun DashboardScreenView(
             "REG_BORROWER" -> onNavigateToBorrowers()
             "NEW_APP" -> onNavigateToCreateApplication()
             "SYNC_QUEUE" -> { /* auto-sync — no manual trigger needed */ }
-            "VISITS" -> selectedTab = 1
+            "VISITS" -> navigateToTab(1)
             "NOTIFICATIONS" -> onNavigateToNotifications()
             "SEARCH" -> onNavigateToSearchResults()
             "SIGNOUT" -> showSignOutConfirmation = true
@@ -288,7 +324,7 @@ fun DashboardScreenView(
                 FieldNavigationRail(
                     items = sideRailItems,
                     selectedItemIndex = selectedTab,
-                    onItemSelect = { selectedTab = it }
+                    onItemSelect = { if (it != selectedTab) tabHistory.add(selectedTab); selectedTab = it }
                 )
 
                 Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
@@ -298,6 +334,7 @@ fun DashboardScreenView(
                             role = resolvedRole,
                             metrics = metrics,
                             queueItems = filteredQueueItems,
+                            isLoading = isLoading,
                             onQuickActionClick = onQuickActionClick,
                             onQueueItemClick = onQueueItemClick,
                             onNavigateToCreateApplication = onNavigateToCreateApplication
@@ -312,7 +349,7 @@ fun DashboardScreenView(
                             userName = userName,
                             userEmail = userEmail,
                             role = resolvedRole,
-                            onBackClick = { selectedTab = 0 },
+                            onBackClick = { navigateToTab(0) },
                             onNavigateToOfflineQueue = onNavigateToOfflineQueue,
                             onSignOutClick = { showSignOutConfirmation = true }
                         )
@@ -332,7 +369,7 @@ fun DashboardScreenView(
                     FieldBottomBar(
                         items = bottomBarItems,
                         selectedItemIndex = selectedTab,
-                        onItemSelect = { selectedTab = it }
+                        onItemSelect = { if (it != selectedTab) tabHistory.add(selectedTab); selectedTab = it }
                     )
                 },
                 containerColor = FieldTheme.colors.gray950
@@ -348,6 +385,7 @@ fun DashboardScreenView(
                             role = resolvedRole,
                             metrics = metrics,
                             queueItems = filteredQueueItems,
+                            isLoading = isLoading,
                             onQuickActionClick = onQuickActionClick,
                             onQueueItemClick = onQueueItemClick,
                             onNavigateToCreateApplication = onNavigateToCreateApplication
@@ -362,7 +400,7 @@ fun DashboardScreenView(
                             userName = userName,
                             userEmail = userEmail,
                             role = resolvedRole,
-                            onBackClick = { selectedTab = 0 },
+                            onBackClick = { navigateToTab(0) },
                             onNavigateToOfflineQueue = onNavigateToOfflineQueue,
                             onSignOutClick = { showSignOutConfirmation = true }
                         )
@@ -405,6 +443,7 @@ fun PhoneDashboardHome(
     role: UserRole,
     metrics: List<MetricData>,
     queueItems: List<QueueItem>,
+    isLoading: Boolean = false,
     onQuickActionClick: (String) -> Unit,
     onQueueItemClick: (appId: String) -> Unit = {},
     onNavigateToCreateApplication: () -> Unit = {}
@@ -638,7 +677,25 @@ fun PhoneDashboardHome(
                     style = FieldTheme.typography.label,
                     color = FieldTheme.colors.gray500
                 )
-                if (queueItems.isEmpty()) {
+                if (isLoading) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        repeat(4) {
+                            FieldCard(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        LoadingSkeleton(height = 14.dp, width = 140.dp)
+                                        LoadingSkeleton(height = 10.dp, width = 90.dp)
+                                    }
+                                    LoadingSkeleton(height = 24.dp, width = 70.dp, cornerRadius = 12.dp)
+                                }
+                            }
+                        }
+                    }
+                } else if (queueItems.isEmpty()) {
                     EmptyState(text = "No borrowers found. Register a new client to begin.")
                     Spacer(modifier = Modifier.height(12.dp))
                     PrimaryButton(
@@ -667,6 +724,7 @@ fun TabletDashboardHome(
     role: UserRole,
     metrics: List<MetricData>,
     queueItems: List<QueueItem>,
+    isLoading: Boolean = false,
     onQuickActionClick: (String) -> Unit,
     onQueueItemClick: (appId: String) -> Unit = {},
     onNavigateToCreateApplication: () -> Unit = {}
@@ -841,7 +899,23 @@ fun TabletDashboardHome(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    if (queueItems.isEmpty()) {
+                    if (isLoading) {
+                        items(4) {
+                            FieldCard(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        LoadingSkeleton(height = 14.dp, width = 160.dp)
+                                        LoadingSkeleton(height = 10.dp, width = 100.dp)
+                                    }
+                                    LoadingSkeleton(height = 24.dp, width = 80.dp, cornerRadius = 12.dp)
+                                }
+                            }
+                        }
+                    } else if (queueItems.isEmpty()) {
                         item {
                             EmptyState(text = "No borrowers found. Register a new client to begin.")
                             Spacer(modifier = Modifier.height(12.dp))

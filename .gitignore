@@ -139,6 +139,8 @@ temp/
 # ---------------------------------------------------------------------------
 reports/
 exports/
+scripts/
 *.csv.local
 *.xlsx.local
 *.pdf.local
+populate_db.py

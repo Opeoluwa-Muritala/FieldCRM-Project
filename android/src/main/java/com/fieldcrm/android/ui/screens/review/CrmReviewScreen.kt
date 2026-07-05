@@ -50,7 +50,20 @@ fun CrmReviewScreen(
     }
 
     Scaffold(
-        topBar = { FieldTopAppBar(title = "CRM Review", onBackClick = onBack) }
+        topBar = { 
+            FieldTopAppBar(
+                title = "CRM Review",
+                navigationIcon = {
+                    androidx.compose.material3.IconButton(onClick = onBack) {
+                        androidx.compose.material3.Icon(
+                            imageVector = com.fieldcrm.android.ui.theme.FieldIcons.ArrowBackOutlined, 
+                            contentDescription = "Back", 
+                            tint = androidx.compose.ui.graphics.Color.White
+                        )
+                    }
+                }
+            ) 
+        }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -61,11 +74,11 @@ fun CrmReviewScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             SectionCard(title = "Loan Summary") {
-                LabelValue("Applicant", application.applicantName)
-                LabelValue("Ref",       application.refNo ?: "—")
+                LabelValue("Applicant", application.applicant_name)
+                LabelValue("Ref",       application.id.take(8))
                 LabelValue("Amount",    application.amount?.let { "₦%,.0f".format(it) } ?: "—")
                 LabelValue("Tenor",     application.tenure?.let { "$it months" } ?: "—")
-                LabelValue("Stage",     application.current_stage ?: "—")
+                LabelValue("Stage",     application.current_stage.toString())
             }
 
             SectionCard(title = "CBN §1.6 Credit File Checklist") {
@@ -146,7 +159,7 @@ private fun ChecklistItem(
         Text(
             text = label,
             style = FieldTheme.typography.body,
-            color = FieldTheme.colors.gray200,
+            color = FieldTheme.colors.gray400,
             fontWeight = if (checked) FontWeight.Medium else FontWeight.Normal,
             modifier = Modifier.padding(top = 12.dp)
         )

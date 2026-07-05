@@ -586,8 +586,7 @@ async def get_mobile_guarantor(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    app = await _get_application_or_404(conn, application_id, current_user)
-    _ensure_intake_writer(app, current_user)
+    await _get_application_or_404(conn, application_id, current_user)
     return {"slot": slot, "data": await _guarantor_service(conn).get_wizard_data(application_id, slot)}
 
 

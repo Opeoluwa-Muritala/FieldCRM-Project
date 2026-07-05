@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import androidx.lifecycle.viewModelScope
+import com.fieldcrm.android.data.api.LoginOutcome
 import com.fieldcrm.android.data.repository.AuthRepository
 import kotlinx.coroutines.launch
 
@@ -34,22 +35,22 @@ class LoginViewModel(
         restoreSession()
     }
 
-    // On cold start: check if a stored session exists and is still valid on the server
+    // On cold start: restore if stored session is locally valid.
+    // Only invalidate if the server definitively rejects the token (null = network error → keep session).
     private fun restoreSession() {
         _uiState.update { it.copy(isRestoringSession = true) }
         viewModelScope.launch {
             val stored = sessionStore.load()
             if (stored != null) {
-                val stillValid = authRepository.validateToken(stored.token)
-                if (stillValid) {
-                    // Extend TTL on each successful validation — keeps active users logged in
-                    sessionStore.extendSession()
-                    _uiState.update { it.copy(isRestoringSession = false) }
-                    _restoredSession.value = stored
-                    return@launch
-                } else {
-                    sessionStore.clear()
+                val result = authRepository.validateToken(stored.token)
+                when {
+                    result == true -> sessionStore.extendSession()
+                    result == false -> { sessionStore.clear(); _uiState.update { it.copy(isRestoringSession = false) }; return@launch }
+                    // null = network error — keep the session alive using local expiry
                 }
+                _uiState.update { it.copy(isRestoringSession = false) }
+                _restoredSession.value = stored
+                return@launch
             }
             _uiState.update { it.copy(isRestoringSession = false) }
         }
@@ -76,26 +77,34 @@ class LoginViewModel(
 
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            val token = authRepository.authenticate(state.email, state.password)
-            if (token == null) {
-                _uiState.update { it.copy(isLoading = false, error = "Invalid credentials. Please check your email and password.") }
-                return@launch
+            when (val outcome = authRepository.authenticate(state.email, state.password)) {
+                is LoginOutcome.NetworkError -> {
+                    _uiState.update { it.copy(isLoading = false, error = "network_error") }
+                    return@launch
+                }
+                is LoginOutcome.InvalidCredentials -> {
+                    _uiState.update { it.copy(isLoading = false, error = "invalid_credentials") }
+                    return@launch
+                }
+                is LoginOutcome.ServerError -> {
+                    _uiState.update { it.copy(isLoading = false, error = "Server error (${outcome.code}). Try again later.") }
+                    return@launch
+                }
+                is LoginOutcome.Success -> {
+                    val me = authRepository.fetchMe()
+                    val session = UserSession(
+                        token = outcome.token,
+                        role = if (me != null) UserRole.fromServerRole(me.role) else UserRole.LOAN_OFFICER,
+                        orgId = me?.org_id ?: "org_1",
+                        userEmail = me?.email ?: state.email,
+                        userName = me?.full_name ?: state.email.substringBefore("@"),
+                        loginExpiresAt = System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000
+                    )
+                    sessionStore.save(session)
+                    _uiState.update { it.copy(isLoading = false) }
+                    onSuccess(session)
+                }
             }
-
-            // Fetch real profile from server — role, name, orgId
-            val me = authRepository.fetchMe()
-            val session = UserSession(
-                token = token,
-                role = if (me != null) UserRole.fromServerRole(me.role) else UserRole.LOAN_OFFICER,
-                orgId = me?.org_id ?: "org_1",
-                userEmail = me?.email ?: state.email,
-                userName = me?.full_name ?: state.email.substringBefore("@"),
-                loginExpiresAt = System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000
-            )
-
-            sessionStore.save(session)
-            _uiState.update { it.copy(isLoading = false) }
-            onSuccess(session)
         }
     }
 
@@ -106,17 +115,15 @@ class LoginViewModel(
         login(onSuccess)
     }
 
-    // Periodic sync — call from MainActivity's onResume or a WorkManager job
-    // Returns true if the session is still valid and extends the TTL
+    // Periodic sync — only clears session on a definitive server rejection (false).
+    // Network errors (null) leave the session untouched — offline users stay logged in.
     fun syncSession(onExpired: () -> Unit) {
         val stored = sessionStore.load() ?: return
         viewModelScope.launch {
-            val valid = authRepository.validateToken(stored.token)
-            if (valid) {
-                sessionStore.extendSession()
-            } else {
-                sessionStore.clear()
-                onExpired()
+            when (authRepository.validateToken(stored.token)) {
+                true -> sessionStore.extendSession()
+                false -> { sessionStore.clear(); onExpired() }
+                null -> { /* network error — keep session alive via local expiry */ }
             }
         }
     }

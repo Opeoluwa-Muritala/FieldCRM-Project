@@ -32,7 +32,18 @@ fun ParDashboardScreen(
 ) {
     Scaffold(
         topBar = {
-            FieldTopAppBar(title = "Portfolio at Risk (PAR)", onBackClick = onBack)
+            FieldTopAppBar(
+                title = "Portfolio at Risk (PAR)",
+                navigationIcon = {
+                    androidx.compose.material3.IconButton(onClick = onBack) {
+                        androidx.compose.material3.Icon(
+                            imageVector = com.fieldcrm.android.ui.theme.FieldIcons.ArrowBackOutlined, 
+                            contentDescription = "Back", 
+                            tint = androidx.compose.ui.graphics.Color.White
+                        )
+                    }
+                }
+            )
         }
     ) { padding ->
         if (isLoading) {

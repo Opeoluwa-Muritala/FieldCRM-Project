@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.core.session.UserRole
 import com.fieldcrm.android.data.api.AuditTrailEvent
+import com.fieldcrm.android.data.repository.ApplicationDetailResult
 import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.screens.common.DetailItem
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
@@ -33,6 +34,8 @@ fun ApplicationDetailScreenView(
     application: LoanApplicationModel,
     borrower: BorrowerModel?,
     role: UserRole?,
+    appDetail: ApplicationDetailResult? = null,
+    isLoadingDetail: Boolean = false,
     onBackClick: () -> Unit,
     onNavigateToDocumentUpload: () -> Unit = {},
     onNavigateToPledgeTrust: () -> Unit = {},
@@ -179,31 +182,155 @@ fun ApplicationDetailScreenView(
                                 onToggle = { isBorrowerSectionExpanded = !isBorrowerSectionExpanded }
                             )
                             if (isBorrowerSectionExpanded) {
+                                if (isLoadingDetail) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    FieldCard { DetailSkeletonBlock() }
+                                    return@item
+                                }
+                                val i = appDetail?.intake ?: emptyMap()
+                                fun intakeStr(vararg keys: String): String {
+                                    for (k in keys) {
+                                        val v = i[k]?.toString()?.takeIf { it.isNotBlank() && it != "null" }
+                                        if (v != null) return v
+                                    }
+                                    return "—"
+                                }
+
+                                val bName = intakeStr("applicant_full_name", "full_name", "applicant_name")
+                                    .takeIf { it != "—" } ?: (borrower?.name?.takeIf { it.isNotBlank() } ?: application.applicant_name)
+                                val bPhone = intakeStr("phone", "phone_numbers", "phone_number")
+                                    .takeIf { it != "—" } ?: (borrower?.phone?.takeIf { it.isNotBlank() } ?: "—")
+                                val bBvn = intakeStr("bvn")
+                                    .takeIf { it != "—" } ?: (borrower?.bvn?.takeIf { it.isNotBlank() } ?: "—")
+                                val bNin = intakeStr("nin")
+                                    .takeIf { it != "—" } ?: (borrower?.nin?.takeIf { it.isNotBlank() } ?: "—")
+                                val bAddress = intakeStr("physical_address", "address", "home_address", "residential_address")
+                                    .takeIf { it != "—" } ?: (borrower?.physical_address?.takeIf { it.isNotBlank() } ?: "—")
+                                val bDob = intakeStr("dob", "date_of_birth")
+                                val bMarital = intakeStr("marital_status")
+                                val bEmployment = intakeStr("employment_status")
+                                    .takeIf { it != "—" } ?: (borrower?.employment_status?.takeIf { it.isNotBlank() } ?: "—")
+                                val bEmployer = intakeStr("employer_name", "business_name")
+                                    .takeIf { it != "—" } ?: (borrower?.employer_name?.takeIf { it.isNotBlank() } ?: "—")
+                                val bIncome = intakeStr("monthly_income", "monthly_salary")
+                                    .takeIf { it != "—" }
+                                    ?.toDoubleOrNull()
+                                    ?.let { "₦${String.format(Locale.US, "%,.0f", it)}" }
+                                    ?: (borrower?.monthly_income?.let { "₦${String.format(Locale.US, "%,.0f", it)}" } ?: "—")
+                                val bBank = intakeStr("bank_name")
+                                    .takeIf { it != "—" } ?: (borrower?.bank_name?.takeIf { it.isNotBlank() } ?: "—")
+                                val bAccount = intakeStr("account_number")
+                                    .takeIf { it != "—" } ?: (borrower?.account_number?.takeIf { it.isNotBlank() } ?: "—")
+                                val bGps = intakeStr("gps_coordinates")
+                                    .takeIf { it != "—" } ?: (borrower?.gps_coordinates?.takeIf { it.isNotBlank() } ?: "—")
+                                val g1Name = intakeStr("guarantor_1_name")
+                                val g2Name = intakeStr("guarantor_2_name")
+
                                 Spacer(modifier = Modifier.height(8.dp))
                                 FieldCard {
-                                    val bName = borrower?.name?.takeIf { it.isNotBlank() } ?: "—"
-                                    val bBvn = borrower?.bvn?.takeIf { it.isNotBlank() } ?: "—"
-                                    val bNin = borrower?.nin?.takeIf { it.isNotBlank() } ?: "—"
-                                    val bLga = borrower?.physical_address?.takeIf { it.isNotBlank() } ?: "—"
-
-                                    DetailItem(label = "Applicant Full Name", value = bName)
-                                    DetailItem(label = "Primary Address / LGA Node", value = bLga)
+                                    Text("PERSONAL INFORMATION", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    DetailItem(label = "Full Name", value = bName)
+                                    DetailItem(label = "Phone Number", value = bPhone)
+                                    DetailItem(label = "Physical Address", value = bAddress)
                                     Row(modifier = Modifier.fillMaxWidth()) {
                                         Column(modifier = Modifier.weight(1f)) {
-                                            DetailItem(label = "BVN Ref", value = bBvn, isMono = true)
+                                            DetailItem(label = "Date of Birth", value = bDob)
                                         }
                                         Column(modifier = Modifier.weight(1f)) {
-                                            DetailItem(label = "NIN Ref", value = bNin, isMono = true)
+                                            DetailItem(label = "Marital Status", value = bMarital)
                                         }
                                     }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text("IDENTITY", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = "IDENTITY CONFIDENCE METRICS",
-                                        style = FieldTheme.typography.label,
-                                        color = FieldTheme.colors.gray500
-                                    )
+                                    Row(modifier = Modifier.fillMaxWidth()) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            DetailItem(label = "BVN", value = bBvn, isMono = true)
+                                        }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            DetailItem(label = "NIN", value = bNin, isMono = true)
+                                        }
+                                    }
+                                    if (bGps != "—") DetailItem(label = "GPS Coordinates", value = bGps, isMono = true)
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text("EMPLOYMENT & INCOME", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(modifier = Modifier.fillMaxWidth()) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            DetailItem(label = "Employment Status", value = bEmployment)
+                                        }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            DetailItem(label = "Monthly Income", value = bIncome, isMono = true)
+                                        }
+                                    }
+                                    DetailItem(label = "Employer / Business Name", value = bEmployer)
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text("BANK DETAILS", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(modifier = Modifier.fillMaxWidth()) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            DetailItem(label = "Bank Name", value = bBank)
+                                        }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            DetailItem(label = "Account Number", value = bAccount, isMono = true)
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text("IDENTITY CONFIDENCE METRICS", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     ConfidenceBar(percentage = 0.94f)
+                                }
+
+                                if (g1Name != "—" || g2Name != "—") {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    FieldCard {
+                                        Text("GUARANTOR INFORMATION", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        if (g1Name != "—") {
+                                            Text("Guarantor 1", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray300)
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            DetailItem(label = "Full Name", value = g1Name)
+                                            DetailItem(label = "Phone", value = intakeStr("guarantor_1_phone"))
+                                            DetailItem(label = "Address", value = intakeStr("guarantor_1_address"))
+                                            Row(modifier = Modifier.fillMaxWidth()) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    DetailItem(label = "BVN", value = intakeStr("guarantor_1_bvn"), isMono = true)
+                                                }
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    DetailItem(label = "NIN", value = intakeStr("guarantor_1_nin"), isMono = true)
+                                                }
+                                            }
+                                            val g1Status = intakeStr("guarantor_1_status")
+                                            if (g1Status != "—") DetailItem(label = "Status", value = g1Status)
+                                        }
+                                        if (g1Name != "—" && g2Name != "—") {
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                            FieldDivider()
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                        }
+                                        if (g2Name != "—") {
+                                            Text("Guarantor 2", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray300)
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            DetailItem(label = "Full Name", value = g2Name)
+                                            DetailItem(label = "Phone", value = intakeStr("guarantor_2_phone"))
+                                            DetailItem(label = "Address", value = intakeStr("guarantor_2_address"))
+                                            Row(modifier = Modifier.fillMaxWidth()) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    DetailItem(label = "BVN", value = intakeStr("guarantor_2_bvn"), isMono = true)
+                                                }
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    DetailItem(label = "NIN", value = intakeStr("guarantor_2_nin"), isMono = true)
+                                                }
+                                            }
+                                            val g2Status = intakeStr("guarantor_2_status")
+                                            if (g2Status != "—") DetailItem(label = "Status", value = g2Status)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -216,6 +343,11 @@ fun ApplicationDetailScreenView(
                                 onToggle = { isCollateralSectionExpanded = !isCollateralSectionExpanded }
                             )
                             if (isCollateralSectionExpanded) {
+                                if (isLoadingDetail) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    FieldCard { DetailSkeletonBlock(rows = 3) }
+                                    return@item
+                                }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 FieldCard {
                                     val cDesc = application.collateral_desc?.takeIf { it.isNotBlank() } ?: "—"
@@ -235,21 +367,55 @@ fun ApplicationDetailScreenView(
                                         color = FieldTheme.colors.gray500
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    // No document model yet — prompt to upload
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(6.dp))
-                                            .background(FieldTheme.colors.gray850, RoundedCornerShape(6.dp))
-                                            .clickable { onNavigateToDocumentUpload() }
-                                            .padding(horizontal = 12.dp, vertical = 14.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "No document uploaded — tap to upload",
-                                            style = FieldTheme.typography.body,
-                                            color = FieldTheme.colors.gray500
-                                        )
+                                    val docs = appDetail?.documents ?: emptyList()
+                                    if (docs.isEmpty()) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(6.dp))
+                                                .background(FieldTheme.colors.gray850, RoundedCornerShape(6.dp))
+                                                .clickable { onNavigateToDocumentUpload() }
+                                                .padding(horizontal = 12.dp, vertical = 14.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "No document uploaded — tap to upload",
+                                                style = FieldTheme.typography.body,
+                                                color = FieldTheme.colors.gray500
+                                            )
+                                        }
+                                    } else {
+                                        docs.forEach { doc ->
+                                            val docType = (doc["doc_type"] as? String ?: "Document")
+                                                .replace("_", " ").replaceFirstChar { it.uppercase() }
+                                            val verified = doc["verified"] as? Boolean ?: false
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 6.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(docType, style = FieldTheme.typography.body,
+                                                    color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f))
+                                                StatusChip(
+                                                    label = if (verified) "Verified" else "Pending",
+                                                    isPositive = verified
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .border(0.5.dp, FieldTheme.colors.purple600.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                                .clickable { onNavigateToDocumentUpload() }
+                                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("+ Add document", style = FieldTheme.typography.body,
+                                                color = FieldTheme.colors.purple400)
+                                        }
                                     }
                                 }
                             }
@@ -270,16 +436,23 @@ fun ApplicationDetailScreenView(
                                     .background(FieldTheme.colors.gray850, RoundedCornerShape(8.dp))
                                     .padding(12.dp)
                             ) {
-                                val hasIdentity = borrower != null && borrower.name.isNotEmpty() && borrower.bvn.isNotEmpty()
-                                val isPledgeSigned = application.collateral_desc?.contains("Pledge") == true || application.collateral_desc?.contains("Executed") == true
-                                val hasGps = borrower?.gps_coordinates?.let { it.isNotEmpty() && it.contains("Lat:") } == true
-                                val hasGuarantor = borrower?.guarantor_name?.isNotEmpty() == true
+                                val r = appDetail?.readiness ?: emptyMap()
+                                val hasIdentity = (r["loan_form_submitted"] as? Boolean)
+                                    ?: (borrower != null && borrower.bvn.isNotEmpty())
+                                val isPledgeSigned = (r["pledge_form_submitted"] as? Boolean)
+                                    ?: (application.collateral_desc?.contains("Pledge") == true)
+                                val hasGps = (r["visitation_status"] as? String)?.let { it == "completed" || it == "concurred" }
+                                    ?: (borrower?.gps_coordinates?.isNotEmpty() == true)
+                                val hasGuarantor = (r["guarantor_form_submitted"] as? Boolean)
+                                    ?: (borrower?.guarantor_name?.isNotEmpty() == true)
+                                val hasDocuments = ((r["verified_docs"] as? Int) ?: (appDetail?.documents?.count { it["verified"] == true } ?: 0)) > 0
 
                                 val gatesList = listOf(
                                     Triple("Identity Verification Passed", if (hasIdentity) StatusChipVariant.Verified else StatusChipVariant.Missing, onNavigateToDocumentUpload),
                                     Triple("Pledge Document Signed", if (isPledgeSigned) StatusChipVariant.Signed else StatusChipVariant.Missing, onNavigateToPledgeTrust),
-                                    Triple("GPS Visitation Photo Stamped", if (hasGps) StatusChipVariant.Verified else StatusChipVariant.Missing, onNavigateToVisitationReport),
-                                    Triple("Guarantor Verification Logged", if (hasGuarantor) StatusChipVariant.Verified else StatusChipVariant.Missing, onNavigateToGuarantorsForm)
+                                    Triple("GPS Visitation Completed", if (hasGps) StatusChipVariant.Verified else StatusChipVariant.Missing, onNavigateToVisitationReport),
+                                    Triple("Guarantor Verification Logged", if (hasGuarantor) StatusChipVariant.Verified else StatusChipVariant.Missing, onNavigateToGuarantorsForm),
+                                    Triple("Documents Uploaded & Verified", if (hasDocuments) StatusChipVariant.Verified else StatusChipVariant.Missing, onNavigateToDocumentUpload)
                                 )
                                 gatesList.forEachIndexed { index, gate ->
                                     Row(
@@ -309,6 +482,79 @@ fun ApplicationDetailScreenView(
                                     if (index < gatesList.size - 1) {
                                         FieldDivider()
                                     }
+                                }
+                            }
+                        }
+
+                        // Visitation Report
+                        item {
+                            val v = appDetail?.visitation ?: emptyMap()
+                            val metWith = v["met_with"]?.toString()?.takeIf { it.isNotBlank() && it != "null" }
+                            val premises = v["premises_description"]?.toString()?.takeIf { it.isNotBlank() && it != "null" }
+                            val direction = v["direction_from_branch"]?.toString()?.takeIf { it.isNotBlank() && it != "null" }
+                            val visitDate = v["visit_date"]?.toString()?.takeIf { it.isNotBlank() && it != "null" }
+                            val visitStatus = v["status"]?.toString()?.takeIf { it.isNotBlank() && it != "null" }
+                            val managerNotes = v["manager_notes"]?.toString()?.takeIf { it.isNotBlank() && it != "null" }
+                            val businessCondition = v["business_condition"]?.toString()?.takeIf { it.isNotBlank() && it != "null" }
+
+                            if (metWith != null || premises != null || direction != null) {
+                                Text(
+                                    text = "VISITATION REPORT",
+                                    style = FieldTheme.typography.label,
+                                    color = FieldTheme.colors.gray500
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                FieldCard {
+                                    if (visitDate != null) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("Visit Date", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                            Text(visitDate, style = FieldTheme.typography.mono.copy(fontSize = 12.sp), color = FieldTheme.colors.gray300)
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                    }
+                                    if (metWith != null) DetailItem(label = "Met With", value = metWith)
+                                    if (premises != null) DetailItem(label = "Premises Description", value = premises)
+                                    if (direction != null) DetailItem(label = "Direction from Branch", value = direction)
+                                    if (businessCondition != null) DetailItem(label = "Business Condition", value = businessCondition)
+                                    if (managerNotes != null) DetailItem(label = "Manager Notes", value = managerNotes)
+                                    if (visitStatus != null) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("Status", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                            StatusChip(
+                                                label = visitStatus.replaceFirstChar { it.uppercase() },
+                                                isPositive = visitStatus == "concurred" || visitStatus == "completed"
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Officer Recommendation
+                        item {
+                            val rec = application.officer_recommendation?.takeIf { it.isNotBlank() }
+                            if (rec != null) {
+                                Text(
+                                    text = "OFFICER RECOMMENDATION",
+                                    style = FieldTheme.typography.label,
+                                    color = FieldTheme.colors.gray500
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                FieldCard {
+                                    Text(
+                                        text = rec,
+                                        style = FieldTheme.typography.body,
+                                        color = FieldTheme.colors.gray500
+                                    )
                                 }
                             }
                         }
@@ -385,6 +631,22 @@ fun ApplicationDetailScreenView(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailSkeletonBlock(rows: Int = 6) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        repeat(rows) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                LoadingSkeleton(height = 12.dp, width = 90.dp)
+                LoadingSkeleton(height = 14.dp, width = 160.dp)
             }
         }
     }

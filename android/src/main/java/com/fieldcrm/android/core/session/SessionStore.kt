@@ -45,8 +45,8 @@ class SessionStore(context: Context) {
         private const val KEY_PERMISSIONS_SEEN = "permissions_seen"
         private const val KEY_DARK_MODE = "dark_mode"
 
-        // 30-day session TTL — matches the mobile JWT lifetime issued by login-mobile
-        private const val SESSION_TTL_MS = 30L * 24 * 60 * 60 * 1000
+        // 7-day session TTL — matches the mobile JWT lifetime issued by login-mobile
+        private const val SESSION_TTL_MS = 7L * 24 * 60 * 60 * 1000
     }
 
     fun save(session: UserSession) {
