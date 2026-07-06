@@ -46,13 +46,14 @@ private val stageOrder = listOf("Intake", "OCR Review", "Credit Review", "Approv
 private val stageMapping = mapOf(
     "intake" to "Intake",
     "ocr_review" to "OCR Review",
-    "ocr review" to "OCR Review",
     "credit_review" to "Credit Review",
-    "credit review" to "Credit Review",
-    "approved" to "Approved",
-    "bm_approved" to "Approved",
-    "bm approved" to "Approved",
-    "disbursed" to "Disbursed"
+    "branch_approval" to "Approved",
+    "crm_review" to "Approved",
+    "executive_approval" to "Approved",
+    "disbursement_ready" to "Disbursed",
+    "disbursed" to "Disbursed",
+    "returned" to "Returned",
+    "rejected" to "Returned"
 )
 
 @Composable
@@ -67,11 +68,11 @@ fun PipelineScreen(
     val pipelineEntries = remember(applications, borrowers) {
         if (applications.isNotEmpty()) {
             applications.map { app ->
-                val borrower = borrowers.find { it.id == app.borrower_id }
+                val borrower = borrowers.find { it.id == app.id }
                 PipelineEntry(
                     applicantName = borrower?.name ?: "Unknown Applicant",
-                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount)}",
-                    stage = stageMapping[app.status.lowercase(Locale.getDefault())] ?: "Intake",
+                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount ?: 0.0)}",
+                    stage = stageMapping[app.stage] ?: "Intake",
                     appId = app.id
                 )
             }

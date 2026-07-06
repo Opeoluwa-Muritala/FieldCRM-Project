@@ -51,15 +51,36 @@ class AndroidSyncWorker(
                 for (a in applications) {
                     database.appDatabaseQueries.insertApplication(
                         id = a.id,
-                        borrower_id = a.borrower_id,
-                        applicant_name = a.applicant_name,
                         org_id = a.org_id,
-                        current_stage = a.current_stage.toLong(),
-                        current_owner_id = a.current_owner_id,
-                        status = a.status,
+                        ref_no = a.ref_no,
+                        customer_type = a.customer_type,
+                        loan_type = a.loan_type,
+                        stage = a.stage,
+                        applicant_name = a.applicant_name,
+                        bvn = a.bvn,
+                        phone = a.phone,
                         amount = a.amount,
-                        tenure = a.tenure.toLong(),
-                        product_type = a.product_type
+                        tenor_months = a.tenor_months?.toLong(),
+                        purpose = a.purpose,
+                        repayment_mode = a.repayment_mode,
+                        created_by = a.created_by,
+                        current_owner_id = a.current_owner_id,
+                        credit_officer_id = a.credit_officer_id,
+                        branch_manager_id = a.branch_manager_id,
+                        return_reason = a.return_reason,
+                        approved_by = a.approved_by,
+                        approved_at = a.approved_at,
+                        disbursed_at = a.disbursed_at,
+                        interest_rate = a.interest_rate,
+                        repayment_frequency = a.repayment_frequency,
+                        schedule_method = a.schedule_method,
+                        classification = a.classification,
+                        days_past_due = a.days_past_due.toLong(),
+                        crm_notes = a.crm_notes,
+                        crm_reviewed_by = a.crm_reviewed_by,
+                        executive_approved_by = a.executive_approved_by,
+                        created_at = a.created_at,
+                        updated_at = a.updated_at
                     )
                 }
             } catch (_: Exception) {

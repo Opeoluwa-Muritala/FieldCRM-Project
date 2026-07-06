@@ -44,7 +44,7 @@ fun SearchResultsScreen(
     val recentSearches = listOf("Kalu", "MMFB-041", "Adaeze", "Guarantor")
 
     val filteredApps = searchState.results?.applications?.map {
-        SearchResultApplication(name = it.borrower_name, refNo = it.ref_no, id = it.id)
+        SearchResultApplication(name = it.applicant_name, refNo = it.ref_no, id = it.id)
     } ?: emptyList()
 
     val filteredDocs = emptyList<SearchResultDocument>()

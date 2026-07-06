@@ -283,17 +283,11 @@ fun OcrReviewScreen(
 @Composable
 fun PreviewOcrReviewScreen() {
     val demoApp = LoanApplicationModel(
-        id = "app_preview_001",
-        org_id = "org_1",
-        borrower_id = "borrower_1",
-        current_stage = 2,
-        current_owner_id = "LO_1",
-        status = "OCR Review",
-        amount = 250000.0,
-        tenure = 6,
-        product_type = "SME Loan",
-        interest_rate = 15.0,
-        repayment_frequency = "Monthly",
+        id = "app_preview_001", org_id = "org_1", ref_no = "MMFB-001",
+        stage = "ocr_review", loan_type = "enterprise", customer_type = "new",
+        applicant_name = "Adaeze Okonkwo", created_by = "LO_1", current_owner_id = "LO_1",
+        amount = 250000.0, tenor_months = 6,
+        interest_rate = 15.0, repayment_frequency = "monthly",
         created_at = "2026-07-01"
     )
     FieldCRMTheme {

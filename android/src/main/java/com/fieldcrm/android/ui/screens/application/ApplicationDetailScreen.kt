@@ -80,7 +80,7 @@ fun ApplicationDetailScreenView(
                         }
                     },
                     actions = {
-                        StatusChip(variant = getStatusVariant(application.status))
+                        StatusChip(variant = getStatusVariant(application.stage))
                     }
                 )
             },
@@ -146,7 +146,7 @@ fun ApplicationDetailScreenView(
                             Box(modifier = Modifier.clickable { onNavigateToFormWizard() }) {
                                 LoanStageTimeline(
                                     stages = listOf("Intake", "OCR Review", "Credit Review", "BM Approved", "Ready"),
-                                    currentStageIndex = application.current_stage
+                                    currentStageIndex = application.stageIndex
                                 )
                             }
                         }
@@ -161,13 +161,13 @@ fun ApplicationDetailScreenView(
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Row(modifier = Modifier.fillMaxWidth()) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        DetailItem(label = "Requested Amount", value = "₦${String.format(Locale.US, "%,.0f", application.amount)}", isMono = true)
-                                        DetailItem(label = "Interest Rate", value = "${application.interest_rate}% per annum")
-                                        DetailItem(label = "Repayment Frequency", value = application.repayment_frequency)
+                                        DetailItem(label = "Requested Amount", value = "₦${String.format(Locale.US, "%,.0f", application.amount ?: 0.0)}", isMono = true)
+                                        DetailItem(label = "Interest Rate", value = "${application.interest_rate ?: "—"}% per annum")
+                                        DetailItem(label = "Repayment Frequency", value = application.repayment_frequency ?: "—")
                                     }
                                     Column(modifier = Modifier.weight(1f)) {
-                                        DetailItem(label = "Loan Tenure", value = "${application.tenure} Months")
-                                        DetailItem(label = "Product Type", value = application.product_type)
+                                        DetailItem(label = "Loan Tenor", value = "${application.tenor_months ?: "—"} Months")
+                                        DetailItem(label = "Loan Type", value = application.loan_type.replaceFirstChar { it.uppercase() })
                                         DetailItem(label = "Created Date", value = application.created_at)
                                     }
                                 }
@@ -350,15 +350,9 @@ fun ApplicationDetailScreenView(
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 FieldCard {
-                                    val cDesc = application.collateral_desc?.takeIf { it.isNotBlank() } ?: "—"
-                                    val cVal = application.collateral_value ?: 0.0
+                                    val cDesc = application.purpose?.takeIf { it.isNotBlank() } ?: "—"
 
-                                    DetailItem(label = "Collateral Description", value = cDesc)
-                                    DetailItem(
-                                        label = "Estimated Value",
-                                        value = if (cVal > 0) "₦${String.format(Locale.US, "%,.0f", cVal)}" else "Not recorded",
-                                        isMono = true
-                                    )
+                                    DetailItem(label = "Loan Purpose / Collateral Description", value = cDesc)
 
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Text(
@@ -440,7 +434,7 @@ fun ApplicationDetailScreenView(
                                 val hasIdentity = (r["loan_form_submitted"] as? Boolean)
                                     ?: (borrower != null && borrower.bvn.isNotEmpty())
                                 val isPledgeSigned = (r["pledge_form_submitted"] as? Boolean)
-                                    ?: (application.collateral_desc?.contains("Pledge") == true)
+                                    ?: (application.purpose?.contains("Pledge") == true)
                                 val hasGps = (r["visitation_status"] as? String)?.let { it == "completed" || it == "concurred" }
                                     ?: (borrower?.gps_coordinates?.isNotEmpty() == true)
                                 val hasGuarantor = (r["guarantor_form_submitted"] as? Boolean)
@@ -541,10 +535,10 @@ fun ApplicationDetailScreenView(
 
                         // Officer Recommendation
                         item {
-                            val rec = application.officer_recommendation?.takeIf { it.isNotBlank() }
+                            val rec = application.crm_notes?.takeIf { it.isNotBlank() }
                             if (rec != null) {
                                 Text(
-                                    text = "OFFICER RECOMMENDATION",
+                                    text = "CRM NOTES",
                                     style = FieldTheme.typography.label,
                                     color = FieldTheme.colors.gray500
                                 )
@@ -748,7 +742,7 @@ fun ApplicationActionFooter(
     ) {
         when (role) {
             null, UserRole.LOAN_OFFICER -> {
-                if (application != null && application.current_stage == 2) {
+                if (application != null && application.stage == "ocr_review") {
                     PrimaryButton(
                         text = "Verify OCR & Advance to Credit",
                         onClick = onNavigateToOcrReview,
@@ -801,20 +795,13 @@ fun PreviewApplicationDetailLoanOfficer() {
         created_at = "2026-06-18"
     )
     val demoApp = LoanApplicationModel(
-        id = "app_1",
-        org_id = "org_1",
-        borrower_id = "1",
-        current_stage = 2,
-        current_owner_id = "LO_1",
-        status = "Needs Review",
-        amount = 250000.0,
-        tenure = 6,
-        product_type = "SME Asset Acquisition",
-        interest_rate = 15.0,
-        repayment_frequency = "Monthly repayment",
-        collateral_desc = "Deed of pledge over local shop stock",
-        collateral_value = 850000.0,
-        officer_recommendation = "Approved with high shop confidence metrics",
+        id = "app_1", org_id = "org_1", ref_no = "MMFB-001",
+        stage = "ocr_review", loan_type = "enterprise", customer_type = "new",
+        applicant_name = "Adaeze Okonkwo", created_by = "LO_1", current_owner_id = "LO_1",
+        amount = 250000.0, tenor_months = 6,
+        interest_rate = 15.0, repayment_frequency = "monthly",
+        purpose = "Deed of pledge over local shop stock",
+        crm_notes = "Approved with high shop confidence metrics",
         created_at = "2026-06-18"
     )
     FieldCRMTheme {
@@ -842,20 +829,12 @@ fun PreviewApplicationDetailBranchManager() {
         created_at = "2026-06-20"
     )
     val demoApp = LoanApplicationModel(
-        id = "app_2",
-        org_id = "org_1",
-        borrower_id = "1",
-        current_stage = 3,
-        current_owner_id = "BM_1",
-        status = "Needs Review",
-        amount = 500000.0,
-        tenure = 12,
-        product_type = "Micro Enterprise Working Capital",
-        interest_rate = 12.0,
-        repayment_frequency = "Monthly repayment",
-        collateral_desc = "Land title document and registry check verification",
-        collateral_value = 1200000.0,
-        officer_recommendation = "",
+        id = "app_2", org_id = "org_1", ref_no = "MMFB-002",
+        stage = "credit_review", loan_type = "msef", customer_type = "existing",
+        applicant_name = "Emeka Obi", created_by = "LO_1", current_owner_id = "BM_1",
+        amount = 500000.0, tenor_months = 12,
+        interest_rate = 12.0, repayment_frequency = "monthly",
+        purpose = "Land title document and registry check verification",
         created_at = "2026-06-20"
     )
     FieldCRMTheme {
@@ -883,20 +862,12 @@ fun PreviewApplicationDetailTablet() {
         created_at = "2026-06-18"
     )
     val demoApp = LoanApplicationModel(
-        id = "app_3",
-        org_id = "org_1",
-        borrower_id = "1",
-        current_stage = 3,
-        current_owner_id = "BM_1",
-        status = "Approved",
-        amount = 1200000.0,
-        tenure = 12,
-        product_type = "Micro Enterprise Working Capital",
-        interest_rate = 12.0,
-        repayment_frequency = "Monthly repayment",
-        collateral_desc = "Land title document and registry check verification",
-        collateral_value = 2400000.0,
-        officer_recommendation = "",
+        id = "app_3", org_id = "org_1", ref_no = "MMFB-003",
+        stage = "branch_approval", loan_type = "msef", customer_type = "existing",
+        applicant_name = "Ngozi Eze", created_by = "LO_1", current_owner_id = "BM_1",
+        amount = 1200000.0, tenor_months = 12,
+        interest_rate = 12.0, repayment_frequency = "monthly",
+        purpose = "Land title document and registry check verification",
         created_at = "2026-06-18"
     )
     FieldCRMTheme {

@@ -87,12 +87,10 @@ fun LoanApplicationFormScreen(
 
             val updatedApp = application.copy(
                 amount = amount.toDoubleOrNull() ?: 0.0,
-                tenure = tenure.toIntOrNull() ?: 0,
-                product_type = product,
-                collateral_desc = collateralDesc,
-                collateral_value = collateralVal.toDoubleOrNull() ?: 0.0,
-                current_stage = 2,
-                status = "OCR Review"
+                tenor_months = tenure.toIntOrNull(),
+                loan_type = product,
+                purpose = collateralDesc.ifBlank { null },
+                stage = "ocr_review"
             )
 
             borrowerViewModel.updateBorrowerLocal(updatedBorrower) {
@@ -182,19 +180,19 @@ fun LoanApplicationFormContent(
     var facilityAmountInput by remember { mutableStateOf("") }
     var facilityTenureInput by remember { mutableStateOf("") }
 
-    var amountInput by remember { mutableStateOf(application.amount.toInt().toString()) }
-    var tenureInput by remember { mutableStateOf(application.tenure.toString()) }
-    var productInput by remember { mutableStateOf(application.product_type) }
+    var amountInput by remember { mutableStateOf(application.amount?.toInt()?.toString() ?: "") }
+    var tenureInput by remember { mutableStateOf(application.tenor_months?.toString() ?: "") }
+    var productInput by remember { mutableStateOf(application.loan_type) }
 
     // Step 6 mode of repayment
-    var modeOfRepayment by remember { mutableStateOf("Direct Debit") }
+    var modeOfRepayment by remember { mutableStateOf(application.repayment_mode ?: "direct_debit") }
 
     // Step 7 additional fields
     var accountNameInput by remember { mutableStateOf("") }
     var sortCodeInput by remember { mutableStateOf("") }
 
-    var collateralDescInput by remember { mutableStateOf(application.collateral_desc ?: "") }
-    var collateralValInput by remember { mutableStateOf(application.collateral_value?.toInt()?.toString() ?: "") }
+    var collateralDescInput by remember { mutableStateOf(application.purpose ?: "") }
+    var collateralValInput by remember { mutableStateOf("") }
 
     var bankInput by remember { mutableStateOf(borrower?.bank_name ?: "") }
     var accInput by remember { mutableStateOf(borrower?.account_number ?: "") }
@@ -1387,10 +1385,11 @@ fun WizardTabContent(
 @Composable
 fun PreviewWizardCompact() {
     val demoApp = LoanApplicationModel(
-        id = "app_1", org_id = "org_1", borrower_id = "1",
-        current_stage = 1, current_owner_id = "LO_1", status = "intake",
-        amount = 450000.0, tenure = 12, product_type = "Working Capital",
-        interest_rate = 18.5, repayment_frequency = "MONTHLY", created_at = ""
+        id = "app_1", org_id = "org_1", ref_no = "MMFB-001",
+        stage = "intake", loan_type = "enterprise", customer_type = "new",
+        applicant_name = "Emeka Chukwu", created_by = "LO_1", current_owner_id = "LO_1",
+        amount = 450000.0, tenor_months = 12,
+        interest_rate = 18.5, repayment_frequency = "monthly", created_at = ""
     )
     val demoBorrower = BorrowerModel(
         id = "1", org_id = "org_1", loan_officer_id = "LO_1",

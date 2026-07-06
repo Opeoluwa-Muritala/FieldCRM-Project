@@ -50,7 +50,7 @@ fun SystemActivityScreen(
     val controlItems = remember(applications, borrowers) {
         if (applications.isNotEmpty()) {
             applications.map { app ->
-                val borrower = borrowers.find { it.id == app.borrower_id }
+                val borrower = borrowers.find { it.id == app.id }
                 ControlQueueItem(
                     applicantName = borrower?.name ?: "Unknown Applicant",
                     amount = "₦${String.format(Locale.US, "%,.0f", app.amount)}",

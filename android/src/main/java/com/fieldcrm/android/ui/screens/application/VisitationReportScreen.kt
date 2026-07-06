@@ -55,7 +55,7 @@ fun VisitationReportScreen(
         onBackClick = onBackClick,
         onSubmitComplete = { locationState, remarks, metWith, premises, direction ->
             val updatedBorrower = borrower?.copy(gps_coordinates = locationState)
-            val updatedApp = application.copy(officer_recommendation = remarks)
+            val updatedApp = application.copy(crm_notes = remarks.ifBlank { null })
             if (updatedBorrower != null) {
                 borrowerViewModel.updateBorrowerLocal(updatedBorrower) {}
             }
@@ -79,7 +79,7 @@ fun VisitationReportContent(
     onSubmitComplete: (locationState: String, remarks: String, metWith: String, premises: String, direction: String) -> Unit
 ) {
     val context = LocalContext.current
-    var remarks by remember { mutableStateOf(application.officer_recommendation ?: "") }
+    var remarks by remember { mutableStateOf(application.crm_notes ?: "") }
     var locationState by remember { mutableStateOf(borrower?.gps_coordinates ?: "Click refresh to lock GPS coordinates") }
     var isRefreshingGPS by remember { mutableStateOf(false) }
     var visitDate by remember { mutableStateOf("") }
@@ -461,10 +461,11 @@ private fun querySystemGps(context: Context, onResult: (String) -> Unit) {
 @Composable
 fun PreviewVisitationCompact() {
     val demoApp = LoanApplicationModel(
-        id = "app_1", org_id = "org_1", borrower_id = "1",
-        current_stage = 1, current_owner_id = "LO_1", status = "intake",
-        amount = 180000.0, tenure = 4, product_type = "Working Capital",
-        interest_rate = 18.5, repayment_frequency = "MONTHLY", created_at = ""
+        id = "app_1", org_id = "org_1", ref_no = "MMFB-001",
+        stage = "intake", loan_type = "enterprise", customer_type = "new",
+        applicant_name = "Adaeze Okonkwo", created_by = "LO_1", current_owner_id = "LO_1",
+        amount = 180000.0, tenor_months = 4,
+        interest_rate = 18.5, repayment_frequency = "monthly", created_at = ""
     )
     val demoBorrower = BorrowerModel(
         id = "1", org_id = "org_1", loan_officer_id = "LO_1",

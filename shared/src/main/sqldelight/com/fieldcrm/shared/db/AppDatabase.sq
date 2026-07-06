@@ -1,16 +1,38 @@
 -- SQLite schema definitions for SQLDelight offline storage
+-- Aligned with BackendSchema.kt (PostgreSQL loan_applications table)
 
 CREATE TABLE LoanApplication (
-    id TEXT NOT NULL PRIMARY KEY,
-    borrower_id TEXT NOT NULL,
-    applicant_name TEXT NOT NULL,
-    org_id TEXT NOT NULL,
-    current_stage INTEGER NOT NULL,
-    current_owner_id TEXT NOT NULL,
-    status TEXT NOT NULL,
-    amount REAL NOT NULL,
-    tenure INTEGER NOT NULL,
-    product_type TEXT NOT NULL
+    id                    TEXT    NOT NULL PRIMARY KEY,
+    org_id                TEXT    NOT NULL,
+    ref_no                TEXT    NOT NULL DEFAULT '',
+    customer_type         TEXT    NOT NULL DEFAULT 'new',
+    loan_type             TEXT    NOT NULL DEFAULT 'enterprise',
+    stage                 TEXT    NOT NULL DEFAULT 'intake',
+    applicant_name        TEXT    NOT NULL,
+    bvn                   TEXT,
+    phone                 TEXT,
+    amount                REAL,
+    tenor_months          INTEGER,
+    purpose               TEXT,
+    repayment_mode        TEXT,
+    created_by            TEXT    NOT NULL DEFAULT '',
+    current_owner_id      TEXT,
+    credit_officer_id     TEXT,
+    branch_manager_id     TEXT,
+    return_reason         TEXT,
+    approved_by           TEXT,
+    approved_at           TEXT,
+    disbursed_at          TEXT,
+    interest_rate         REAL,
+    repayment_frequency   TEXT,
+    schedule_method       TEXT,
+    classification        TEXT    DEFAULT 'current',
+    days_past_due         INTEGER NOT NULL DEFAULT 0,
+    crm_notes             TEXT,
+    crm_reviewed_by       TEXT,
+    executive_approved_by TEXT,
+    created_at            TEXT    NOT NULL DEFAULT '',
+    updated_at            TEXT
 );
 
 -- Encrypted document cache — files stored in filesDir/field_docs/{id}.enc (AES-GCM via Android KeyStore)
@@ -29,20 +51,34 @@ CREATE TABLE LocalDocument (
 
 -- Offline Synchronisation Replay Queue
 CREATE TABLE SyncQueue (
-    id TEXT NOT NULL PRIMARY KEY,
-    action TEXT NOT NULL,
-    entity_id TEXT NOT NULL,
-    payload_json TEXT NOT NULL,   -- Complete serialized data payload
-    timestamp INTEGER NOT NULL,   -- Epoch mills to replay in strict chronological order
-    attempts INTEGER NOT NULL DEFAULT 0
+    id           TEXT    NOT NULL PRIMARY KEY,
+    action       TEXT    NOT NULL,
+    entity_id    TEXT    NOT NULL,
+    payload_json TEXT    NOT NULL,   -- Complete serialized data payload
+    timestamp    INTEGER NOT NULL,   -- Epoch millis to replay in strict chronological order
+    attempts     INTEGER NOT NULL DEFAULT 0
 );
 
 selectAllApplications:
-SELECT * FROM LoanApplication;
+SELECT * FROM LoanApplication ORDER BY updated_at DESC, created_at DESC;
+
+selectApplicationById:
+SELECT * FROM LoanApplication WHERE id = ?;
+
+selectApplicationsByStage:
+SELECT * FROM LoanApplication WHERE stage = ? ORDER BY updated_at DESC;
 
 insertApplication:
-INSERT OR REPLACE INTO LoanApplication (id, borrower_id, applicant_name, org_id, current_stage, current_owner_id, status, amount, tenure, product_type)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO LoanApplication (
+    id, org_id, ref_no, customer_type, loan_type, stage, applicant_name,
+    bvn, phone, amount, tenor_months, purpose, repayment_mode,
+    created_by, current_owner_id, credit_officer_id, branch_manager_id,
+    return_reason, approved_by, approved_at, disbursed_at,
+    interest_rate, repayment_frequency, schedule_method,
+    classification, days_past_due, crm_notes, crm_reviewed_by,
+    executive_approved_by, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- Local Document Operations
 insertLocalDocument:

@@ -46,7 +46,7 @@ fun OcrExceptionsScreen(
     val exceptions = remember(applications, borrowers) {
         if (applications.isNotEmpty()) {
             applications.map { app ->
-                val borrower = borrowers.find { it.id == app.borrower_id }
+                val borrower = borrowers.find { it.id == app.id }
                 OcrExceptionItem(
                     fieldName = "Document Review",
                     applicantName = borrower?.name ?: "Unknown Applicant",

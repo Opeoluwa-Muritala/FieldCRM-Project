@@ -176,7 +176,7 @@ fun BranchManagerReviewScreen(
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
                                     DetailItem(label = "Underwritten Stage", value = "Branch Approval")
-                                    DetailItem(label = "Primary Product", value = application.product_type)
+                                    DetailItem(label = "Primary Product", value = application.loan_type.replaceFirstChar { it.uppercase() })
                                 }
                             }
                             
@@ -188,8 +188,8 @@ fun BranchManagerReviewScreen(
                                 gates = listOf(
                                     ChecklistGate(
                                         label = "Collateral Valuation Registered",
-                                        isVerified = application.collateral_desc != null,
-                                        variant = if (application.collateral_desc != null) StatusChipVariant.Verified else StatusChipVariant.Missing
+                                        isVerified = application.purpose != null,
+                                        variant = if (application.purpose != null) StatusChipVariant.Verified else StatusChipVariant.Missing
                                     ),
                                     ChecklistGate(
                                         label = "GPS Visitation Coordinates Logged",

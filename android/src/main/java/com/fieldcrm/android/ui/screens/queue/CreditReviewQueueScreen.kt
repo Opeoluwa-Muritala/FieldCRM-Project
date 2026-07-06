@@ -49,12 +49,12 @@ fun CreditReviewQueueScreen(
     val reviewItems = remember(applications, borrowers) {
         if (applications.isNotEmpty()) {
             applications.map { app ->
-                val borrower = borrowers.find { it.id == app.borrower_id }
+                val borrower = borrowers.find { it.id == app.id }
                 CreditReviewItem(
-                    applicantName = borrower?.name ?: "Unknown Applicant",
-                    productType = app.product_type,
-                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount)}",
-                    tenure = "—",
+                    applicantName = borrower?.name ?: app.applicant_name,
+                    productType = app.loan_type.replaceFirstChar { it.uppercase() },
+                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount ?: 0.0)}",
+                    tenure = app.tenor_months?.let { "$it MO" } ?: "—",
                     appId = app.id
                 )
             }

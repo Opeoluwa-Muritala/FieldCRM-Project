@@ -148,15 +148,15 @@ fun CreditOfficerReviewScreen(
                             DetailItem(label = "Phone", value = borrower?.phone ?: "—")
                             FieldDivider()
                             Spacer(modifier = Modifier.height(4.dp))
-                            DetailItem(label = "Product Type", value = application.product_type)
+                            DetailItem(label = "Product Type", value = application.loan_type.replaceFirstChar { it.uppercase() })
                             DetailItem(
                                 label = "Loan Amount",
                                 value = "₦ ${String.format(Locale.US, "%,.2f", application.amount)}"
                             )
-                            DetailItem(label = "Tenure", value = "${application.tenure} months")
+                            DetailItem(label = "Tenure", value = "${application.tenor_months} months")
                             DetailItem(label = "Interest Rate", value = "${application.interest_rate}% p.a.")
                             DetailItem(label = "Repayment Frequency", value = application.repayment_frequency)
-                            DetailItem(label = "Application Status", value = application.status)
+                            DetailItem(label = "Application Status", value = application.displayStatus)
                         }
 
                         // DTI Calculator Card
@@ -244,7 +244,7 @@ fun CreditOfficerReviewScreen(
                                 color = FieldTheme.colors.gray500
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            val monthlyIncome = application.amount / application.tenure.coerceAtLeast(1)
+                            val monthlyIncome = (application.amount ?: 1.0) / (application.tenor_months ?: 1).coerceAtLeast(1)
                             val monthlyInstalment = monthlyIncome * (1 + application.interest_rate / 100 / 12)
                             val estimatedExpenses = monthlyIncome * 0.30
                             val netDisposable = monthlyIncome - estimatedExpenses - monthlyInstalment
