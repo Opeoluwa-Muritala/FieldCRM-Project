@@ -14,10 +14,11 @@ SELECT
     size_bytes,
     verified,
     uploaded_by,
-    created_at,
-    updated_at
+    uploaded_at,
+    uploaded_at AS created_at,
+    uploaded_at AS updated_at
 FROM documents
 WHERE loan_id = $1
   AND org_id = $2
   AND deleted_at IS NULL
-ORDER BY created_at DESC;
+ORDER BY uploaded_at DESC;
