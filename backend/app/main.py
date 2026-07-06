@@ -12,7 +12,7 @@ from app.config import settings
 from app.core import security
 from app.core.database import db_conn, init_pool, close_pool
 from app.core.exceptions import DomainException, domain_exception_handler
-from app.core.middleware import RequestIDMiddleware
+from app.core.middleware import RequestIDMiddleware, SecurityHeadersMiddleware
 from app.core.dependencies import get_current_user, RoleChecker
 
 # Domain Routers
@@ -44,31 +44,8 @@ app.add_middleware(
 )
 
 # Custom Middlewares
+app.add_middleware(SecurityHeadersMiddleware, cookie_secure=settings.COOKIE_SECURE)
 app.add_middleware(RequestIDMiddleware)
-
-@app.middleware("http")
-async def add_security_headers(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: https:; "
-        "frame-ancestors 'none'; "
-        "object-src 'none';"
-    )
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    
-    is_secure = settings.COOKIE_SECURE or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
-    if is_secure:
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        
-    return response
 
 # Exception handlers
 app.add_exception_handler(DomainException, domain_exception_handler)
