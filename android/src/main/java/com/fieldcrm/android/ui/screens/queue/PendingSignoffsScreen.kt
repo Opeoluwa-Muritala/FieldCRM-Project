@@ -46,7 +46,7 @@ fun PendingSignoffsScreen(
     val signoffItems = remember(applications, borrowers) {
         if (applications.isNotEmpty()) {
             applications.map { app ->
-                val borrower = borrowers.find { it.id == app.borrower_id }
+                val borrower = borrowers.find { it.id == app.id }
                 PendingSignoffItem(
                     applicantName = borrower?.name ?: "Unknown Applicant",
                     loanOfficer = "Loan Officer",

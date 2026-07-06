@@ -22,9 +22,7 @@ import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
 
 private val CRM_STATUSES = setOf(
-    "crm review", "crm_review", "pending_crm", "pending crm",
-    "bm approved", "bm_approved", "branch approval", "branch_approval",
-    "disbursement ready", "disbursement_ready"
+    "crm_review", "branch_approval", "disbursement_ready"
 )
 
 @Composable
@@ -36,12 +34,12 @@ fun CrmQueueScreen(
 ) {
     val queueItems = remember(applications, borrowers) {
         applications
-            .filter { it.status.lowercase(Locale.getDefault()) in CRM_STATUSES }
+            .filter { it.stage in CRM_STATUSES }
             .map { app ->
-                val borrower = borrowers.find { it.id == app.borrower_id }
+                val borrower = borrowers.find { it.id == app.id }
                 Triple(
                     borrower?.name ?: app.applicant_name,
-                    "₦${String.format(Locale.US, "%,.0f", app.amount)}",
+                    "₦${String.format(Locale.US, "%,.0f", app.amount ?: 0.0)}",
                     app.id
                 )
             }

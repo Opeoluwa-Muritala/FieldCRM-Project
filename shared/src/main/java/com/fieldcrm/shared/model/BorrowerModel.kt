@@ -25,25 +25,79 @@ data class BorrowerModel(
     val created_at: String
 )
 
+/**
+ * Mirrors the backend loan_applications table columns.
+ * Stage values: intake, ocr_review, credit_review, branch_approval,
+ *               crm_review, executive_approval, disbursement_ready, disbursed, returned, rejected
+ * Loan type values: enterprise, msef, payee, other
+ * Customer type values: new, existing
+ */
 @Serializable
 data class LoanApplicationModel(
     val id: String,
     val org_id: String,
-    val borrower_id: String,
-    val applicant_name: String = "Applicant",
-    val current_stage: Int,
-    val current_owner_id: String,
-    val status: String,
-    val amount: Double,
-    val tenure: Int,
-    val product_type: String,
-    val interest_rate: Double,
-    val repayment_frequency: String,
-    val collateral_desc: String? = null,
-    val collateral_value: Double? = null,
-    val officer_recommendation: String? = null,
-    val created_at: String
-)
+    val ref_no: String = "",
+    val customer_type: String = "new",
+    val loan_type: String = "enterprise",
+    val stage: String = "intake",
+    val applicant_name: String = "",
+    val bvn: String? = null,
+    val phone: String? = null,
+    val amount: Double? = null,
+    val tenor_months: Int? = null,
+    val purpose: String? = null,
+    val repayment_mode: String? = null,
+    val created_by: String = "",
+    val current_owner_id: String? = null,
+    val credit_officer_id: String? = null,
+    val branch_manager_id: String? = null,
+    val return_reason: String? = null,
+    val approved_by: String? = null,
+    val approved_at: String? = null,
+    val disbursed_at: String? = null,
+    val interest_rate: Double? = null,
+    val repayment_frequency: String? = null,
+    val schedule_method: String? = null,
+    val classification: String? = "current",
+    val days_past_due: Int = 0,
+    val crm_notes: String? = null,
+    val crm_reviewed_by: String? = null,
+    val crm_reviewed_at: String? = null,
+    val executive_approved_by: String? = null,
+    val executive_approved_at: String? = null,
+    val disbursed_amount: Double? = null,
+    val disbursement_method: String? = null,
+    val sector: String? = null,
+    val created_at: String = "",
+    val updated_at: String? = null,
+) {
+    val displayStatus: String get() = when (stage) {
+        "intake" -> "Draft"
+        "ocr_review" -> "OCR Review"
+        "credit_review" -> "Credit Review"
+        "branch_approval" -> "Branch Approval"
+        "crm_review" -> "CRM Review"
+        "executive_approval" -> "Executive Approval"
+        "disbursement_ready" -> "Disbursement Ready"
+        "disbursed" -> "Disbursed"
+        "returned" -> "Returned"
+        "rejected" -> "Rejected"
+        else -> stage.replace('_', ' ').replaceFirstChar { it.uppercase() }
+    }
+
+    val isActive: Boolean get() = stage !in setOf("disbursed", "returned", "rejected")
+
+    val stageIndex: Int get() = when (stage) {
+        "intake" -> 1
+        "ocr_review" -> 2
+        "credit_review" -> 3
+        "branch_approval" -> 4
+        "crm_review" -> 4
+        "executive_approval" -> 4
+        "disbursement_ready", "disbursed" -> 5
+        else -> 1
+    }
+}
 
 @Serializable
 data class SyncPayload(

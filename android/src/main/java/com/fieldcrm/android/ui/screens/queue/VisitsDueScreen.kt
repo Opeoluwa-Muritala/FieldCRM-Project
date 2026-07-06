@@ -44,7 +44,7 @@ fun VisitsDueScreen(
     val visits = remember(applications, borrowers) {
         if (applications.isNotEmpty()) {
             applications.map { app ->
-                val borrower = borrowers.find { it.id == app.borrower_id }
+                val borrower = borrowers.find { it.id == app.id }
                 VisitDueItem(
                     borrowerName = borrower?.name ?: "Unknown Applicant",
                     address = "Awaiting address confirmation",

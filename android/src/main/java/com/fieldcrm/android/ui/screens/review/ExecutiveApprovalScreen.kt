@@ -56,8 +56,8 @@ fun ExecutiveApprovalScreen(
                 LabelValue("Applicant", application.applicant_name)
                 LabelValue("Ref",       application.id.take(8))
                 LabelValue("Amount",    application.amount?.let { "₦%,.0f".format(it) } ?: "—")
-                LabelValue("Tenor",     application.tenure?.let { "$it months" } ?: "—")
-                LabelValue("Type",      application.product_type?.uppercase() ?: "—")
+                LabelValue("Tenor",     application.tenor_months?.let { "$it months" } ?: "—")
+                LabelValue("Type",      application.loan_type.uppercase())
             }
 
             if (crmNotes.isNotBlank()) {

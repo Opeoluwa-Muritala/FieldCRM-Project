@@ -59,9 +59,9 @@ fun OcrReviewScreen(
 
                 listOf(
                     "applicant_name" to application.applicant_name,
-                    "amount" to application.amount.toInt().toString(),
-                    "tenure" to application.tenure.toString(),
-                    "product_type" to application.product_type
+                    "amount" to (application.amount?.toInt()?.toString() ?: ""),
+                    "tenor_months" to (application.tenor_months?.toString() ?: ""),
+                    "loan_type" to application.loan_type
                 ).forEach { (key, autoValue) ->
                     val label = key.replace("_", " ")
                         .replaceFirstChar { it.uppercase() }

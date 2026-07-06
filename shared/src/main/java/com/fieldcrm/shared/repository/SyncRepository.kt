@@ -16,21 +16,39 @@ class SyncRepository(
 ) {
     private val queries = database.appDatabaseQueries
 
-    /**
-     * Queues an offline application write without creating a separate borrower business model.
-     */
     fun queueApplicationWrite(application: LoanApplicationModel, action: String = "CREATE_APPLICATION") {
         queries.insertApplication(
             id = application.id,
-            borrower_id = application.borrower_id,
-            applicant_name = application.applicant_name,
             org_id = application.org_id,
-            current_stage = application.current_stage.toLong(),
-            current_owner_id = application.current_owner_id,
-            status = application.status,
+            ref_no = application.ref_no,
+            customer_type = application.customer_type,
+            loan_type = application.loan_type,
+            stage = application.stage,
+            applicant_name = application.applicant_name,
+            bvn = application.bvn,
+            phone = application.phone,
             amount = application.amount,
-            tenure = application.tenure.toLong(),
-            product_type = application.product_type
+            tenor_months = application.tenor_months?.toLong(),
+            purpose = application.purpose,
+            repayment_mode = application.repayment_mode,
+            created_by = application.created_by,
+            current_owner_id = application.current_owner_id,
+            credit_officer_id = application.credit_officer_id,
+            branch_manager_id = application.branch_manager_id,
+            return_reason = application.return_reason,
+            approved_by = application.approved_by,
+            approved_at = application.approved_at,
+            disbursed_at = application.disbursed_at,
+            interest_rate = application.interest_rate,
+            repayment_frequency = application.repayment_frequency,
+            schedule_method = application.schedule_method,
+            classification = application.classification,
+            days_past_due = application.days_past_due.toLong(),
+            crm_notes = application.crm_notes,
+            crm_reviewed_by = application.crm_reviewed_by,
+            executive_approved_by = application.executive_approved_by,
+            created_at = application.created_at,
+            updated_at = application.updated_at
         )
 
         val payloadJson = Json.encodeToString(LoanApplicationModel.serializer(), application)
@@ -44,10 +62,6 @@ class SyncRepository(
         )
     }
 
-    /**
-     * Sequentially replays outstanding queue actions:
-     * Server remains authoritative for workflow stages and permissions.
-     */
     suspend fun syncQueueWithServer(): Boolean {
         val queuedItems = queries.selectQueuedItems().executeAsList()
         if (queuedItems.isEmpty()) return true
@@ -63,7 +77,7 @@ class SyncRepository(
                     }
                     "SUBMIT_OCR_REVIEW" -> {
                         try {
-                            val payload = kotlinx.serialization.json.Json.parseToJsonElement(item.payload_json).jsonObject
+                            val payload = Json.parseToJsonElement(item.payload_json).jsonObject
                             val appId = payload["id"]!!.jsonPrimitive.content
                             val response = client.httpClient.post("${client.baseUrl}/api/v1/mobile/applications/$appId/ocr-review") {
                                 contentType(ContentType.Application.Json)
@@ -75,7 +89,7 @@ class SyncRepository(
                     }
                     "SUBMIT_VISITATION" -> {
                         try {
-                            val payload = kotlinx.serialization.json.Json.parseToJsonElement(item.payload_json).jsonObject
+                            val payload = Json.parseToJsonElement(item.payload_json).jsonObject
                             val appId = payload["id"]!!.jsonPrimitive.content
                             val bodyStr = payload["body"]?.jsonPrimitive?.content ?: "{}"
                             val response = client.httpClient.put("${client.baseUrl}/api/v1/mobile/applications/$appId/visitation") {
@@ -86,22 +100,9 @@ class SyncRepository(
                             response.status.value in 200..299
                         } catch (e: Exception) { false }
                     }
-                    "EXECUTE_PLEDGE" -> {
+                    "EXECUTE_PLEDGE", "SUBMIT_INTAKE" -> {
                         try {
-                            val payload = kotlinx.serialization.json.Json.parseToJsonElement(item.payload_json).jsonObject
-                            val appId = payload["id"]!!.jsonPrimitive.content
-                            val bodyStr = payload["body"]?.jsonPrimitive?.content ?: "{}"
-                            val response = client.httpClient.patch("${client.baseUrl}/api/v1/mobile/applications/$appId") {
-                                contentType(ContentType.Application.Json)
-                                client.authHeader(this)
-                                setBody(bodyStr)
-                            }
-                            response.status.value in 200..299
-                        } catch (e: Exception) { false }
-                    }
-                    "SUBMIT_INTAKE" -> {
-                        try {
-                            val payload = kotlinx.serialization.json.Json.parseToJsonElement(item.payload_json).jsonObject
+                            val payload = Json.parseToJsonElement(item.payload_json).jsonObject
                             val appId = payload["id"]!!.jsonPrimitive.content
                             val bodyStr = payload["body"]?.jsonPrimitive?.content ?: "{}"
                             val response = client.httpClient.patch("${client.baseUrl}/api/v1/mobile/applications/$appId") {
@@ -116,14 +117,12 @@ class SyncRepository(
                 }
 
                 if (success) {
-                    // Remove resolved item from local queue
                     queries.deleteQueueItem(item.id)
                 } else {
                     overallSuccess = false
                 }
             } catch (e: Exception) {
                 overallSuccess = false
-                // Retain in queue for next connectivity recovery
             }
         }
         return overallSuccess
@@ -131,8 +130,5 @@ class SyncRepository(
 }
 
 object ClockSystem {
-    fun nowEpochMillis(): Long {
-        // expect/actual could be used, or returning system current time in milliseconds
-        return 1774828800000L // Standard baseline mock time
-    }
+    fun nowEpochMillis(): Long = System.currentTimeMillis()
 }

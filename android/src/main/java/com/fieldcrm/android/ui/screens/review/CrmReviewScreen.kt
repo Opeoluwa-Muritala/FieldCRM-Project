@@ -77,8 +77,8 @@ fun CrmReviewScreen(
                 LabelValue("Applicant", application.applicant_name)
                 LabelValue("Ref",       application.id.take(8))
                 LabelValue("Amount",    application.amount?.let { "₦%,.0f".format(it) } ?: "—")
-                LabelValue("Tenor",     application.tenure?.let { "$it months" } ?: "—")
-                LabelValue("Stage",     application.current_stage.toString())
+                LabelValue("Tenor",     application.tenor_months?.let { "$it months" } ?: "—")
+                LabelValue("Stage",     application.stage)
             }
 
             SectionCard(title = "CBN §1.6 Credit File Checklist") {

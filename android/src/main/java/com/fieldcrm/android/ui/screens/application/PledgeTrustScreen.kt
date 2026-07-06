@@ -633,10 +633,11 @@ private fun numberToWords(amount: Double): String {
 @Composable
 fun PreviewPledgeCompact() {
     val demoApp = LoanApplicationModel(
-        id = "app_1", org_id = "org_1", borrower_id = "1",
-        current_stage = 1, current_owner_id = "LO_1", status = "intake",
-        amount = 180000.0, tenure = 4, product_type = "Working Capital",
-        interest_rate = 18.5, repayment_frequency = "MONTHLY", created_at = ""
+        id = "app_1", org_id = "org_1", ref_no = "MMFB-001",
+        stage = "intake", loan_type = "enterprise", customer_type = "new",
+        applicant_name = "Adaeze Okonkwo", created_by = "LO_1", current_owner_id = "LO_1",
+        amount = 180000.0, tenor_months = 4,
+        interest_rate = 18.5, repayment_frequency = "monthly", created_at = ""
     )
     val demoBorrower = BorrowerModel(
         id = "1", org_id = "org_1", loan_officer_id = "LO_1",

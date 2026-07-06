@@ -169,14 +169,12 @@ fun DashboardScreenView(
     val rawQueueItems = remember(borrowers, applications, resolvedRole) {
         borrowers.mapNotNull { borrower ->
             val app = applications
-                .filter { it.borrower_id == borrower.id }
-                .maxByOrNull { it.current_stage }
+                .filter { it.id == borrower.id }
+                .maxByOrNull { it.stageIndex }
 
-            // Apply role-based visibility: empty set means show all
-            val statusLower = app?.status?.lowercase(Locale.getDefault()) ?: ""
             val isVisible = relevantStatuses.isEmpty() ||
                 app == null ||
-                statusLower in relevantStatuses
+                app.stage in relevantStatuses
 
             if (!isVisible) return@mapNotNull null
 
@@ -184,16 +182,16 @@ fun DashboardScreenView(
                 name = borrower.name,
                 borrowerId = borrower.id,
                 appId = app?.id ?: "",
-                refNo = if (app != null) app.id.take(8).uppercase(Locale.getDefault()) else "NO-APP",
+                refNo = if (app != null) (app.ref_no.ifBlank { app.id.take(8) }).uppercase(Locale.getDefault()) else "NO-APP",
                 detail = if (app != null)
-                    "₦${String.format(Locale.US, "%,.0f", app.amount)} · ${app.product_type}"
+                    "₦${String.format(Locale.US, "%,.0f", app.amount ?: 0.0)} · ${app.loan_type.replaceFirstChar { it.uppercase() }}"
                 else
                     "No active application",
                 status = when {
                     app == null -> StatusChipVariant.NeedsReview
-                    statusLower in listOf("approved", "bm approved") -> StatusChipVariant.Approved
-                    statusLower == "returned" -> StatusChipVariant.Returned
-                    statusLower in listOf("ocr_review", "ocr review", "credit_review", "credit review") -> StatusChipVariant.LowConfidence
+                    app.stage in setOf("branch_approval", "executive_approval", "disbursement_ready", "disbursed") -> StatusChipVariant.Approved
+                    app.stage == "returned" -> StatusChipVariant.Returned
+                    app.stage in setOf("ocr_review", "credit_review", "crm_review") -> StatusChipVariant.LowConfidence
                     else -> StatusChipVariant.NeedsReview
                 }
             )

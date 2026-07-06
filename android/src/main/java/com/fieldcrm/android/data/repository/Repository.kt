@@ -44,16 +44,14 @@ class BorrowerRepository(
         val application = LoanApplicationModel(
             id = borrower.id,
             org_id = borrower.org_id,
-            borrower_id = borrower.id,
             applicant_name = borrower.name,
-            current_stage = 1,
+            phone = borrower.phone,
+            bvn = borrower.bvn,
+            stage = "intake",
+            loan_type = "other",
+            customer_type = "new",
+            created_by = borrower.loan_officer_id,
             current_owner_id = borrower.loan_officer_id,
-            status = "Draft",
-            amount = 0.0,
-            tenure = 0,
-            product_type = "other",
-            interest_rate = 15.0,
-            repayment_frequency = "Monthly",
             created_at = borrower.created_at
         )
         return ApplicationRepository(database, client, apiService = NoopMobileApiService).createApplication(application)
@@ -67,13 +65,13 @@ class BorrowerRepository(
         return BorrowerModel(
             id = id,
             org_id = org_id,
-            loan_officer_id = current_owner_id,
+            loan_officer_id = current_owner_id ?: created_by,
             name = applicant_name,
-            phone = "",
-            bvn = "",
+            phone = phone ?: "",
+            bvn = bvn ?: "",
             nin = "",
             photo_url = null,
-            status = if (status == "Rejected") "INACTIVE" else "ACTIVE",
+            status = if (stage == "rejected") "INACTIVE" else "ACTIVE",
             created_at = created_at
         )
     }
@@ -82,14 +80,14 @@ class BorrowerRepository(
         return BorrowerModel(
             id = id,
             org_id = org_id,
-            loan_officer_id = current_owner_id,
+            loan_officer_id = current_owner_id ?: created_by,
             name = applicant_name,
-            phone = "",
-            bvn = "",
+            phone = phone ?: "",
+            bvn = bvn ?: "",
             nin = "",
             photo_url = null,
-            status = if (status == "Rejected") "INACTIVE" else "ACTIVE",
-            created_at = ""
+            status = if (stage == "rejected") "INACTIVE" else "ACTIVE",
+            created_at = created_at
         )
     }
 }
@@ -148,23 +146,7 @@ class ApplicationRepository(
     private val syncRepository = SyncRepository(database, client)
 
     fun getCachedApplications(): List<LoanApplicationModel> {
-        return queries.selectAllApplications().executeAsList().map { row ->
-            LoanApplicationModel(
-                id = row.id,
-                borrower_id = row.borrower_id,
-                applicant_name = row.applicant_name,
-                org_id = row.org_id,
-                current_stage = row.current_stage.toInt(),
-                current_owner_id = row.current_owner_id,
-                status = row.status,
-                amount = row.amount,
-                tenure = row.tenure.toInt(),
-                product_type = row.product_type,
-                interest_rate = 15.0,
-                repayment_frequency = "Monthly",
-                created_at = ""
-            )
-        }
+        return queries.selectAllApplications().executeAsList().map { it.toModel() }
     }
 
     suspend fun getFullDetail(id: String): ApplicationDetailResult? {
@@ -209,8 +191,7 @@ class ApplicationRepository(
                 ?.mapNotNull { (k, v) -> safeValue(v)?.let { k to it } }
                 ?.toMap() ?: emptyMap()
 
-            // If intake lacks flat guarantor keys (web-submitted apps store guarantors separately),
-            // fetch from the now-open guarantor endpoint and merge as guarantor_1_*/guarantor_2_*
+            // If intake lacks flat guarantor keys, fetch from guarantor endpoint and merge
             if (!intake.containsKey("guarantor_1_name")) {
                 val merged = intake.toMutableMap()
                 for (slot in 1..2) {
@@ -221,14 +202,15 @@ class ApplicationRepository(
                         val prefix = "guarantor_${slot}_"
                         gData.forEach { (k, v) ->
                             val flatKey = when (k) {
-                                "guarantor_full_name" -> "${prefix}name"
-                                "phone_number" -> "${prefix}phone"
-                                "residential_address" -> "${prefix}address"
+                                "full_name" -> "${prefix}name"
+                                "phone" -> "${prefix}phone"
+                                "home_address" -> "${prefix}address"
                                 "bvn" -> "${prefix}bvn"
-                                "nin" -> "${prefix}nin"
-                                "employer_name", "business_name" -> "${prefix}employer"
                                 "bank_name" -> "${prefix}bank"
                                 "account_number" -> "${prefix}account"
+                                "employment_type" -> "${prefix}employment_type"
+                                "monthly_salary" -> "${prefix}monthly_salary"
+                                "relationship_to_client" -> "${prefix}relationship"
                                 else -> "$prefix$k"
                             }
                             safeValue(v)?.let { merged[flatKey] = it }
@@ -251,20 +233,7 @@ class ApplicationRepository(
     suspend fun getAllApplications(): List<LoanApplicationModel> {
         return try {
             val remote = client.fetchApplications()
-            for (app in remote) {
-                queries.insertApplication(
-                    id = app.id,
-                    borrower_id = app.borrower_id,
-                    applicant_name = app.applicant_name,
-                    org_id = app.org_id,
-                    current_stage = app.current_stage.toLong(),
-                    current_owner_id = app.current_owner_id,
-                    status = app.status,
-                    amount = app.amount,
-                    tenure = app.tenure.toLong(),
-                    product_type = app.product_type
-                )
-            }
+            for (app in remote) { queries.upsert(app) }
             remote
         } catch (e: Exception) {
             getCachedApplications()
@@ -272,18 +241,7 @@ class ApplicationRepository(
     }
 
     suspend fun createApplication(application: LoanApplicationModel): Boolean {
-        queries.insertApplication(
-            id = application.id,
-            borrower_id = application.borrower_id,
-            applicant_name = application.applicant_name,
-            org_id = application.org_id,
-            current_stage = application.current_stage.toLong(),
-            current_owner_id = application.current_owner_id,
-            status = application.status,
-            amount = application.amount,
-            tenure = application.tenure.toLong(),
-            product_type = application.product_type
-        )
+        queries.upsert(application)
         return try {
             client.createApplication(application)
             true
@@ -292,7 +250,7 @@ class ApplicationRepository(
                 id = java.util.UUID.randomUUID().toString(),
                 action = "CREATE_APPLICATION",
                 entity_id = application.id,
-                payload_json = """{"id":"${application.id}","applicant_name":"${application.applicant_name}","amount":${application.amount},"tenure":${application.tenure}}""",
+                payload_json = """{"id":"${application.id}","applicant_name":"${application.applicant_name}","loan_type":"${application.loan_type}","amount":${application.amount}}""",
                 timestamp = System.currentTimeMillis(),
                 attempts = 0
             )
@@ -304,24 +262,12 @@ class ApplicationRepository(
         return try {
             if (apiService.getMe() == null) return false
 
-            // Phase 1 — PUSH: replay queued offline writes to the server
             val pushSuccess = syncRepository.syncQueueWithServer()
 
-            // Phase 2 — PULL: refresh local cache with authoritative server state
             try {
                 val apps = client.fetchApplications()
-                for (a in apps) {
-                    queries.insertApplication(
-                        id = a.id, borrower_id = a.borrower_id, applicant_name = a.applicant_name, org_id = a.org_id,
-                        current_stage = a.current_stage.toLong(),
-                        current_owner_id = a.current_owner_id,
-                        status = a.status, amount = a.amount,
-                        tenure = a.tenure.toLong(), product_type = a.product_type
-                    )
-                }
-            } catch (_: Exception) {
-                // Pull failure is non-fatal — cached data remains valid
-            }
+                for (a in apps) { queries.upsert(a) }
+            } catch (_: Exception) {}
 
             pushSuccess
         } catch (e: Exception) {
@@ -333,24 +279,7 @@ class ApplicationRepository(
         return try {
             client.fetchApplications().find { it.id == id }
         } catch (e: Exception) {
-            queries.selectAllApplications().executeAsList()
-                .find { it.id == id }?.let { row ->
-                    LoanApplicationModel(
-                        id = row.id,
-                        borrower_id = row.borrower_id,
-                        applicant_name = row.applicant_name,
-                        org_id = row.org_id,
-                        current_stage = row.current_stage.toInt(),
-                        current_owner_id = row.current_owner_id,
-                        status = row.status,
-                        amount = row.amount,
-                        tenure = row.tenure.toInt(),
-                        product_type = row.product_type,
-                        interest_rate = 15.0,
-                        repayment_frequency = "Monthly",
-                        created_at = ""
-                    )
-                }
+            queries.selectApplicationById(id).executeAsOneOrNull()?.toModel()
         }
     }
 
@@ -385,33 +314,97 @@ class ApplicationRepository(
         )
     }
 
-    suspend fun submitIntakeToServer(id: String, amount: Double, tenure: Int, productType: String, collateralDesc: String, collateralValue: Double): Boolean {
-        val body = buildString {
-            append("{")
-            append("\"current_stage\":2,")
-            append("\"status\":\"ocr_review\",")
-            append("\"amount\":$amount,")
-            append("\"tenure\":$tenure,")
-            append("\"product_type\":\"$productType\",")
-            append("\"collateral_desc\":\"$collateralDesc\",")
-            append("\"collateral_value\":$collateralValue")
-            append("}")
-        }
-        // Use saveIntakeStep for step 6 (loan request)
+    suspend fun submitIntakeToServer(
+        id: String,
+        amount: Double,
+        tenorMonths: Int,
+        loanType: String,
+        purpose: String
+    ): Boolean {
         return apiService.saveIntakeStep(id, 6, mapOf(
-            "amount" to kotlinx.serialization.json.JsonPrimitive(amount),
-            "tenure" to kotlinx.serialization.json.JsonPrimitive(tenure),
-            "product_type" to kotlinx.serialization.json.JsonPrimitive(productType)
+            "amount" to JsonPrimitive(amount),
+            "tenor_months" to JsonPrimitive(tenorMonths),
+            "loan_type" to JsonPrimitive(loanType),
+            "purpose" to JsonPrimitive(purpose)
         )) != null
     }
 
-    suspend fun patchApplicationMeta(id: String, collateralDesc: String, collateralValue: Double): Boolean {
-        // Use the saveIntakeStep endpoint to push collateral data
+    suspend fun patchApplicationMeta(id: String, purpose: String, pledgeValue: Double): Boolean {
         return apiService.saveIntakeStep(id, 8, mapOf(
-            "collateral_desc" to kotlinx.serialization.json.JsonPrimitive(collateralDesc),
-            "collateral_value" to kotlinx.serialization.json.JsonPrimitive(collateralValue)
+            "purpose" to JsonPrimitive(purpose),
+            "pledge_value" to JsonPrimitive(pledgeValue)
         )) != null
     }
+
+    private fun com.fieldcrm.shared.db.AppDatabaseQueries.upsert(app: LoanApplicationModel) {
+        insertApplication(
+            id = app.id,
+            org_id = app.org_id,
+            ref_no = app.ref_no,
+            customer_type = app.customer_type,
+            loan_type = app.loan_type,
+            stage = app.stage,
+            applicant_name = app.applicant_name,
+            bvn = app.bvn,
+            phone = app.phone,
+            amount = app.amount,
+            tenor_months = app.tenor_months?.toLong(),
+            purpose = app.purpose,
+            repayment_mode = app.repayment_mode,
+            created_by = app.created_by,
+            current_owner_id = app.current_owner_id,
+            credit_officer_id = app.credit_officer_id,
+            branch_manager_id = app.branch_manager_id,
+            return_reason = app.return_reason,
+            approved_by = app.approved_by,
+            approved_at = app.approved_at,
+            disbursed_at = app.disbursed_at,
+            interest_rate = app.interest_rate,
+            repayment_frequency = app.repayment_frequency,
+            schedule_method = app.schedule_method,
+            classification = app.classification,
+            days_past_due = app.days_past_due.toLong(),
+            crm_notes = app.crm_notes,
+            crm_reviewed_by = app.crm_reviewed_by,
+            executive_approved_by = app.executive_approved_by,
+            created_at = app.created_at,
+            updated_at = app.updated_at
+        )
+    }
+
+    private fun com.fieldcrm.shared.db.LoanApplication.toModel() = LoanApplicationModel(
+        id = id,
+        org_id = org_id,
+        ref_no = ref_no,
+        customer_type = customer_type,
+        loan_type = loan_type,
+        stage = stage,
+        applicant_name = applicant_name,
+        bvn = bvn,
+        phone = phone,
+        amount = amount,
+        tenor_months = tenor_months?.toInt(),
+        purpose = purpose,
+        repayment_mode = repayment_mode,
+        created_by = created_by,
+        current_owner_id = current_owner_id,
+        credit_officer_id = credit_officer_id,
+        branch_manager_id = branch_manager_id,
+        return_reason = return_reason,
+        approved_by = approved_by,
+        approved_at = approved_at,
+        disbursed_at = disbursed_at,
+        interest_rate = interest_rate,
+        repayment_frequency = repayment_frequency,
+        schedule_method = schedule_method,
+        classification = classification,
+        days_past_due = days_past_due.toInt(),
+        crm_notes = crm_notes,
+        crm_reviewed_by = crm_reviewed_by,
+        executive_approved_by = executive_approved_by,
+        created_at = created_at,
+        updated_at = updated_at
+    )
 }
 
 class AuthRepository(
@@ -430,8 +423,6 @@ class AuthRepository(
         return try { apiService.getMe() } catch (_: Exception) { null }
     }
 
-    // Returns null on network error (caller should treat as "still valid"),
-    // false only on a definitive 401/403 from the server.
     suspend fun validateToken(token: String): Boolean? {
         return try {
             client.setToken(token)

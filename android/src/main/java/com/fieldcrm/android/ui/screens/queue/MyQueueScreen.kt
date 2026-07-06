@@ -49,11 +49,11 @@ fun MyQueueScreen(
     val queueItems = remember(applications, borrowers) {
         if (applications.isNotEmpty()) {
             applications.map { app ->
-                val borrower = borrowers.find { it.id == app.borrower_id }
+                val borrower = borrowers.find { it.id == app.id }
                 MyQueueItem(
                     applicantName = borrower?.name ?: "Unknown Applicant",
-                    stage = app.status.replaceFirstChar { it.uppercase(Locale.getDefault()) },
-                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount)}",
+                    stage = app.displayStatus,
+                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount ?: 0.0)}",
                     appId = app.id
                 )
             }

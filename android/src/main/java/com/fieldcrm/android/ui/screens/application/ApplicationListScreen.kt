@@ -71,13 +71,16 @@ fun ApplicationListContent(
     // Filter and search logic
     val filteredApps = remember(applications, borrowers, searchQuery, selectedFilterStage) {
         applications.filter { app ->
-            val borrower = borrowers.find { it.id == app.borrower_id }
-            val nameMatches = borrower?.name?.contains(searchQuery, ignoreCase = true) ?: false
+            val borrower = borrowers.find { it.id == app.id }
+            val nameMatches = (borrower?.name ?: app.applicant_name).contains(searchQuery, ignoreCase = true)
+            val refMatches = app.ref_no.contains(searchQuery, ignoreCase = true)
             val idMatches = app.id.contains(searchQuery, ignoreCase = true)
-            
-            val stageMatches = selectedFilterStage == "All Stages" || app.status.equals(selectedFilterStage, ignoreCase = true)
-            
-            (nameMatches || idMatches) && stageMatches
+
+            val stageMatches = selectedFilterStage == "All Stages" ||
+                app.stage.equals(selectedFilterStage, ignoreCase = true) ||
+                app.displayStatus.equals(selectedFilterStage, ignoreCase = true)
+
+            (nameMatches || refMatches || idMatches) && stageMatches
         }
     }
 
@@ -142,12 +145,12 @@ fun ApplicationListContent(
                     )
                     PipelineStatBox(
                         label = "IN REVIEW",
-                        value = "${applications.count { it.status.lowercase(Locale.getDefault()).contains("review") }}",
+                        value = "${applications.count { it.stage.contains("review") || it.stage.contains("approval") }}",
                         color = FieldTheme.colors.statusWarning
                     )
                     PipelineStatBox(
                         label = "APPROVED",
-                        value = "${applications.count { it.status.lowercase(Locale.getDefault()).contains("approved") }}",
+                        value = "${applications.count { it.stage in setOf("disbursement_ready", "disbursed", "executive_approval") }}",
                         color = FieldTheme.colors.statusSuccess
                     )
                 }
@@ -249,16 +252,16 @@ fun ApplicationListContent(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(filteredApps) { app ->
-                        val borrower = borrowers.find { it.id == app.borrower_id }
-                        val name = borrower?.name ?: "Unknown Profile"
+                        val borrower = borrowers.find { it.id == app.id }
+                        val name = borrower?.name ?: app.applicant_name.ifBlank { "Unknown Profile" }
                         val initials = name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
-                        
-                        val stateCode = when (app.status.lowercase(Locale.getDefault())) {
-                            "approved", "bm approved" -> StatusChipVariant.Approved
+
+                        val stateCode = when (app.stage) {
+                            "branch_approval", "executive_approval", "disbursement_ready", "disbursed" -> StatusChipVariant.Approved
                             "intake" -> StatusChipVariant.Verified
-                            "needs review", "ocr review", "credit review" -> StatusChipVariant.NeedsReview
-                            "low confidence" -> StatusChipVariant.LowConfidence
+                            "ocr_review", "credit_review", "crm_review" -> StatusChipVariant.NeedsReview
                             "returned" -> StatusChipVariant.Returned
+                            "rejected" -> StatusChipVariant.LowConfidence
                             else -> StatusChipVariant.NeedsReview
                         }
 
@@ -298,7 +301,7 @@ fun ApplicationListContent(
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
-                                            text = "₦${String.format(Locale.US, "%,.0f", app.amount)}",
+                                            text = "₦${String.format(Locale.US, "%,.0f", app.amount ?: 0.0)}",
                                             style = FieldTheme.typography.mono.copy(
                                                 fontSize = 14.sp,
                                                 fontWeight = FontWeight.Bold
@@ -306,7 +309,7 @@ fun ApplicationListContent(
                                             color = FieldTheme.colors.purple200
                                         )
                                         Text(
-                                            text = " • ${app.product_type}",
+                                            text = " • ${app.loan_type.replaceFirstChar { it.uppercase() }}",
                                             style = FieldTheme.typography.label.copy(fontSize = 12.sp),
                                             color = FieldTheme.colors.gray500
                                         )
@@ -364,17 +367,19 @@ fun PreviewApplicationListCompact() {
     )
     val demoApps = listOf(
         LoanApplicationModel(
-            id = "app_1", org_id = "org_1", borrower_id = "1",
-            current_stage = 1, current_owner_id = "LO_1", status = "Intake",
-            amount = 250000.0, tenure = 6, product_type = "SME Loan",
-            interest_rate = 15.0, repayment_frequency = "Monthly",
+            id = "1", org_id = "org_1", ref_no = "MMFB-001",
+            stage = "intake", loan_type = "enterprise",
+            applicant_name = "Adaeze Okonkwo", amount = 250000.0, tenor_months = 6,
+            created_by = "LO_1", current_owner_id = "LO_1",
+            interest_rate = 15.0, repayment_frequency = "monthly",
             created_at = "2026-06-18"
         ),
         LoanApplicationModel(
-            id = "app_2", org_id = "org_1", borrower_id = "2",
-            current_stage = 2, current_owner_id = "LO_1", status = "Needs Review",
-            amount = 1200000.0, tenure = 12, product_type = "Asset Loan",
-            interest_rate = 12.0, repayment_frequency = "Monthly",
+            id = "2", org_id = "org_1", ref_no = "MMFB-002",
+            stage = "ocr_review", loan_type = "msef",
+            applicant_name = "Emeka Chukwu", amount = 1200000.0, tenor_months = 12,
+            created_by = "LO_1", current_owner_id = "LO_1",
+            interest_rate = 12.0, repayment_frequency = "monthly",
             created_at = "2026-06-18"
         )
     )

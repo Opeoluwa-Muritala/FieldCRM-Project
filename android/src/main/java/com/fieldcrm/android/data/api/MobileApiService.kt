@@ -134,8 +134,8 @@ data class AppConfig(
 data class AppSearchResult(
     val id: String,
     val ref_no: String,
-    val borrower_name: String,
-    val status: String
+    val applicant_name: String,
+    val stage: String = "intake"
 )
 
 @kotlinx.serialization.Serializable
