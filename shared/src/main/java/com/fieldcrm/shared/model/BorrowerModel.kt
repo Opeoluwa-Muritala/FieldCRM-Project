@@ -27,8 +27,9 @@ data class BorrowerModel(
 
 /**
  * Mirrors the backend loan_applications table columns.
- * Stage values: intake, ocr_review, credit_review, branch_approval,
- *               crm_review, executive_approval, disbursement_ready, disbursed, returned, rejected
+ * Stage values: intake, ocr_review, credit_review, branch_approval, crm_review,
+ *               committee_review, ed_approval, md_approval,
+ *               disbursement_ready, disbursed, returned, rejected
  * Loan type values: enterprise, msef, payee, other
  * Customer type values: new, existing
  */
@@ -77,7 +78,9 @@ data class LoanApplicationModel(
         "credit_review" -> "Credit Review"
         "branch_approval" -> "Branch Approval"
         "crm_review" -> "CRM Review"
-        "executive_approval" -> "Executive Approval"
+        "committee_review" -> "Committee Review"
+        "ed_approval" -> "ED Approval"
+        "md_approval" -> "MD Approval"
         "disbursement_ready" -> "Disbursement Ready"
         "disbursed" -> "Disbursed"
         "returned" -> "Returned"
@@ -92,9 +95,11 @@ data class LoanApplicationModel(
         "ocr_review" -> 2
         "credit_review" -> 3
         "branch_approval" -> 4
-        "crm_review" -> 4
-        "executive_approval" -> 4
-        "disbursement_ready", "disbursed" -> 5
+        "crm_review" -> 5
+        "committee_review" -> 6
+        "ed_approval" -> 7
+        "md_approval" -> 8
+        "disbursement_ready", "disbursed" -> 9
         else -> 1
     }
 }

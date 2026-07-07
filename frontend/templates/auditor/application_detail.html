@@ -195,7 +195,7 @@
                         <tr>
                             <td><strong>{{ doc.category|replace('_', ' ')|title }}</strong></td>
                             <td>{{ doc.created_at.strftime('%d %b %Y %H:%M') if doc.created_at else '03 Jun 2026' }}</td>
-                            <td>Fatima Bello (Credit Officer)</td>
+                            <td>{{ doc.uploaded_by_name if doc.uploaded_by_name else 'Loan Officer' }}</td>
                             <td>
                                 <span class="status-badge {{ 'verified' if doc.status == 'verified' else 'needs-review' }}">
                                     {{ doc.status|replace('_', ' ')|title }}

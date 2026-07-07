@@ -26,14 +26,18 @@ class DashboardService:
             return await self._loan_officer_data(user)
         elif role == "branch_manager":
             return await self._branch_manager_data(user)
-        elif role == "credit_officer":
-            return await self._credit_officer_data(user)
         elif role == "auditor":
             return await self._auditor_data(user)
         elif role == "system_admin":
             return await self._system_admin_data(user)
         elif role == "crm":
             return await self._crm_data(user)
+        elif role == "ed":
+            return await self._ed_data(user)
+        elif role == "md":
+            return await self._md_data(user)
+        elif role == "committee":
+            return await self._committee_data(user)
         elif role in ("md", "ed"):
             return await self._executive_data(user)
         # Fallback
@@ -110,6 +114,9 @@ class DashboardService:
             "credit_review": "Credit Review",
             "branch_approval": "Branch Approval",
             "crm_review": "CRM Review",
+            "committee_review": "Committee Review",
+            "ed_approval": "ED Approval",
+            "md_approval": "MD Approval",
             "executive_approval": "Executive Approval",
             "disbursement_ready": "Disbursement Ready",
             "disbursed": "Disbursed",
@@ -131,18 +138,6 @@ class DashboardService:
             "queue": queue,
             "signoffs": signoffs,
             "pipeline": pipeline,
-        }
-
-    async def _credit_officer_data(self, user) -> dict:
-        """Credit Officer dashboard: review queue and OCR exceptions."""
-        metrics = await self._fetch_one("loans", "dashboard_credit_officer", user.org_id, user.id)
-        reviews = await self.get_credit_reviews(user, limit=8)
-        exceptions = await self.get_credit_ocr_exceptions(user, limit=8)
-
-        return {
-            "metrics": metrics,
-            "reviews": reviews,
-            "exceptions": exceptions,
         }
 
     async def _auditor_data(self, user) -> dict:
@@ -313,6 +308,49 @@ class DashboardService:
     async def get_executive_queue(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
         from app.domains.loans.repository import LoanRepository
         return await LoanRepository(self.conn).list_executive_queue(user.org_id, limit, offset)
+
+    async def get_committee_queue(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
+        from app.domains.loans.repository import LoanRepository
+        return await LoanRepository(self.conn).list_committee_queue(user.org_id, limit, offset)
+
+    async def get_ed_queue(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
+        from app.domains.loans.repository import LoanRepository
+        return await LoanRepository(self.conn).list_ed_queue(user.org_id, limit, offset)
+
+    async def get_md_queue(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
+        from app.domains.loans.repository import LoanRepository
+        return await LoanRepository(self.conn).list_md_queue(user.org_id, limit, offset)
+
+    async def _committee_data(self, user) -> dict:
+        queue = await self.get_committee_queue(user, limit=20)
+        return {
+            "metrics": {"committee_queue": len(queue)},
+            "committee_queue": queue,
+        }
+
+    async def _ed_data(self, user) -> dict:
+        queue = await self.get_ed_queue(user, limit=20)
+        par = await self.get_par_summary(user)
+        return {
+            "metrics": {
+                "ed_queue": len(queue),
+                "par30_pct": par.get("par30_pct", 0),
+            },
+            "ed_queue": queue,
+            "par": par,
+        }
+
+    async def _md_data(self, user) -> dict:
+        queue = await self.get_md_queue(user, limit=20)
+        par = await self.get_par_summary(user)
+        return {
+            "metrics": {
+                "md_queue": len(queue),
+                "par30_pct": par.get("par30_pct", 0),
+            },
+            "md_queue": queue,
+            "par": par,
+        }
 
     async def _fetch_one(self, domain: str, query: str, *args) -> dict:
         row = await self.conn.fetchrow(load_sql(domain, query), *args)

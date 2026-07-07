@@ -46,7 +46,7 @@ INSERT INTO users (id, org_id, full_name, email, password_hash, role) VALUES
     'Fatima Bello',
     'fatima@mmfb.com',
     'pbkdf2_sha256$260000$ZmllbGRjcm0tZGVtby1zYWx0$ditwuWjTVIp6hukjbeVVTR4M1YOImExIsrQd4OjY/aY=',
-    'credit_officer'
+    'loan_officer'
 ),
 (
     'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a04',

@@ -1,0 +1,38 @@
+{% set mobile_title_text = "ED Dashboard" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+{% block title %}ED Dashboard - FieldCRM{% endblock %}
+{% block page_title %}Executive Director Dashboard{% endblock %}
+{% block breadcrumb %}Executive Director -> Dashboard{% endblock %}
+{% block content %}
+<div class="queue-page-header">
+  <div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">ED Dashboard</h1></div>
+</div>
+
+<div class="metrics-row" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px;">
+  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
+    <div class="metric-value">{{ metrics.ed_queue or 0 }}</div>
+    <div class="metric-label">Awaiting ED Approval</div>
+  </div>
+  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
+    <div class="metric-value" style="color:{% if (metrics.par30_pct or 0) > 5 %}#c62828{% else %}#2e7d32{% endif %}">{{ metrics.par30_pct or 0 }}%</div>
+    <div class="metric-label">PAR-30</div>
+  </div>
+</div>
+
+<div class="page-card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h2 class="page-card-title" style="margin:0;">Loans Awaiting ED Approval <small style="font-weight:400;color:var(--text-muted);">(below &#x20A6;10M)</small></h2>
+    <a href="/ed-queue" class="btn btn-primary" style="font-size:13px;padding:6px 14px;">View All</a>
+  </div>
+  <div class="queue-cards">
+    {% for item in ed_queue[:5] %}
+    <a href="/applications/{{ item.id }}/ed-approve" class="queue-card">
+      <span class="queue-card-name">{{ item.applicant_name }}</span>
+      <span class="queue-card-meta">{{ item.ref_no }} | Committee: {{ item.committee_recommendation|title if item.committee_recommendation else '—' }}</span>
+      <span class="queue-card-amount">{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}No amount{% endif %}</span>
+      <span class="status-badge queue-card-badge needs-review">{{ item.days_waiting }}d</span>
+    </a>
+    {% else %}<div class="lo-empty-state">No applications awaiting ED approval.</div>{% endfor %}
+  </div>
+</div>
+{% endblock %}

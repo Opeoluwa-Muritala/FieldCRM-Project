@@ -4,10 +4,13 @@
 {% set user_role = user.role|lower|replace(' ', '_') if user else 'loan_officer' %}
 {% set role_labels = {
     'loan_officer': 'Loan Officer',
-    'credit_officer': 'Credit Officer',
     'branch_manager': 'Branch Manager',
     'auditor': 'Auditor',
-    'system_admin': 'System Admin'
+    'system_admin': 'System Admin',
+    'crm': 'CRM Officer',
+    'md': 'Managing Director',
+    'ed': 'Executive Director',
+    'committee': 'Committee Member'
 } %}
 
 <div class="responsive-shell {% if hide_tabbar %}has-no-tabbar{% endif %}">

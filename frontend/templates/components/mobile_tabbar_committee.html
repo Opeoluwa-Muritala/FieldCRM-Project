@@ -1,0 +1,7 @@
+{% set active_tab = active_tab|default('dashboard') %}
+<a href="/dashboard" class="tabbar-tab {% if active_tab == 'dashboard' %}active{% endif %}">
+    <span class="tabbar-icon">&#127968;</span><span class="tabbar-label">Dashboard</span>
+</a>
+<a href="/committee-queue" class="tabbar-tab {% if active_tab == 'committee_queue' %}active{% endif %}">
+    <span class="tabbar-icon">&#128203;</span><span class="tabbar-label">Queue</span>
+</a>

@@ -1,0 +1,37 @@
+{% set mobile_title_text = "ED Approval Queue" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+{% block title %}ED Approval Queue - FieldCRM{% endblock %}
+{% block page_title %}ED Approval Queue{% endblock %}
+{% block breadcrumb %}Executive Director -> Approval Queue{% endblock %}
+{% block content %}
+<div class="queue-page-header">
+  <div>
+    <div class="dashboard-date">{{ today_label }}</div>
+    <h1 class="page-card-title">Loans Awaiting ED Approval <span style="font-size:14px;color:var(--text-muted);font-weight:400;">(below &#x20A6;10,000,000)</span></h1>
+  </div>
+</div>
+<div class="queue-cards">
+  {% for item in queue %}
+  <a href="/applications/{{ item.id }}/ed-approve" class="queue-card">
+    <span class="queue-card-name">{{ item.applicant_name }}</span>
+    <span class="queue-card-meta">{{ item.ref_no }} | Committee: <strong>{{ item.committee_recommendation|title if item.committee_recommendation else '—' }}</strong></span>
+    <span class="queue-card-amount">{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}No amount{% endif %}</span>
+    <span class="status-badge queue-card-badge needs-review">{{ item.days_waiting }}d waiting</span>
+  </a>
+  {% else %}<div class="lo-empty-state">No loans awaiting ED approval.</div>{% endfor %}
+</div>
+<div class="custom-table-container queue-table-wrap page-card">
+  <table class="custom-table"><thead><tr><th>Applicant</th><th>Ref</th><th>Amount</th><th>Committee Rec.</th><th>Waiting</th><th></th></tr></thead><tbody>
+  {% for item in queue %}
+  <tr>
+    <td>{{ item.applicant_name }}</td>
+    <td>{{ item.ref_no }}</td>
+    <td>{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}—{% endif %}</td>
+    <td><span class="status-badge {% if item.committee_recommendation == 'approve' %}approved{% else %}needs-review{% endif %}">{{ item.committee_recommendation|title if item.committee_recommendation else '—' }}</span></td>
+    <td>{{ item.days_waiting }}d</td>
+    <td><a href="/applications/{{ item.id }}/ed-approve" class="btn btn-primary" style="font-size:12px;padding:4px 10px;">Review</a></td>
+  </tr>
+  {% else %}<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Queue is empty.</td></tr>{% endfor %}
+  </tbody></table>
+</div>
+{% endblock %}

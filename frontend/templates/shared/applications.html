@@ -125,7 +125,6 @@
                     <th>Amount (₦)</th>
                     <th>Stage</th>
                     <th>Loan Officer</th>
-                    <th>Credit Officer</th>
                     <th>Last Updated</th>
                     <th>Status</th>
                     <th>Action</th>
@@ -151,7 +150,6 @@
                             {% endif %}
                         </td>
                         <td>{{ app.current_owner.name if app.current_owner else 'Unassigned' }}</td>
-                        <td>{{ app.credit_officer_name if app.credit_officer_name else '--' }}</td>
                         <td>{{ app.created_at.strftime('%d %b %Y') if app.created_at else '03 Jun 2026' }}</td>
                         <td>
                             {% if app.status == 'Approved' or app.status == 'Active' %}
