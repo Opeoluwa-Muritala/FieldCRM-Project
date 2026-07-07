@@ -90,11 +90,17 @@ async def render_dashboard(
 
     role = current_user.role.lower().replace(" ", "_")
 
-    # CRM and executive roles have dedicated dashboard routes
+    # Roles with dedicated dashboard routes
     if role == "crm":
         return RedirectResponse(url="/crm-dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    if role == "ed":
+        return RedirectResponse(url="/ed-dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    if role == "md":
+        return RedirectResponse(url="/md-dashboard", status_code=status.HTTP_303_SEE_OTHER)
     if role in ("md", "ed"):
         return RedirectResponse(url="/executive-dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    if role == "committee":
+        return RedirectResponse(url="/committee-dashboard", status_code=status.HTTP_303_SEE_OTHER)
 
     template_name = get_role_template(role, "dashboard.html")
 
@@ -200,9 +206,9 @@ async def render_pending_signoffs(
 async def render_my_reviews(
     request: Request,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Credit Officer"]))
+    current_user = Depends(RoleChecker(["Branch Manager", "System Admin"]))
 ):
-    """Render the credit officer review queue."""
+    """Render the credit review queue (now handled by branch manager)."""
     dashboard_svc = DashboardService(conn)
     reviews = await dashboard_svc.get_credit_reviews(current_user)
     data = await dashboard_svc.get_dashboard_data(current_user)
@@ -216,15 +222,15 @@ async def render_my_reviews(
         active_page="reviews",
         today_label=datetime.now().strftime("%A, %d %B %Y"),
     )
-    return templates.TemplateResponse(request, "credit_officer/review_queue.html", ctx)
+    return templates.TemplateResponse(request, "branch_manager/awaiting_concurrence.html", ctx)
 
 @router.get("/ocr-exceptions")
 async def render_ocr_exceptions(
     request: Request,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Credit Officer"]))
+    current_user = Depends(RoleChecker(["Branch Manager", "System Admin"]))
 ):
-    """Render OCR exceptions assigned to the current credit officer."""
+    """Render OCR exceptions (now handled by branch manager)."""
     dashboard_svc = DashboardService(conn)
     exceptions = await dashboard_svc.get_credit_ocr_exceptions(current_user)
     data = await dashboard_svc.get_dashboard_data(current_user)
@@ -238,7 +244,7 @@ async def render_ocr_exceptions(
         active_page="exceptions",
         today_label=datetime.now().strftime("%A, %d %B %Y"),
     )
-    return templates.TemplateResponse(request, "credit_officer/ocr_exceptions.html", ctx)
+    return templates.TemplateResponse(request, "branch_manager/awaiting_concurrence.html", ctx)
 
 @router.get("/audit-trail")
 async def render_audit_trail(
@@ -645,6 +651,29 @@ async def process_document_upload(
         user_role=current_user.role,
     )
     return RedirectResponse(url=f"/applications/{application_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+@router.post("/applications/{application_id}/crm-upload")
+async def process_crm_upload(
+    application_id: str,
+    doc_label: str = Form("crm_memo"),
+    file: UploadFile = File(...),
+    service: DocumentService = Depends(get_document_service),
+    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+):
+    """CRM uploads a supporting document (memo, recommendation, etc.) and returns to CRM review."""
+    await service.save_upload(
+        loan_id=UUID(application_id),
+        org_id=current_user.org_id,
+        doc_type=doc_label,
+        file=file,
+        uploaded_by=current_user.id,
+        user_role=current_user.role,
+    )
+    return RedirectResponse(
+        url=f"/applications/{application_id}/crm-review",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
 
 @router.get("/applications/{application_id}/ocr-review")
 async def render_ocr_review(
@@ -1186,7 +1215,7 @@ async def process_crm_review(
 ):
     repo = LoanRepository(conn)
     if action == "advance":
-        app = await repo.advance_to_executive_approval(
+        app = await repo.advance_to_committee_review(
             UUID(application_id), current_user.org_id, current_user.id, crm_notes
         )
         if not app:
@@ -1195,9 +1224,9 @@ async def process_crm_review(
         await audit.log(
             application_id=application_id,
             org_id=str(current_user.org_id),
-            action="CRM Dossier Review Complete",
+            action="CRM Dossier Review Complete — Sent to Committee",
             from_stage="crm_review",
-            to_stage="executive_approval",
+            to_stage="committee_review",
             actor_id=str(current_user.id),
             actor_role=current_user.role,
             reason=crm_notes,
@@ -1271,6 +1300,318 @@ async def process_executive_approve(
         actor_role=current_user.role,
     )
     return RedirectResponse(url="/executive-queue", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# =============================================================================
+# COMMITTEE REVIEW QUEUE
+# =============================================================================
+
+@router.get("/committee-queue")
+async def render_committee_queue(
+    request: Request,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["committee", "system_admin"])),
+):
+    dashboard_svc = DashboardService(conn)
+    queue = await dashboard_svc.get_committee_queue(current_user)
+    ctx = build_template_context(
+        request, current_user,
+        queue=queue,
+        active_tab="committee_queue", active_page="committee_queue",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "committee/committee_queue.html", ctx)
+
+
+@router.get("/applications/{application_id}/committee-review")
+async def render_committee_review(
+    request: Request,
+    application_id: str,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["committee", "system_admin"])),
+):
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    votes = await repo.get_committee_votes(UUID(application_id), current_user.org_id)
+    last_loan = await repo.get_last_loan(
+        current_user.org_id, app.applicant_name, app.phone, UUID(application_id)
+    )
+    repayments = []
+    if last_loan:
+        from app.services.loan_servicing_service import LoanServicingService
+        svc = LoanServicingService(conn)
+        repayments = await svc.get_payments(UUID(str(last_loan["id"])), current_user.org_id)
+    my_vote = next((v for v in votes if str(v["member_id"]) == str(current_user.id)), None)
+    ctx = build_template_context(
+        request, current_user,
+        app=app, app_id=application_id,
+        votes=votes, my_vote=my_vote,
+        last_loan=last_loan, repayments=repayments,
+        active_tab="committee_queue", active_page="committee_queue",
+    )
+    return templates.TemplateResponse(request, "committee/committee_review.html", ctx)
+
+
+@router.post("/applications/{application_id}/committee-vote")
+async def process_committee_vote(
+    application_id: str,
+    recommendation: str = Form(...),
+    notes: str = Form(""),
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["committee", "system_admin"])),
+):
+    repo = LoanRepository(conn)
+    await repo.insert_committee_vote(
+        UUID(application_id), current_user.org_id, current_user.id, recommendation, notes
+    )
+    audit = AuditService(conn)
+    await audit.log(
+        application_id=application_id,
+        org_id=str(current_user.org_id),
+        action=f"Committee Vote: {recommendation}",
+        from_stage="committee_review",
+        to_stage="committee_review",
+        actor_id=str(current_user.id),
+        actor_role=current_user.role,
+        reason=notes,
+    )
+    return RedirectResponse(
+        url=f"/applications/{application_id}/committee-review",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/applications/{application_id}/committee-complete")
+async def process_committee_complete(
+    application_id: str,
+    recommendation: str = Form(...),
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["committee", "system_admin"])),
+):
+    repo = LoanRepository(conn)
+    app = await repo.complete_committee_review(
+        UUID(application_id), current_user.org_id, recommendation
+    )
+    if not app:
+        raise HTTPException(status_code=400, detail="Application not in committee_review stage")
+    audit = AuditService(conn)
+    await audit.log(
+        application_id=application_id,
+        org_id=str(current_user.org_id),
+        action=f"Committee Review Complete — {recommendation}",
+        from_stage="committee_review",
+        to_stage=app.stage,
+        actor_id=str(current_user.id),
+        actor_role=current_user.role,
+    )
+    return RedirectResponse(url="/committee-queue", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# =============================================================================
+# ED APPROVAL QUEUE
+# =============================================================================
+
+@router.get("/ed-queue")
+async def render_ed_queue(
+    request: Request,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["ed", "system_admin"])),
+):
+    dashboard_svc = DashboardService(conn)
+    queue = await dashboard_svc.get_ed_queue(current_user)
+    par = await dashboard_svc.get_par_summary(current_user)
+    ctx = build_template_context(
+        request, current_user,
+        queue=queue, par=par,
+        active_tab="ed_queue", active_page="ed_queue",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "executive/ed_queue.html", ctx)
+
+
+@router.get("/applications/{application_id}/ed-approve")
+async def render_ed_approve(
+    request: Request,
+    application_id: str,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["ed", "system_admin"])),
+):
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    votes = await repo.get_committee_votes(UUID(application_id), current_user.org_id)
+    doc_svc = get_document_service(conn)
+    documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
+    ctx = build_template_context(
+        request, current_user,
+        app=app, app_id=application_id,
+        votes=votes, documents=documents,
+        active_tab="ed_queue", active_page="ed_queue",
+    )
+    return templates.TemplateResponse(request, "executive/ed_approve.html", ctx)
+
+
+@router.post("/applications/{application_id}/ed-approve")
+async def process_ed_approve(
+    application_id: str,
+    action: str = Form(...),
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["ed", "system_admin"])),
+):
+    repo = LoanRepository(conn)
+    if action == "approve":
+        app = await repo.ed_approve(UUID(application_id), current_user.org_id, current_user.id)
+        if not app:
+            raise HTTPException(status_code=400, detail="Application not in ed_approval stage")
+        audit = AuditService(conn)
+        await audit.log(
+            application_id=application_id,
+            org_id=str(current_user.org_id),
+            action="ED Final Approval — Disbursement Instruction",
+            from_stage="ed_approval",
+            to_stage="disbursement_ready",
+            actor_id=str(current_user.id),
+            actor_role=current_user.role,
+        )
+    elif action == "escalate_md":
+        app = await repo.ed_escalate_to_md(UUID(application_id), current_user.org_id, current_user.id)
+        if not app:
+            raise HTTPException(status_code=400, detail="Application not in ed_approval stage")
+        audit = AuditService(conn)
+        await audit.log(
+            application_id=application_id,
+            org_id=str(current_user.org_id),
+            action="ED Escalated to MD",
+            from_stage="ed_approval",
+            to_stage="md_approval",
+            actor_id=str(current_user.id),
+            actor_role=current_user.role,
+        )
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action")
+    return RedirectResponse(url="/ed-queue", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# =============================================================================
+# MD APPROVAL QUEUE
+# =============================================================================
+
+@router.get("/md-queue")
+async def render_md_queue(
+    request: Request,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["md", "system_admin"])),
+):
+    dashboard_svc = DashboardService(conn)
+    queue = await dashboard_svc.get_md_queue(current_user)
+    par = await dashboard_svc.get_par_summary(current_user)
+    ctx = build_template_context(
+        request, current_user,
+        queue=queue, par=par,
+        active_tab="md_queue", active_page="md_queue",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "executive/md_queue.html", ctx)
+
+
+@router.get("/applications/{application_id}/md-approve")
+async def render_md_approve(
+    request: Request,
+    application_id: str,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["md", "system_admin"])),
+):
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    votes = await repo.get_committee_votes(UUID(application_id), current_user.org_id)
+    board_referrals = await repo.get_board_referrals(UUID(application_id), current_user.org_id)
+    doc_svc = get_document_service(conn)
+    documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
+    ctx = build_template_context(
+        request, current_user,
+        app=app, app_id=application_id,
+        votes=votes, documents=documents, board_referrals=board_referrals,
+        active_tab="md_queue", active_page="md_queue",
+    )
+    return templates.TemplateResponse(request, "executive/md_approve.html", ctx)
+
+
+@router.post("/applications/{application_id}/md-approve")
+async def process_md_approve(
+    application_id: str,
+    action: str = Form(...),
+    md_notes: str = Form(""),
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["md", "system_admin"])),
+):
+    repo = LoanRepository(conn)
+    if action == "approve":
+        app = await repo.md_approve(UUID(application_id), current_user.org_id, current_user.id, md_notes)
+        if not app:
+            raise HTTPException(status_code=400, detail="Application not in md_approval stage")
+        audit = AuditService(conn)
+        await audit.log(
+            application_id=application_id,
+            org_id=str(current_user.org_id),
+            action="MD Final Approval — Disbursement Instruction",
+            from_stage="md_approval",
+            to_stage="disbursement_ready",
+            actor_id=str(current_user.id),
+            actor_role=current_user.role,
+            reason=md_notes,
+        )
+    elif action == "comment":
+        await repo.md_add_comment(UUID(application_id), current_user.org_id, md_notes)
+        audit = AuditService(conn)
+        await audit.log(
+            application_id=application_id,
+            org_id=str(current_user.org_id),
+            action="MD Comment Added",
+            from_stage="ed_approval",
+            to_stage="ed_approval",
+            actor_id=str(current_user.id),
+            actor_role=current_user.role,
+            reason=md_notes,
+        )
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action")
+    return RedirectResponse(url="/md-queue", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/applications/{application_id}/md-refer-board")
+async def process_md_refer_board(
+    application_id: str,
+    board_member_email: str = Form(...),
+    board_member_name: str = Form(""),
+    notes: str = Form(""),
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["md", "system_admin"])),
+):
+    repo = LoanRepository(conn)
+    await repo.insert_board_referral(
+        UUID(application_id), current_user.org_id, current_user.id,
+        board_member_email, board_member_name, notes
+    )
+    audit = AuditService(conn)
+    await audit.log(
+        application_id=application_id,
+        org_id=str(current_user.org_id),
+        action=f"MD Board Referral — {board_member_email}",
+        from_stage="md_approval",
+        to_stage="md_approval",
+        actor_id=str(current_user.id),
+        actor_role=current_user.role,
+        reason=notes,
+    )
+    return RedirectResponse(
+        url=f"/applications/{application_id}/md-approve",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 # =============================================================================
@@ -1523,3 +1864,62 @@ async def render_executive_dashboard(
         today_label=datetime.now().strftime("%A, %d %B %Y"),
     )
     return templates.TemplateResponse(request, "executive/dashboard.html", ctx)
+
+
+@router.get("/ed-dashboard")
+async def render_ed_dashboard(
+    request: Request,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["ed", "system_admin"])),
+):
+    dashboard_svc = DashboardService(conn)
+    data = await dashboard_svc.get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request, current_user,
+        data=data,
+        ed_queue=data.get("ed_queue", []),
+        par=data.get("par", {}),
+        metrics=data.get("metrics", {}),
+        active_tab="dashboard", active_page="dashboard",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "executive/ed_dashboard.html", ctx)
+
+
+@router.get("/md-dashboard")
+async def render_md_dashboard(
+    request: Request,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["md", "system_admin"])),
+):
+    dashboard_svc = DashboardService(conn)
+    data = await dashboard_svc.get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request, current_user,
+        data=data,
+        md_queue=data.get("md_queue", []),
+        par=data.get("par", {}),
+        metrics=data.get("metrics", {}),
+        active_tab="dashboard", active_page="dashboard",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "executive/md_dashboard.html", ctx)
+
+
+@router.get("/committee-dashboard")
+async def render_committee_dashboard(
+    request: Request,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["committee", "system_admin"])),
+):
+    dashboard_svc = DashboardService(conn)
+    data = await dashboard_svc.get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request, current_user,
+        data=data,
+        committee_queue=data.get("committee_queue", []),
+        metrics=data.get("metrics", {}),
+        active_tab="dashboard", active_page="dashboard",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "committee/dashboard.html", ctx)

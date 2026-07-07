@@ -70,6 +70,20 @@ interface MobileApiService {
 
     // Multi-page document upload (PDF assembled on device)
     suspend fun uploadDocumentPdf(id: String, category: String, pdfBytes: ByteArray, fileName: String): String?
+
+    // Committee review
+    suspend fun getCommitteeVotesFull(applicationId: String): CommitteeVotesFullResponse?
+    suspend fun submitCommitteeVote(id: String, recommendation: String, notes: String): String?
+    suspend fun completeCommitteeReview(id: String, recommendation: String): String?
+
+    // ED approval
+    suspend fun getEdReview(id: String): String?
+    suspend fun submitEdApprove(id: String, action: String): String?
+
+    // MD approval
+    suspend fun getMdReview(id: String): String?
+    suspend fun submitMdApprove(id: String, action: String, notes: String): String?
+    suspend fun addBoardReferral(id: String, email: String, name: String, notes: String): String?
 }
 
 @kotlinx.serialization.Serializable
@@ -694,6 +708,88 @@ class MobileApiServiceImpl(
             ) { authHeader() }
             if (response.status == HttpStatusCode.OK || response.status == HttpStatusCode.Created)
                 response.bodyAsText() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun getCommitteeVotesFull(applicationId: String): CommitteeVotesFullResponse? {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/applications/$applicationId/committee-votes-full") {
+                authHeader()
+            }
+            if (response.status == HttpStatusCode.OK) response.body() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun submitCommitteeVote(id: String, recommendation: String, notes: String): String? {
+        return try {
+            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/applications/$id/committee-vote") {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(CommitteeVoteRequest(recommendation, notes))
+            }
+            if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun completeCommitteeReview(id: String, recommendation: String): String? {
+        return try {
+            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/applications/$id/committee-complete") {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(CommitteeCompleteRequest(recommendation))
+            }
+            if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun getEdReview(id: String): String? {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/applications/$id/ed-review") {
+                authHeader()
+            }
+            if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun submitEdApprove(id: String, action: String): String? {
+        return try {
+            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/applications/$id/ed-approve") {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(EdApproveRequest(action))
+            }
+            if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun getMdReview(id: String): String? {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/applications/$id/md-review") {
+                authHeader()
+            }
+            if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun submitMdApprove(id: String, action: String, notes: String): String? {
+        return try {
+            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/applications/$id/md-approve") {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(MdApproveRequest(action, notes))
+            }
+            if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
+        } catch (e: Exception) { null }
+    }
+
+    override suspend fun addBoardReferral(id: String, email: String, name: String, notes: String): String? {
+        return try {
+            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/applications/$id/md-refer-board") {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(BoardReferralRequest(email, name, notes))
+            }
+            if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
         } catch (e: Exception) { null }
     }
 }

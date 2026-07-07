@@ -114,8 +114,6 @@ def _mobile_role(user) -> str:
         "admin_mcr": "system_admin",
         "mcr":       "system_admin",
         "admin":     "system_admin",
-        "md":        "executive",
-        "ed":        "executive",
     }
     return role_map.get(role, role)
 
@@ -127,11 +125,14 @@ def _stage_number(stage: str | None) -> int:
         "credit_review": 3,
         "branch_approval": 4,
         "crm_review": 5,
-        "executive_approval": 6,
-        "disbursement_ready": 7,
-        "disbursed": 8,
-        "returned": 9,
-        "rejected": 10,
+        "committee_review": 6,
+        "ed_approval": 7,
+        "md_approval": 8,
+        "executive_approval": 7,
+        "disbursement_ready": 9,
+        "disbursed": 10,
+        "returned": 11,
+        "rejected": 12,
     }.get(stage or "intake", 1)
 
 
@@ -142,6 +143,9 @@ def _stage_status(stage: str | None) -> str:
         "credit_review": "Credit Review",
         "branch_approval": "Branch Approval",
         "crm_review": "CRM Review",
+        "committee_review": "Committee Review",
+        "ed_approval": "ED Approval",
+        "md_approval": "MD Approval",
         "executive_approval": "Executive Approval",
         "disbursement_ready": "Disbursement Ready",
         "disbursed": "Disbursed",
@@ -351,6 +355,9 @@ async def get_mobile_queue(
         "compliance-flags",
         "system-control",
         "crm-review",
+        "committee-review",
+        "ed-approval",
+        "md-approval",
         "executive-approval",
     ],
     stage: str | None = None,
@@ -373,10 +380,10 @@ async def get_mobile_queue(
         _ensure_roles(current_user, {"branch_manager", "system_admin"})
         items = await dashboard.get_pending_signoffs(current_user, limit=limit, offset=offset)
     elif queue_name == "credit-reviews":
-        _ensure_roles(current_user, {"credit_officer", "system_admin"})
+        _ensure_roles(current_user, {"branch_manager", "system_admin"})
         items = await dashboard.get_credit_reviews(current_user, limit=limit, offset=offset)
     elif queue_name == "ocr-exceptions":
-        _ensure_roles(current_user, {"credit_officer", "system_admin"})
+        _ensure_roles(current_user, {"branch_manager", "system_admin"})
         items = await dashboard.get_credit_ocr_exceptions(current_user, limit=limit, offset=offset)
     elif queue_name == "compliance-flags":
         _ensure_roles(current_user, {"auditor", "system_admin"})
@@ -384,6 +391,15 @@ async def get_mobile_queue(
     elif queue_name == "crm-review":
         _ensure_roles(current_user, {"crm", "system_admin"})
         items = await dashboard.get_crm_queue(current_user)
+    elif queue_name == "committee-review":
+        _ensure_roles(current_user, {"committee", "system_admin"})
+        items = await dashboard.get_committee_queue(current_user)
+    elif queue_name == "ed-approval":
+        _ensure_roles(current_user, {"ed", "system_admin"})
+        items = await dashboard.get_ed_queue(current_user)
+    elif queue_name == "md-approval":
+        _ensure_roles(current_user, {"md", "system_admin"})
+        items = await dashboard.get_md_queue(current_user)
     elif queue_name == "executive-approval":
         _ensure_roles(current_user, {"md", "ed", "system_admin"})
         items = await dashboard.get_executive_queue(current_user)
@@ -757,7 +773,7 @@ async def submit_mobile_credit_review(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"credit_officer", "system_admin"})
+    _ensure_roles(current_user, {"loan_officer", "branch_manager", "system_admin"})
     app = await _get_application_or_404(conn, application_id, current_user)
     if payload.recommendation_decision == "Recommend Approval":
         stage = "branch_approval"
@@ -786,7 +802,7 @@ async def submit_mobile_credit_review(
                 org_id=current_user.org_id,
                 application_id=application_id,
                 title="Credit Review Complete",
-                message=f"Credit officer verdict: {payload.recommendation_decision}",
+                message=f"Credit review verdict: {payload.recommendation_decision}",
                 notification_type="credit_review",
             )
     except Exception:
@@ -1124,14 +1140,6 @@ _ONBOARDING_SLIDES: dict[str, list[dict]] = {
         {"title": "Offline Mode", "subtitle": "Work Without Internet",
          "body": "All your changes are saved locally when offline. When you reconnect, the sync queue automatically uploads completed records to the server."},
     ],
-    "credit_officer": [
-        {"title": "Credit Review Console", "subtitle": "Your Underwriting Workspace",
-         "body": "Access all applications assigned for credit evaluation. Pull bureau scores, calculate DTI, and submit your recommendation."},
-        {"title": "Bureau Integration", "subtitle": "Automated Score Retrieval",
-         "body": "Credit scores and DTI ratios are pulled automatically from the bureau integration. Review the data and verify income before submitting your verdict."},
-        {"title": "OCR Exceptions", "subtitle": "Handle Document Flags",
-         "body": "Review OCR exceptions flagged during document scanning. Correct misread values and verify critical fields before advancing applications."},
-    ],
     "branch_manager": [
         {"title": "Manager Dashboard", "subtitle": "Branch Oversight Console",
          "body": "Monitor all applications awaiting your sign-off, review concurrence requests from field officers, and track branch disbursement targets."},
@@ -1260,13 +1268,13 @@ async def submit_mobile_crm_review(
     app = await _get_application_or_404(conn, application_id, current_user)
     repo = LoanRepository(conn)
     if payload.decision == "advance":
-        updated = await repo.advance_to_executive_approval(
+        updated = await repo.advance_to_committee_review(
             loan_id=application_id,
             org_id=current_user.org_id,
-            crm_officer_id=current_user.id,
-            notes=payload.notes,
+            crm_user_id=current_user.id,
+            crm_notes=payload.notes,
         )
-        next_stage = "executive_approval"
+        next_stage = "committee_review"
     else:
         updated = await repo.mark_returned(application_id, current_user.org_id, payload.notes, current_user.id)
         next_stage = "returned"
@@ -1324,6 +1332,221 @@ async def submit_mobile_executive_approve(
         actor_role=current_user.role,
     )
     return {"application": updated, "stage": "disbursement_ready"}
+
+
+# ---------------------------------------------------------------------------
+# Committee review endpoints
+# ---------------------------------------------------------------------------
+
+class CommitteeVoteRequest(BaseModel):
+    recommendation: Literal["approve", "return", "reject"]
+    notes: str = ""
+
+
+class CommitteeCompleteRequest(BaseModel):
+    recommendation: Literal["approve", "return", "reject"]
+
+
+@router.get("/applications/{application_id}/committee-votes-full")
+async def get_mobile_committee_votes(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"committee", "ed", "md", "system_admin"})
+    repo = LoanRepository(conn)
+    votes = await repo.get_committee_votes(application_id, current_user.org_id)
+    last_loan = await repo.get_last_loan(
+        current_user.org_id,
+        (await _get_application_or_404(conn, application_id, current_user)).applicant_name,
+        None, application_id
+    )
+    return {"votes": votes, "last_loan": last_loan}
+
+
+@router.post("/applications/{application_id}/committee-vote")
+async def submit_mobile_committee_vote(
+    application_id: UUID,
+    payload: CommitteeVoteRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"committee", "system_admin"})
+    await _get_application_or_404(conn, application_id, current_user)
+    vote = await LoanRepository(conn).insert_committee_vote(
+        application_id, current_user.org_id, current_user.id,
+        payload.recommendation, payload.notes
+    )
+    await AuditService(conn).log(
+        application_id=str(application_id),
+        org_id=str(current_user.org_id),
+        action=f"Committee Vote: {payload.recommendation}",
+        from_stage="committee_review", to_stage="committee_review",
+        actor_id=str(current_user.id), actor_role=current_user.role,
+        reason=payload.notes,
+    )
+    return {"vote": vote}
+
+
+@router.post("/applications/{application_id}/committee-complete")
+async def submit_mobile_committee_complete(
+    application_id: UUID,
+    payload: CommitteeCompleteRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"committee", "system_admin"})
+    app = await _get_application_or_404(conn, application_id, current_user)
+    updated = await LoanRepository(conn).complete_committee_review(
+        application_id, current_user.org_id, payload.recommendation
+    )
+    if not updated:
+        raise HTTPException(status_code=409, detail="Application not in committee_review stage")
+    await AuditService(conn).log(
+        application_id=str(application_id),
+        org_id=str(current_user.org_id),
+        action=f"Committee Review Complete — {payload.recommendation}",
+        from_stage="committee_review", to_stage=updated.stage,
+        actor_id=str(current_user.id), actor_role=current_user.role,
+    )
+    return {"application": updated, "stage": updated.stage}
+
+
+# ---------------------------------------------------------------------------
+# ED approval endpoints
+# ---------------------------------------------------------------------------
+
+class EdApproveRequest(BaseModel):
+    action: Literal["approve", "escalate_md"]
+
+
+@router.get("/applications/{application_id}/ed-review")
+async def get_mobile_ed_review(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"ed", "system_admin"})
+    app = await _get_application_or_404(conn, application_id, current_user)
+    votes = await LoanRepository(conn).get_committee_votes(application_id, current_user.org_id)
+    documents = await DocumentRepository(conn).get_by_loan(application_id, current_user.org_id)
+    return {"application": app, "votes": votes, "documents": documents}
+
+
+@router.post("/applications/{application_id}/ed-approve")
+async def submit_mobile_ed_approve(
+    application_id: UUID,
+    payload: EdApproveRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"ed", "system_admin"})
+    app = await _get_application_or_404(conn, application_id, current_user)
+    repo = LoanRepository(conn)
+    if payload.action == "approve":
+        updated = await repo.ed_approve(application_id, current_user.org_id, current_user.id)
+        next_stage = "disbursement_ready"
+        action_label = "ED Final Approval — Disbursement Instruction"
+    else:
+        updated = await repo.ed_escalate_to_md(application_id, current_user.org_id, current_user.id)
+        next_stage = "md_approval"
+        action_label = "ED Escalated to MD"
+    if not updated:
+        raise HTTPException(status_code=409, detail="Application not in ed_approval stage")
+    await AuditService(conn).log(
+        application_id=str(application_id),
+        org_id=str(current_user.org_id),
+        action=action_label,
+        from_stage=app.stage, to_stage=next_stage,
+        actor_id=str(current_user.id), actor_role=current_user.role,
+    )
+    return {"application": updated, "stage": next_stage}
+
+
+# ---------------------------------------------------------------------------
+# MD approval endpoints
+# ---------------------------------------------------------------------------
+
+class MdApproveRequest(BaseModel):
+    action: Literal["approve", "comment"]
+    notes: str = ""
+
+
+class BoardReferralRequest(BaseModel):
+    board_member_email: str
+    board_member_name: str = ""
+    notes: str = ""
+
+
+@router.get("/applications/{application_id}/md-review")
+async def get_mobile_md_review(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"md", "system_admin"})
+    app = await _get_application_or_404(conn, application_id, current_user)
+    repo = LoanRepository(conn)
+    votes = await repo.get_committee_votes(application_id, current_user.org_id)
+    board_referrals = await repo.get_board_referrals(application_id, current_user.org_id)
+    documents = await DocumentRepository(conn).get_by_loan(application_id, current_user.org_id)
+    return {"application": app, "votes": votes, "board_referrals": board_referrals, "documents": documents}
+
+
+@router.post("/applications/{application_id}/md-approve")
+async def submit_mobile_md_approve(
+    application_id: UUID,
+    payload: MdApproveRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"md", "system_admin"})
+    app = await _get_application_or_404(conn, application_id, current_user)
+    repo = LoanRepository(conn)
+    if payload.action == "approve":
+        updated = await repo.md_approve(application_id, current_user.org_id, current_user.id, payload.notes)
+        if not updated:
+            raise HTTPException(status_code=409, detail="Application not in md_approval stage")
+        next_stage = "disbursement_ready"
+        action_label = "MD Final Approval — Disbursement Instruction"
+    else:
+        await repo.md_add_comment(application_id, current_user.org_id, payload.notes)
+        next_stage = app.stage
+        action_label = "MD Comment Added"
+        updated = app
+    await AuditService(conn).log(
+        application_id=str(application_id),
+        org_id=str(current_user.org_id),
+        action=action_label,
+        from_stage=app.stage, to_stage=next_stage,
+        actor_id=str(current_user.id), actor_role=current_user.role,
+        reason=payload.notes,
+    )
+    return {"application": updated, "stage": next_stage}
+
+
+@router.post("/applications/{application_id}/md-refer-board")
+async def submit_mobile_board_referral(
+    application_id: UUID,
+    payload: BoardReferralRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"md", "system_admin"})
+    await _get_application_or_404(conn, application_id, current_user)
+    referral = await LoanRepository(conn).insert_board_referral(
+        application_id, current_user.org_id, current_user.id,
+        payload.board_member_email, payload.board_member_name, payload.notes
+    )
+    await AuditService(conn).log(
+        application_id=str(application_id),
+        org_id=str(current_user.org_id),
+        action=f"MD Board Referral — {payload.board_member_email}",
+        from_stage="md_approval", to_stage="md_approval",
+        actor_id=str(current_user.id), actor_role=current_user.role,
+        reason=payload.notes,
+    )
+    return {"referral": referral}
 
 
 # ---------------------------------------------------------------------------

@@ -67,14 +67,24 @@ internal fun EntryProviderScope<NavKey>.reviewEntryBuilder(
     content: @Composable (Screen) -> Unit
 ) {
     entry<Screen.BranchManagerReview> { content(it) }
-    entry<Screen.CreditOfficerReview> { content(it) }
     entry<Screen.AuditorCompliance> { content(it) }
     entry<Screen.AdminMcrApproval> { content(it) }
     entry<Screen.WorkflowEventAudit> { content(it) }
     entry<Screen.AuditTrail> { content(it) }
     entry<Screen.ComplianceFlags> { content(it) }
     entry<Screen.CrmReview> { content(it) }
+    entry<Screen.CommitteeReview> { content(it) }
+    entry<Screen.EdApproval> { content(it) }
+    entry<Screen.MdApproval> { content(it) }
     entry<Screen.ExecutiveApproval> { content(it) }
+}
+
+internal fun EntryProviderScope<NavKey>.committeeEntryBuilder(
+    content: @Composable (Screen) -> Unit
+) {
+    entry<Screen.CommitteeQueue> { content(it) }
+    entry<Screen.EdQueue> { content(it) }
+    entry<Screen.MdQueue> { content(it) }
 }
 
 internal fun EntryProviderScope<NavKey>.queueEntryBuilder(
@@ -87,6 +97,8 @@ internal fun EntryProviderScope<NavKey>.queueEntryBuilder(
     entry<Screen.CreditReviewQueue> { content(it) }
     entry<Screen.OcrExceptions> { content(it) }
     entry<Screen.Pipeline> { content(it) }
+    entry<Screen.CrmQueue> { content(it) }
+    entry<Screen.ExecutiveQueue> { content(it) }
 }
 
 internal fun EntryProviderScope<NavKey>.adminEntryBuilder(

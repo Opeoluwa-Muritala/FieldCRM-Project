@@ -1,0 +1,134 @@
+{% set mobile_title_text = "MD Review" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+{% block title %}MD Approval - FieldCRM{% endblock %}
+{% block page_title %}MD Approval{% endblock %}
+{% block breadcrumb %}Managing Director -> Approval -> {{ app.ref_no }}{% endblock %}
+{% block content %}
+
+<div class="page-card" style="margin-bottom:20px;">
+  <h2 class="page-card-title">{{ app.applicant_name }}</h2>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;">
+    <div><span style="color:var(--text-muted)">Ref</span><br><strong>{{ app.ref_no }}</strong></div>
+    <div><span style="color:var(--text-muted)">Amount</span><br><strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}—{% endif %}</strong></div>
+    <div><span style="color:var(--text-muted)">Tenor</span><br><strong>{{ app.tenor_months or '—' }} months</strong></div>
+    <div><span style="color:var(--text-muted)">Type</span><br><strong>{{ app.loan_type|upper }}</strong></div>
+    <div><span style="color:var(--text-muted)">Stage</span><br><span class="status-badge needs-review">{{ app.stage|replace('_',' ')|title }}</span></div>
+  </div>
+</div>
+
+{% if app.crm_notes %}
+<div class="page-card" style="margin-bottom:20px;background:#f3f8ff;border:1px solid #90caf9;">
+  <strong>CRM Notes:</strong>
+  <p style="margin:8px 0 0;color:var(--text-secondary);">{{ app.crm_notes }}</p>
+</div>
+{% endif %}
+
+{# ── Committee Votes ── #}
+{% if votes %}
+<div class="page-card" style="margin-bottom:20px;">
+  <h3 style="margin-bottom:12px;">Committee Recommendations</h3>
+  <table class="custom-table">
+    <thead><tr><th>Member</th><th>Recommendation</th><th>Notes</th></tr></thead>
+    <tbody>
+    {% for v in votes %}
+    <tr>
+      <td>{{ v.member_name }}</td>
+      <td><span class="status-badge {% if v.recommendation == 'approve' %}approved{% elif v.recommendation == 'reject' %}rejected{% else %}needs-review{% endif %}">{{ v.recommendation|title }}</span></td>
+      <td style="font-size:13px;color:var(--text-secondary);">{{ v.notes or '—' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{# ── Documents ── #}
+<div class="page-card" style="margin-bottom:20px;">
+  <h3 style="margin-bottom:12px;">Document Summary</h3>
+  <table class="custom-table">
+    <thead><tr><th>Document</th><th>Quality</th><th>Verified</th></tr></thead>
+    <tbody>
+    {% for doc in documents %}
+    <tr>
+      <td>{{ doc.doc_type.replace('_',' ').title() }}</td>
+      <td><span class="status-badge {% if doc.quality_status == 'clear' %}approved{% else %}needs-review{% endif %}">{{ doc.quality_status }}</span></td>
+      <td>{% if doc.verified %}&#10003;{% else %}<span style="color:#c62828">&#10007;</span>{% endif %}</td>
+    </tr>
+    {% else %}<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">No documents.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ── MD Decision (only for md_approval stage) ── #}
+{% if app.stage == 'md_approval' %}
+<div class="page-card" style="margin-bottom:20px;background:#e8f5e9;border:1px solid #a5d6a7;">
+  <h3 style="margin-bottom:12px;">MD Final Approval</h3>
+  <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px;">
+    By approving, you authorise disbursement of
+    <strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}the approved amount{% endif %}</strong>
+    to <strong>{{ app.applicant_name }}</strong>. This action is logged and cannot be undone.
+  </p>
+  <form method="post" action="/applications/{{ app_id }}/md-approve">
+    <div style="margin-bottom:14px;">
+      <label for="md_notes_approve" style="display:block;font-weight:600;margin-bottom:6px;">Notes (optional)</label>
+      <textarea id="md_notes_approve" name="md_notes" rows="3"
+        style="width:100%;padding:10px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;"
+        placeholder="Any final comments or conditions…"></textarea>
+    </div>
+    <button type="submit" name="action" value="approve" class="btn btn-primary"
+      onclick="return confirm('Issue disbursement instruction for {{ app.applicant_name }}?')"
+      style="font-size:15px;padding:12px 28px;">
+      &#10003; Issue Disbursement Instruction
+    </button>
+    <a href="/md-queue" class="btn btn-secondary" style="margin-left:12px;">Cancel</a>
+  </form>
+</div>
+{% endif %}
+
+
+{# ── Board Referrals ── #}
+<div class="page-card" style="margin-bottom:20px;">
+  <h3 style="margin-bottom:12px;">Board Member Opinions</h3>
+  <p style="font-size:14px;color:var(--text-secondary);margin-bottom:14px;">
+    Add a board member's email to request their opinion on this loan. This does not block the approval process.
+  </p>
+  <form method="post" action="/applications/{{ app_id }}/md-refer-board" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;">
+    <div>
+      <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Board Member Name</label>
+      <input type="text" name="board_member_name" placeholder="Full name (optional)"
+        style="padding:8px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;width:200px;">
+    </div>
+    <div>
+      <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Email Address *</label>
+      <input type="email" name="board_member_email" placeholder="board@example.com" required
+        style="padding:8px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;width:220px;">
+    </div>
+    <div style="flex:1;min-width:160px;">
+      <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Notes</label>
+      <input type="text" name="notes" placeholder="What to ask…"
+        style="padding:8px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;width:100%;">
+    </div>
+    <button type="submit" class="btn btn-secondary" style="padding:9px 20px;">Request Opinion</button>
+  </form>
+  {% if board_referrals %}
+  <table class="custom-table">
+    <thead><tr><th>Board Member</th><th>Email</th><th>Notes</th><th>Status</th><th>Date</th></tr></thead>
+    <tbody>
+    {% for ref in board_referrals %}
+    <tr>
+      <td>{{ ref.board_member_name or '—' }}</td>
+      <td>{{ ref.board_member_email }}</td>
+      <td style="font-size:13px;color:var(--text-secondary);">{{ ref.notes or '—' }}</td>
+      <td><span class="status-badge {% if ref.status == 'responded' %}approved{% else %}needs-review{% endif %}">{{ ref.status|title }}</span></td>
+      <td style="font-size:12px;color:var(--text-muted);">{{ ref.created_at.strftime('%d %b %Y') if ref.created_at else '—' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:var(--text-muted);font-size:14px;">No board opinions requested yet.</p>
+  {% endif %}
+</div>
+
+<a href="/md-queue" class="btn btn-secondary">&#8592; Back to MD Queue</a>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% set mobile_title_text = "ED Approval" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+{% block title %}ED Approval - FieldCRM{% endblock %}
+{% block page_title %}ED Approval{% endblock %}
+{% block breadcrumb %}Executive Director -> Approval -> {{ app.ref_no }}{% endblock %}
+{% block content %}
+
+<div class="page-card" style="margin-bottom:20px;">
+  <h2 class="page-card-title">{{ app.applicant_name }}</h2>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;">
+    <div><span style="color:var(--text-muted)">Ref</span><br><strong>{{ app.ref_no }}</strong></div>
+    <div><span style="color:var(--text-muted)">Amount</span><br><strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}—{% endif %}</strong></div>
+    <div><span style="color:var(--text-muted)">Tenor</span><br><strong>{{ app.tenor_months or '—' }} months</strong></div>
+    <div><span style="color:var(--text-muted)">Type</span><br><strong>{{ app.loan_type|upper }}</strong></div>
+  </div>
+</div>
+
+{% if app.crm_notes %}
+<div class="page-card" style="margin-bottom:20px;background:#f3f8ff;border:1px solid #90caf9;">
+  <strong>CRM Notes:</strong>
+  <p style="margin:8px 0 0;color:var(--text-secondary);">{{ app.crm_notes }}</p>
+</div>
+{% endif %}
+
+{# ── Committee Votes ── #}
+{% if votes %}
+<div class="page-card" style="margin-bottom:20px;">
+  <h3 style="margin-bottom:12px;">Committee Recommendations</h3>
+  <table class="custom-table">
+    <thead><tr><th>Member</th><th>Recommendation</th><th>Notes</th></tr></thead>
+    <tbody>
+    {% for v in votes %}
+    <tr>
+      <td>{{ v.member_name }}</td>
+      <td><span class="status-badge {% if v.recommendation == 'approve' %}approved{% elif v.recommendation == 'reject' %}rejected{% else %}needs-review{% endif %}">{{ v.recommendation|title }}</span></td>
+      <td style="font-size:13px;color:var(--text-secondary);">{{ v.notes or '—' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{# ── Documents ── #}
+<div class="page-card" style="margin-bottom:20px;">
+  <h3 style="margin-bottom:12px;">Document Summary</h3>
+  <table class="custom-table">
+    <thead><tr><th>Document</th><th>Quality</th><th>Verified</th></tr></thead>
+    <tbody>
+    {% for doc in documents %}
+    <tr>
+      <td>{{ doc.doc_type.replace('_',' ').title() }}</td>
+      <td><span class="status-badge {% if doc.quality_status == 'clear' %}approved{% else %}needs-review{% endif %}">{{ doc.quality_status }}</span></td>
+      <td>{% if doc.verified %}&#10003;{% else %}<span style="color:#c62828">&#10007;</span>{% endif %}</td>
+    </tr>
+    {% else %}<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">No documents.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ── ED Actions ── #}
+<div class="page-card" style="background:#e8f5e9;border:1px solid #a5d6a7;">
+  <h3 style="margin-bottom:12px;">ED Decision</h3>
+  <p style="margin-bottom:16px;color:var(--text-secondary);font-size:14px;">
+    As ED, you have final approval authority for this loan (below &#x20A6;10,000,000).
+    You may approve directly or forward to MD if you require MD's final approval.
+  </p>
+  <form method="post" action="/applications/{{ app_id }}/ed-approve">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <button type="submit" name="action" value="approve" class="btn btn-primary"
+        onclick="return confirm('Issue disbursement instruction for {{ app.applicant_name }}?')"
+        style="font-size:15px;padding:12px 24px;">
+        &#10003; Approve — Issue Disbursement Instruction
+      </button>
+      <button type="submit" name="action" value="escalate_md" class="btn btn-secondary"
+        onclick="return confirm('Forward this loan to MD for final approval?')"
+        style="padding:12px 24px;">
+        &#8679; Forward to MD
+      </button>
+    </div>
+  </form>
+  <div style="margin-top:12px;">
+    <a href="/ed-queue" class="btn btn-secondary" style="font-size:13px;">&#8592; Back to Queue</a>
+  </div>
+</div>
+{% endblock %}

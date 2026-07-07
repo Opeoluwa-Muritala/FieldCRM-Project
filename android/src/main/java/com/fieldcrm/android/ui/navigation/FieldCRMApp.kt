@@ -335,7 +335,10 @@ fun FieldCRMApp(
             onNavigateToOfflineQueue = { backStack.add(Screen.OfflineQueue) },
             onNavigateToCrmQueue = { backStack.add(Screen.CrmQueue) },
             onNavigateToExecutiveQueue = { backStack.add(Screen.ExecutiveQueue) },
-            onNavigateToParDashboard = { servicingViewModel.loadParDashboard(); backStack.add(Screen.ParDashboard) }
+            onNavigateToParDashboard = { servicingViewModel.loadParDashboard(); backStack.add(Screen.ParDashboard) },
+            onNavigateToCommitteeQueue = { backStack.add(Screen.CommitteeQueue) },
+            onNavigateToEdQueue = { backStack.add(Screen.EdQueue) },
+            onNavigateToMdQueue = { backStack.add(Screen.MdQueue) }
         )
 
         Screen.Settings -> {
@@ -401,15 +404,17 @@ fun FieldCRMApp(
                 onNavigateToVisitationReport = { backStack.add(Screen.VisitationReport) },
                 onNavigateToGuarantorsForm = { backStack.add(Screen.GuarantorsForm) },
                 onNavigateToReview = {
-                    val reviewScreen = when (appUiState.session?.role) {
+                    val reviewScreen: Screen? = when (appUiState.session?.role) {
                         UserRole.BRANCH_MANAGER -> Screen.BranchManagerReview
-                        UserRole.CREDIT_OFFICER -> Screen.CreditOfficerReview
                         UserRole.AUDITOR -> Screen.AuditorCompliance
                         UserRole.CRM -> Screen.CrmReview
                         UserRole.EXECUTIVE -> Screen.ExecutiveApproval
-                        else -> Screen.CreditOfficerReview
+                        UserRole.COMMITTEE -> Screen.CommitteeReview
+                        UserRole.ED -> Screen.EdApproval
+                        UserRole.MD -> Screen.MdApproval
+                        else -> null
                     }
-                    backStack.add(reviewScreen)
+                    if (reviewScreen != null) backStack.add(reviewScreen)
                 },
                 onNavigateToAuditTrail = { backStack.add(Screen.WorkflowEventAudit) },
                 onNavigateToFormWizard = { backStack.add(Screen.LoanApplicationForm) },
@@ -528,22 +533,6 @@ fun FieldCRMApp(
             }
         }
 
-        Screen.CreditOfficerReview -> {
-            val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id }
-            if (app != null) {
-                CreditOfficerReviewScreen(
-                    application = app,
-                    borrower = borrower,
-                    applicationViewModel = applicationViewModel,
-                    onBackClick = { backStack.removeLastOrNull() },
-                    onCompleteReview = { backStack.removeLastOrNull() }
-                )
-            } else {
-                backStack.removeLastOrNull()
-            }
-        }
-
         Screen.AuditorCompliance -> AuditorComplianceScreen(
             applicationId = appUiState.selectedApplication?.id ?: "",
             onBackClick = { backStack.removeLastOrNull() },
@@ -630,7 +619,7 @@ fun FieldCRMApp(
             onReviewApplication = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
                 if (app != null) appViewModel.setSelectedApplication(app)
-                backStack.add(Screen.CreditOfficerReview)
+                backStack.add(Screen.ApplicationDetail)
             }
         )
 
@@ -688,7 +677,6 @@ fun FieldCRMApp(
                     onBackClick = { backStack.removeLastOrNull() },
                     onVerified = {
                         backStack.removeLastOrNull()
-                        backStack.add(Screen.CreditOfficerReview)
                     }
                 )
             } else {
@@ -825,6 +813,121 @@ fun FieldCRMApp(
                 backStack.add(Screen.ExecutiveApproval)
             }
         )
+
+        Screen.CommitteeQueue -> CommitteeQueueScreen(
+            applications = applicationUiState.applications,
+            onBackClick = { backStack.removeLastOrNull() },
+            onReviewApplication = { appId ->
+                val app = applicationUiState.applications.find { it.id == appId }
+                if (app != null) appViewModel.setSelectedApplication(app)
+                backStack.add(Screen.CommitteeReview)
+            }
+        )
+
+        Screen.CommitteeReview -> {
+            val app = appUiState.selectedApplication
+            if (app != null) {
+                CommitteeReviewScreen(
+                    application = app,
+                    isSubmitting = crmReviewUiState.isSubmitting,
+                    onSubmitVote = { recommendation, notes ->
+                        crmReviewViewModel.submitCommitteeVote(
+                            id = app.id,
+                            recommendation = recommendation,
+                            notes = notes,
+                            onDone = { backStack.removeLastOrNull() }
+                        )
+                    },
+                    onCompleteReview = { recommendation ->
+                        crmReviewViewModel.completeCommitteeReview(
+                            id = app.id,
+                            recommendation = recommendation,
+                            onDone = { backStack.removeLastOrNull() }
+                        )
+                    },
+                    onBack = { backStack.removeLastOrNull() }
+                )
+            } else {
+                LaunchedEffect(Unit) { backStack.removeLastOrNull() }
+            }
+        }
+
+        Screen.EdQueue -> EdQueueScreen(
+            applications = applicationUiState.applications,
+            onBackClick = { backStack.removeLastOrNull() },
+            onReviewApplication = { appId ->
+                val app = applicationUiState.applications.find { it.id == appId }
+                if (app != null) appViewModel.setSelectedApplication(app)
+                backStack.add(Screen.EdApproval)
+            }
+        )
+
+        Screen.EdApproval -> {
+            val app = appUiState.selectedApplication
+            if (app != null) {
+                EdApprovalScreen(
+                    application = app,
+                    isSubmitting = crmReviewUiState.isSubmitting,
+                    onApprove = {
+                        crmReviewViewModel.submitEdApprove(
+                            id = app.id,
+                            action = "approve",
+                            onDone = { backStack.removeLastOrNull() }
+                        )
+                    },
+                    onForwardToMd = {
+                        crmReviewViewModel.submitEdApprove(
+                            id = app.id,
+                            action = "escalate_md",
+                            onDone = { backStack.removeLastOrNull() }
+                        )
+                    },
+                    onBack = { backStack.removeLastOrNull() }
+                )
+            } else {
+                LaunchedEffect(Unit) { backStack.removeLastOrNull() }
+            }
+        }
+
+        Screen.MdQueue -> MdQueueScreen(
+            applications = applicationUiState.applications,
+            onBackClick = { backStack.removeLastOrNull() },
+            onReviewApplication = { appId ->
+                val app = applicationUiState.applications.find { it.id == appId }
+                if (app != null) appViewModel.setSelectedApplication(app)
+                backStack.add(Screen.MdApproval)
+            }
+        )
+
+        Screen.MdApproval -> {
+            val app = appUiState.selectedApplication
+            if (app != null) {
+                MdApprovalScreen(
+                    application = app,
+                    isSubmitting = crmReviewUiState.isSubmitting,
+                    onApprove = {
+                        crmReviewViewModel.submitMdApprove(
+                            id = app.id,
+                            action = "approve",
+                            notes = "",
+                            onDone = { backStack.removeLastOrNull() }
+                        )
+                    },
+                    onAddBoardReferral = { email, name, notes ->
+                        crmReviewViewModel.addBoardReferral(
+                            id = app.id,
+                            email = email,
+                            name = name,
+                            notes = notes,
+                            onDone = {}
+                        )
+                    },
+                    onBack = { backStack.removeLastOrNull() }
+                )
+            } else {
+                LaunchedEffect(Unit) { backStack.removeLastOrNull() }
+            }
+        }
 
             else -> {}
         }

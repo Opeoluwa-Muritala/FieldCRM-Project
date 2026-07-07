@@ -3,20 +3,24 @@ package com.fieldcrm.android.core.session
 enum class UserRole {
     LOAN_OFFICER,
     BRANCH_MANAGER,
-    CREDIT_OFFICER,
     AUDITOR,
     SYSTEM_ADMIN,
     CRM,
+    COMMITTEE,
+    ED,
+    MD,
     EXECUTIVE;
 
     val displayName: String
         get() = when (this) {
             LOAN_OFFICER   -> "Loan Officer"
             BRANCH_MANAGER -> "Branch Manager"
-            CREDIT_OFFICER -> "Credit Officer"
             AUDITOR        -> "Auditor"
             SYSTEM_ADMIN   -> "System Admin"
             CRM            -> "CRM Officer"
+            COMMITTEE      -> "Committee Member"
+            ED             -> "Executive Director"
+            MD             -> "Managing Director"
             EXECUTIVE      -> "Executive"
         }
 
@@ -27,11 +31,13 @@ enum class UserRole {
     companion object {
         fun fromServerRole(role: String): UserRole = when (role.trim().lowercase()) {
             "branch_manager", "branchmanager"  -> BRANCH_MANAGER
-            "credit_officer", "creditofficer"  -> CREDIT_OFFICER
             "auditor"                          -> AUDITOR
             "system_admin", "admin", "admin_mcr", "mcr" -> SYSTEM_ADMIN
             "crm"                              -> CRM
-            "md", "ed", "executive"            -> EXECUTIVE
+            "committee"                        -> COMMITTEE
+            "ed"                               -> ED
+            "md"                               -> MD
+            "executive"                        -> EXECUTIVE
             else                               -> LOAN_OFFICER
         }
 
@@ -40,7 +46,6 @@ enum class UserRole {
             val normalized = identifier.trim().lowercase()
             return when {
                 "adebayo" in normalized -> BRANCH_MANAGER
-                "fatima" in normalized -> CREDIT_OFFICER
                 "samuel" in normalized -> AUDITOR
                 "admin" in normalized -> SYSTEM_ADMIN
                 else -> LOAN_OFFICER

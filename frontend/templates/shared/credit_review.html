@@ -10,7 +10,7 @@
     <div class="page-card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <div>
             <h2 class="page-card-title">Credit Risk Review</h2>
-            <p class="page-card-subtitle">Review by Credit Officer: {{ current_user.name }} · Date: 4 June 2026</p>
+            <p class="page-card-subtitle">Review by: {{ current_user.name }} · Date: 4 June 2026</p>
         </div>
         <span class="status-badge needs-review">Under Credit Review</span>
     </div>
@@ -90,7 +90,7 @@
             </div>
 
             <div class="form-group-full">
-                <label class="field-label">Credit Officer Override Notes</label>
+                <label class="field-label">Reviewer Override Notes</label>
                 <textarea name="affordability_notes" class="field-textarea" placeholder="Detail any variance explanations or cashflow strengths...">DSR remains well within regulatory limits (<33.3%). Statement turnover verifies cashflow capability.</textarea>
             </div>
         </div>

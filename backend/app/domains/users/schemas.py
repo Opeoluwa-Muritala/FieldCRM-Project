@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 class UserBase(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=100)
     email: str = Field(..., description="Unique user email address")
-    role: str = Field(..., description="loan_officer, branch_manager, credit_officer, auditor, system_admin")
+    role: str = Field(..., description="loan_officer, branch_manager, auditor, system_admin, crm, md, ed, committee")
 
 
 class UserCreate(UserBase):
@@ -69,13 +69,13 @@ class UserRow(BaseModel):
         """Human-readable role for UI display."""
         mapping = {
             "loan_officer": "Loan Officer",
-            "credit_officer": "Credit Officer",
             "branch_manager": "Branch Manager",
             "auditor": "Auditor",
             "system_admin": "System Admin",
             "crm": "CRM Officer",
             "md": "Managing Director",
             "ed": "Executive Director",
+            "committee": "Committee Member",
         }
         key = self.role.lower().replace(" ", "_")
         return mapping.get(key, self.role)

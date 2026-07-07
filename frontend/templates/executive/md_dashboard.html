@@ -1,0 +1,41 @@
+{% set mobile_title_text = "MD Dashboard" %}
+{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+{% block title %}MD Dashboard - FieldCRM{% endblock %}
+{% block page_title %}Managing Director Dashboard{% endblock %}
+{% block breadcrumb %}Managing Director -> Dashboard{% endblock %}
+{% block content %}
+<div class="queue-page-header">
+  <div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">MD Dashboard</h1></div>
+</div>
+
+<div class="metrics-row" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px;">
+  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
+    <div class="metric-value">{{ metrics.md_queue or 0 }}</div>
+    <div class="metric-label">Awaiting MD Approval</div>
+  </div>
+  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
+    <div class="metric-value" style="color:{% if (metrics.par30_pct or 0) > 5 %}#c62828{% else %}#2e7d32{% endif %}">{{ metrics.par30_pct or 0 }}%</div>
+    <div class="metric-label">PAR-30</div>
+  </div>
+</div>
+
+<div class="page-card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h2 class="page-card-title" style="margin:0;">MD Approval Queue</h2>
+    <a href="/md-queue" class="btn btn-primary" style="font-size:13px;padding:6px 14px;">View All</a>
+  </div>
+  <div class="queue-cards">
+    {% for item in md_queue[:5] %}
+    <a href="/applications/{{ item.id }}/md-approve" class="queue-card">
+      <span class="queue-card-name">{{ item.applicant_name }}</span>
+      <span class="queue-card-meta">
+        {{ item.ref_no }}
+        {% if item.ed_escalated_to_md %}<span style="font-size:11px;color:#e65100;margin-left:4px;">[Forwarded by ED]</span>{% endif %}
+      </span>
+      <span class="queue-card-amount">{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}No amount{% endif %}</span>
+      <span class="status-badge queue-card-badge {% if item.stage == 'md_approval' %}needs-review{% else %}approved{% endif %}">{{ item.days_waiting }}d</span>
+    </a>
+    {% else %}<div class="lo-empty-state">No applications in MD queue.</div>{% endfor %}
+  </div>
+</div>
+{% endblock %}

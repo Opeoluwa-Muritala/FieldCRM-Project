@@ -45,6 +45,7 @@ fun FieldCRMNavDisplay(
             documentEntryBuilder(content)
             reviewEntryBuilder(content)
             queueEntryBuilder(content)
+            committeeEntryBuilder(content)
             adminEntryBuilder(content)
         }
     )

@@ -13,7 +13,6 @@ ROLES = {
     "system_admin": ("admin@mmfb.com", "password123"),
     "branch_manager": ("adebayo@mmfb.com", "password123"),
     "loan_officer": ("chidi@mmfb.com", "password123"),
-    "credit_officer": ("fatima@mmfb.com", "password123"),
     "auditor": ("samuel@mmfb.com", "password123"),
 }
 

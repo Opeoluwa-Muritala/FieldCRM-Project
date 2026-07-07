@@ -11,7 +11,7 @@
     {% for item in queue %}
     <a href="/applications/{{ item.id }}/approve" class="queue-card">
         <span class="queue-card-name">{{ item.applicant_name }}</span>
-        <span class="queue-card-meta">{{ item.ref_no }} - {{ item.credit_officer_name or 'Credit Officer' }}</span>
+        <span class="queue-card-meta">{{ item.ref_no }} - {{ item.officer_name or 'Loan Officer' }}</span>
         <span class="queue-card-amount">{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}No amount{% endif %}</span>
         <span class="status-badge queue-card-badge needs-review">{{ item.days_waiting }}d</span>
     </a>

@@ -25,10 +25,10 @@ SELECT
           AND stage = 'branch_approval'
     ) AS metric_3,
 
-    -- Credit Officer: awaiting credit review
+    -- Branch Manager: awaiting credit review (credit_officer role removed)
     COUNT(*) FILTER (
-        WHERE $3 = 'credit_officer'
-          AND credit_officer_id = $2
+        WHERE $3 = 'branch_manager'
+          AND branch_manager_id = $2
           AND stage = 'credit_review'
     ) AS metric_4,
 

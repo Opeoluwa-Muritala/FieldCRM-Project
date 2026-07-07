@@ -16,13 +16,13 @@ _MOBILE_UA_PATTERN = re.compile(
 # Valid roles that map to template subdirectories
 _VALID_ROLES = frozenset({
     "loan_officer",
-    "credit_officer",
     "branch_manager",
     "auditor",
     "system_admin",
     "crm",
     "md",
     "ed",
+    "committee",
 })
 
 
