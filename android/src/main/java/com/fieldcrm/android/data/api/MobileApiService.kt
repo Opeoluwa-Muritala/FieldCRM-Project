@@ -27,6 +27,7 @@ interface MobileApiService {
     suspend fun getQueue(queueName: String): String?
     suspend fun getBorrowers(): String?
     suspend fun createBorrower(data: Map<String, JsonElement>): String?
+    suspend fun generateShareLink(): ShareLinkResponse?
     suspend fun createApplication(customerType: String, loanType: String, applicantName: String): String?
     suspend fun getApplicationDetail(id: String): String?
     suspend fun saveIntakeStep(id: String, step: Int, data: Map<String, JsonElement>): String?
@@ -85,6 +86,12 @@ interface MobileApiService {
     suspend fun submitMdApprove(id: String, action: String, notes: String): String?
     suspend fun addBoardReferral(id: String, email: String, name: String, notes: String): String?
 }
+
+@kotlinx.serialization.Serializable
+data class ShareLinkResponse(
+    val share_url: String,
+    val token: String
+)
 
 @kotlinx.serialization.Serializable
 data class ApiNotification(
@@ -314,6 +321,17 @@ class MobileApiServiceImpl(
                 authHeader()
             }
             if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    override suspend fun generateShareLink(): ShareLinkResponse? {
+        return try {
+            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/generate-share-link") {
+                authHeader()
+            }
+            if (response.status == HttpStatusCode.OK) response.body() else null
         } catch (e: Exception) {
             null
         }

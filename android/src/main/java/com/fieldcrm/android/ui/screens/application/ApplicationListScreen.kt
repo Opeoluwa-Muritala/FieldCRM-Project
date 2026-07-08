@@ -259,7 +259,7 @@ fun ApplicationListContent(
                         val stateCode = when (app.stage) {
                             "branch_approval", "executive_approval", "disbursement_ready", "disbursed" -> StatusChipVariant.Approved
                             "intake" -> StatusChipVariant.Verified
-                            "ocr_review", "credit_review", "crm_review" -> StatusChipVariant.NeedsReview
+                            "ocr_review", "crm_review", "committee_review" -> StatusChipVariant.NeedsReview
                             "returned" -> StatusChipVariant.Returned
                             "rejected" -> StatusChipVariant.LowConfidence
                             else -> StatusChipVariant.NeedsReview

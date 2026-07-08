@@ -41,14 +41,14 @@ private val placeholderPipelineEntries = listOf(
     PipelineEntry("Bola Tinubu-Adeyemi", "₦900,000", "Disbursed", "")
 )
 
-private val stageOrder = listOf("Intake", "OCR Review", "Credit Review", "Approved", "Disbursed")
+private val stageOrder = listOf("Intake", "OCR Review", "Approved", "Disbursed")
 
 private val stageMapping = mapOf(
     "intake" to "Intake",
     "ocr_review" to "OCR Review",
-    "credit_review" to "Credit Review",
     "branch_approval" to "Approved",
     "crm_review" to "Approved",
+    "committee_review" to "Approved",
     "executive_approval" to "Approved",
     "disbursement_ready" to "Disbursed",
     "disbursed" to "Disbursed",

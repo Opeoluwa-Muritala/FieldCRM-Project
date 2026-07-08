@@ -37,7 +37,9 @@ data class ApplicationUiState(
     val newAppRepaymentFrequency: String = "monthly",
     val newAppPurpose: String = "",
     val selectedAppDetail: ApplicationDetailResult? = null,
-    val isLoadingDetail: Boolean = false
+    val isLoadingDetail: Boolean = false,
+    val shareUrl: String? = null,
+    val isGeneratingLink: Boolean = false
 )
 
 class ApplicationViewModel(
@@ -118,6 +120,24 @@ class ApplicationViewModel(
 
     fun setNewAppPurpose(value: String) {
         _uiState.update { it.copy(newAppPurpose = value, errorMessage = null) }
+    }
+
+    fun generateClientIntakeLink(onCompleted: (String) -> Unit = {}) {
+        _uiState.update { it.copy(isGeneratingLink = true, errorMessage = null) }
+        viewModelScope.launch {
+            val response = repository.generateShareLink()
+            if (response != null) {
+                _uiState.update { it.copy(shareUrl = response.share_url, isGeneratingLink = false) }
+                onCompleted(response.share_url)
+            } else {
+                _uiState.update { 
+                    it.copy(
+                        isGeneratingLink = false,
+                        errorMessage = "Failed to generate intake link. Please check network."
+                    )
+                }
+            }
+        }
     }
 
     fun createApplication(onSuccess: (LoanApplicationModel, BorrowerModel) -> Unit) {
@@ -301,9 +321,9 @@ class ApplicationViewModel(
     ) {
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            // Optimistic local advance to credit_review
+            // Optimistic local advance to branch_approval
             val advanced = _uiState.value.applications.find { it.id == id }
-                ?.copy(stage = "credit_review")
+                ?.copy(stage = "branch_approval")
             if (advanced != null) {
                 _uiState.update { s -> s.copy(applications = s.applications.map { if (it.id == id) advanced else it }) }
                 repository.createApplication(advanced)

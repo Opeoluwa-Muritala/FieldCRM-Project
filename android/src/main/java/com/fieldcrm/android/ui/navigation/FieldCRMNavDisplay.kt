@@ -11,6 +11,7 @@ import com.fieldcrm.android.ui.navigation.impl.adminEntryBuilder
 import com.fieldcrm.android.ui.navigation.impl.applicationEntryBuilder
 import com.fieldcrm.android.ui.navigation.impl.authEntryBuilder
 import com.fieldcrm.android.ui.navigation.impl.borrowerEntryBuilder
+import com.fieldcrm.android.ui.navigation.impl.committeeEntryBuilder
 import com.fieldcrm.android.ui.navigation.impl.documentEntryBuilder
 import com.fieldcrm.android.ui.navigation.impl.onboardingEntryBuilder
 import com.fieldcrm.android.ui.navigation.impl.queueEntryBuilder

@@ -188,21 +188,17 @@
         </form>
     </div>
 
-    {% if summary and summary.get('stage') == 'disbursed' %}
+    {% if app and app.stage == 'disbursed' %}
     <div style="margin-top:24px; padding:16px; background:#f0fdf4; border:1px solid #86efac; border-radius:8px;">
         <h3 style="font-size:14px; font-weight:600; margin-bottom:12px; color:#166534;">Disbursement Confirmed</h3>
         <div class="form-grid">
             <div class="form-group">
-                <label class="field-label">Transaction Reference</label>
-                <input type="text" class="field-input" value="{{ summary.get('tx_ref', '—') }}" readonly>
+                <label class="field-label">Disbursed At</label>
+                <input type="text" class="field-input" value="{{ app.disbursed_at or '—' }}" readonly>
             </div>
             <div class="form-group">
-                <label class="field-label">Ledger Hash</label>
-                <input type="text" class="field-input" value="{{ summary.get('ledger_hash', '—') }}" readonly>
-            </div>
-            <div class="form-group">
-                <label class="field-label">Disbursed Amount</label>
-                <input type="text" class="field-input" value="₦{{ '{:,.0f}'.format(summary.get('disbursed_amount', 0)) }}" readonly>
+                <label class="field-label">Amount</label>
+                <input type="text" class="field-input" value="₦{{ '{:,.0f}'.format(app.amount or 0) }}" readonly>
             </div>
         </div>
     </div>

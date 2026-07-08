@@ -25,6 +25,11 @@ import com.fieldcrm.android.ui.viewmodel.ApplicationUiState
 import com.fieldcrm.android.ui.viewmodel.ApplicationViewModel
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun CreateApplicationScreenView(
@@ -46,6 +51,8 @@ fun CreateApplicationScreenView(
         newCustomerNin = state.newCustomerNin,
         selectedBorrower = state.selectedBorrowerForApp,
         borrowers = borrowers,
+        shareUrl = state.shareUrl,
+        isGeneratingLink = state.isGeneratingLink,
         onCustomerTypeChange = { viewModel.setCustomerType(it) },
         onLoanCategoryChange = { viewModel.setLoanCategory(it) },
         onNewCustomerNameChange = { viewModel.setNewCustomerName(it) },
@@ -58,6 +65,7 @@ fun CreateApplicationScreenView(
                 onApplicationCreated(newApp, borrower)
             }
         },
+        onGenerateLinkClick = { viewModel.generateClientIntakeLink() },
         onBackClick = onBackClick
     )
 }
@@ -74,6 +82,8 @@ fun CreateApplicationContent(
     newCustomerNin: String,
     selectedBorrower: BorrowerModel?,
     borrowers: List<BorrowerModel>,
+    shareUrl: String?,
+    isGeneratingLink: Boolean,
     onCustomerTypeChange: (String) -> Unit,
     onLoanCategoryChange: (String) -> Unit,
     onNewCustomerNameChange: (String) -> Unit,
@@ -82,6 +92,7 @@ fun CreateApplicationContent(
     onNewCustomerNinChange: (String) -> Unit,
     onBorrowerSelected: (BorrowerModel) -> Unit,
     onCreateClick: () -> Unit,
+    onGenerateLinkClick: () -> Unit,
     onBackClick: () -> Unit
 ) {
     val isFormValid = if (customerType == "New Customer") {
@@ -320,6 +331,79 @@ fun CreateApplicationContent(
                     }
                 }
 
+                // Share Client Intake Link Card
+                Spacer(modifier = Modifier.height(16.dp))
+                val context = LocalContext.current
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = FieldTheme.colors.purple600.copy(alpha = 0.05f),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = FieldTheme.colors.purple600.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Share Client Intake Link",
+                        style = FieldTheme.typography.bodyStrong.copy(fontSize = 16.sp),
+                        color = FieldTheme.colors.gray100
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Instead of filling the intake form yourself, you can generate a secure shareable link to send to the client so they can fill out the details and upload documents directly.",
+                        style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                        color = FieldTheme.colors.gray400
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (shareUrl != null) {
+                        FieldTextField(
+                            value = shareUrl,
+                            onValueChange = {},
+                            label = "Intake Link URL",
+                            readOnly = true,
+                            trailingIcon = {
+                                Button(
+                                    onClick = {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                        val clip = ClipData.newPlainText("FieldCRM Client Intake Link", shareUrl)
+                                        clipboard.setPrimaryClip(clip)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = FieldTheme.colors.purple600),
+                                    shape = RoundedCornerShape(4.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                    modifier = Modifier.padding(end = 4.dp)
+                                ) {
+                                    Text("Copy", color = Color.White, fontSize = 12.sp)
+                                }
+                            }
+                        )
+                    } else {
+                        Button(
+                            onClick = onGenerateLinkClick,
+                            enabled = !isGeneratingLink,
+                            colors = ButtonDefaults.buttonColors(containerColor = FieldTheme.colors.purple600),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (isGeneratingLink) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text("Generate Share Link", color = Color.White)
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
@@ -354,6 +438,8 @@ fun PreviewCreateAppCompact() {
             newCustomerNin = "",
             selectedBorrower = demoBorrowers[0],
             borrowers = demoBorrowers,
+            shareUrl = null,
+            isGeneratingLink = false,
             onCustomerTypeChange = {},
             onLoanCategoryChange = {},
             onNewCustomerNameChange = {},
@@ -362,6 +448,7 @@ fun PreviewCreateAppCompact() {
             onNewCustomerNinChange = {},
             onBorrowerSelected = {},
             onCreateClick = {},
+            onGenerateLinkClick = {},
             onBackClick = {}
         )
     }

@@ -33,9 +33,6 @@ def detect_device_type(request) -> str:
     Server-side detection is a heuristic — the frontend CSS also uses
     media queries as the authoritative breakpoint.
     """
-    user_agent = request.headers.get("user-agent", "")
-    if _MOBILE_UA_PATTERN.search(user_agent):
-        return "mobile"
     return "desktop"
 
 
@@ -45,8 +42,6 @@ def get_base_shell(device_type: str) -> str:
     The shell provides the layout grid (mobile: topbar+content+tabbar,
     desktop: sidebar+topbar+content).
     """
-    if device_type == "mobile":
-        return "base/mobile_shell.html"
     return "base/desktop_shell.html"
 
 
