@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Submitted | FieldCRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <style>
+        body {
+            background-color: var(--bg-secondary, #f3f4f6);
+            font-family: 'DM Sans', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .success-card {
+            background: #fff;
+            max-width: 520px;
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+            padding: 48px 32px;
+            text-align: center;
+            border-top: 4px solid var(--accent-success, #10b981);
+        }
+        .success-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background-color: rgba(16, 185, 129, 0.1);
+            color: var(--accent-success, #10b981);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 24px;
+        }
+    </style>
+</head>
+<body data-role="loan_officer">
+    <div class="success-card">
+        <div class="success-icon">
+            ✓
+        </div>
+        <img class="brand-logo" src="/static/img/logo.png" alt="Mainstreet Microfinance Bank Logo" style="max-height: 40px; margin-bottom: 16px;">
+        <h1 style="font-family: 'Playfair Display', serif; font-size: 22px; color: #111827; margin: 0 0 12px;">Submission Complete</h1>
+        <p style="font-size: 14px; color: var(--text-main, #374151); line-height: 1.6; margin-bottom: 24px;">
+            Thank you! Your loan application has been successfully submitted to <strong>{{ officer_name }}</strong>. 
+            We have begun processing your details and will contact you shortly.
+        </p>
+        <div style="border-top: 0.5px solid var(--border-color); padding-top: 16px; font-size: 12px; color: var(--text-muted);">
+            You can safely close this browser window.
+        </div>
+    </div>
+</body>
+</html>

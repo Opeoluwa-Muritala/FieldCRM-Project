@@ -101,6 +101,7 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun getDashboardMetrics() = null
     override suspend fun getQueue(queueName: String): String? = null
     override suspend fun createApplication(customerType: String, loanType: String, applicantName: String): String? = null
+    override suspend fun generateShareLink(): com.fieldcrm.android.data.api.ShareLinkResponse? = null
     override suspend fun getApplicationDetail(id: String): String? = null
     override suspend fun saveIntakeStep(id: String, step: Int, data: Map<String, JsonElement>): String? = null
     override suspend fun getGuarantorData(id: String, slot: Int): String? = null
@@ -135,6 +136,14 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun recordPayment(id: String, amountPaid: Double, channel: String, bankRef: String?, paymentDate: String?): String? = null
     override suspend fun getParDashboard(): String? = null
     override suspend fun uploadDocumentPdf(id: String, category: String, pdfBytes: ByteArray, fileName: String): String? = null
+    override suspend fun getCommitteeVotesFull(applicationId: String): com.fieldcrm.android.data.api.CommitteeVotesFullResponse? = null
+    override suspend fun submitCommitteeVote(id: String, recommendation: String, notes: String): String? = null
+    override suspend fun completeCommitteeReview(id: String, recommendation: String): String? = null
+    override suspend fun getEdReview(id: String): String? = null
+    override suspend fun submitEdApprove(id: String, action: String): String? = null
+    override suspend fun getMdReview(id: String): String? = null
+    override suspend fun submitMdApprove(id: String, action: String, notes: String): String? = null
+    override suspend fun addBoardReferral(id: String, email: String, name: String, notes: String): String? = null
 }
 
 class ApplicationRepository(
@@ -238,6 +247,10 @@ class ApplicationRepository(
         } catch (e: Exception) {
             getCachedApplications()
         }
+    }
+
+    suspend fun generateShareLink(): com.fieldcrm.android.data.api.ShareLinkResponse? {
+        return apiService.generateShareLink()
     }
 
     suspend fun createApplication(application: LoanApplicationModel): Boolean {

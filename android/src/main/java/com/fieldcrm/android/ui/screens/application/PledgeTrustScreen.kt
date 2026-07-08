@@ -57,7 +57,7 @@ fun PledgeTrustScreen(
             applicationViewModel.executePledge(
                 id = application.id,
                 witnessName = witnessName,
-                collateralValue = totalCollateralValue,
+                pledgeValue = totalCollateralValue,
                 onSuccess = onSignComplete
             )
         }
@@ -90,7 +90,7 @@ fun PledgeTrustContent(
     val pledgeFormCode = configState.config?.pledge_form_code ?: "MMFB/CRM/02"
 
     val today = remember { SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()) }
-    val pledgeAmountFigs = application.amount
+    val pledgeAmountFigs = application.amount ?: 0.0
     val pledgeAmountWords = remember(pledgeAmountFigs) { numberToWords(pledgeAmountFigs) }
 
     var pledgeLocation by remember { mutableStateOf("") }

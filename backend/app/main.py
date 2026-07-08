@@ -10,7 +10,7 @@ from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
 from app.config import settings
 from app.core import security
-from app.core.database import db_conn, init_pool, close_pool
+from app.core.database import db_conn, init_pool, close_pool, get_connection
 from app.core.exceptions import DomainException, domain_exception_handler
 from app.core.middleware import RequestIDMiddleware, SecurityHeadersMiddleware
 from app.core.dependencies import get_current_user, RoleChecker
@@ -24,6 +24,22 @@ from app.api.v1.mobile import router as mobile_api_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_pool()
+    try:
+        async with get_connection() as conn:
+            if "postgresql" in settings.DATABASE_URL:
+                row = await conn.fetchrow(
+                    "SELECT 1 FROM information_schema.columns WHERE table_name = 'loan_applications' AND column_name = 'share_token'"
+                )
+                column_exists = bool(row)
+            else:
+                rows = await conn.fetch("PRAGMA table_info(loan_applications)")
+                column_exists = any(r["name"] == "share_token" for r in rows)
+            
+            if not column_exists:
+                logging.info("Adding share_token column to loan_applications table...")
+                await conn.execute("ALTER TABLE loan_applications ADD COLUMN share_token TEXT")
+    except Exception as e:
+        logging.error(f"Failed to dynamically verify share_token column: {e}")
     yield
     await close_pool()
 

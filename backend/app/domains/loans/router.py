@@ -370,10 +370,12 @@ async def render_applications_list(
 
 
     repo = LoanRepository(conn)
+    role_name = current_user.role.lower().replace(" ", "_")
+    officer_id = current_user.id if role_name == "loan_officer" else None
     applications, total = await repo.list_by_stage(
         org_id=current_user.org_id,
         stage=db_stage,
-        officer_id=None,
+        officer_id=officer_id,
         page=1,
         size=100
     )
@@ -708,7 +710,7 @@ async def process_ocr_review(
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
     if action == "verify":
-        await repo.advance_stage(UUID(application_id), current_user.org_id, "credit_review")
+        await repo.advance_stage(UUID(application_id), current_user.org_id, "branch_approval")
         
         audit = AuditService(conn)
         await audit.log(
@@ -716,11 +718,11 @@ async def process_ocr_review(
             org_id=str(current_user.org_id),
             action="Verify OCR Data",
             from_stage="ocr_review",
-            to_stage="credit_review",
+            to_stage="branch_approval",
             actor_id=str(current_user.id),
             actor_role=current_user.role
         )
-        return RedirectResponse(url=f"/applications/{application_id}/credit-review", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url=f"/applications/{application_id}", status_code=status.HTTP_303_SEE_OTHER)
     else:
         return RedirectResponse(url=f"/applications/{application_id}", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -869,6 +871,7 @@ async def render_approval_readiness(
         current_user,
         app_id=application_id,
         borrower_name=borrower_name,
+        app=app,
         summary=summary,
         active_tab="awaiting",
         active_page="awaiting",
@@ -1121,7 +1124,12 @@ async def render_search(
     current_user=Depends(get_current_user),
 ):
     repo = LoanRepository(conn)
-    applications = await repo.search(org_id=current_user.org_id, query=q) if q else []
+    role_name = current_user.role.lower().replace(" ", "_")
+    apps = await repo.search(org_id=current_user.org_id, query=q) if q else []
+    if role_name == "loan_officer":
+        applications = [app for app in apps if app.created_by == current_user.id]
+    else:
+        applications = apps
     ctx = build_template_context(request, current_user, query=q, applications=applications, active_page="search")
     return templates.TemplateResponse(request, "shared/search_results.html", ctx)
 
@@ -1923,3 +1931,403 @@ async def render_committee_dashboard(
         today_label=datetime.now().strftime("%A, %d %B %Y"),
     )
     return templates.TemplateResponse(request, "committee/dashboard.html", ctx)
+
+
+# =============================================================================
+# CLIENT INTAKE FORM SHARING & NO-LOGIN FLOW
+# =============================================================================
+
+from jose import jwt
+from app.config import settings
+from app.core.security import decode_access_token
+import secrets
+
+@router.post("/loans/generate-share-link")
+async def generate_share_link(
+    request: Request,
+    current_user = Depends(RoleChecker(["System Admin", "Loan Officer"]))
+):
+    """Generates a cryptographically signed link for client intake."""
+    from datetime import datetime, timedelta
+    expire = datetime.utcnow() + timedelta(days=7)
+    to_encode = {
+        "sub": str(current_user.id),
+        "org_id": str(current_user.org_id),
+        "exp": expire,
+        "iat": datetime.utcnow(),
+        "type": "client_intake",
+        "random_salt": secrets.token_hex(8)
+    }
+    token = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    
+    base_url = str(request.base_url).rstrip("/")
+    share_url = f"{base_url}/share-intake/{token}"
+    return {"share_url": share_url, "token": token}
+
+
+@router.get("/share-intake/{token}")
+async def render_share_intake(
+    request: Request,
+    token: str,
+    conn = Depends(db_conn)
+):
+    """Introductory screen for client intake. Handles draft resumption."""
+    payload = decode_access_token(token)
+    if not payload or payload.get("type") != "client_intake":
+        return templates.TemplateResponse(
+            request, "shared/client_error.html", 
+            {"error_message": "The sharing link is invalid, malformed, or has expired. Please contact your loan officer for a new link."}
+        )
+        
+    officer_id = payload.get("sub")
+    org_id = payload.get("org_id")
+    
+    # Check if this token was already used to start an application
+    row = await conn.fetchrow(
+        "SELECT id, stage FROM loan_applications WHERE share_token = $1 AND org_id = $2",
+        token, UUID(org_id)
+    )
+    if row:
+        app_id = str(row["id"])
+        stage = row["stage"]
+        if stage == "intake":
+            # Resume existing draft
+            from datetime import datetime, timedelta
+            expire = datetime.utcnow() + timedelta(days=3)
+            session_payload = {
+                "type": "client_session",
+                "app_id": app_id,
+                "org_id": org_id,
+                "officer_id": officer_id,
+                "exp": expire
+            }
+            session_token = jwt.encode(session_payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+            
+            is_secure = settings.COOKIE_SECURE or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
+            redirect = RedirectResponse(url="/client-form/apply/step/1", status_code=status.HTTP_303_SEE_OTHER)
+            redirect.set_cookie(
+                key="client_session",
+                value=session_token,
+                httponly=True,
+                secure=is_secure,
+                samesite="lax",
+                max_age=3 * 24 * 60 * 60,
+                path="/"
+            )
+            return redirect
+        else:
+            # Already submitted application (block reuse)
+            return templates.TemplateResponse(
+                request, "shared/client_error.html", 
+                {"error_message": "This link has already been used to submit a loan application. Sharing links are single-use only."}
+            )
+
+    from app.domains.users.repository import UserRepository
+    user_repo = UserRepository(conn)
+    officer = await user_repo.get_by_id(UUID(officer_id))
+    officer_name = officer.full_name if officer else "Mainstreet Officer"
+    
+    return templates.TemplateResponse(
+        request, "shared/client_start.html",
+        {"token": token, "officer_name": officer_name, "error": None}
+    )
+
+
+@router.post("/share-intake/{token}/start")
+async def process_share_intake_start(
+    request: Request,
+    token: str,
+    customer_type: str = Form(...),
+    loan_type: str = Form(...),
+    full_name: str = Form(...),
+    conn = Depends(db_conn)
+):
+    """Creates the application and sets the client session cookie."""
+    payload = decode_access_token(token)
+    if not payload or payload.get("type") != "client_intake":
+        raise HTTPException(status_code=403, detail="Invalid token")
+        
+    officer_id = payload.get("sub")
+    org_id = payload.get("org_id")
+
+    row = await conn.fetchrow(
+        "SELECT id, stage FROM loan_applications WHERE share_token = $1 AND org_id = $2",
+        token, UUID(org_id)
+    )
+    if row:
+        if row["stage"] != "intake":
+            raise HTTPException(status_code=400, detail="Application already submitted")
+        app_id = str(row["id"])
+    else:
+        service = get_loan_service(conn)
+        app = await service.create_loan(
+            org_id=UUID(org_id),
+            customer_type=customer_type,
+            loan_type=loan_type,
+            applicant_name=full_name,
+            user_id=UUID(officer_id)
+        )
+        app_id = str(app.id)
+        await conn.execute(
+            "UPDATE loan_applications SET share_token = $1 WHERE id = $2 AND org_id = $3",
+            token, UUID(app_id), UUID(org_id)
+        )
+
+    from datetime import datetime, timedelta
+    expire = datetime.utcnow() + timedelta(days=3)
+    session_payload = {
+        "type": "client_session",
+        "app_id": app_id,
+        "org_id": org_id,
+        "officer_id": officer_id,
+        "exp": expire
+    }
+    session_token = jwt.encode(session_payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    
+    is_secure = settings.COOKIE_SECURE or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
+    redirect = RedirectResponse(url="/client-form/apply/step/1", status_code=status.HTTP_303_SEE_OTHER)
+    redirect.set_cookie(
+        key="client_session",
+        value=session_token,
+        httponly=True,
+        secure=is_secure,
+        samesite="lax",
+        max_age=3 * 24 * 60 * 60,
+        path="/"
+    )
+    return redirect
+
+
+def get_client_session_data(request: Request) -> dict:
+    cookie_val = request.cookies.get("client_session")
+    if not cookie_val:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Session not found. Please open the link sent by your officer."
+        )
+    payload = decode_access_token(cookie_val)
+    if not payload or payload.get("type") != "client_session":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Session expired or invalid. Please open the link sent by your officer."
+        )
+    return payload
+
+
+@router.get("/client-form/apply/step/{step}")
+async def render_client_wizard_step(
+    request: Request,
+    step: int,
+    session = Depends(get_client_session_data),
+    conn = Depends(db_conn)
+):
+    app_id = session.get("app_id")
+    org_id = session.get("org_id")
+    officer_id = session.get("officer_id")
+    
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(app_id), UUID(org_id))
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+        
+    if app.stage != "intake":
+        return RedirectResponse(url="/client-form/success", status_code=status.HTTP_303_SEE_OTHER)
+
+    service = get_loan_service(conn)
+    data = await service.get_wizard_data(UUID(app_id))
+    
+    from app.domains.users.repository import UserRepository
+    officer = await UserRepository(conn).get_by_id(UUID(officer_id))
+    officer_name = officer.full_name if officer else "Your Loan Officer"
+
+    ctx = build_template_context(
+        request,
+        user=None,
+        app_id=app_id,
+        step=step,
+        data=data,
+        officer_name=officer_name,
+        hide_tabbar=True,
+    )
+    return templates.TemplateResponse(request, "shared/client_wizard.html", ctx)
+
+
+@router.post("/client-form/apply/step/{step}")
+async def process_client_wizard_step(
+    request: Request,
+    step: int,
+    session = Depends(get_client_session_data),
+    conn = Depends(db_conn)
+):
+    app_id = session.get("app_id")
+    org_id = session.get("org_id")
+    officer_id = session.get("officer_id")
+
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(app_id), UUID(org_id))
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+        
+    if app.stage != "intake":
+        return RedirectResponse(url="/client-form/success", status_code=status.HTTP_303_SEE_OTHER)
+
+    form_data = await request.form()
+    data_dict = form_data_to_jsonable_dict(form_data)
+    
+    service = get_loan_service(conn)
+    await service.save_wizard_step(UUID(app_id), step, data_dict, UUID(officer_id), UUID(org_id))
+
+    if step < 9:
+        next_step = step + 1
+        return RedirectResponse(url=f"/client-form/apply/step/{next_step}", status_code=status.HTTP_303_SEE_OTHER)
+    else:
+        return RedirectResponse(url="/client-form/success", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/client-form/apply/documents/upload")
+async def render_client_document_upload(
+    request: Request,
+    type: str,
+    session = Depends(get_client_session_data),
+    conn = Depends(db_conn)
+):
+    app_id = session.get("app_id")
+    org_id = session.get("org_id")
+
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(app_id), UUID(org_id))
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+
+    ctx = build_template_context(
+        request,
+        user=None,
+        app_id=app_id,
+        borrower_name=app.applicant_name,
+        doc_type=type,
+        hide_tabbar=True
+    )
+    return templates.TemplateResponse(request, "shared/client_upload_document.html", ctx)
+
+
+@router.post("/client-form/apply/documents/upload")
+async def process_client_document_upload(
+    request: Request,
+    category: str = Form(...),
+    file: UploadFile = File(...),
+    session = Depends(get_client_session_data),
+    conn = Depends(db_conn)
+):
+    app_id = session.get("app_id")
+    org_id = session.get("org_id")
+    officer_id = session.get("officer_id")
+
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(app_id), UUID(org_id))
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+
+    doc_service = get_document_service(conn)
+    await doc_service.upload_document(
+        loan_id=UUID(app_id),
+        org_id=UUID(org_id),
+        category=category,
+        file=file,
+        uploaded_by=UUID(officer_id)
+    )
+
+    return {"redirect": "/client-form/apply/step/4"}
+
+
+@router.get("/client-form/apply/guarantors/{guarantor_index}/step/{step}")
+async def render_client_guarantor_step(
+    request: Request,
+    guarantor_index: int,
+    step: int,
+    session = Depends(get_client_session_data),
+    conn = Depends(db_conn)
+):
+    app_id = session.get("app_id")
+    org_id = session.get("org_id")
+
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(app_id), UUID(org_id))
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+
+    service = get_guarantor_service(conn)
+    data = await service.get_wizard_data(UUID(app_id), guarantor_index)
+    
+    ctx = build_template_context(
+        request,
+        user=None,
+        app_id=app_id,
+        guarantor_index=guarantor_index,
+        step=step,
+        data=data,
+        hide_tabbar=True,
+    )
+    return templates.TemplateResponse(request, "shared/client_guarantor_wizard.html", ctx)
+
+
+@router.post("/client-form/apply/guarantors/{guarantor_index}/step/{step}")
+async def process_client_guarantor_step(
+    request: Request,
+    guarantor_index: int,
+    step: int,
+    session = Depends(get_client_session_data),
+    conn = Depends(db_conn)
+):
+    app_id = session.get("app_id")
+    org_id = session.get("org_id")
+    officer_id = session.get("officer_id")
+
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(app_id), UUID(org_id))
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+
+    form_data = await request.form()
+    data_dict = form_data_to_jsonable_dict(form_data)
+    
+    service = get_guarantor_service(conn)
+    await service.save_wizard_step(UUID(app_id), guarantor_index, step, data_dict, UUID(officer_id))
+
+    if step < 8:
+        return RedirectResponse(
+            url=f"/client-form/apply/guarantors/{guarantor_index}/step/{step + 1}", 
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+    else:
+        await service.mark_slot_submitted(
+            loan_id=UUID(app_id),
+            org_id=UUID(org_id),
+            slot=guarantor_index,
+            submitted_by=UUID(officer_id),
+            user_role="client"
+        )
+        return RedirectResponse(url="/client-form/apply/step/3", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/client-form/success")
+async def render_client_success(
+    request: Request,
+    session = Depends(get_client_session_data),
+    conn = Depends(db_conn)
+):
+    officer_id = session.get("officer_id")
+    
+    from app.domains.users.repository import UserRepository
+    officer = await UserRepository(conn).get_by_id(UUID(officer_id))
+    officer_name = officer.full_name if officer else "Your Loan Officer"
+
+    ctx = build_template_context(
+        request,
+        user=None,
+        officer_name=officer_name,
+        hide_tabbar=True,
+    )
+    
+    response = templates.TemplateResponse(request, "shared/client_success.html", ctx)
+    response.delete_cookie("client_session")
+    return response

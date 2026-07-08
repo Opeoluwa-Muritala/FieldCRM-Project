@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Application Intake | FieldCRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <style>
+        body {
+            background-color: var(--bg-secondary, #f3f4f6);
+            font-family: 'DM Sans', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .start-container {
+            background: #fff;
+            max-width: 600px;
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+            padding: 40px 32px;
+            box-sizing: border-box;
+        }
+        .header-section {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .brand-logo {
+            max-height: 48px;
+            margin-bottom: 16px;
+        }
+        .officer-banner {
+            background-color: var(--color-brand-tint, rgba(107, 63, 160, 0.08));
+            border: 0.5px solid var(--color-brand-light, rgba(107, 63, 160, 0.2));
+            color: var(--color-brand-deep, #3a1660);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 28px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body data-role="loan_officer">
+    <div class="start-container">
+        <div class="header-section">
+            <img class="brand-logo" src="/static/img/logo.png" alt="Mainstreet Microfinance Bank Logo">
+            <h1 style="font-family: 'Playfair Display', serif; font-size: 24px; color: #111827; margin: 8px 0 4px;">Loan Application Intake</h1>
+            <p style="font-size: 13px; color: var(--text-muted, #6b7280); margin: 0;">Complete your borrower profile registration.</p>
+        </div>
+
+        <div class="officer-banner">
+            👤 Sending Officer: <strong>{{ officer_name }}</strong> (Loan Officer)
+        </div>
+
+        <form action="/share-intake/{{ token }}/start" method="POST" id="startForm">
+            <!-- Full Name -->
+            <div class="form-group" style="margin-bottom: 24px;">
+                <label class="field-label" for="fullName">Your Full Name <span style="color:var(--accent-danger);">*</span></label>
+                <input type="text" id="fullName" name="full_name" class="field-input" placeholder="e.g. Grace Omowunmi" required>
+            </div>
+
+            <!-- Customer Type selection -->
+            <div style="margin-bottom: 24px;">
+                <label class="field-label" style="margin-bottom: 12px;">Customer Status <span style="color:var(--accent-danger);">*</span></label>
+                <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+                    <div class="toggle-option-card" id="custTypeNew" onclick="selectCustType('new')" style="flex: 1; min-width: 220px; text-align: center; cursor: pointer;">
+                        <input type="radio" name="customer_type" value="new" id="radioNew" style="display:none;" required>
+                        <strong style="display: block; font-size: 14px; color: var(--color-brand-shield);">New Customer</strong>
+                        <span style="font-size: 11px; color: var(--text-muted);">First-time borrower profile</span>
+                    </div>
+                    <div class="toggle-option-card" id="custTypeExisting" onclick="selectCustType('existing')" style="flex: 1; min-width: 220px; text-align: center; cursor: pointer;">
+                        <input type="radio" name="customer_type" value="existing" id="radioExisting" style="display:none;">
+                        <strong style="display: block; font-size: 14px; color: var(--color-brand-shield);">Existing Customer</strong>
+                        <span style="font-size: 11px; color: var(--text-muted);">Already registered / past loan history</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loan Category grid -->
+            <div style="margin-bottom: 32px;">
+                <label class="field-label" style="margin-bottom: 12px;">Loan Category <span style="color:var(--accent-danger);">*</span></label>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                    <div class="toggle-option-card" id="loanEnterprise" onclick="selectLoanType('enterprise')" style="text-align: center; cursor: pointer;">
+                        <input type="radio" name="loan_type" value="enterprise" id="radioEnterprise" style="display:none;" required>
+                        <strong style="display: block; font-size: 13px;">Enterprise Loan</strong>
+                    </div>
+                    <div class="toggle-option-card" id="loanMsef" onclick="selectLoanType('msef')" style="text-align: center; cursor: pointer;">
+                        <input type="radio" name="loan_type" value="msef" id="radioMsef" style="display:none;">
+                        <strong style="display: block; font-size: 13px;">MSEF</strong>
+                    </div>
+                    <div class="toggle-option-card" id="loanPayee" onclick="selectLoanType('payee')" style="text-align: center; cursor: pointer;">
+                        <input type="radio" name="loan_type" value="payee" id="radioPayee" style="display:none;">
+                        <strong style="display: block; font-size: 13px;">PAYEE</strong>
+                    </div>
+                    <div class="toggle-option-card" id="loanOther" onclick="selectLoanType('other')" style="text-align: center; cursor: pointer;">
+                        <input type="radio" name="loan_type" value="other" id="radioOther" style="display:none;">
+                        <strong style="display: block; font-size: 13px;">Other Option</strong>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" id="startBtn" class="btn-primary-filled" style="width: 100%; height: 42px; font-size: 14px;" disabled>
+                Start Form Intake &rarr;
+            </button>
+        </form>
+    </div>
+
+    <script>
+        function selectCustType(type) {
+            document.getElementById('radioNew').checked = (type === 'new');
+            document.getElementById('radioExisting').checked = (type === 'existing');
+            
+            document.getElementById('custTypeNew').classList.toggle('selected', type === 'new');
+            document.getElementById('custTypeExisting').classList.toggle('selected', type === 'existing');
+            validateForm();
+        }
+
+        function selectLoanType(type) {
+            document.getElementById('radioEnterprise').checked = (type === 'enterprise');
+            document.getElementById('radioMsef').checked = (type === 'msef');
+            document.getElementById('radioPayee').checked = (type === 'payee');
+            document.getElementById('radioOther').checked = (type === 'other');
+
+            document.getElementById('loanEnterprise').classList.toggle('selected', type === 'enterprise');
+            document.getElementById('loanMsef').classList.toggle('selected', type === 'msef');
+            document.getElementById('loanPayee').classList.toggle('selected', type === 'payee');
+            document.getElementById('loanOther').classList.toggle('selected', type === 'other');
+            validateForm();
+        }
+
+        function validateForm() {
+            const nameFilled = document.getElementById('fullName').value.trim().length > 0;
+            const custTypeChecked = document.getElementById('radioNew').checked || document.getElementById('radioExisting').checked;
+            const loanTypeChecked = document.getElementById('radioEnterprise').checked || document.getElementById('radioMsef').checked || document.getElementById('radioPayee').checked || document.getElementById('radioOther').checked;
+            
+            document.getElementById('startBtn').disabled = !(nameFilled && custTypeChecked && loanTypeChecked);
+        }
+
+        document.getElementById('fullName').addEventListener('input', validateForm);
+    </script>
+</body>
+</html>

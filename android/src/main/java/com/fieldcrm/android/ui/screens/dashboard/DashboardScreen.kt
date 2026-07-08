@@ -210,7 +210,7 @@ fun DashboardScreenView(
                     app == null -> StatusChipVariant.NeedsReview
                     app.stage in setOf("branch_approval", "executive_approval", "disbursement_ready", "disbursed") -> StatusChipVariant.Approved
                     app.stage == "returned" -> StatusChipVariant.Returned
-                    app.stage in setOf("ocr_review", "credit_review", "crm_review") -> StatusChipVariant.LowConfidence
+                    app.stage in setOf("ocr_review", "crm_review", "committee_review") -> StatusChipVariant.LowConfidence
                     else -> StatusChipVariant.NeedsReview
                 }
             )

@@ -2,7 +2,7 @@ import json
 from typing import Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, Query, UploadFile, status, Request
 from pydantic import BaseModel, Field
 
 from app.core.audit import AuditService
@@ -682,18 +682,18 @@ async def submit_mobile_ocr_review(
 ):
     app = await _get_application_or_404(conn, application_id, current_user)
     if payload.action == "verify":
-        await LoanRepository(conn).advance_stage(application_id, current_user.org_id, "credit_review")
+        await LoanRepository(conn).advance_stage(application_id, current_user.org_id, "branch_approval")
         await AuditService(conn).log(
             application_id=str(application_id),
             org_id=str(current_user.org_id),
             action="Verify OCR Data",
             from_stage=app.stage,
-            to_stage="credit_review",
+            to_stage="branch_approval",
             actor_id=str(current_user.id),
             actor_role=current_user.role,
             reason=str(payload.corrections) if payload.corrections else None,
         )
-        return {"application_id": application_id, "stage": "credit_review", "verified": True}
+        return {"application_id": application_id, "stage": "branch_approval", "verified": True}
     return {"application_id": application_id, "stage": app.stage, "verified": False, "corrections": payload.corrections}
 
 
@@ -950,25 +950,47 @@ async def search_mobile(
     if len(q.strip()) < 2:
         return {"applications": [], "borrowers": []}
     term = f"%{q.strip()}%"
-    apps = await conn.fetch(
-        """
-        SELECT id, ref_no, applicant_name, stage
-        FROM loan_applications
-        WHERE org_id = $1 AND deleted_at IS NULL
-          AND (applicant_name ILIKE $2 OR ref_no ILIKE $2)
-        ORDER BY updated_at DESC LIMIT 20
-        """,
-        current_user.org_id, term,
-    )
-    borrowers_raw = await conn.fetch(
-        """
-        SELECT DISTINCT ON (applicant_name) id, applicant_name AS name, phone
-        FROM loan_applications
-        WHERE org_id = $1 AND deleted_at IS NULL AND applicant_name ILIKE $2
-        ORDER BY applicant_name, created_at DESC LIMIT 20
-        """,
-        current_user.org_id, term,
-    )
+    role = _role(current_user)
+    if role == "loan_officer":
+        apps = await conn.fetch(
+            """
+            SELECT id, ref_no, applicant_name, stage
+            FROM loan_applications
+            WHERE org_id = $1 AND deleted_at IS NULL AND created_by = $3
+              AND (applicant_name ILIKE $2 OR ref_no ILIKE $2)
+            ORDER BY updated_at DESC LIMIT 20
+            """,
+            current_user.org_id, term, current_user.id,
+        )
+        borrowers_raw = await conn.fetch(
+            """
+            SELECT DISTINCT ON (applicant_name) id, applicant_name AS name, phone
+            FROM loan_applications
+            WHERE org_id = $1 AND deleted_at IS NULL AND created_by = $3 AND applicant_name ILIKE $2
+            ORDER BY applicant_name, created_at DESC LIMIT 20
+            """,
+            current_user.org_id, term, current_user.id,
+        )
+    else:
+        apps = await conn.fetch(
+            """
+            SELECT id, ref_no, applicant_name, stage
+            FROM loan_applications
+            WHERE org_id = $1 AND deleted_at IS NULL
+              AND (applicant_name ILIKE $2 OR ref_no ILIKE $2)
+            ORDER BY updated_at DESC LIMIT 20
+            """,
+            current_user.org_id, term,
+        )
+        borrowers_raw = await conn.fetch(
+            """
+            SELECT DISTINCT ON (applicant_name) id, applicant_name AS name, phone
+            FROM loan_applications
+            WHERE org_id = $1 AND deleted_at IS NULL AND applicant_name ILIKE $2
+            ORDER BY applicant_name, created_at DESC LIMIT 20
+            """,
+            current_user.org_id, term,
+        )
     return {
         "applications": [
             {"id": str(r["id"]), "ref_no": r["ref_no"],
@@ -1627,3 +1649,31 @@ async def get_mobile_par_dashboard(
     par = await svc.get_par_summary(org_id=current_user.org_id)
     loans = await LoanRepository(conn).list_disbursed(org_id=current_user.org_id)
     return {"par": par, "loans": [dict(l) if hasattr(l, 'keys') else l for l in loans]}
+
+
+@router.post("/generate-share-link")
+async def generate_share_link_mobile(
+    request: Request,
+    current_user=Depends(get_current_user),
+):
+    """Mobile endpoint to generate a client shareable link."""
+    _ensure_roles(current_user, {"loan_officer", "system_admin"})
+    from jose import jwt
+    from app.config import settings
+    import secrets
+    from datetime import datetime, timedelta
+
+    expire = datetime.utcnow() + timedelta(days=7)
+    to_encode = {
+        "sub": str(current_user.id),
+        "org_id": str(current_user.org_id),
+        "exp": expire,
+        "iat": datetime.utcnow(),
+        "type": "client_intake",
+        "random_salt": secrets.token_hex(8)
+    }
+    token = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    
+    base_url = str(request.base_url).rstrip("/")
+    share_url = f"{base_url}/share-intake/{token}"
+    return {"share_url": share_url, "token": token}

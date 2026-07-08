@@ -81,6 +81,34 @@
                 Begin Application &rarr;
             </button>
         </form>
+
+        <!-- Generate Share Link Card -->
+        <div style="margin-top: 32px; border-top: 0.5px solid var(--border-color); padding-top: 24px;">
+            <div style="text-align: center;">
+                <h3 style="font-size: 16px; font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <span>🔗</span> Share Client Intake Link
+                </h3>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                    Generate a secure, single-use link for your client to complete the loan intake form themselves.
+                </p>
+                <button type="button" class="btn-primary-filled" id="generateLinkBtn" onclick="generateClientLink()" style="height: 38px; font-size: 13px; padding: 0 16px;">
+                    Generate Sharing Link
+                </button>
+            </div>
+            
+            <div id="shareLinkContainer" style="display: none; margin-top: 16px; padding: 12px; border: 0.5px solid var(--border-color); border-radius: 6px; background-color: var(--bg-secondary);">
+                <label class="field-label" style="font-size: 12px;">Client Intake URL</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="shareLinkInput" readonly class="field-input" style="flex: 1; font-family: monospace; font-size: 12px;">
+                    <button type="button" class="btn-primary-filled" onclick="copyShareLink()" id="copyLinkBtn" style="height: 38px; font-size: 12px; padding: 0 12px;">
+                        Copy
+                    </button>
+                </div>
+                <div id="copyFeedback" style="font-size: 11px; color: var(--accent-success); margin-top: 6px; display: none;">
+                    ✓ Copied to clipboard!
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -136,6 +164,44 @@
         const loanTypeChecked = document.getElementById('radioEnterprise').checked || document.getElementById('radioMsef').checked || document.getElementById('radioPayee').checked || document.getElementById('radioOther').checked;
         
         document.getElementById('beginAppBtn').disabled = !(custTypeChecked && loanTypeChecked);
+    }
+
+    async function generateClientLink() {
+        const btn = document.getElementById('generateLinkBtn');
+        btn.disabled = true;
+        btn.textContent = 'Generating...';
+        try {
+            const response = await fetch('/loans/generate-share-link', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            if (!response.ok) throw new Error('Failed to generate link');
+            const data = await response.json();
+            
+            document.getElementById('shareLinkInput').value = data.share_url;
+            document.getElementById('shareLinkContainer').style.display = 'block';
+            btn.textContent = 'Regenerate Link';
+        } catch (err) {
+            alert('Error generating link: ' + err.message);
+            btn.textContent = 'Generate Sharing Link';
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    function copyShareLink() {
+        const input = document.getElementById('shareLinkInput');
+        input.select();
+        input.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(input.value);
+        
+        const feedback = document.getElementById('copyFeedback');
+        feedback.style.display = 'block';
+        setTimeout(() => {
+            feedback.style.display = 'none';
+        }, 2000);
     }
 </script>
 {% endblock %}

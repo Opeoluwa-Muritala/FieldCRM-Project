@@ -15,6 +15,7 @@
 
 <div class="responsive-shell {% if hide_tabbar %}has-no-tabbar{% endif %}">
     {# === DESKTOP SIDEBAR — visible on desktop, hidden on mobile === #}
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebarDrawer()"></div>
     <aside class="desktop-sidebar" id="desktopSidebar" aria-label="Primary navigation">
         <div class="sidebar-logo">
             <img class="logo-composite" src="/static/img/logo.png" alt="Mainstreet Microfinance Bank Logo" loading="lazy">
@@ -54,9 +55,14 @@
 
         {# === DESKTOP TOPBAR — visible on desktop, hidden on mobile === #}
         <header class="desktop-topbar">
-            <div class="topbar-left">
-                <div class="topbar-breadcrumb">{% block breadcrumb %}Mainstreet{% endblock %}</div>
-                <h2 class="topbar-title">{% block page_title %}Dashboard{% endblock %}</h2>
+            <div class="topbar-left" style="display:flex; align-items:center; gap:12px;">
+                <button type="button" class="sidebar-toggle-btn" aria-label="Toggle Sidebar" onclick="toggleSidebarDrawer()">
+                    ☰
+                </button>
+                <div>
+                    <div class="topbar-breadcrumb">{% block breadcrumb %}Mainstreet{% endblock %}</div>
+                    <h2 class="topbar-title" style="margin:0;">{% block page_title %}Dashboard{% endblock %}</h2>
+                </div>
             </div>
             <div class="topbar-right">
                 {% block topbar_actions %}{% endblock %}
@@ -99,5 +105,15 @@
     {% block detail_drawer %}{% endblock %}
 </div>
 
+<script>
+    function toggleSidebarDrawer() {
+        const sidebar = document.getElementById('desktopSidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        if (sidebar && overlay) {
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+    }
+</script>
 <script src="/static/js/mobile.js"></script>
 {% endblock %}

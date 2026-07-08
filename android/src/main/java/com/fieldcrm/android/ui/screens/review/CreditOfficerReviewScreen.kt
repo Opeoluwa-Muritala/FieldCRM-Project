@@ -154,8 +154,8 @@ fun CreditOfficerReviewScreen(
                                 value = "₦ ${String.format(Locale.US, "%,.2f", application.amount)}"
                             )
                             DetailItem(label = "Tenure", value = "${application.tenor_months} months")
-                            DetailItem(label = "Interest Rate", value = "${application.interest_rate}% p.a.")
-                            DetailItem(label = "Repayment Frequency", value = application.repayment_frequency)
+                            DetailItem(label = "Interest Rate", value = "${application.interest_rate ?: 0.0}%")
+                            DetailItem(label = "Repayment Frequency", value = application.repayment_frequency ?: "—")
                             DetailItem(label = "Application Status", value = application.displayStatus)
                         }
 
@@ -174,14 +174,17 @@ fun CreditOfficerReviewScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "DTI Ratio Calculator",
-                                    style = FieldTheme.typography.bodyStrong,
+                                    text = "DTI Ratio (Calculated)",
+                                    style = FieldTheme.typography.body,
                                     color = FieldTheme.colors.gray300
                                 )
                                 Text(
-                                    text = "${(dtiRatio * 100).toInt()}%",
-                                    style = FieldTheme.typography.mono.copy(fontSize = 18.sp, fontWeight = FontWeight.Bold),
-                                    color = if (isDtiLimitExceeded) FieldTheme.colors.statusDanger else FieldTheme.colors.statusSuccess
+                                    text = "${String.format(Locale.US, "%.1f", dtiRatio * 100)}%",
+                                    style = FieldTheme.typography.mono.copy(
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = if (dtiRatio <= 0.40f) FieldTheme.colors.statusSuccess else FieldTheme.colors.statusDanger
                                 )
                             }
                             
@@ -245,7 +248,7 @@ fun CreditOfficerReviewScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             val monthlyIncome = (application.amount ?: 1.0) / (application.tenor_months ?: 1).coerceAtLeast(1)
-                            val monthlyInstalment = monthlyIncome * (1 + application.interest_rate / 100 / 12)
+                            val monthlyInstalment = monthlyIncome * (1 + (application.interest_rate ?: 0.0) / 100 / 12)
                             val estimatedExpenses = monthlyIncome * 0.30
                             val netDisposable = monthlyIncome - estimatedExpenses - monthlyInstalment
                             val affordabilityRows = listOf(

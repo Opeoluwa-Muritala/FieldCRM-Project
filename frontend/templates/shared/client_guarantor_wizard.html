@@ -1,0 +1,351 @@
+{% extends "base/shell.html" %}
+{% set hide_tabbar = true %}
+{% set hide_tabbar = true %}
+{% set mobile_title_text = "Guarantor: Step " ~ step %}
+
+{% block title %}Guarantor Wizard - Step {{ step }} | FieldCRM{% endblock %}
+
+{% block breadcrumb %}Loans &rarr; Application {{ app_id }} &rarr; Guarantor {{ guarantor_index }} &rarr; Step {{ step }}{% endblock %}
+{% block page_title %}Guarantor Form Flow{% endblock %}
+
+{% block shell %}
+<div style="min-height: 100vh; background-color: var(--bg-secondary); padding: 32px 16px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; width: 100%;">
+    <div class="brand-logo-wrapper" style="text-align: center; margin-bottom: 24px;">
+        <img src="/static/img/logo.png" alt="Mainstreet Microfinance Bank Logo" style="max-height: 48px;">
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 20px; color: #111827; margin: 8px 0 2px;">Mainstreet Microfinance Bank</h2>
+        <p style="font-size: 12px; color: var(--text-muted); margin: 0;">Guarantor Verification Form · Slot {{ guarantor_index }}</p>
+    </div>
+    <div style="max-width: 760px; width: 100%;">
+    <!-- Horizontal Step Indicator -->
+    <div class="wizard-steps">
+        {% set step_labels = ["Identity", "Obligations", "Family", "Employment", "Business & Docs", "Declaration", "Guarantee Limit", "Signatures"] %}
+        {% for s_num in range(1, 9) %}
+            {% set is_active = (s_num == step) %}
+            {% set is_completed = (s_num < step) %}
+            <div class="wizard-step-segment {% if is_active %}active{% elif is_completed %}completed{% endif %}">
+                <div class="wizard-step-circle">
+                    {% if is_completed %}&#x2713;{% else %}{{ s_num }}{% endif %}
+                </div>
+                <div class="wizard-step-label">{{ step_labels[s_num - 1] }}</div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Main Card -->
+    <div class="page-card no-shadow">
+        <div class="page-card-header">
+            <h2 class="page-card-title">
+                {% if step == 1 %}Guarantor Identity
+                {% elif step == 2 %}Existing Obligations
+                {% elif step == 3 %}Family & Marital Details
+                {% elif step == 4 %}Employment Details
+                {% elif step == 5 %}Business & Supporting Documents
+                {% elif step == 6 %}Declaration
+                {% elif step == 7 %}Guarantee Limits & Bank details
+                {% elif step == 8 %}Signatures & Witnesses
+                {% endif %}
+            </h2>
+            <p class="page-card-subtitle">
+                {% if step == 1 %}Specify guarantor's identity details and contact information.
+                {% elif step == 2 %}Disclose any active loans or personal guarantees.
+                {% elif step == 3 %}Guarantor's marital status and family context.
+                {% elif step == 4 %}Employment context, monthly salary, and employer details.
+                {% elif step == 5 %}Business address, sales, and upload required supporting documents.
+                {% elif step == 6 %}Guarantor's legal statements.
+                {% elif step == 7 %}Guarantee limit, bank account details, and cheque references.
+                {% elif step == 8 %}Digital signatures of guarantor and witness.
+                {% endif %}
+            </p>
+        </div>
+
+        <form id="guarantorForm" action="/client-form/apply/guarantors/{{ guarantor_index }}/step/{{ step }}" method="POST">
+            
+            <!-- STEP 1: IDENTITY -->
+            {% if step == 1 %}
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="field-label">Full Name <span class="required">*</span></label>
+                    <input type="text" name="name" class="field-input" value="{{ data.name or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Relationship to Applicant <span class="required">*</span></label>
+                    <input type="text" name="relationship" class="field-input" value="{{ data.relationship or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Phone Number <span class="required">*</span></label>
+                    <input type="tel" name="phone" class="field-input" value="{{ data.phone or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">BVN <span class="required">*</span></label>
+                    <input type="text" name="bvn" class="field-input" value="{{ data.bvn or '' }}" maxlength="11" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Date of Birth <span class="required">*</span></label>
+                    <input type="date" name="dob" class="field-input" value="{{ data.dob or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">State of Origin / LGA</label>
+                    <input type="text" name="origin_lga" class="field-input" value="{{ data.origin_lga or '' }}">
+                </div>
+                <div class="form-group-full">
+                    <label class="field-label">Home Address <span class="required">*</span></label>
+                    <textarea name="home_address" class="field-textarea" required>{{ data.home_address or '' }}</textarea>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- STEP 2: OBLIGATIONS -->
+            {% if step == 2 %}
+            <div class="flat-card warning">
+                Guarantors must disclose all active borrowing or co-signing arrangements. Co-signing limits borrowing headroom.
+            </div>
+            <div class="form-grid-2">
+                <div class="form-group-full">
+                    <label class="field-label">Disclose Existing Loans / Active Guarantees</label>
+                    <textarea name="existing_loans" class="field-textarea" placeholder="Detail any outstanding liabilities...">{{ data.existing_loans or '' }}</textarea>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- STEP 3: FAMILY & MARITAL -->
+            {% if step == 3 %}
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="field-label">Marital Status</label>
+                    <select name="marital_status" class="field-select">
+                        <option value="Single" {% if data.marital_status == 'Single' %}selected{% endif %}>Single</option>
+                        <option value="Married" {% if data.marital_status == 'Married' %}selected{% endif %}>Married</option>
+                        <option value="Widowed" {% if data.marital_status == 'Widowed' %}selected{% endif %}>Widowed</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Number of Dependants</label>
+                    <input type="number" name="dependants" class="field-input" value="{{ data.dependants or '' }}">
+                </div>
+                <div class="form-group-full">
+                    <label class="field-label">Spouse Name & Address</label>
+                    <textarea name="spouse_info" class="field-textarea">{{ data.spouse_info or '' }}</textarea>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- STEP 4: EMPLOYMENT -->
+            {% if step == 4 %}
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="field-label">Employer Name</label>
+                    <input type="text" name="employer_name" class="field-input" value="{{ data.employer_name or '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Monthly Salary (₦)</label>
+                    <input type="number" name="monthly_salary" class="field-input" value="{{ data.monthly_salary or '' }}">
+                </div>
+                <div class="form-group-full">
+                    <label class="field-label">Workplace Address</label>
+                    <textarea name="employer_address" class="field-textarea">{{ data.employer_address or '' }}</textarea>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- STEP 5: BUSINESS & DOCS -->
+            {% if step == 5 %}
+            <div class="form-grid-2" style="margin-bottom: 24px;">
+                <div class="form-group">
+                    <label class="field-label">Guarantor Business Sector</label>
+                    <input type="text" name="business_sector" class="field-input" value="{{ data.business_sector or '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Monthly Turnover (₦)</label>
+                    <input type="number" name="business_turnover" class="field-input" value="{{ data.business_turnover or '' }}">
+                </div>
+            </div>
+
+            <!-- Supporting Documents Checklist -->
+            <div style="border-top: 0.5px solid var(--color-divider); padding-top: 16px;">
+                <div class="field-label" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; margin-bottom: 12px;">Required Supporting Documents</div>
+                
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 0.5px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary);">
+                        <div>
+                            <span style="font-weight: 500;">Guarantor Passport Photograph</span>
+                            <div style="font-size: 12px; color: var(--text-muted);">Clear, color photograph of face</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span class="status-badge verified">Verified</span>
+                            <a href="/applications/{{ app_id }}/documents/upload?type=guarantor_{{ guarantor_index }}_photo" class="btn-ghost-link" style="color: var(--color-brand-shield);">Upload</a>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 0.5px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary);">
+                        <div>
+                            <span style="font-weight: 500;">Valid ID Card</span>
+                            <div style="font-size: 12px; color: var(--text-muted);">National ID, Driver's Licence or Voters Card</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span class="status-badge missing">Missing</span>
+                            <a href="/applications/{{ app_id }}/documents/upload?type=guarantor_{{ guarantor_index }}_id" class="btn-ghost-link" style="color: var(--color-brand-shield);">Upload</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- STEP 6: DECLARATION -->
+            {% if step == 6 %}
+            <div class="flat-card brand" style="margin-bottom: 24px;">
+                <h4 style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Guarantor Declaration Clause</h4>
+                <p style="font-size: 13px; line-height: 1.6; color: var(--text-main);">
+                    I hereby declare that the applicant is well known to me and is of good character. In consideration of the Bank granting this loan facility to the applicant, I unconditionally guarantee the repayment of all outstanding interest and principal in the event of default. I authorise the Bank to verify all declarations made in this form.
+                </p>
+            </div>
+            <div style="margin-top: 12px;">
+                <input type="checkbox" name="declaration_accept" id="decl_accept" value="1" required>
+                <label for="decl_accept" style="font-size: 12px; cursor: pointer; font-weight: 500;">I accept the terms of this Guarantor Declaration.</label>
+            </div>
+            {% endif %}
+
+            <!-- STEP 7: GUARANTEE LIMIT & BANK DETAILS -->
+            {% if step == 7 %}
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="field-label">Maximum Guarantee Limit (₦) <span class="required">*</span></label>
+                    <input type="number" name="max_guarantee" class="field-input" value="{{ data.max_guarantee or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Cheque Number <span class="required">*</span></label>
+                    <input type="text" name="cheque_number" class="field-input" value="{{ data.cheque_number or '' }}" required>
+                    <span style="font-size: 12px; color:var(--text-muted);">Submitted as repayment guarantee</span>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Bank Name <span class="required">*</span></label>
+                    <input type="text" name="bank_name" class="field-input" value="{{ data.bank_name or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Account Number <span class="required">*</span></label>
+                    <input type="text" name="account_number" class="field-input" value="{{ data.account_number or '' }}" maxlength="10" required>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- STEP 8: SIGNATURES -->
+            {% if step == 8 %}
+            <div class="form-grid-2" style="margin-bottom: 24px;">
+                <div class="form-group">
+                    <label class="field-label">Guarantor Signature <span class="required">*</span></label>
+                    <div class="signature-box">
+                        <canvas id="guarantor_sig_canvas"></canvas>
+                        <button type="button" class="signature-clear-btn" onclick="clearSignature('guarantor_sig_canvas')">Clear</button>
+                    </div>
+                    <input type="hidden" name="guarantor_signature" id="guarantor_sig_val">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Witness Signature <span class="required">*</span></label>
+                    <div class="signature-box">
+                        <canvas id="witness_sig_canvas"></canvas>
+                        <button type="button" class="signature-clear-btn" onclick="clearSignature('witness_sig_canvas')">Clear</button>
+                    </div>
+                    <input type="hidden" name="witness_signature" id="witness_sig_val">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Witness Name</label>
+                    <input type="text" name="witness_name" class="field-input" value="{{ data.witness_name or '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Witness Date <span class="required">*</span></label>
+                    <input type="date" name="witness_date" class="field-input" value="{{ data.witness_date or '' }}" required>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Wizard Footer Action Buttons -->
+            <div class="wizard-footer">
+                <div>
+                    {% if step > 1 %}
+                    <a href="/client-form/apply/guarantors/{{ guarantor_index }}/step/{{ step - 1 }}" class="btn-ghost-link">&larr; Back</a>
+                    {% endif %}
+                </div>
+                <button type="submit" class="btn-primary-filled">
+                    {% if step == 8 %}Complete & Return &rarr;{% else %}Save & Continue &rarr;{% endif %}
+                </button>
+            </div>
+
+        </form>
+    </div>
+
+<script>
+    const sigCanvases = {};
+    function initSignature(canvasId, valInputId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        const rect = canvas.parentNode.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+
+        function startDrawing(e) {
+            drawing = true;
+            draw(e);
+        }
+
+        function endDrawing() {
+            drawing = false;
+            ctx.beginPath();
+            document.getElementById(valInputId).value = canvas.toDataURL();
+        }
+
+        function draw(e) {
+            if (!drawing) return;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#1C1A2E';
+
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            ctx.lineTo(clientX - rect.left, clientY - rect.top);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(clientX - rect.left, clientY - rect.top);
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDrawing);
+
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', endDrawing);
+    }
+
+    function clearSignature(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (canvasId === 'guarantor_sig_canvas') document.getElementById('guarantor_sig_val').value = '';
+        if (canvasId === 'witness_sig_canvas') document.getElementById('witness_sig_val').value = '';
+    }
+
+    window.addEventListener('load', () => {
+        initSignature('guarantor_sig_canvas', 'guarantor_sig_val');
+        initSignature('witness_sig_canvas', 'witness_sig_val');
+    });
+
+    // Wizard step slide-direction tracking
+    (function() {
+        const currentStep = {{ step }};
+        const stored = parseInt(sessionStorage.getItem('guarantorWizardPrevStep') || '0', 10);
+        const direction = (stored > 0 && currentStep > stored) ? 'forward'
+                        : (stored > 0 && currentStep < stored) ? 'back'
+                        : 'forward';
+        document.documentElement.dataset.wizardDirection = direction;
+        sessionStorage.setItem('guarantorWizardPrevStep', String(currentStep));
+    })();
+</script>
+    </div>
+</div>
+{% endblock %}
