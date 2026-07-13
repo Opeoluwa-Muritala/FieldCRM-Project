@@ -41,6 +41,6 @@ class AuthRepository(BaseRepository):
 
     async def update_password(self, user_id: str, hashed_password: str) -> None:
         await self.conn.execute(
-            "UPDATE users SET password_hash = $1 WHERE id = $2",
+            "UPDATE users SET password_hash = $1, active = TRUE WHERE id = $2",
             hashed_password, user_id
         )

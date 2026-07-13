@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from app.core.database import db_conn
 from app.domains.users.repository import UserRepository
 from app.domains.users.service import UserService
-from app.domains.users.schemas import UserResponse, UserCreate, UserRow
+from app.domains.users.schemas import UserResponse, UserCreate, UserInvitationCreate, UserRow
 from app.core.dependencies import get_current_user, RoleChecker
 from app.core.config import settings
+from app.services.email_service import EmailService
 
 router = APIRouter()
 
@@ -61,3 +62,24 @@ async def register_user(
         active=user.active,
         created_at=user.created_at
     )
+
+
+@router.post("/invitations", status_code=status.HTTP_201_CREATED)
+async def invite_user(
+    request: Request,
+    invitation: UserInvitationCreate,
+    service: UserService = Depends(get_user_service),
+    current_admin: UserRow = Depends(RoleChecker(["System Admin"])),
+):
+    user, token = await service.invite_user(current_admin, invitation)
+    base_url = settings.APP_BASE_URL.rstrip("/") or str(request.base_url).rstrip("/")
+    delivered = EmailService().send_invitation(
+        recipient=user.email,
+        full_name=user.full_name,
+        role=user.role,
+        invitation_url=f"{base_url}/accept-invitation?token={token}",
+    )
+    return {
+        "id": str(user.id), "email": user.email, "role": user.role, "email_sent": delivered,
+        "message": "Invitation email sent." if delivered else "User was invited, but the email could not be delivered. Check SMTP settings and server logs before resending.",
+    }

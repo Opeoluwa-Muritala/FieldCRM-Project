@@ -1,18 +1,23 @@
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 
 
 class UserBase(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=100)
     email: str = Field(..., description="Unique user email address")
-    role: str = Field(..., description="loan_officer, branch_manager, auditor, system_admin, crm, md, ed, committee")
+    role: str = Field(..., description="account_officer, branch_manager, branch_supervisor, credit_analyst, crm, head_crm, auditor, ed, md, system_admin")
 
 
 class UserCreate(UserBase):
     org_id: str
     password: str = Field(..., min_length=8, description="Strong user password")
+
+
+class UserInvitationCreate(UserBase):
+    """An invitee chooses their password after receiving the role-specific link."""
+    email: EmailStr
 
 
 class UserUpdate(BaseModel):
@@ -68,14 +73,17 @@ class UserRow(BaseModel):
     def display_role(self) -> str:
         """Human-readable role for UI display."""
         mapping = {
-            "loan_officer": "Loan Officer",
+            "account_officer": "Account Officer",
+            "loan_officer": "Account Officer",
             "branch_manager": "Branch Manager",
+            "branch_supervisor": "Branch Supervisor",
+            "credit_analyst": "Credit Analyst",
             "auditor": "Auditor",
             "system_admin": "System Admin",
             "crm": "CRM Officer",
+            "head_crm": "Head CRM",
             "md": "Managing Director",
             "ed": "Executive Director",
-            "committee": "Committee Member",
         }
         key = self.role.lower().replace(" ", "_")
         return mapping.get(key, self.role)

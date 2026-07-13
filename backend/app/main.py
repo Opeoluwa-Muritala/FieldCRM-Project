@@ -210,21 +210,29 @@ async def process_forgot_password(request: Request, email: str = Form(...), conn
 async def render_reset_password(request: Request, token: str = None):
     return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": None, "success": False})
 
+@app.get("/accept-invitation")
+async def render_accept_invitation(request: Request, token: str = None):
+    return templates.TemplateResponse(
+        request, "shared/reset_password.html",
+        {"token": token, "error": None, "success": False, "invitation": True},
+    )
+
 @app.post("/reset-password")
 async def process_reset_password(
     request: Request,
     token: str = Form(...),
     new_password: str = Form(...),
     confirm_password: str = Form(...),
+    invitation: bool = Form(False),
     conn=Depends(db_conn),
 ):
     from app.domains.auth.repository import AuthRepository
     from app.domains.auth.service import AuthService
     if new_password != confirm_password:
-        return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": "Passwords do not match.", "success": False})
+        return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": "Passwords do not match.", "success": False, "invitation": invitation})
     ok = await AuthService(AuthRepository(conn)).reset_password(token, new_password)
     if not ok:
-        return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": "Invalid or expired reset link.", "success": False})
+        return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": "Invalid or expired reset link.", "success": False, "invitation": invitation})
     return RedirectResponse(url="/login?reset=1", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/api/v1/health")

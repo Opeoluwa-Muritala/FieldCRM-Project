@@ -55,8 +55,8 @@ def upload_to_cloudinary(
 
     upload_opts: dict = {
         "folder": folder,
-        "resource_type": "image",   # lets Cloudinary handle PDF page rendering
-        "format": "pdf" if mime_type == "application/pdf" else None,
+        "resource_type": "auto",
+        "type": "authenticated",
         "overwrite": True,
     }
     if public_id:

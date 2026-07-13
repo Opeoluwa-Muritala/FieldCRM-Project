@@ -718,7 +718,7 @@ async def process_ocr_review(
     application_id: str,
     action: str = Form(...),
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Credit Officer", "System Admin"]))
+    current_user = Depends(RoleChecker(["Account Officer", "System Admin"]))
 ):
     """POST processor for OCR validation overrides."""
     repo = LoanRepository(conn)
@@ -727,7 +727,7 @@ async def process_ocr_review(
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
     if action == "verify":
-        await repo.advance_stage(UUID(application_id), current_user.org_id, "branch_approval")
+        await repo.advance_stage(UUID(application_id), current_user.org_id, "branch_manager_review")
         
         audit = AuditService(conn)
         await audit.log(
@@ -735,7 +735,7 @@ async def process_ocr_review(
             org_id=str(current_user.org_id),
             action="Verify OCR Data",
             from_stage="ocr_review",
-            to_stage="branch_approval",
+            to_stage="branch_manager_review",
             actor_id=str(current_user.id),
             actor_role=current_user.role
         )

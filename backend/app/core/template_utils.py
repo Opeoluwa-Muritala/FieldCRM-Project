@@ -15,15 +15,25 @@ _MOBILE_UA_PATTERN = re.compile(
 
 # Valid roles that map to template subdirectories
 _VALID_ROLES = frozenset({
+    "account_officer",
     "loan_officer",
     "branch_manager",
+    "branch_supervisor",
+    "credit_analyst",
     "auditor",
     "system_admin",
     "crm",
+    "head_crm",
     "md",
     "ed",
-    "committee",
 })
+
+_ROLE_TEMPLATE_ALIASES = {
+    "account_officer": "loan_officer",
+    "branch_supervisor": "branch_manager",
+    "credit_analyst": "branch_manager",
+    "head_crm": "crm",
+}
 
 
 def detect_device_type(request) -> str:
@@ -53,7 +63,7 @@ def get_role_template(role: str, template_name: str) -> str:
              -> "loan_officer/dashboard.html"
     """
     # Normalize role to lowercase snake_case
-    normalized_role = role.lower().replace(" ", "_")
+    normalized_role = _ROLE_TEMPLATE_ALIASES.get(role.lower().replace(" ", "_"), role.lower().replace(" ", "_"))
     if normalized_role in _VALID_ROLES:
         return f"{normalized_role}/{template_name}"
     # Fallback for unknown roles — should never happen with proper RBAC
@@ -65,7 +75,7 @@ def get_role_sidebar_component(role: str) -> str:
 
     Each role has a genuinely different sidebar — not filtered, but separate.
     """
-    normalized_role = role.lower().replace(" ", "_")
+    normalized_role = _ROLE_TEMPLATE_ALIASES.get(role.lower().replace(" ", "_"), role.lower().replace(" ", "_"))
     if normalized_role in _VALID_ROLES:
         return f"components/desktop_sidebar_{normalized_role}.html"
     return "components/desktop_sidebar_loan_officer.html"
@@ -76,7 +86,7 @@ def get_role_tabbar_component(role: str) -> str:
 
     Each role gets a different set of 5 bottom tabs.
     """
-    normalized_role = role.lower().replace(" ", "_")
+    normalized_role = _ROLE_TEMPLATE_ALIASES.get(role.lower().replace(" ", "_"), role.lower().replace(" ", "_"))
     if normalized_role in _VALID_ROLES:
         return f"components/mobile_tabbar_{normalized_role}.html"
     return "components/mobile_tabbar_loan_officer.html"

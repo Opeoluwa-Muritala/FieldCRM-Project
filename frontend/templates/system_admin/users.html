@@ -7,6 +7,18 @@
 
 {% block content %}
 <div class="queue-page-header"><div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">User Management</h1></div></div>
+<section class="page-card" style="margin-bottom:20px;">
+    <h2 class="page-card-title" style="font-size:16px; margin-bottom:14px;">Invite a user</h2>
+    <form id="invite-user-form" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:12px;align-items:end;">
+        <label>Full name<input class="form-input" name="full_name" required minlength="2" placeholder="Jane Doe"></label>
+        <label>Email address<input class="form-input" type="email" name="email" required placeholder="jane@example.com"></label>
+        <label>Role<select class="form-input" name="role" required>
+            <option value="account_officer">Account Officer</option><option value="branch_manager">Branch Manager</option><option value="branch_supervisor">Branch Supervisor</option><option value="credit_analyst">Credit Analyst</option><option value="crm">CRM Officer</option><option value="head_crm">Head CRM</option><option value="auditor">Audit</option><option value="ed">Executive Director</option><option value="md">Managing Director</option><option value="system_admin">System Admin</option>
+        </select></label>
+        <button class="btn-primary-filled" type="submit">Send invite</button>
+    </form>
+    <p id="invite-user-status" aria-live="polite" style="margin:12px 0 0;font-size:13px;"></p>
+</section>
 <div class="role-pipeline-grid role-user-counts">
     {% for item in role_counts %}
     <div class="role-stage-card"><span>{{ item.role|replace('_', ' ')|title }}</span><strong>{{ item.count }}</strong><em>active</em></div>
@@ -27,4 +39,31 @@
 <tr><td>{{ item.full_name }}</td><td>{{ item.email }}</td><td>{{ item.role|replace('_', ' ')|title }}</td><td>{{ 'Active' if item.active else 'Inactive' }}</td><td>{{ item.last_login_at.strftime('%d %b') if item.last_login_at else '-' }}</td></tr>
 {% else %}<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No users found.</td></tr>{% endfor %}
 </tbody></table></div>
+<script>
+document.getElementById('invite-user-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button');
+    const status = document.getElementById('invite-user-status');
+    button.disabled = true;
+    status.textContent = 'Sending invitation…';
+    try {
+        const data = Object.fromEntries(new FormData(form));
+        const response = await fetch('/api/v1/users/invitations', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || 'Unable to create invitation.');
+        status.style.color = result.email_sent ? 'var(--accent-success, #15803d)' : 'var(--accent-warning, #a16207)';
+        status.textContent = result.message;
+        if (result.email_sent) {
+            form.reset();
+            window.setTimeout(() => window.location.reload(), 900);
+        }
+    } catch (error) {
+        status.style.color = 'var(--accent-danger, #b91c1c)';
+        status.textContent = error.message;
+    } finally { button.disabled = false; }
+});
+</script>
 {% endblock %}
