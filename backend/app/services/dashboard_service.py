@@ -26,13 +26,15 @@ class DashboardService:
             return await self._loan_officer_data(user)
         elif role == "branch_manager":
             return await self._branch_manager_data(user)
+        elif role == "branch_supervisor":
+            return await self._branch_supervisor_data(user)
         elif role == "credit_analyst":
             return await self._credit_analyst_data(user)
         elif role == "auditor":
             return await self._auditor_data(user)
         elif role == "system_admin":
             return await self._system_admin_data(user)
-        elif role == "crm":
+        elif role in ("crm", "head_crm"):
             return await self._crm_data(user)
         elif role == "ed":
             return await self._ed_data(user)
@@ -156,6 +158,36 @@ class DashboardService:
             "reviews": reviews,
             "exceptions": exceptions,
         }
+
+    async def _branch_supervisor_data(self, user) -> dict:
+        """Branch Supervisor dashboard: post-manager files awaiting supervisory review."""
+        rows = await self.conn.fetch(
+            load_sql("loans", "list_by_stage"),
+            user.org_id,
+            "branch_supervisor_review",
+            None,
+            10,
+            0,
+        )
+        queue = [self._with_stage_display(dict(row)) for row in rows] if rows else []
+        return {
+            "metrics": {
+                "supervisory_reviews": len(queue),
+                "returned_this_week": 0,
+            },
+            "queue": queue,
+        }
+
+    async def get_supervisory_review_queue(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
+        rows = await self.conn.fetch(
+            load_sql("loans", "list_by_stage"),
+            user.org_id,
+            "branch_supervisor_review",
+            None,
+            limit,
+            offset,
+        )
+        return [self._with_stage_display(dict(row)) for row in rows] if rows else []
 
     async def _auditor_data(self, user) -> dict:
         """Auditor dashboard: read-only compliance flags and audit activity."""
@@ -282,7 +314,11 @@ class DashboardService:
         """CRM dashboard: dossier review queue, recent disbursements, PAR."""
         from app.domains.loans.repository import LoanRepository
         repo = LoanRepository(self.conn)
-        crm_queue = await repo.list_crm_queue(user.org_id, limit=20)
+        crm_queue = await (
+            repo.list_head_crm_queue(user.org_id, limit=20)
+            if user.role == "head_crm"
+            else repo.list_crm_queue(user.org_id, limit=20)
+        )
         disbursed = await repo.list_disbursed(user.org_id)
         par = await self.get_par_summary(user)
         return {
@@ -320,7 +356,10 @@ class DashboardService:
 
     async def get_crm_queue(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
         from app.domains.loans.repository import LoanRepository
-        return await LoanRepository(self.conn).list_crm_queue(user.org_id, limit, offset)
+        repo = LoanRepository(self.conn)
+        if user.role == "head_crm":
+            return await repo.list_head_crm_queue(user.org_id, limit, offset)
+        return await repo.list_crm_queue(user.org_id, limit, offset)
 
     async def get_executive_queue(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
         from app.domains.loans.repository import LoanRepository

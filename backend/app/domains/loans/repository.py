@@ -262,6 +262,10 @@ class LoanRepository(BaseRepository):
         rows = await self.conn.fetch(self.sql("list_crm_queue"), org_id, limit, offset)
         return [dict(r) for r in rows]
 
+    async def list_head_crm_queue(self, org_id: UUID, limit: int = 50, offset: int = 0) -> list[dict]:
+        rows = await self.conn.fetch(self.sql("list_head_crm_queue"), org_id, limit, offset)
+        return [dict(r) for r in rows]
+
     async def list_executive_queue(self, org_id: UUID, limit: int = 50, offset: int = 0) -> list[dict]:
         rows = await self.conn.fetch(self.sql("list_executive_queue"), org_id, limit, offset)
         return [dict(r) for r in rows]

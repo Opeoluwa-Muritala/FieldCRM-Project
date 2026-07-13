@@ -15,6 +15,15 @@
         <span class="status-badge needs-review">Under Credit Review</span>
     </div>
 
+    <section class="loan-control-strip" aria-label="Credit review control summary">
+        <div><span>Loan file</span><strong>{{ app_id }}</strong></div>
+        <div><span>Borrower</span><strong>{{ borrower_name }}</strong></div>
+        <div><span>Requested amount</span><strong>&#x20A6;{{ "{:,}".format(amount) }}</strong></div>
+        <div><span>Product</span><strong>{{ product_type }}</strong></div>
+        <div><span>Tenor</span><strong>{{ tenure }} months</strong></div>
+        <div><span>Decision owner</span><strong>Credit Analyst</strong></div>
+    </section>
+
     <!-- Inside page tabbed navigation -->
     <div class="tab-row">
         <button type="button" class="tab-btn active" id="tabSummaryBtn" onclick="switchReviewTab('summary')">Summary</button>
@@ -191,7 +200,8 @@
         </div>
 
         <!-- Tab 5: Recommendation -->
-        <div id="tabRecommendation" class="tab-pane" style="display: none;">
+        <div id="tabRecommendation" class="tab-pane audit-action-panel" style="display: none;">
+            <p class="action-note">This recommendation is recorded in the loan audit trail and routes the file to the next approval decision.</p>
             <div class="form-grid-2">
                 <div class="form-group-full">
                     <label class="field-label">Risk Verdict Decision <span class="required">*</span></label>
@@ -219,9 +229,9 @@
         </div>
 
         <!-- Sticky Bottom actions bar -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:32px; border-top:0.5px solid var(--color-divider); padding-top:16px;">
+        <div class="audit-action-panel" style="display:flex; justify-content:space-between; align-items:center; margin-top:24px;">
             <a href="/applications/{{ app_id }}" class="btn-ghost-link">&larr; Back to Profile</a>
-            <button type="submit" class="btn-primary-filled">Submit Recommendation &rarr;</button>
+            <button type="submit" class="btn-primary-filled">Record underwriting recommendation</button>
         </div>
 
     </form>

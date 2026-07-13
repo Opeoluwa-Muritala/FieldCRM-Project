@@ -15,6 +15,7 @@
 
 <div class="page-card">
   <h3 style="margin-bottom:20px;">Disbursement Details</h3>
+  {% if can_record_disbursement %}
   <form method="post" action="/applications/{{ app_id }}/disburse">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
       <div>
@@ -74,5 +75,8 @@
       Record Disbursement &amp; Generate Schedule
     </button>
   </form>
+  {% else %}
+  <p class="page-card-subtitle">Read-only oversight. Only a CRM Officer can record this disbursement.</p>
+  {% endif %}
 </div>
 {% endblock %}

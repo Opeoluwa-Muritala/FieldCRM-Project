@@ -1,0 +1,18 @@
+{% set active_page = active_page|default('dashboard') %}
+
+<div class="sidebar-nav-group">
+    <div class="sidebar-nav-group-title">Supervision</div>
+    <div class="sidebar-nav-links">
+        <a href="/dashboard" class="sidebar-nav-link {% if active_page == 'dashboard' %}active{% endif %}"><span>Dashboard</span></a>
+        <a href="/supervisory-review-queue" class="sidebar-nav-link {% if active_page == 'supervisory_reviews' %}active{% endif %}">
+            <span>Review Queue</span>
+            {% if metrics and metrics.supervisory_reviews %}<span class="sidebar-badge sidebar-badge-warning">{{ metrics.supervisory_reviews }}</span>{% endif %}
+        </a>
+    </div>
+</div>
+<div class="sidebar-nav-group">
+    <div class="sidebar-nav-group-title">Portfolio</div>
+    <div class="sidebar-nav-links">
+        <a href="/borrowers" class="sidebar-nav-link {% if active_page == 'borrowers' %}active{% endif %}"><span>Borrowers</span></a>
+    </div>
+</div>

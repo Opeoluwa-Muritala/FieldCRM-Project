@@ -1,0 +1,25 @@
+{% extends "base/desktop_shell.html" %}
+{% block title %}Supervisory Review | FieldCRM{% endblock %}
+{% block page_title %}Pending Supervisory Review{% endblock %}
+{% block breadcrumb %}Branch Supervision / Dashboard{% endblock %}
+{% block content %}
+{% set m = data.metrics if data and data.metrics else {} %}
+<div class="role-workspace">
+    <div class="role-hero">
+        <div><div class="dashboard-date">{{ today_label }}</div><h1>Supervisory review queue</h1></div>
+        <a class="btn-primary-filled" href="/supervisory-review-queue">Open review queue</a>
+    </div>
+    <div class="role-stat-grid">
+        <div class="role-stat"><span>Awaiting review</span><strong>{{ m.get('supervisory_reviews', 0) }}</strong></div>
+        <div class="role-stat"><span>Returned this week</span><strong>{{ m.get('returned_this_week', 0) }}</strong></div>
+    </div>
+    <section class="page-card">
+        <div class="role-section-head"><h2>Post-manager files</h2><a href="/supervisory-review-queue">View all</a></div>
+        <div class="role-card-list">
+            {% for item in data.queue %}
+            <a class="role-list-card" href="/applications/{{ item.id }}"><strong>{{ item.applicant_name }}</strong><span>{{ item.ref_no }} · {{ item.loan_type|title }}</span><em>₦{{ "{:,.0f}".format(item.amount or 0) }}</em></a>
+            {% else %}<div class="lo-empty-state">No files are awaiting supervisory review.</div>{% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}
