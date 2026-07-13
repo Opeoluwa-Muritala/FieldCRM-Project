@@ -20,6 +20,10 @@ class UserInvitationCreate(UserBase):
     email: EmailStr
 
 
+class UserRoleUpdate(BaseModel):
+    role: str = Field(..., description="The operational role to assign")
+
+
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
