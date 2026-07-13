@@ -13,7 +13,7 @@
     'committee': 'Committee Member'
 } %}
 
-<div class="responsive-shell {% if hide_tabbar %}has-no-tabbar{% endif %}">
+<div class="responsive-shell desktop-only-shell">
     {# === DESKTOP SIDEBAR — visible on desktop, hidden on mobile === #}
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebarDrawer()"></div>
     <aside class="desktop-sidebar" id="desktopSidebar" aria-label="Primary navigation">
@@ -50,9 +50,6 @@
 
     {# === MAIN WORKSPACE === #}
     <div class="responsive-main">
-        {# === MOBILE TOPBAR — visible on mobile, hidden on desktop === #}
-        {% include "components/mobile_topbar.html" %}
-
         {# === DESKTOP TOPBAR — visible on desktop, hidden on mobile === #}
         <header class="desktop-topbar">
             <div class="topbar-left" style="display:flex; align-items:center; gap:12px;">
@@ -88,14 +85,6 @@
             </div>
         </main>
 
-        {# === MOBILE BOTTOM TAB BAR === #}
-        {% if not hide_tabbar %}
-        <nav class="mobile-tabbar" id="mobileTabbar" aria-label="Primary navigation">
-            {% block tabbar %}
-            {% include tabbar_component ignore missing %}
-            {% endblock %}
-        </nav>
-        {% endif %}
     </div>
 
     {# === FLOATING ACTION BUTTON (mobile only, optional) === #}
@@ -115,5 +104,4 @@
         }
     }
 </script>
-<script src="/static/js/mobile.js"></script>
 {% endblock %}
