@@ -396,7 +396,7 @@ async def render_applications_list(
 @router.get("/applications/new")
 async def render_new_application(
     request: Request,
-    current_user = Depends(RoleChecker(["System Admin", "Loan Officer"]))
+    current_user = Depends(RoleChecker(["Account Officer"]))
 ):
     """Renders Page 3 customer selection page."""
     ctx = build_template_context(
@@ -413,7 +413,7 @@ async def process_new_application(
     customer_type: str = Form(...),
     loan_type: str = Form(...),
     service: LoanService = Depends(get_loan_service),
-    current_user = Depends(RoleChecker(["System Admin", "Loan Officer"]))
+    current_user = Depends(RoleChecker(["Account Officer"]))
 ):
     """Initializes a new borrower and loan application in draft stage."""
     app = await service.create_loan(

@@ -91,7 +91,12 @@ import urllib.parse
 async def http_exception_handler(request: Request, exc: HTTPException):
     # Only redirect page requests (non-API) to login on 401/403
     is_api = request.url.path.startswith("/api/")
-    if exc.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN) and not is_api:
+    if exc.status_code == status.HTTP_403_FORBIDDEN and not is_api:
+        # A signed-in user does not become authorized by visiting /login again.
+        # Send forbidden page requests to their dashboard instead of creating
+        # a protected-page -> login -> protected-page redirect loop.
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    if exc.status_code == status.HTTP_401_UNAUTHORIZED and not is_api:
         next_url = str(request.url.path)
         if request.url.query:
             next_url += f"?{request.url.query}"
@@ -125,12 +130,10 @@ async def render_login(request: Request, conn=Depends(db_conn)):
         try:
             from app.core.dependencies import get_current_user_from_token
             await get_current_user_from_token(token, conn)
-            # User is already logged in, redirect to next URL or dashboard
-            next_url = request.query_params.get("next", "")
-            redirect_url = "/dashboard"
-            if next_url and next_url.strip() and next_url.startswith("/") and not next_url.startswith("//"):
-                redirect_url = next_url.strip()
-            return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+            # Avoid re-sending an already authenticated user to a route that
+            # may be forbidden for their role. The POST login flow still
+            # honours a validated `next` value after fresh authentication.
+            return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
         except Exception:
             # Token invalid, allow login page to render
             pass
