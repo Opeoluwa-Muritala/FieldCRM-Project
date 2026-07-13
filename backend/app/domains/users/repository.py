@@ -31,3 +31,6 @@ class UserRepository(BaseRepository):
             str(org_id), full_name, email, role, password_hash,
         )
         return UserRow(**row)
+
+    async def deactivate_user(self, user_id: UUID) -> None:
+        await self.conn.execute("UPDATE users SET active = FALSE WHERE id = $1", str(user_id))

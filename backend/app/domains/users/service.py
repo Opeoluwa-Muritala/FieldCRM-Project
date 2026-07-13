@@ -1,4 +1,8 @@
+import secrets
+from datetime import datetime, timedelta, timezone
+
 from app.domains.users.repository import UserRepository
+from app.domains.auth.repository import AuthRepository
 from app.core.security import get_password_hash
 from app.core.exceptions import DomainException
 from app.domains.users.schemas import UserRow
@@ -54,3 +58,23 @@ class UserService:
             password_hash=hashed
         )
         return user
+
+    async def invite_user(self, current_admin: UserRow, invite_in) -> tuple[UserRow, str]:
+        email = str(invite_in.email).strip().lower()
+        if await self.repo.get_by_email(email):
+            raise DomainException("A user with this email already exists.", 400)
+
+        user = await self.repo.create_user(
+            org_id=current_admin.org_id,
+            full_name=invite_in.full_name.strip(),
+            email=email,
+            role=invite_in.role.strip().lower().replace(" ", "_"),
+            password_hash=get_password_hash(secrets.token_urlsafe(32)),
+        )
+        await self.repo.deactivate_user(user.id)
+        token = secrets.token_urlsafe(32)
+        await AuthRepository(self.repo.conn).create_reset_token(
+            str(user.id), token, datetime.now(timezone.utc) + timedelta(hours=72)
+        )
+        user.active = False
+        return user, token

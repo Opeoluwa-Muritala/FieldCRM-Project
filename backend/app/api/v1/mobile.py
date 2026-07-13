@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from app.core.audit import AuditService
 from app.core.database import db_conn
 from app.core.dependencies import get_current_user
+from app.core.workflow import NEXT_STAGE, ROLE_LABELS, STAGE_ROLE
 from app.domains.documents.repository import DocumentRepository
 from app.domains.documents.service import DocumentService
 from app.domains.guarantors.repository import GuarantorRepository
@@ -19,6 +20,7 @@ from app.domains.notifications.service import NotificationService
 from app.domains.visitation.repository import VisitationRepository
 from app.domains.visitation.service import VisitationService
 from app.services.dashboard_service import DashboardService
+from app.services.email_service import EmailService
 
 
 router = APIRouter()
@@ -1521,6 +1523,10 @@ class BoardReferralRequest(BaseModel):
     notes: str = ""
 
 
+class WorkflowTransitionRequest(BaseModel):
+    notes: str = ""
+
+
 @router.get("/applications/{application_id}/md-review")
 async def get_mobile_md_review(
     application_id: UUID,
@@ -1576,10 +1582,28 @@ async def submit_mobile_board_referral(
     current_user=Depends(get_current_user),
 ):
     _ensure_roles(current_user, {"md", "system_admin"})
-    await _get_application_or_404(conn, application_id, current_user)
+    app = await _get_application_or_404(conn, application_id, current_user)
     referral = await LoanRepository(conn).insert_board_referral(
         application_id, current_user.org_id, current_user.id,
         payload.board_member_email, payload.board_member_name, payload.notes
+    )
+    from app.services.email_service import EmailService
+    member_name = payload.board_member_name.strip() or "Board Member"
+    EmailService().send_notification(
+        recipient=payload.board_member_email,
+        subject=f"Board advice requested — {app.ref_no}",
+        text=(
+            f"Hello {member_name},\n\n{current_user.full_name} has requested your board advice on "
+            f"FieldCRM application {app.ref_no} for {app.applicant_name}.\n\n"
+            f"Notes: {payload.notes or 'No additional notes provided.'}"
+        ),
+        html_content=(
+            f"<p>Hello {payload.board_member_name or 'Board Member'},</p><p><strong>{current_user.full_name}</strong> "
+            f"has requested your board advice on FieldCRM application <strong>{app.ref_no}</strong> "
+            f"for {app.applicant_name}.</p><p>{payload.notes or 'No additional notes provided.'}</p>"
+        ),
+        sender_name=current_user.full_name,
+        reply_email=current_user.email,
     )
     await AuditService(conn).log(
         application_id=str(application_id),
@@ -1590,6 +1614,59 @@ async def submit_mobile_board_referral(
         reason=payload.notes,
     )
     return {"referral": referral}
+
+
+@router.post("/applications/{application_id}/workflow/advance")
+async def advance_review_workflow(
+    application_id: UUID,
+    payload: WorkflowTransitionRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    """Advance a file through the operational review chain before ED/MD review."""
+    app = await _get_application_or_404(conn, application_id, current_user)
+    role = current_user.role.lower().replace(" ", "_")
+    required_role = STAGE_ROLE.get(app.stage)
+    if required_role is None:
+        raise HTTPException(status_code=409, detail="This application is not in the operational review workflow")
+    if role not in {required_role, "system_admin"}:
+        raise HTTPException(status_code=403, detail=f"This stage is assigned to {ROLE_LABELS[required_role]}")
+    if app.stage in {"ed_approval", "md_approval"}:
+        raise HTTPException(status_code=409, detail="Use the existing ED or MD decision endpoint for this stage")
+
+    next_stage = NEXT_STAGE.get(app.stage)
+    if not next_stage:
+        raise HTTPException(status_code=409, detail="This application is already with CRM for disbursement")
+
+    updated = await LoanRepository(conn).advance_stage(application_id, current_user.org_id, next_stage)
+    if not updated:
+        raise HTTPException(status_code=409, detail="Application could not be advanced")
+
+    await AuditService(conn).log(
+        application_id=str(application_id), org_id=str(current_user.org_id),
+        action=f"{ROLE_LABELS.get(role, role.title())} review complete",
+        from_stage=app.stage, to_stage=next_stage,
+        actor_id=str(current_user.id), actor_role=current_user.role, reason=payload.notes,
+    )
+
+    next_role = STAGE_ROLE[next_stage]
+    recipients = await conn.fetch(
+        "SELECT email FROM users WHERE org_id = $1 AND role = $2 AND active = TRUE",
+        current_user.org_id, next_role,
+    )
+    subject = f"FieldCRM action required — {updated.ref_no}"
+    text = (
+        f"Application {updated.ref_no} for {updated.applicant_name} is ready for your "
+        f"{ROLE_LABELS[next_role]} review. This is an automated notification; please do not reply."
+    )
+    html_content = (
+        f"<p>Application <strong>{updated.ref_no}</strong> for {updated.applicant_name} is ready for your "
+        f"<strong>{ROLE_LABELS[next_role]}</strong> review.</p><p>This is an automated notification; please do not reply.</p>"
+    )
+    mailer = EmailService()
+    for recipient in recipients:
+        mailer.send_notification(recipient=recipient["email"], subject=subject, text=text, html_content=html_content)
+    return {"application": updated, "stage": next_stage, "notified_role": next_role}
 
 
 # ---------------------------------------------------------------------------

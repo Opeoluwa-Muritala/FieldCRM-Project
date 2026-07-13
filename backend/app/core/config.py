@@ -80,6 +80,21 @@ class Settings(BaseSettings):
     # Organisation registration guard — set this in production to a strong random string
     ORG_REGISTRATION_SECRET: str = os.getenv("ORG_REGISTRATION_SECRET", "")
 
+    # Email invitations and password resets. Without SMTP, local development
+    # logs links instead of attempting delivery.
+    APP_BASE_URL: str = os.getenv("APP_BASE_URL", "")
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "")
+    SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "FieldCRM")
+    SMTP_USE_TLS: bool = os.getenv("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes")
+
+    # Transactional email delivery. Emailope accepts a JSON POST without SMTP
+    # credentials; override this URL only when using a compatible mail gateway.
+    EMAIL_SERVICE_URL: str = os.getenv("EMAIL_SERVICE_URL", "https://emailope.vercel.app/")
+
     # Document uploads (local fallback)
     DOCUMENT_UPLOAD_DIR: str = os.getenv(
         "DOCUMENT_UPLOAD_DIR",

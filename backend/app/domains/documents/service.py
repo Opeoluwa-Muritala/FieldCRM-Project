@@ -1,4 +1,5 @@
 import asyncio
+import io
 import logging
 import mimetypes
 import re
@@ -29,6 +30,71 @@ ALLOWED_EXTENSIONS = {
     "image/png": ".png",
 }
 
+MAX_UPLOAD_BYTES = 3 * 1024 * 1024
+_SIGNATURES = {
+    "application/pdf": b"%PDF-",
+    "image/jpeg": b"\xff\xd8\xff",
+    "image/png": b"\x89PNG\r\n\x1a\n",
+}
+
+
+def validate_file(file_bytes: bytes, mimetype: str, allowed: set[str], filename: str, enforce_size: bool = True) -> str | None:
+    """Validate declared type, extension, and binary signature before upload."""
+    if not file_bytes:
+        return "Uploaded file is empty."
+    if enforce_size and len(file_bytes) > MAX_UPLOAD_BYTES:
+        return "Document exceeds the 3 MB limit."
+    if mimetype not in allowed:
+        return "Unsupported document type. Upload PDF, JPEG, or PNG."
+    extension = Path(filename or "").suffix.lower()
+    extension_map = {".pdf": "application/pdf", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png"}
+    expected = extension_map.get(extension)
+    if not expected or expected not in allowed:
+        return "File extension must be PDF, JPG, JPEG, or PNG."
+    if expected != mimetype:
+        return "The file extension does not match the declared document type."
+    if not file_bytes.startswith(_SIGNATURES[mimetype]):
+        return "The file contents do not match the declared document type."
+    return None
+
+
+def compress_image(file_bytes: bytes, mimetype: str) -> tuple[bytes, str]:
+    """Optimise camera scans without altering PDFs or increasing file size."""
+    if mimetype not in {"image/jpeg", "image/png"}:
+        return file_bytes, mimetype
+    try:
+        from PIL import Image, ImageOps
+    except ImportError:
+        log.warning("Pillow is unavailable; image upload was not compressed")
+        return file_bytes, mimetype
+    try:
+        with Image.open(io.BytesIO(file_bytes)) as image:
+            image = ImageOps.exif_transpose(image)
+            image.thumbnail((2200, 2200), Image.Resampling.LANCZOS)
+            if image.mode in {"RGBA", "LA"} or (image.mode == "P" and "transparency" in image.info):
+                background = Image.new("RGB", image.size, "white")
+                background.paste(image.convert("RGBA"), mask=image.convert("RGBA").getchannel("A"))
+                image = background
+            elif image.mode != "RGB":
+                image = image.convert("RGB")
+            output = io.BytesIO()
+            image.save(output, format="JPEG", quality=82, progressive=True, optimize=True)
+            compressed = output.getvalue()
+            return (compressed, "image/jpeg") if len(compressed) < len(file_bytes) else (file_bytes, mimetype)
+    except Exception:
+        log.warning("Image compression failed; using original upload", exc_info=True)
+        return file_bytes, mimetype
+
+
+def prepare_upload_file(file_bytes: bytes, mimetype: str, allowed: set[str], filename: str) -> tuple[bytes, str, str | None]:
+    error = validate_file(file_bytes, mimetype, allowed, filename, enforce_size=False)
+    if error:
+        return file_bytes, mimetype, error
+    prepared, prepared_type = compress_image(file_bytes, mimetype)
+    if len(prepared) > MAX_UPLOAD_BYTES:
+        return prepared, prepared_type, "Document exceeds the 3 MB limit after image optimisation."
+    return prepared, prepared_type, None
+
 
 class DocumentService:
     def __init__(self, repo: DocumentRepository, audit: AuditService):
@@ -48,18 +114,12 @@ class DocumentService:
     ) -> dict:
         original_name = file.filename or "document"
         mime_type = file.content_type or mimetypes.guess_type(original_name)[0] or ""
-        if mime_type not in settings.DOCUMENT_ALLOWED_MIME_TYPES:
-            raise HTTPException(
-                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail="Unsupported document type. Upload PDF, JPEG, or PNG.",
-            )
-
-        content = await file.read(settings.DOCUMENT_MAX_UPLOAD_BYTES + 1)
-        if not content:
-            raise HTTPException(status_code=400, detail="Uploaded file is empty")
-        if len(content) > settings.DOCUMENT_MAX_UPLOAD_BYTES:
-            max_mb = settings.DOCUMENT_MAX_UPLOAD_BYTES // (1024 * 1024)
-            raise HTTPException(status_code=413, detail=f"Document exceeds {max_mb} MB limit")
+        content = await file.read(MAX_UPLOAD_BYTES + 1)
+        content, mime_type, error = prepare_upload_file(
+            content, mime_type, set(settings.DOCUMENT_ALLOWED_MIME_TYPES), original_name
+        )
+        if error:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
 
         safe_doc_type = re.sub(r"[^a-zA-Z0-9_.-]+", "_", doc_type or "other").strip("._") or "other"
         extension = Path(original_name).suffix.lower() or ALLOWED_EXTENSIONS[mime_type]
