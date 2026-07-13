@@ -239,10 +239,97 @@ fun CreateApplicationContent(
                     }
                 }
 
+                // Share Client Intake Link Card — shown before detail fields so it's immediately visible
+                val context = LocalContext.current
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = FieldTheme.colors.purple600.copy(alpha = 0.05f),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = FieldTheme.colors.purple600.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Send Link to Customer",
+                        style = FieldTheme.typography.bodyStrong.copy(fontSize = 16.sp),
+                        color = FieldTheme.colors.gray100
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Generate a secure link and send it to the customer so they can fill in their own details and upload documents directly — without you having to enter them manually.",
+                        style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                        color = FieldTheme.colors.gray400
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (shareUrl != null) {
+                        FieldTextField(
+                            value = shareUrl,
+                            onValueChange = {},
+                            label = "Customer Intake Link",
+                            readOnly = true,
+                            trailingIcon = {
+                                Button(
+                                    onClick = {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                        val clip = ClipData.newPlainText("FieldCRM Client Intake Link", shareUrl)
+                                        clipboard.setPrimaryClip(clip)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = FieldTheme.colors.purple600),
+                                    shape = RoundedCornerShape(4.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                    modifier = Modifier.padding(end = 4.dp)
+                                ) {
+                                    Text("Copy", color = Color.White, fontSize = 12.sp)
+                                }
+                            }
+                        )
+                    } else {
+                        Button(
+                            onClick = onGenerateLinkClick,
+                            enabled = !isGeneratingLink,
+                            colors = ButtonDefaults.buttonColors(containerColor = FieldTheme.colors.purple600),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (isGeneratingLink) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text("Generate & Send Link to Customer", color = Color.White)
+                            }
+                        }
+                    }
+                }
+
+                // Divider with "or fill manually" label
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    HorizontalDivider(modifier = Modifier.weight(1f), color = FieldTheme.colors.gray800)
+                    Text(
+                        text = "OR FILL DETAILS BELOW",
+                        style = FieldTheme.typography.label,
+                        color = FieldTheme.colors.gray600
+                    )
+                    HorizontalDivider(modifier = Modifier.weight(1f), color = FieldTheme.colors.gray800)
+                }
+
                 if (customerType == "Existing Customer") {
                     val borrowerNames = borrowers.map { it.name }
                     val selectedName = selectedBorrower?.name ?: ""
-                    
+
                     FieldDropdown(
                         value = selectedName,
                         options = borrowerNames,
@@ -300,7 +387,6 @@ fun CreateApplicationContent(
                 }
 
                 if (errorMessage != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -328,79 +414,6 @@ fun CreateApplicationContent(
                             style = FieldTheme.typography.body.copy(fontSize = 14.sp),
                             color = FieldTheme.colors.statusDanger
                         )
-                    }
-                }
-
-                // Share Client Intake Link Card
-                Spacer(modifier = Modifier.height(16.dp))
-                val context = LocalContext.current
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            color = FieldTheme.colors.purple600.copy(alpha = 0.05f),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = FieldTheme.colors.purple600.copy(alpha = 0.3f),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "Share Client Intake Link",
-                        style = FieldTheme.typography.bodyStrong.copy(fontSize = 16.sp),
-                        color = FieldTheme.colors.gray100
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Instead of filling the intake form yourself, you can generate a secure shareable link to send to the client so they can fill out the details and upload documents directly.",
-                        style = FieldTheme.typography.body.copy(fontSize = 13.sp),
-                        color = FieldTheme.colors.gray400
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    if (shareUrl != null) {
-                        FieldTextField(
-                            value = shareUrl,
-                            onValueChange = {},
-                            label = "Intake Link URL",
-                            readOnly = true,
-                            trailingIcon = {
-                                Button(
-                                    onClick = {
-                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                        val clip = ClipData.newPlainText("FieldCRM Client Intake Link", shareUrl)
-                                        clipboard.setPrimaryClip(clip)
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = FieldTheme.colors.purple600),
-                                    shape = RoundedCornerShape(4.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                                    modifier = Modifier.padding(end = 4.dp)
-                                ) {
-                                    Text("Copy", color = Color.White, fontSize = 12.sp)
-                                }
-                            }
-                        )
-                    } else {
-                        Button(
-                            onClick = onGenerateLinkClick,
-                            enabled = !isGeneratingLink,
-                            colors = ButtonDefaults.buttonColors(containerColor = FieldTheme.colors.purple600),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            if (isGeneratingLink) {
-                                CircularProgressIndicator(
-                                    color = Color.White,
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Text("Generate Share Link", color = Color.White)
-                            }
-                        }
                     }
                 }
 

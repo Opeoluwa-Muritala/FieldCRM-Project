@@ -62,21 +62,20 @@
     <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px; background-color: #FFFFFF;">
         <h3 style="font-size:15px; font-weight:500; margin-bottom:12px; border-bottom:0.5px solid var(--color-divider); padding-bottom:8px;">2. Supporting Documents</h3>
         <div style="display:flex; flex-direction:column; gap:8px;">
+            {% for doc in documents %}
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
-                <span>Passport Photograph</span>
-                <span class="status-badge verified">Verified</span>
+                {% if doc.url %}
+                    <a href="{{ doc.url }}" target="_blank" style="color:var(--color-brand-shield); text-decoration:none; font-weight:500;">
+                        {{ doc.category|replace('_', ' ')|title }} &nearr;
+                    </a>
+                {% else %}
+                    <span>{{ doc.category|replace('_', ' ')|title }}</span>
+                {% endif %}
+                <span class="status-badge {{ 'verified' if doc.status == 'verified' else 'needs-review' }}">{{ doc.status|replace('_', ' ')|title }}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
-                <span>Valid ID Card</span>
-                <span class="status-badge verified">Verified</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
-                <span>Recent Salary Account Bank Statement</span>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <span class="status-badge needs-review">Needs Review</span>
-                    <a href="/applications/{{ app_id }}/step/4" style="color:var(--color-brand-shield); text-decoration:none; font-weight:500;">Fix &rarr;</a>
-                </div>
-            </div>
+            {% else %}
+            <div style="font-size:13px; color:var(--text-muted); text-align:center;">No documents uploaded.</div>
+            {% endfor %}
         </div>
     </div>
 

@@ -1,5 +1,5 @@
-{% set mobile_title_text = "ED Approval" %}
-{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+﻿{% set mobile_title_text = "ED Approval" %}
+{% extends "base/desktop_shell.html" %}
 {% block title %}ED Approval - FieldCRM{% endblock %}
 {% block page_title %}ED Approval{% endblock %}
 {% block breadcrumb %}Executive Director -> Approval -> {{ app.ref_no }}{% endblock %}

@@ -15,6 +15,8 @@ SELECT
     verified,
     uploaded_by,
     uploaded_at,
+    cloud_public_id,
+    cloud_preview_url,
     uploaded_at AS created_at,
     uploaded_at AS updated_at
 FROM documents

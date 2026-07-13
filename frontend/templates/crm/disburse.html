@@ -1,5 +1,5 @@
-{% set mobile_title_text = "Record Disbursement" %}
-{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+﻿{% set mobile_title_text = "Record Disbursement" %}
+{% extends "base/desktop_shell.html" %}
 {% block title %}Record Disbursement - FieldCRM{% endblock %}
 {% block page_title %}Record Disbursement{% endblock %}
 {% block breadcrumb %}CRM -> Disburse -> {{ app.ref_no }}{% endblock %}

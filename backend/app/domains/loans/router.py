@@ -682,15 +682,32 @@ async def render_ocr_review(
     request: Request,
     application_id: str,
     doc: str = "loan",
+    conn = Depends(db_conn),
     current_user = Depends(get_current_user)
 ):
     """Page 14 OCR Review Page."""
+    from app.domains.documents.repository import DocumentRepository
+    from uuid import UUID
+    
+    doc_repo = DocumentRepository(conn)
+    documents = await doc_repo.get_by_loan(UUID(application_id), current_user.org_id)
+    
+    doc_url = None
+    target_categories = ['id', 'statement', 'payslip', 'other'] if doc == 'loan' else [doc]
+    for d in documents:
+        if d.get("doc_type") in target_categories:
+            doc_url = d.get("cloud_preview_url") or d.get("stored_path")
+            break
+    if not doc_url and documents:
+        doc_url = documents[0].get("cloud_preview_url") or documents[0].get("stored_path")
+
     ctx = build_template_context(
         request,
         current_user,
         app_id=application_id,
         doc_type=doc,
         doc_name="Loan Application Form" if doc == 'loan' else "Pledge Receipt Form",
+        doc_url=doc_url or "/static/img/logo.png",
         active_tab="ocr",
         active_page="ocr",
     )

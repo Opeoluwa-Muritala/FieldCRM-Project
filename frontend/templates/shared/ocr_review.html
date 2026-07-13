@@ -19,7 +19,7 @@
         </div>
         
         <div class="ocr-viewer-viewport" id="viewport">
-            <img src="/static/img/logo.png" alt="Uploaded Document Mock Image" id="docImg" class="doc-viewer-img" loading="lazy" decoding="async" style="transform: scale(1.0); transition: transform 0.1s ease;">
+            <img src="{{ doc_url }}" alt="Uploaded Document Image" id="docImg" class="doc-viewer-img" loading="lazy" decoding="async" style="transform: scale(1.0); transition: transform 0.1s ease;">
             <!-- Inline highlight box representing field bounding boxes -->
             <div id="highlightBox" style="position: absolute; border: 2.5px solid var(--color-brand-shield); background-color: rgba(107, 63, 160, 0.2); pointer-events: none; display: none;"></div>
         </div>

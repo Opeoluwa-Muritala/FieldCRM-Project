@@ -653,25 +653,16 @@
 }
 
 /* =============================================================================
-   RESPONSIVE WEB OVERRIDES (Not an app view)
+   RESPONSIVE WEB SHELL — single layout, responsive via CSS media queries
    ============================================================================= */
 
-/* Hide mobile app-like topbar and bottom tabbar globally */
-.mobile-topbar, .mobile-tabbar {
+/* Mobile app–style nav is only for the native app, not the web shell */
+.mobile-topbar,
+.mobile-tabbar {
     display: none !important;
 }
 
-/* Force standard desktop workstation layout and headers on mobile screens */
-.responsive-shell .mobile-topbar,
-.responsive-shell .mobile-tabbar {
-    display: none !important;
-}
-
-.responsive-shell .desktop-topbar {
-    display: flex !important;
-}
-
-/* Sidebar Toggle button visibility */
+/* Hamburger toggle — hidden by default, shown on mobile */
 .sidebar-toggle-btn {
     display: none;
     background: none;
@@ -680,98 +671,320 @@
     cursor: pointer;
     color: var(--text-main);
     padding: 6px;
+    border-radius: 6px;
     line-height: 1;
+    transition: background 0.15s;
+}
+.sidebar-toggle-btn:hover {
+    background: var(--bg-secondary, #f5f3f0);
 }
 
+/* Sidebar overlay (for drawer on mobile) */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 450;
+    backdrop-filter: blur(2px);
+}
+.sidebar-overlay.active {
+    display: block;
+}
+
+/* ── MOBILE BREAKPOINT (≤767px) ── */
 @media (max-width: 767px) {
-    /* Responsive shell layout resets */
+
+    /* Shell: single column, no sidebar in flow */
     .responsive-shell {
         grid-template-columns: 1fr !important;
-    }
-    
-    .responsive-main {
-        grid-template-rows: 64px minmax(0, 1fr) !important;
+        overflow-x: hidden;
     }
 
-    /* Style desktop sidebar as a slide-out drawer on mobile */
+    /* Main area: compact topbar + scrollable content */
+    .responsive-main {
+        grid-template-rows: 56px minmax(0, 1fr) !important;
+        min-height: 100dvh;
+        overflow: hidden;
+    }
+
+    /* Scrollable content area */
+    .responsive-content {
+        overflow-y: auto !important;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: contain;
+        height: 100%;
+    }
+
+    /* Content padding */
+    .content-wrapper {
+        padding: 16px !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+    }
+
+    /* Sidebar becomes a slide-out drawer */
     .responsive-shell .desktop-sidebar {
         display: flex !important;
         position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        bottom: 0 !important;
+        inset: 0 auto 0 0 !important;
+        width: min(280px, 80vw) !important;
         z-index: 500 !important;
-        width: 250px !important;
         transform: translateX(-100%) !important;
-        transition: transform 0.3s ease !important;
+        transition: transform 0.28s cubic-bezier(0, 0, 0.2, 1) !important;
+        overflow-y: auto;
+        height: 100dvh !important;
     }
 
     .responsive-shell .desktop-sidebar.active {
         transform: translateX(0) !important;
-        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25) !important;
+        box-shadow: 4px 0 32px rgba(0, 0, 0, 0.3) !important;
     }
 
-    /* Sidebar Overlay */
-    .sidebar-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.4);
-        z-index: 450;
-    }
-    
-    .sidebar-overlay.active {
-        display: block !important;
-    }
-
-    /* Show hamburger menu toggle button only on mobile */
+    /* Show hamburger */
     .sidebar-toggle-btn {
-        display: block !important;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
     }
 
-    /* Make topbar compact on mobile */
-    .desktop-topbar {
-        padding: 0 16px !important;
-        gap: 10px !important;
+    /* Compact topbar */
+    .responsive-shell .desktop-topbar {
+        display: flex !important;
+        height: 56px !important;
+        padding: 0 12px !important;
+        gap: 8px !important;
     }
 
-    .topbar-breadcrumb {
-        display: none !important;
-    }
+    .topbar-breadcrumb { display: none !important; }
 
     .topbar-title {
         font-size: 16px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    .desktop-topbar form {
-        display: none !important; /* Hide desktop search input on mobile */
+    /* Hide desktop search and extra actions on small screens */
+    .desktop-topbar form,
+    .desktop-topbar .topbar-search { display: none !important; }
+
+    /* ── LAYOUT: stack all multi-column grids ── */
+
+    .metrics-row,
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
     }
 
-    /* Grid and Cards Stack on mobile */
-    .metrics-row {
+    .layout-two-col,
+    .form-grid-2,
+    .pipeline-board,
+    .role-stat-grid,
+    .role-grid-main {
         grid-template-columns: 1fr !important;
         gap: 12px !important;
     }
 
-    .layout-two-col {
+    .queue-filter-grid {
         grid-template-columns: 1fr !important;
-        gap: 16px !important;
+        gap: 8px !important;
     }
 
-    /* Horizontally scrollable tables on mobile */
-    .custom-table-container {
+    /* Stack queue page headers vertically */
+    .queue-page-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+    }
+
+    .queue-new-link,
+    .queue-page-header .btn-primary-filled {
+        width: 100% !important;
+        text-align: center;
+        justify-content: center;
+    }
+
+    /* Cards */
+    .page-card {
+        padding: 14px !important;
+        margin-bottom: 12px !important;
+        border-radius: 10px !important;
+    }
+
+    .metric-card {
+        min-height: 80px !important;
+        padding: 12px !important;
+    }
+
+    /* Tables: always horizontal scroll */
+    .custom-table-container,
+    .custom-table-container.queue-table-wrap {
+        display: block !important;
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
     }
 
-    /* Form grid and general column alignments */
-    .form-grid-2 {
+    .custom-table {
+        min-width: 540px;
+    }
+
+    /* Show queue cards instead of table on very small screens */
+    .queue-cards {
+        display: flex !important;
+    }
+
+    /* Forms */
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="date"],
+    input[type="password"],
+    select,
+    textarea,
+    .field-input,
+    .field-select,
+    .field-textarea {
+        font-size: 16px !important; /* prevent iOS auto-zoom */
+        min-height: 46px !important;
+    }
+
+    /* Buttons: touch-friendly size */
+    .btn-primary-filled,
+    .btn-ghost-link,
+    .btn-secondary-outline {
+        min-height: 44px !important;
+        padding: 10px 16px !important;
+        font-size: 14px !important;
+    }
+
+    /* Action rows: stack on mobile */
+    .action-row,
+    .form-actions,
+    .wizard-footer {
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    .action-row .btn-primary-filled,
+    .action-row .btn-ghost-link,
+    .wizard-footer .btn-primary-filled,
+    .wizard-footer .btn-ghost-link {
+        width: 100% !important;
+    }
+
+    /* Wizard steps bar: smaller font */
+    .wizard-steps {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+    }
+
+    /* Application detail: stack sidebar info */
+    .app-detail-grid,
+    .detail-two-col {
         grid-template-columns: 1fr !important;
         gap: 12px !important;
+    }
+
+    /* Detail drawer: full-screen on mobile */
+    .detail-drawer {
+        width: 100vw !important;
+        border-left: none !important;
+    }
+
+    /* Stat chips: 2 column grid on phone */
+    .lo-stat-chips {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+
+    /* Pipeline bar: truncate labels */
+    .lo-pipeline-segment {
+        min-width: 32px !important;
+        font-size: 11px !important;
+    }
+
+    /* Notification bell: tap target */
+    .topbar-bell {
+        min-width: 40px;
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Overflow guard: prevent any child from blowing past viewport */
+    .responsive-content * {
+        max-width: 100%;
+        min-width: 0;
+    }
+    .responsive-content img,
+    .responsive-content video {
+        height: auto;
+    }
+}
+
+/* ── SMALL PHONE (≤400px): tighten further ── */
+@media (max-width: 400px) {
+    .metrics-row,
+    .metrics-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .content-wrapper {
+        padding: 12px !important;
     }
 
     .page-card {
-        padding: 16px !important;
-        margin-bottom: 16px !important;
+        padding: 12px !important;
+    }
+}
+
+/* ── TABLET (768px–1023px): narrow sidebar, 2-col grids ── */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .responsive-shell {
+        grid-template-columns: 64px minmax(0, 1fr) !important;
+    }
+
+    .desktop-sidebar {
+        width: 64px !important;
+        overflow: hidden;
+    }
+
+    .sidebar-logo img {
+        width: 28px !important;
+    }
+
+    .sidebar-nav-link span,
+    .sidebar-nav-group-title,
+    .sidebar-user-info,
+    .sidebar-user-name,
+    .sidebar-user-role {
+        display: none !important;
+    }
+
+    .sidebar-nav-link {
+        justify-content: center !important;
+        padding: 0 !important;
+    }
+
+    .sidebar-user {
+        justify-content: center !important;
+    }
+
+    .sidebar-user-avatar {
+        flex-shrink: 0;
+    }
+
+    .metrics-row,
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .content-wrapper {
+        padding: 20px !important;
     }
 }

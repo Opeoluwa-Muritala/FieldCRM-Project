@@ -13,6 +13,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.Image
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -24,17 +27,21 @@ import java.util.Locale
 
 @Composable
 fun DocumentViewerScreen(
+    docType: String = "",
+    docUrl: String = "",
     onBackClick: () -> Unit
 ) {
     var zoomLevel by remember { mutableFloatStateOf(1.0f) }
     var rotationAngle by remember { mutableIntStateOf(0) }
-    var annotationText by remember { mutableStateOf("Verified match with original land title records at state registry.") }
-    var isAuditApproved by remember { mutableStateOf(true) }
+    var annotationText by remember { mutableStateOf("") }
+    var isAuditApproved by remember { mutableStateOf(false) }
+
+    val displayTitle = if (docType.isNotBlank()) "Document: $docType" else "Document Viewer"
 
     Scaffold(
         topBar = {
             FieldTopAppBar(
-                title = "Document: Deed_of_Pledge_Adaeze.pdf",
+                title = displayTitle,
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -75,7 +82,7 @@ fun DocumentViewerScreen(
                             onRotateClick = { rotationAngle = (rotationAngle + 90) % 360 }
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        ViewerCanvasBox(rotationAngle = rotationAngle, zoomLevel = zoomLevel)
+                        ViewerCanvasBox(rotationAngle = rotationAngle, zoomLevel = zoomLevel, docUrl = docUrl)
                     }
                     
                     Column(
@@ -110,7 +117,7 @@ fun DocumentViewerScreen(
                         rotationAngle = rotationAngle,
                         onRotateClick = { rotationAngle = (rotationAngle + 90) % 360 }
                     )
-                    ViewerCanvasBox(rotationAngle = rotationAngle, zoomLevel = zoomLevel)
+                    ViewerCanvasBox(rotationAngle = rotationAngle, zoomLevel = zoomLevel, docUrl = docUrl)
                     AnnotationSection(
                         annotationText = annotationText,
                         onAnnotationChange = { annotationText = it },
@@ -188,7 +195,33 @@ fun RowScope.Slider(
 }
 
 @Composable
-fun ViewerCanvasBox(rotationAngle: Int, zoomLevel: Float) {
+fun ViewerCanvasBox(rotationAngle: Int, zoomLevel: Float, docUrl: String = "") {
+    val bitmapState = remember(docUrl) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    val isLoading = remember(docUrl) { mutableStateOf(false) }
+
+    LaunchedEffect(docUrl) {
+        if (docUrl.isNotBlank() && (docUrl.startsWith("http://") || docUrl.startsWith("https://"))) {
+            isLoading.value = true
+            kotlinx.coroutines.Dispatchers.IO.let { ioDispatcher ->
+                kotlinx.coroutines.withContext(ioDispatcher) {
+                    try {
+                        val url = java.net.URL(docUrl)
+                        val connection = url.openConnection() as java.net.HttpURLConnection
+                        connection.doInput = true
+                        connection.connect()
+                        val input = connection.inputStream
+                        val bitmap = android.graphics.BitmapFactory.decodeStream(input)
+                        bitmapState.value = bitmap
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    } finally {
+                        isLoading.value = false
+                    }
+                }
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -197,25 +230,54 @@ fun ViewerCanvasBox(rotationAngle: Int, zoomLevel: Float) {
             .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(10.dp)),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = FieldIcons.SearchOutlined,
-                contentDescription = "PDF Scan Preview",
-                tint = FieldTheme.colors.gray500,
-                modifier = Modifier.size(48.dp)
+        if (isLoading.value) {
+            CircularProgressIndicator(
+                color = FieldTheme.colors.brandPrimary,
+                modifier = Modifier.size(36.dp),
+                strokeWidth = 3.dp
             )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = "[ In-App PDF / Image Document Viewer Canvas ]",
-                style = FieldTheme.typography.bodyStrong,
-                color = FieldTheme.colors.gray300
+        } else if (bitmapState.value != null) {
+            Image(
+                bitmap = bitmapState.value!!.asImageBitmap(),
+                contentDescription = "Document Scan Image",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp)
+                    .graphicsLayer(
+                        scaleX = zoomLevel,
+                        scaleY = zoomLevel,
+                        rotationZ = rotationAngle.toFloat()
+                    )
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Applied Transformation: scaleX=$zoomLevel, scaleY=$zoomLevel, rotation=$rotationAngle°",
-                style = FieldTheme.typography.mono.copy(fontSize = 11.sp),
-                color = FieldTheme.colors.purple400
-            )
+        } else {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = FieldIcons.SearchOutlined,
+                    contentDescription = "PDF Scan Preview",
+                    tint = FieldTheme.colors.gray500,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "[ In-App PDF / Image Document Viewer Canvas ]",
+                    style = FieldTheme.typography.bodyStrong,
+                    color = FieldTheme.colors.gray300
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                if (docUrl.isNotBlank()) {
+                    Text(
+                        text = docUrl,
+                        style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
+                        color = FieldTheme.colors.purple400
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                Text(
+                    text = "Applied Transformation: scaleX=$zoomLevel, scaleY=$zoomLevel, rotation=$rotationAngle°",
+                    style = FieldTheme.typography.mono.copy(fontSize = 11.sp),
+                    color = FieldTheme.colors.gray500
+                )
+            }
         }
     }
 }

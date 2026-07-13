@@ -436,6 +436,11 @@ class AuthRepository(
         return try { apiService.getMe() } catch (_: Exception) { null }
     }
 
+    fun applyStoredToken(token: String) {
+        client.setToken(token)
+        apiService.setToken(token)
+    }
+
     suspend fun validateToken(token: String): Boolean? {
         return try {
             client.setToken(token)

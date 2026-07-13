@@ -22,6 +22,7 @@ fun CrmReviewScreen(
     isSubmitting: Boolean = false,
     onAdvanceToExecutive: () -> Unit,
     onReturnToBranchManager: () -> Unit,
+    onUploadDocument: () -> Unit = {},
     onBack: () -> Unit,
 ) {
     var bureau1 by remember { mutableStateOf(false) }
@@ -115,6 +116,20 @@ fun CrmReviewScreen(
                         focusedBorderColor = FieldTheme.colors.purple600,
                         unfocusedBorderColor = FieldTheme.colors.gray700
                     )
+                )
+            }
+
+            SectionCard(title = "Supporting Documents") {
+                Text(
+                    text = "Attach any additional documents required to complete this credit file.",
+                    style = FieldTheme.typography.body,
+                    color = FieldTheme.colors.gray400
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                SecondaryButton(
+                    text = "Upload Document",
+                    onClick = onUploadDocument,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 

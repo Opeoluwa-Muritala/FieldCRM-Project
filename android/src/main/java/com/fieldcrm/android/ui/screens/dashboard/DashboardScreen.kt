@@ -173,7 +173,7 @@ fun DashboardScreenView(
     // Role-based status sets — values must match backend _stage_status() output (title-case)
     val relevantStatuses: Set<String> = remember(resolvedRole) {
         when (resolvedRole) {
-            UserRole.LOAN_OFFICER -> setOf("draft", "ocr review", "returned", "rejected")
+            UserRole.LOAN_OFFICER -> emptySet()
             UserRole.BRANCH_MANAGER -> setOf("credit review", "branch approval", "returned")
             UserRole.CRM -> setOf("branch approval", "crm review", "disbursement ready")
             UserRole.EXECUTIVE -> setOf("crm review", "executive approval", "disbursement ready")
@@ -188,7 +188,7 @@ fun DashboardScreenView(
     val rawQueueItems = remember(borrowers, applications, resolvedRole) {
         borrowers.mapNotNull { borrower ->
             val app = applications
-                .filter { it.id == borrower.id }
+                .filter { it.id == borrower.id || it.phone == borrower.phone || it.bvn == borrower.bvn || it.applicant_name == borrower.name }
                 .maxByOrNull { it.stageIndex }
 
             val isVisible = relevantStatuses.isEmpty() ||
