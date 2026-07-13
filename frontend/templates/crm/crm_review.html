@@ -14,6 +14,15 @@
   </div>
 </div>
 
+<section class="loan-control-strip" aria-label="Loan control summary">
+  <div><span>Loan file</span><strong>{{ app.ref_no }}</strong></div>
+  <div><span>Applicant</span><strong>{{ app.applicant_name }}</strong></div>
+  <div><span>Amount</span><strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}Not stated{% endif %}</strong></div>
+  <div><span>Workflow stage</span><strong>{{ app.stage|replace('_', ' ')|title }}</strong></div>
+  <div><span>Classification</span><strong>{{ (app.classification or 'current')|upper }}</strong></div>
+  <div><span>Decision owner</span><strong>{{ 'Head CRM' if current_user.role == 'head_crm' else 'CRM Officer' }}</strong></div>
+</section>
+
 <div class="page-card" style="margin-bottom:20px;">
   <h3 style="margin-bottom:12px;">Document Checklist</h3>
   <table class="custom-table">
@@ -93,8 +102,9 @@
   {% endif %}
 </div>
 
-<div class="page-card">
-  <h3 style="margin-bottom:12px;">CRM Decision</h3>
+<div class="audit-action-panel">
+  <h3 style="margin-bottom:12px;">{{ 'Head CRM Approval' if current_user.role == 'head_crm' else 'CRM Dossier Review' }}</h3>
+  <p class="action-note">{{ 'This approval records the Head CRM decision and routes the file to Audit.' if current_user.role == 'head_crm' else 'This review records dossier completeness and routes the file to Head CRM for approval.' }}</p>
   <form method="post" action="/applications/{{ app_id }}/crm-review">
     <div style="margin-bottom:16px;">
       <label for="crm_notes" style="display:block;margin-bottom:6px;font-weight:600;">Notes for Executive (optional)</label>
@@ -103,7 +113,7 @@
         placeholder="Summarise dossier completeness and any flags…"></textarea>
     </div>
     <div style="display:flex;gap:12px;">
-      <button type="submit" name="action" value="advance" class="btn btn-primary">Send to Committee</button>
+      <button type="submit" name="action" value="advance" class="btn btn-primary">{{ 'Approve and send to Audit' if current_user.role == 'head_crm' else 'Send to Head CRM' }}</button>
       <button type="submit" name="action" value="return" class="btn btn-secondary"
         onclick="return confirm('Return this application to the branch?')">Return Application</button>
     </div>

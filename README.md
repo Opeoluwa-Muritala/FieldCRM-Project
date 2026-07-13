@@ -1,182 +1,207 @@
 # FieldCRM
 
-FieldCRM is a multi-platform loan origination and servicing workflow for microfinance and retail lending teams. The repository combines a FastAPI backend, server-rendered role-based web dashboards, and a Kotlin/Jetpack Compose Android app.
+FieldCRM is a role-based loan origination, approval, disbursement, and servicing platform for Mainstreet Microfinance Bank workflows. It combines a FastAPI web backend, Jinja2 desktop interface, PostgreSQL data store, Cloudinary-backed private documents, and a Kotlin Android client foundation.
 
-## What is in this repository
+## What it does
 
-- backend/: FastAPI application, domain services, repositories, SQL migrations, authentication, and API routes.
-- frontend/: Jinja2 templates, shared page shells, CSS, and JavaScript for the web experience.
-- android/: Native Android app with explicit screen navigation and offline-friendly workflow support.
-- shared/: Kotlin Multiplatform module for models, API client scaffolding, SQLDelight storage, and sync foundations.
-- scripts/: Helper utilities for seeding demo data, checking database state, and scanning the backend.
+FieldCRM manages a loan file from initial customer intake through credit and management approvals to disbursement and repayment monitoring. Every operational action is organization-scoped and recorded in workflow/audit history.
 
-## Core workflow
-
-FieldCRM supports the full loan workflow:
-
-- Borrower intake and registration
-- Loan application creation and intake forms
-- Document upload and OCR review
-- Guarantor verification and pledge/trust capture
-- Visitation reporting and signoff
-- Credit officer review and recommendation
-- Branch manager approval readiness and decisioning
-- Auditor compliance checks and audit trail review
-- System administrator user and activity management
-
-## User Roles and Navigation
-
-### Loan Officer
-
-Main screens:
-- Dashboard: personal queue, drafts, returned items, visits, and upload shortcuts.
-- My Queue: active applications assigned to the officer.
-- Applications: list and filter all applications.
-- New Application: starts the loan intake wizard.
-- Drafts / Returned: resume incomplete or corrected applications.
-- Visit Schedule: view and complete visitation tasks.
-- OCR Review Queue: view applications in OCR review.
-
-### Credit Officer
-
-Main screens:
-- Dashboard: review queue, OCR exception alerts, and loan summaries.
-- My Reviews: credit review queue for active applications.
-- OCR Exceptions: exceptions from OCR extraction needing validation.
-- Borrowers / Current Loans: view borrower and loan details.
-
-### Branch Manager
-
-Main screens:
-- Dashboard: approval readiness and branch workflow summaries.
-- Awaiting Me: applications needing branch manager approval.
-- Visit Signoffs: pending visit signoffs requiring concurrence.
-- Pipeline: stage-based application pipeline view.
-- Borrowers: current loans and borrower details.
-
-### Auditor
-
-Main screens:
-- Dashboard: compliance flags and audit activity.
-- Compliance Flags: flagged applications and documents.
-- Audit Trail: historical action review.
-- Borrowers: loan details and related applications.
-
-### System Admin
-
-Main screens:
-- Dashboard: system activity and final control summaries.
-- Users: manage staff accounts and roles.
-- System Activity: audit and control queue.
-- Audit Trail: read-only history for compliance review.
-
-## Web Screen Flow
-
-### Authentication and entry
-
-- `/login`: shared login flow for all users.
-- `/dashboard`: role-aware home page after login.
-- `/logout`: clears session and returns to login.
-
-### Application workflow
-
-- `/applications`: application list with stage filters.
-- `/applications/new`: create a new loan application draft.
-- `/applications/{id}`: application details and task hub.
-- `/applications/{id}/step/{1-9}`: loan intake wizard for draft applications.
-- `/applications/{id}/guarantors/{slot}/step/{1-8}`: guarantor wizard.
-- `/applications/{id}/documents/upload`: upload files and trigger OCR.
-- `/applications/{id}/ocr-review`: OCR review and correction screens.
-- `/applications/{id}/credit-review`: credit review and recommendation.
-- `/applications/{id}/approve`: approval readiness for branch managers.
-- `/applications/{id}/return`: return application workflow.
-
-### Supporting screens
-
-- `/pipeline`: branch manager pipeline view.
-- `/borrowers`: borrower and loan list view.
-- `/audit`: auditor workflow page.
-- `/audit-trail`: audit history.
-- `/compliance-flags`: auditor/system admin flag list.
-- `/users`: system admin user management.
-- `/system-activity`: system admin activity and control view.
-
-## Android Screen and Navigation Flow
-
-The Android app uses a central `Screen` sealed class state and back stack in `MainActivity.kt`. Navigation is explicit, and each screen generally returns to the previous screen.
-
-### Main mobile flow
-
-- Login → Dashboard
-- Dashboard → Borrower List / Application List / Offline Queue / Settings
-- Borrower List → Borrower Detail → Create Borrower / Create Application
-- Application List → Application Detail → child task screens
-- Application Detail → Loan Application Form / Document Upload / Document Viewer / Guarantors / Pledge & Trust / Visitation Report / Review / Audit Trail
-
-### Key mobile screens
-
-- `LoginScreen`: user login with password, passcode, or biometric options.
-- `DashboardScreen`: home screen with role-specific shortcuts.
-- `BorrowerListScreen`: list registered borrowers.
-- `BorrowerDetailScreen`: borrower summary and create application.
-- `CreateBorrowerScreen`: add a new borrower.
-- `ApplicationListScreen`: list active applications.
-- `ApplicationDetailScreen`: application hub with workflows and review actions.
-- `CreateApplicationScreen`: create a new draft application.
-- `LoanApplicationFormScreen`: process loan intake in wizard steps.
-- `DocumentUploadScreen`: upload application documents.
-- `DocumentViewerScreen`: view uploaded documents.
-- `GuarantorsFormScreen`: add or edit guarantor details.
-- `PledgeTrustScreen`: manage pledge/trust requirements.
-- `VisitationReportScreen`: capture visit reports.
-- `CreditOfficerReviewScreen`: credit review flow.
-- `BranchManagerReviewScreen`: branch approval flow.
-- `AuditorComplianceScreen`: auditor compliance review.
-- `AdminMcrApprovalScreen`: admin final approval flow.
-- `WorkflowEventAuditScreen`: audit event history.
-- `SettingsScreen`: theme, passcode, and sign-out.
-- `OfflineQueueScreen`: local queue and retry management.
-
-## Project Structure
+### Credit workflow
 
 ```text
-FieldCRM/
-|-- backend/
-|-- frontend/
-|-- android/
-|-- shared/
-|-- gradle/
-|-- build.gradle.kts
-|-- settings.gradle.kts
-|-- test_imports.py
-`-- README.md
+Account Officer
+  → Branch Manager
+  → Branch Supervisor
+  → Credit Analyst
+  → CRM Officer
+  → Head CRM
+  → Audit
+  → Executive Director
+  → Managing Director (only where required)
+  → CRM disbursement and servicing
 ```
 
-## Backend Setup
+Rules:
 
-From the repository root:
+- CRM Officer completes dossier review and sends the file to Head CRM.
+- Head CRM is the approving authority for the CRM desk and sends approved files to Audit.
+- Executive Director may request MD input; the file returns to ED for ED’s final decision.
+- Loans above the configured ₦10m threshold require ED and MD approval.
+- CRM records disbursement and maintains repayment/portfolio information.
+
+## Roles
+
+| Role | Primary workspace | Main actions |
+| --- | --- | --- |
+| Account Officer | Intake | Create applications, capture borrower data, documents, guarantors, visits, OCR review. |
+| Branch Manager | Branch review | Review branch submissions, sign off visits, monitor pipeline. |
+| Branch Supervisor | Supervision | Review branch-manager submissions before credit analysis. |
+| Credit Analyst | Underwriting | Review credit files, resolve OCR/data exceptions, submit recommendation. |
+| CRM Officer | Dossier review | Validate dossier completeness and send it to Head CRM. |
+| Head CRM | CRM approval | Approve/reject CRM dossier review and route approved files to Audit. |
+| Auditor | Compliance | Review controls, exceptions, workflow history, and audit trail. |
+| Executive Director | Executive approval | Review executive queue; request MD input when needed; retain final ED approval. |
+| Managing Director | Escalations | Provide advice to ED, approve required high-value files, and manage board referrals. |
+| System Admin | Administration | Invite users, assign roles, deactivate access, and review system activity. |
+
+### Role capability matrix
+
+| Capability | Account Officer | Branch Manager | Branch Supervisor | Credit Analyst | CRM Officer | Head CRM | Audit | ED | MD | System Admin |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Create a loan application | Yes | — | — | — | — | — | — | — | — | — |
+| Maintain intake, guarantors and supporting documents | Yes | — | — | — | — | — | Read | Read | Read | Read |
+| Verify OCR / correct extracted data | Yes | — | — | Resolve exceptions | Read | Read | Read | Read | Read | Read |
+| Review branch file | — | Yes | Yes | — | — | — | — | — | — | — |
+| Complete underwriting recommendation | — | — | — | Yes | — | — | Read | Read | Read | Read |
+| Review CRM dossier | — | — | — | — | Yes | — | Read | Read | Read | Read |
+| Approve CRM dossier and route to Audit | — | — | — | — | — | Yes | — | — | — | — |
+| Review controls and audit trail | — | — | — | — | — | — | Yes | Read | Read | Read |
+| Executive approval / MD advice | — | — | — | — | — | — | — | Yes | Advice / required approval | — |
+| Record disbursement and repayments | — | — | — | — | Yes | Oversight | Read | Read | Read | — |
+| Invite, change role, deactivate user | — | — | — | — | — | — | — | — | — | Yes |
+
+`Read` means the role may view the information when it is part of its authorized queue or audit/reporting view; it does not grant an approval or edit action.
+
+## Design system
+
+The complete visual specification is in [DESIGN.md](DESIGN.md). It defines the **Institutional Modernist** system used throughout FieldCRM:
+
+- Shield Purple `#2E0052` as the primary brand color and MFB Purple `#89268B` as accent.
+- Off-white `#F2F2F2` canvas, white elevated cards, and restrained semantic status colors.
+- Playfair Display for headings and DM Sans for functional UI text.
+- 4px spacing grid; standard inputs are 48px and primary buttons are 52px high.
+- Soft 4–8px corner radii and low-contrast ambient elevation.
+- Desktop sidebar, desktop toolbar, clear page hierarchy, and role-specific work queues.
+
+`DESIGN.md` also documents component usage, status chips, section cards, label/value rows, document scanning, and Android design foundations. The current web shell is desktop-only; do not reintroduce mobile navigation or mobile-only templates without an approved design change.
+
+## API design
+
+The interactive API contract is available when the app is running:
+
+- OpenAPI JSON: `/openapi.json`
+- Swagger UI: `/api/docs`
+- ReDoc: `/api/redoc`
+
+### API conventions
+
+- Base API prefix: `/api/v1`.
+- Authentication: JWT bearer token or the HttpOnly `session` cookie created by login.
+- Request bodies: JSON for API mutations unless the endpoint uploads files; file uploads use `multipart/form-data`.
+- Authorization: every protected endpoint derives the authenticated user from the token/session and applies a role check server-side.
+- Data scope: repositories filter organization-bound records using the authenticated user’s `org_id`.
+- Errors: FastAPI validation errors use HTTP `422`; authorization failures use `401`/`403`; domain errors return a JSON error message and a request ID.
+
+### Core API groups
+
+| Group | Prefix / examples | Purpose |
+| --- | --- | --- |
+| Authentication | `/api/v1/auth/login`, `/login-bearer`, `/logout` | Session and bearer-token login/logout. |
+| Users | `/api/v1/users/invitations`, `/{id}/role`, `/{id}/deactivate` | Invitation, role assignment, access deactivation. |
+| Mobile/workflow API | `/api/v1/mobile/...` | JSON endpoints used by Android and workflow automation. |
+| Web workflow | `/applications/...` | Server-rendered desktop pages and form submissions. |
+| Health | `/api/v1/health` | Deployment health confirmation. |
+
+### Authentication example
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=person@example.com&password=your-password
+```
+
+The response returns `access_token` and also sets the HttpOnly session cookie for browser access. Do not store browser session tokens in local storage.
+
+### Authorization model
+
+API/page authorization uses `RoleChecker`. A navigation item must always have a matching authorized backend endpoint; sidebar visibility alone is never authorization. When adding an endpoint, document its role, organization scope, success response, and failure responses in the OpenAPI schema.
+
+## Architecture
+
+```text
+frontend/                Jinja2 templates, desktop CSS, JavaScript, static assets
+backend/app/             FastAPI application and domain modules
+backend/app/domains/     Routers, services, repositories, parameterized SQL
+backend/migrations/      PostgreSQL schema and data migrations
+android/                 Jetpack Compose Android app
+shared/                  Kotlin Multiplatform shared models and sync foundation
+```
+
+### Backend stack
+
+- Python 3.10+
+- FastAPI and Uvicorn
+- PostgreSQL with `asyncpg` / psycopg-compatible SQL access
+- Pydantic settings and schemas
+- Jinja2 server-rendered pages
+- JWT session authentication
+- Cloudinary for authenticated document storage
+- Pillow, PDF/OCR utilities for document handling
+
+## Database
+
+The active application database is PostgreSQL. The currently expected public tables are:
+
+```text
+audit_entries                 document_upload_jobs        repayment_records
+board_referrals               documents                   repayment_schedule
+committee_votes               guarantors                  stage_data
+loan_applications             notifications               users
+ocr_fields                    ocr_results                 visitation_reports
+organisations                 password_reset_tokens       workflow_events
+pledged_items
+```
+
+Migrations live in [`backend/migrations`](backend/migrations). Apply them in numeric order. Migration `013_async_document_uploads.sql` adds document upload-job support and related document metadata.
+
+> Never run seed/reset migrations against production unless data loss has been explicitly approved.
+
+## Local setup
+
+### 1. Create a virtual environment
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r backend\requirements.txt
+pip install -r requirements.txt
 ```
+
+### 2. Configure environment variables
 
 Create `backend/.env`:
 
 ```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/fieldcrm
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/fieldcrm
 JWT_SECRET_KEY=replace-with-a-long-random-secret
 COOKIE_SECURE=false
+APP_BASE_URL=http://127.0.0.1:8000
+
+# Emailope / transactional email
+EMAIL_SERVICE_URL=https://emailope.vercel.app/
+
+# Optional Cloudinary private document storage
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
 ```
 
-Run migrations and seed demo data:
+Important production settings:
+
+- Use a managed PostgreSQL database and a stable, secret `JWT_SECRET_KEY`.
+- Set `COOKIE_SECURE=true` behind HTTPS.
+- Store Cloudinary and database credentials only in deployment secrets.
+- Do not commit `backend/.env`.
+
+### 3. Run migrations
 
 ```powershell
 python backend\migrations\run_migration.py
 ```
 
-Start the backend:
+Review the migration script/environment before running it against a shared database.
+
+### 4. Start the web app
 
 ```powershell
 uvicorn app.main:app --app-dir backend --reload
@@ -185,46 +210,60 @@ uvicorn app.main:app --app-dir backend --reload
 Open:
 
 - `http://127.0.0.1:8000/login`
+- `http://127.0.0.1:8000/dashboard`
 - `http://127.0.0.1:8000/api/docs`
-- `http://127.0.0.1:8000/api/redoc`
 - `http://127.0.0.1:8000/api/v1/health`
 
-## Android Setup
+## Key web routes
 
-Recommended tools:
+| Route | Purpose | Access |
+| --- | --- | --- |
+| `/login` | Authentication | Public |
+| `/dashboard` | Role-aware dashboard redirect/page | Authenticated |
+| `/applications/new` | Start an application | Account Officer |
+| `/applications/{id}` | Loan file hub | Authorized workflow user |
+| `/applications/{id}/documents/upload` | Upload evidence | Authorized workflow user |
+| `/applications/{id}/credit-review` | Underwriting decision | Credit Analyst |
+| `/crm-review-queue` | CRM / Head CRM work queue | CRM, Head CRM |
+| `/applications/{id}/crm-review` | CRM review or Head CRM approval | CRM, Head CRM |
+| `/ed-queue` | ED approval queue | ED |
+| `/md-queue` | MD escalation/approval queue | MD |
+| `/applications/{id}/disburse` | Record disbursement | CRM |
+| `/borrowers` | Current loans | Authorized operational roles |
+| `/audit-trail` | Audit history | Audit, System Admin |
+| `/users` | User administration | System Admin |
 
-- Android Studio
-- Android SDK
-- JDK 17
+## User administration and invitations
 
-Create `local.properties` in the repository root if needed:
+System Admin creates a user invitation from **Users**. The system:
 
-```properties
-sdk.dir=C\:\\Users\\YOUR_USER\\AppData\\Local\\Android\\Sdk
-```
+1. Creates an inactive user with the selected role.
+2. Generates a time-limited registration token.
+3. Sends the invitation email.
+4. Lets the invitee set their password and activate their account.
 
-Compile the Android app:
+The Users page supports role changes and account deactivation. Administrators cannot deactivate or change their own role through the page.
 
-```powershell
-.\gradlew.bat :android:compileDebugKotlin
-```
+## Documents and privacy
 
-Build a debug APK:
+Documents are private identity/employment/loan evidence and must not be published as public assets.
 
-```powershell
-.\gradlew.bat :android:assembleDebug
-```
+- Accepted formats: PDF, JPG/JPEG, PNG.
+- Images are validated using declared MIME type, extension, and binary signature.
+- Images can be normalized/compressed before upload; PDFs are not re-encoded.
+- Cloudinary uploads use authenticated delivery when Cloudinary is configured.
+- The `documents` table retains metadata, verification state, OCR state, and upload status.
+- `document_upload_jobs` stores upload-job state for asynchronous upload processing.
 
-## Shared Module
+## Email behavior
 
-The `shared` module provides:
+- Normal workflow notifications are sent as no-reply notifications.
+- User invitations contain the registration link.
+- MD board-referral messages use the sender’s name and email as the reply identity.
 
-- Borrower and loan application models
-- Ktor API client scaffolding
-- SQLDelight local storage
-- Sync and repository foundations
+## Verification checklist
 
-## Running Checks
+Run these checks before release:
 
 ```powershell
 python test_imports.py
@@ -232,51 +271,66 @@ python backend\test_http.py
 python backend\test_routes_render.py
 ```
 
-## Demo Login Accounts
+Also perform a role-by-role smoke test:
 
-Seeded users all use password `password123`.
+1. Log in as every role.
+2. Open every sidebar destination.
+3. Create one test loan as Account Officer.
+4. Advance it through every required workflow stage.
+5. Verify CRM Officer → Head CRM → Audit routing.
+6. Test ED/MD high-value approval and ED request-for-input flow.
+7. Upload a valid document and attempt invalid file types/sizes.
+8. Confirm workflow and audit records are written.
+9. Confirm email delivery in the deployment environment.
 
-| Role | Email |
-| --- | --- |
-| System Admin | `admin@mmfb.com` |
-| Branch Manager | `adebayo@mmfb.com` |
-| Loan Officer | `chidi@mmfb.com` |
-| Credit Officer | `fatima@mmfb.com` |
-| Auditor | `samuel@mmfb.com` |
+## Deployment notes
 
-| --- | --- |
-| `DATABASE_URL` | Full database connection string |
-| `POSTGRES_SERVER` | PostgreSQL server used when building a default URL |
-| `POSTGRES_USER` | PostgreSQL username |
-| `POSTGRES_PASSWORD` | PostgreSQL password |
-| `POSTGRES_DB` | PostgreSQL database name |
-| `JWT_SECRET_KEY` | JWT signing secret |
-| `COOKIE_SECURE` | Set to `true` for secure HTTPS cookies |
+The repository-level `requirements.txt` contains direct Python dependencies for Vercel’s Python builder. Ensure FastAPI is present there before deploying.
 
-For production or shared environments, always set a stable `JWT_SECRET_KEY`. If no key is provided, the app can generate an ephemeral development fallback, which invalidates sessions after restart.
+For every deployment:
 
-## Development Notes
+- Configure all secrets in the hosting provider.
+- Run/apply migrations separately and safely.
+- Confirm `/api/v1/health` and `/login` respond.
+- Verify static assets load without 404 errors.
+- Review logs for import errors, failed email delivery, database errors, and authorization failures.
 
-- Backend routes should stay thin and delegate business rules to services.
-- Runtime data access should go through repositories and domain SQL files.
-- Templates are split by role and by shared workflow pages.
-- Android screens should stay in separate files under `ui/screens`.
-- Android state should live in ViewModels, repositories, or workers, not directly in composables.
-- Local database files, build outputs, virtual environments, `.env`, and `local.properties` should not be committed.
+## Android and shared modules
+
+The repository also contains a Kotlin/Jetpack Compose Android app and a Kotlin Multiplatform shared module.
+
+Build Android:
+
+```powershell
+.\gradlew.bat :android:assembleDebug
+```
+
+The shared module contains models, API-client scaffolding, SQLDelight storage, and sync foundations.
+
+## Development conventions
+
+- Keep routers thin; place workflow/business rules in services.
+- Keep SQL in domain query files and parameterize every value.
+- Scope every database query by organization and authenticated user where applicable.
+- Add audit/workflow events for every state-changing loan decision.
+- Do not trust client-provided user, organization, or document ownership identifiers.
+- Add migrations for schema changes; never alter production tables manually without a reviewed migration.
 
 ## Troubleshooting
 
-If backend imports fail, make sure the virtual environment is active and dependencies are installed:
+| Symptom | Check |
+| --- | --- |
+| `ModuleNotFoundError: fastapi` on deploy | Ensure root `requirements.txt` is deployed and includes FastAPI. |
+| Login redirects repeatedly | Check session cookie settings, JWT secret stability, and authorization of the target page. |
+| Role dashboard fails | Confirm the role has dashboard data, template alias, sidebar component, and route authorization. |
+| Document upload fails | Check allowed MIME type/signature, size, Cloudinary secrets, and `documents` columns. |
+| 403 on a sidebar link | Align `RoleChecker` authorization with the role’s sidebar destination. |
+| Missing table/column | Apply the applicable migration and verify live PostgreSQL schema. |
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-pip install -r backend\requirements.txt
-```
+## Security
 
-If migrations fail, check that `backend/.env` exists and `DATABASE_URL` points to a reachable PostgreSQL database.
-
-If Android builds cannot find the SDK, create or fix `local.properties` with the correct `sdk.dir`.
-
-If Gradle uses the wrong Java version, run it from a shell where `JAVA_HOME` points to JDK 17.
-
-If the first Android build is slow, Gradle may be downloading the wrapper distribution, Android Gradle Plugin, Kotlin dependencies, and Compose dependencies.
+- Use HTTPS and secure cookies in production.
+- Rotate JWT, database, Cloudinary, and email credentials if exposed.
+- Keep document assets authenticated/private.
+- Back up PostgreSQL and test restoration regularly.
+- Restrict production database access to application and migration principals.

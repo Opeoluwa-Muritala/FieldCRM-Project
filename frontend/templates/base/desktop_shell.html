@@ -4,10 +4,14 @@
 {% set user_role = user.role|lower|replace(' ', '_') if user else 'loan_officer' %}
 {% set role_labels = {
     'loan_officer': 'Loan Officer',
+    'account_officer': 'Account Officer',
     'branch_manager': 'Branch Manager',
+    'branch_supervisor': 'Branch Supervisor',
+    'credit_analyst': 'Credit Analyst',
     'auditor': 'Auditor',
     'system_admin': 'System Admin',
     'crm': 'CRM Officer',
+    'head_crm': 'Head CRM',
     'md': 'Managing Director',
     'ed': 'Executive Director',
     'committee': 'Committee Member'
@@ -15,7 +19,6 @@
 
 <div class="responsive-shell">
     {# === DESKTOP SIDEBAR — visible on desktop, hidden on mobile === #}
-    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebarDrawer()"></div>
     <aside class="desktop-sidebar" id="desktopSidebar" aria-label="Primary navigation">
         <div class="sidebar-logo">
             <img class="logo-composite" src="/static/img/logo.png" alt="Mainstreet Microfinance Bank Logo" loading="lazy">
@@ -63,10 +66,10 @@
             </div>
             <div class="topbar-right">
                 {% block topbar_actions %}{% endblock %}
-                <form action="/search" method="GET" style="display:flex; align-items:center; gap:4px;">
+                <form action="/search" method="GET" class="topbar-search">
                     <input type="text" name="q" placeholder="Search..." value="{{ request.query_params.get('q', '') }}"
-                           style="border:1px solid var(--border-color,#e5e7eb); border-radius:6px; padding:6px 10px; font-size:13px; width:180px; background:var(--bg-surface,#fff);">
-                    <button type="submit" style="background:none; border:none; cursor:pointer; font-size:16px; padding:4px;" title="Search" aria-label="Search">&#x1F50D;</button>
+                           aria-label="Search applications, borrowers, and references">
+                    <button type="submit" title="Search" aria-label="Search">Search</button>
                 </form>
                 <a href="/notifications" class="topbar-bell" title="Notifications" aria-label="Notifications" style="text-decoration:none;">
                     &#x1F514;
@@ -77,9 +80,6 @@
 
         {# === CONTENT AREA === #}
         <main class="responsive-content" id="responsiveContent">
-            {# Pull-to-refresh sentinel for mobile #}
-            <div class="ptr-sentinel" id="ptrSentinel"></div>
-            
             <div class="content-wrapper">
                 {% block content %}{% endblock %}
             </div>

@@ -12,15 +12,6 @@
     <link rel="stylesheet" href="/static/css/dashboard.css">
     <link rel="stylesheet" href="/static/css/role-themes.css">
     {% block extra_css %}{% endblock %}
-    <style>
-        /* Phase 9: page-level entrance on every navigation */
-        .content-wrapper {
-            animation: fadeSlideUp 300ms cubic-bezier(0, 0, 0.2, 1) both;
-        }
-        @media (prefers-reduced-motion: reduce) {
-            .content-wrapper { animation: none; }
-        }
-    </style>
 </head>
 {# Role is applied as data-attribute for CSS theming — accent colors shift per role #}
 {% set user_role = user.role|lower|replace(' ', '_') if user else 'loan_officer' %}

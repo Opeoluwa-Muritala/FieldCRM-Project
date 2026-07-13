@@ -91,7 +91,7 @@ async def render_dashboard(
     role = current_user.role.lower().replace(" ", "_")
 
     # Roles with dedicated dashboard routes
-    if role == "crm":
+    if role in ("crm", "head_crm"):
         return RedirectResponse(url="/crm-dashboard", status_code=status.HTTP_303_SEE_OTHER)
     if role == "ed":
         return RedirectResponse(url="/ed-dashboard", status_code=status.HTTP_303_SEE_OTHER)
@@ -202,11 +202,32 @@ async def render_pending_signoffs(
     )
     return templates.TemplateResponse(request, "branch_manager/pending_signoffs.html", ctx)
 
+@router.get("/supervisory-review-queue")
+async def render_supervisory_review_queue(
+    request: Request,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["Branch Supervisor"])),
+):
+    """Render the post-manager queue assigned to Branch Supervisors."""
+    dashboard_svc = DashboardService(conn)
+    queue = await dashboard_svc.get_supervisory_review_queue(current_user)
+    data = await dashboard_svc.get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request,
+        current_user,
+        queue=queue,
+        data=data,
+        metrics=data.get("metrics", {}),
+        active_page="supervisory_reviews",
+        today_label=datetime.now().strftime("%A, %d %B %Y"),
+    )
+    return templates.TemplateResponse(request, "branch_supervisor/review_queue.html", ctx)
+
 @router.get("/my-reviews")
 async def render_my_reviews(
     request: Request,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Branch Manager", "Credit Analyst", "System Admin"]))
+    current_user = Depends(RoleChecker(["Branch Manager", "Credit Analyst"]))
 ):
     """Render the credit review queue (now handled by branch manager)."""
     dashboard_svc = DashboardService(conn)
@@ -229,7 +250,7 @@ async def render_my_reviews(
 async def render_ocr_exceptions(
     request: Request,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Branch Manager", "Credit Analyst", "System Admin"]))
+    current_user = Depends(RoleChecker(["Branch Manager", "Credit Analyst"]))
 ):
     """Render OCR exceptions (now handled by branch manager)."""
     dashboard_svc = DashboardService(conn)
@@ -252,14 +273,12 @@ async def render_ocr_exceptions(
 async def render_audit_trail(
     request: Request,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Auditor", "System Admin"]))
+    current_user = Depends(RoleChecker(["Auditor"]))
 ):
-    """Render read-only audit trail for auditors and system admins."""
+    """Render the read-only audit trail for auditors."""
     dashboard_svc = DashboardService(conn)
     activity = await dashboard_svc.get_recent_audit_activity(current_user)
     data = await dashboard_svc.get_dashboard_data(current_user)
-    role_dir = current_user.role.lower().replace(" ", "_")
-    template = "system_admin/system_activity.html" if role_dir == "system_admin" else "auditor/audit_trail.html"
     ctx = build_template_context(
         request,
         current_user,
@@ -270,13 +289,13 @@ async def render_audit_trail(
         active_page="audit",
         today_label=datetime.now().strftime("%A, %d %B %Y"),
     )
-    return templates.TemplateResponse(request, template, ctx)
+    return templates.TemplateResponse(request, "auditor/audit_trail.html", ctx)
 
 @router.get("/compliance-flags")
 async def render_compliance_flags(
     request: Request,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Auditor", "System Admin"]))
+    current_user = Depends(RoleChecker(["Auditor"]))
 ):
     """Render compliance flags from documents, OCR fields, and workflow events."""
     dashboard_svc = DashboardService(conn)
@@ -513,7 +532,7 @@ async def render_wizard_step(
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
     user_role = current_user.role.lower().replace(" ", "_")
-    if user_role not in ("system_admin", "loan_officer"):
+    if user_role != "loan_officer":
         raise HTTPException(status_code=403, detail="Insufficient permissions for this action")
     if user_role == "loan_officer" and app.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="You do not have permission to view/modify this application")
@@ -547,7 +566,7 @@ async def process_wizard_step(
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
     user_role = current_user.role.lower().replace(" ", "_")
-    if user_role not in ("system_admin", "loan_officer"):
+    if user_role != "loan_officer":
         raise HTTPException(status_code=403, detail="Insufficient permissions for this action")
     if user_role == "loan_officer" and app.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="You do not have permission to view/modify this application")
@@ -662,7 +681,7 @@ async def process_crm_upload(
     doc_label: str = Form("crm_memo"),
     file: UploadFile = File(...),
     service: DocumentService = Depends(get_document_service),
-    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+    current_user=Depends(RoleChecker(["crm", "head_crm"])),
 ):
     """CRM uploads a supporting document (memo, recommendation, etc.) and returns to CRM review."""
     await service.save_upload(
@@ -720,7 +739,7 @@ async def process_ocr_review(
     application_id: str,
     action: str = Form(...),
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Account Officer", "System Admin"]))
+    current_user = Depends(RoleChecker(["Account Officer"]))
 ):
     """POST processor for OCR validation overrides."""
     repo = LoanRepository(conn)
@@ -777,7 +796,7 @@ async def process_visitation_report(
     application_id: str,
     action: str = Form(...),
     service: VisitationService = Depends(get_visitation_service),
-    current_user = Depends(RoleChecker(["Loan Officer", "Branch Manager", "System Admin"]))
+    current_user = Depends(RoleChecker(["Loan Officer", "Branch Manager"]))
 ):
     """POST processor for Field visitation report."""
     form_data = await request.form()
@@ -840,7 +859,7 @@ async def process_credit_review(
     recommendation_decision: str = Form(...),
     recommendation_notes: str = Form(...),
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Credit Analyst", "System Admin"]))
+    current_user = Depends(RoleChecker(["Credit Analyst"]))
 ):
     """POST processor for credit underwriting recommendation."""
     repo = LoanRepository(conn)
@@ -902,7 +921,7 @@ async def process_approval_readiness(
     request: Request,
     application_id: str,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Branch Manager", "System Admin"]))
+    current_user = Depends(RoleChecker(["Branch Manager"]))
 ):
     """POST processor to complete branch approval."""
     form_data = await request.form()
@@ -956,7 +975,7 @@ async def process_return_page(
     reason_category: str = Form(...),
     notes: str = Form(...),
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Branch Manager", "Credit Analyst", "System Admin"]))
+    current_user = Depends(RoleChecker(["Branch Manager", "Credit Analyst"]))
 ):
     """POST processor to return application to draft stage."""
     repo = LoanRepository(conn)
@@ -1052,7 +1071,7 @@ async def render_loan_pipeline(
 async def render_current_loans(
     request: Request,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Branch Manager", "Credit Analyst", "CRM", "Auditor", "System Admin"]))
+    current_user = Depends(RoleChecker(["Branch Manager", "Branch Supervisor", "Credit Analyst", "CRM", "Head CRM", "Auditor", "ED", "MD"]))
 ):
     """Renders borrower loans view."""
     repo = LoanRepository(conn)
@@ -1156,7 +1175,7 @@ async def render_search(
 async def render_compliance_audit(
     request: Request,
     conn = Depends(db_conn),
-    current_user = Depends(get_current_user)
+    current_user = Depends(RoleChecker(["Auditor"]))
 ):
     """Renders regulatory compliance trail."""
     repo = LoanRepository(conn)
@@ -1195,7 +1214,7 @@ async def render_compliance_audit(
 async def render_crm_queue(
     request: Request,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+    current_user=Depends(RoleChecker(["crm", "head_crm"])),
 ):
     dashboard_svc = DashboardService(conn)
     queue = await dashboard_svc.get_crm_queue(current_user)
@@ -1214,7 +1233,7 @@ async def render_crm_review(
     request: Request,
     application_id: str,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+    current_user=Depends(RoleChecker(["crm", "head_crm"])),
 ):
     repo = LoanRepository(conn)
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
@@ -1238,22 +1257,30 @@ async def process_crm_review(
     action: str = Form(...),
     crm_notes: str = Form(""),
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+    current_user=Depends(RoleChecker(["crm", "head_crm"])),
 ):
     repo = LoanRepository(conn)
+    application = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not application:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    role = current_user.role
+    if role == "crm" and application.stage != "crm_review":
+        raise HTTPException(status_code=400, detail="Application is not awaiting CRM review")
+    if role == "head_crm" and application.stage != "head_crm_review":
+        raise HTTPException(status_code=400, detail="Application is not awaiting Head CRM approval")
+
     if action == "advance":
-        app = await repo.advance_to_committee_review(
-            UUID(application_id), current_user.org_id, current_user.id, crm_notes
-        )
+        next_stage = "audit_review" if role == "head_crm" else "head_crm_review"
+        app = await repo.advance_stage(UUID(application_id), current_user.org_id, next_stage)
         if not app:
-            raise HTTPException(status_code=400, detail="Application not in crm_review stage")
+            raise HTTPException(status_code=400, detail="Unable to advance application")
         audit = AuditService(conn)
         await audit.log(
             application_id=application_id,
             org_id=str(current_user.org_id),
             action="CRM Dossier Review Complete — Sent to Committee",
-            from_stage="crm_review",
-            to_stage="committee_review",
+            from_stage=application.stage,
+            to_stage=next_stage,
             actor_id=str(current_user.id),
             actor_role=current_user.role,
             reason=crm_notes,
@@ -1271,7 +1298,7 @@ async def process_crm_review(
 async def render_executive_queue(
     request: Request,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["md", "ed", "system_admin"])),
+    current_user=Depends(RoleChecker(["md", "ed"])),
 ):
     dashboard_svc = DashboardService(conn)
     queue = await dashboard_svc.get_executive_queue(current_user)
@@ -1337,7 +1364,7 @@ async def process_executive_approve(
 async def render_committee_queue(
     request: Request,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["committee", "system_admin"])),
+    current_user=Depends(RoleChecker(["committee"])),
 ):
     dashboard_svc = DashboardService(conn)
     queue = await dashboard_svc.get_committee_queue(current_user)
@@ -1355,7 +1382,7 @@ async def render_committee_review(
     request: Request,
     application_id: str,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["committee", "system_admin"])),
+    current_user=Depends(RoleChecker(["committee"])),
 ):
     repo = LoanRepository(conn)
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
@@ -1387,7 +1414,7 @@ async def process_committee_vote(
     recommendation: str = Form(...),
     notes: str = Form(""),
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["committee", "system_admin"])),
+    current_user=Depends(RoleChecker(["committee"])),
 ):
     repo = LoanRepository(conn)
     await repo.insert_committee_vote(
@@ -1415,7 +1442,7 @@ async def process_committee_complete(
     application_id: str,
     recommendation: str = Form(...),
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["committee", "system_admin"])),
+    current_user=Depends(RoleChecker(["committee"])),
 ):
     repo = LoanRepository(conn)
     app = await repo.complete_committee_review(
@@ -1444,7 +1471,7 @@ async def process_committee_complete(
 async def render_ed_queue(
     request: Request,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["ed", "system_admin"])),
+    current_user=Depends(RoleChecker(["ed"])),
 ):
     dashboard_svc = DashboardService(conn)
     queue = await dashboard_svc.get_ed_queue(current_user)
@@ -1463,7 +1490,7 @@ async def render_ed_approve(
     request: Request,
     application_id: str,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["ed", "system_admin"])),
+    current_user=Depends(RoleChecker(["ed"])),
 ):
     repo = LoanRepository(conn)
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
@@ -1486,7 +1513,7 @@ async def process_ed_approve(
     application_id: str,
     action: str = Form(...),
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["ed", "system_admin"])),
+    current_user=Depends(RoleChecker(["ed"])),
 ):
     repo = LoanRepository(conn)
     if action == "approve":
@@ -1530,7 +1557,7 @@ async def process_ed_approve(
 async def render_md_queue(
     request: Request,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["md", "system_admin"])),
+    current_user=Depends(RoleChecker(["md"])),
 ):
     dashboard_svc = DashboardService(conn)
     queue = await dashboard_svc.get_md_queue(current_user)
@@ -1549,7 +1576,7 @@ async def render_md_approve(
     request: Request,
     application_id: str,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["md", "system_admin"])),
+    current_user=Depends(RoleChecker(["md"])),
 ):
     repo = LoanRepository(conn)
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
@@ -1574,7 +1601,7 @@ async def process_md_approve(
     action: str = Form(...),
     md_notes: str = Form(""),
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["md", "system_admin"])),
+    current_user=Depends(RoleChecker(["md"])),
 ):
     repo = LoanRepository(conn)
     if action == "approve":
@@ -1618,7 +1645,7 @@ async def process_md_refer_board(
     board_member_name: str = Form(""),
     notes: str = Form(""),
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["md", "system_admin"])),
+    current_user=Depends(RoleChecker(["md"])),
 ):
     repo = LoanRepository(conn)
     await repo.insert_board_referral(
@@ -1651,7 +1678,7 @@ async def render_disburse(
     request: Request,
     application_id: str,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+    current_user=Depends(RoleChecker(["crm", "head_crm"])),
 ):
     repo = LoanRepository(conn)
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
@@ -1660,6 +1687,7 @@ async def render_disburse(
     ctx = build_template_context(
         request, current_user,
         app=app, app_id=application_id,
+        can_record_disbursement=current_user.role == "crm",
         active_tab="crm_queue", active_page="crm_queue",
     )
     return templates.TemplateResponse(request, "crm/disburse.html", ctx)
@@ -1676,7 +1704,7 @@ async def process_disburse(
     repayment_frequency: str = Form(...),
     schedule_method: str = Form("flat_rate"),
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+    current_user=Depends(RoleChecker(["crm"])),
 ):
     import secrets
     from datetime import datetime as dt
@@ -1777,7 +1805,7 @@ async def render_record_payment(
     request: Request,
     application_id: str,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+    current_user=Depends(RoleChecker(["crm", "head_crm"])),
 ):
     from app.services.loan_servicing_service import LoanServicingService
     repo = LoanRepository(conn)
@@ -1789,6 +1817,7 @@ async def render_record_payment(
     ctx = build_template_context(
         request, current_user,
         app=app, app_id=application_id, payments=payments,
+        can_record_payment=current_user.role == "crm",
         active_page="applications",
     )
     return templates.TemplateResponse(request, "crm/record_payment.html", ctx)
@@ -1802,7 +1831,7 @@ async def process_record_payment(
     channel: str = Form(...),
     bank_ref: str = Form(""),
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+    current_user=Depends(RoleChecker(["crm"])),
 ):
     from datetime import datetime as dt
     from app.services.loan_servicing_service import LoanServicingService
@@ -1834,7 +1863,7 @@ async def process_record_payment(
 async def render_par_dashboard(
     request: Request,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["md", "ed", "auditor", "system_admin", "crm"])),
+    current_user=Depends(RoleChecker(["md", "ed", "auditor", "crm", "head_crm"])),
 ):
     dashboard_svc = DashboardService(conn)
     par = await dashboard_svc.get_par_summary(current_user)
@@ -1857,7 +1886,7 @@ async def render_par_dashboard(
 async def render_crm_dashboard(
     request: Request,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["crm", "system_admin"])),
+    current_user=Depends(RoleChecker(["crm", "head_crm"])),
 ):
     dashboard_svc = DashboardService(conn)
     data = await dashboard_svc.get_dashboard_data(current_user)
@@ -1878,7 +1907,7 @@ async def render_crm_dashboard(
 async def render_executive_dashboard(
     request: Request,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["md", "ed", "system_admin"])),
+    current_user=Depends(RoleChecker(["md", "ed"])),
 ):
     dashboard_svc = DashboardService(conn)
     data = await dashboard_svc.get_dashboard_data(current_user)
@@ -1898,7 +1927,7 @@ async def render_executive_dashboard(
 async def render_ed_dashboard(
     request: Request,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["ed", "system_admin"])),
+    current_user=Depends(RoleChecker(["ed"])),
 ):
     dashboard_svc = DashboardService(conn)
     data = await dashboard_svc.get_dashboard_data(current_user)
@@ -1918,7 +1947,7 @@ async def render_ed_dashboard(
 async def render_md_dashboard(
     request: Request,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["md", "system_admin"])),
+    current_user=Depends(RoleChecker(["md"])),
 ):
     dashboard_svc = DashboardService(conn)
     data = await dashboard_svc.get_dashboard_data(current_user)
@@ -1938,7 +1967,7 @@ async def render_md_dashboard(
 async def render_committee_dashboard(
     request: Request,
     conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["committee", "system_admin"])),
+    current_user=Depends(RoleChecker(["committee"])),
 ):
     dashboard_svc = DashboardService(conn)
     data = await dashboard_svc.get_dashboard_data(current_user)
@@ -1965,7 +1994,7 @@ import secrets
 @router.post("/loans/generate-share-link")
 async def generate_share_link(
     request: Request,
-    current_user = Depends(RoleChecker(["System Admin", "Loan Officer"]))
+    current_user = Depends(RoleChecker(["Loan Officer"]))
 ):
     """Generates a cryptographically signed link for client intake."""
     from datetime import datetime, timedelta

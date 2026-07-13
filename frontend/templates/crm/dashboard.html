@@ -5,13 +5,13 @@
 {% block breadcrumb %}CRM -> Dashboard{% endblock %}
 {% block content %}
 <div class="queue-page-header">
-  <div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">CRM Officer Dashboard</h1></div>
+  <div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">{{ 'Head CRM Dashboard' if current_user.role == 'head_crm' else 'CRM Officer Dashboard' }}</h1></div>
 </div>
 
 <div class="metrics-row" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px;">
   <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
     <div class="metric-value">{{ metrics.crm_queue or 0 }}</div>
-    <div class="metric-label">Dossiers to Review</div>
+    <div class="metric-label">{{ 'Dossiers Awaiting Approval' if current_user.role == 'head_crm' else 'Dossiers to Review' }}</div>
   </div>
   <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
     <div class="metric-value">{{ metrics.disbursed_total or 0 }}</div>
