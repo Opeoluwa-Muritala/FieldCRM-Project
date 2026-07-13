@@ -1,4 +1,4 @@
-{#
+﻿{#
     Loan Officer Dashboard
     =====================
     Mobile: Greeting card + 2×2 stat chips + Today's Tasks list + Recent Activity
@@ -8,11 +8,7 @@
     Both shells are rendered server-side, the correct one displayed via CSS media queries.
 #}
 {% set mobile_title_text = "Dashboard" %}
-{% if device == 'mobile' %}
-{% extends "base/mobile_shell.html" %}
-{% else %}
 {% extends "base/desktop_shell.html" %}
-{% endif %}
 
 {% block title %}Dashboard — FieldCRM{% endblock %}
 {% block mobile_title %}Dashboard{% endblock %}

@@ -1013,7 +1013,7 @@ async def get_mobile_audit_trail(
     await _get_application_or_404(conn, application_id, current_user)
     events = await conn.fetch(
         """
-        SELECT we.id, we.event_type, we.from_stage, we.to_stage,
+        SELECT we.id, we.triggered_by, we.event_type, we.from_stage, we.to_stage,
                we.triggered_role, we.notes, we.created_at,
                u.full_name AS actor_name
         FROM workflow_events we
@@ -1023,6 +1023,27 @@ async def get_mobile_audit_trail(
         """,
         application_id, current_user.org_id,
     )
+
+    stage_labels = {
+        "intake": "Intake",
+        "ocr_review": "OCR Review",
+        "credit_review": "Credit Review",
+        "branch_approval": "Branch Approval",
+        "crm_review": "CRM Review",
+        "committee_review": "Committee Review",
+        "ed_approval": "ED Approval",
+        "md_approval": "MD Approval",
+        "disbursement_ready": "Disbursement Ready",
+        "disbursed": "Disbursed",
+        "returned": "Returned",
+        "rejected": "Rejected",
+    }
+
+    def fmt_stage(s):
+        if not s:
+            return "—"
+        return stage_labels.get(s, s.replace("_", " ").title())
+
     return [
         {
             "id": str(e["id"]),
@@ -1030,9 +1051,9 @@ async def get_mobile_audit_trail(
             "actor_name": e["actor_name"],
             "actor_role": e["triggered_role"],
             "action": e["event_type"],
-            "state_diff": f"{e['from_stage'] or '-'} → {e['to_stage'] or '-'}",
+            "state_diff": f"{fmt_stage(e['from_stage'])} → {fmt_stage(e['to_stage'])}",
             "notes": e["notes"] or "",
-            "is_mine": str(e.get("triggered_by", "")) == str(current_user.id),
+            "is_mine": str(e["triggered_by"]) == str(current_user.id),
         }
         for e in events
     ]
@@ -1677,3 +1698,85 @@ async def generate_share_link_mobile(
     base_url = str(request.base_url).rstrip("/")
     share_url = f"{base_url}/share-intake/{token}"
     return {"share_url": share_url, "token": token}
+
+
+# ---------------------------------------------------------------------------
+# Admin: User Management
+# ---------------------------------------------------------------------------
+
+class MobileCreateUserRequest(BaseModel):
+    full_name: str
+    email: str
+    role: str  # loan_officer, branch_manager, auditor, crm, committee, ed, md, system_admin
+    password: str = Field(..., min_length=8)
+
+
+@router.get("/users")
+async def list_mobile_users(
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"system_admin"})
+    rows = await conn.fetch(
+        """
+        SELECT id, full_name, email, role, active, created_at
+        FROM users
+        WHERE org_id = $1
+        ORDER BY active DESC, role ASC, full_name ASC
+        """,
+        current_user.org_id,
+    )
+    return [
+        {
+            "id": str(r["id"]),
+            "full_name": r["full_name"],
+            "email": r["email"],
+            "role": r["role"],
+            "display_role": {
+                "loan_officer": "Loan Officer",
+                "branch_manager": "Branch Manager",
+                "auditor": "Auditor",
+                "system_admin": "System Admin",
+                "crm": "CRM Officer",
+                "md": "Managing Director",
+                "ed": "Executive Director",
+                "committee": "Committee Member",
+            }.get(r["role"], r["role"].replace("_", " ").title()),
+            "active": r["active"],
+        }
+        for r in rows
+    ]
+
+
+@router.post("/users", status_code=status.HTTP_201_CREATED)
+async def create_mobile_user(
+    payload: MobileCreateUserRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"system_admin"})
+    from app.domains.users.service import UserService
+    from app.domains.users.repository import UserRepository
+    from app.domains.users.schemas import UserCreate
+    from app.core.exceptions import DomainException
+
+    try:
+        svc = UserService(UserRepository(conn))
+        user = await svc.register_user(
+            current_admin=current_user,
+            user_in=UserCreate(
+                org_id=str(current_user.org_id),
+                full_name=payload.full_name,
+                email=payload.email,
+                role=payload.role.lower().replace(" ", "_"),
+                password=payload.password,
+            ),
+        )
+        return {
+            "id": str(user.id),
+            "full_name": user.full_name,
+            "email": user.email,
+            "role": user.role,
+        }
+    except DomainException as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))

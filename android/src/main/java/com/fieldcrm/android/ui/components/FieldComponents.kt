@@ -1298,6 +1298,7 @@ fun AuditTrailEntry(
     action: String,
     diff: String?,
     isCurrentUserAction: Boolean,
+    notes: String = "",
     modifier: Modifier = Modifier
 ) {
     val highlightColor = FieldTheme.colors.purple600
@@ -1311,6 +1312,18 @@ fun AuditTrailEntry(
         }
     } else {
         Modifier
+    }
+
+    val displayTimestamp = remember(timestamp) {
+        try {
+            val iso = timestamp.substringBefore(".")
+            val parts = iso.split("T")
+            val date = parts[0]
+            val time = parts.getOrNull(1)?.substring(0, 5) ?: ""
+            val (yr, mo, dy) = date.split("-").map { it.toInt() }
+            val months = listOf("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+            "${months[mo - 1]} $dy, $yr · $time"
+        } catch (_: Exception) { timestamp }
     }
 
     Box(
@@ -1327,35 +1340,35 @@ fun AuditTrailEntry(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Text(
                         text = actorName,
                         style = FieldTheme.typography.bodyStrong,
-                        color = FieldTheme.colors.gray100
+                        color = if (isCurrentUserAction) FieldTheme.colors.purple200 else FieldTheme.colors.gray100
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     RoleBadge(role = actorRole)
                 }
                 Text(
-                    text = timestamp,
+                    text = displayTimestamp,
                     style = FieldTheme.typography.mono.copy(fontSize = 11.sp),
-                    color = FieldTheme.colors.gray400
+                    color = FieldTheme.colors.gray500
                 )
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = action,
-                style = FieldTheme.typography.body,
-                color = FieldTheme.colors.gray300
+                style = FieldTheme.typography.bodyStrong.copy(fontSize = 13.sp),
+                color = FieldTheme.colors.gray200
             )
-            if (diff != null) {
+            if (diff != null && diff != "— → —") {
                 Spacer(modifier = Modifier.height(6.dp))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(FieldTheme.colors.gray900, RoundedCornerShape(4.dp))
                         .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(4.dp))
-                        .padding(8.dp)
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = diff,
@@ -1363,6 +1376,14 @@ fun AuditTrailEntry(
                         color = FieldTheme.colors.purple200
                     )
                 }
+            }
+            if (notes.isNotBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = notes,
+                    style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                    color = FieldTheme.colors.gray400
+                )
             }
         }
     }

@@ -1,5 +1,5 @@
-{% set mobile_title_text = "Repayment Schedule" %}
-{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+﻿{% set mobile_title_text = "Repayment Schedule" %}
+{% extends "base/desktop_shell.html" %}
 {% block title %}Repayment Schedule - FieldCRM{% endblock %}
 {% block page_title %}Repayment Schedule{% endblock %}
 {% block breadcrumb %}{{ app.ref_no }} -> Repayment Schedule{% endblock %}

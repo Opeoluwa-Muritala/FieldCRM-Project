@@ -1,5 +1,5 @@
 {% set mobile_title_text = "CRM Review" %}
-{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+{% extends "base/desktop_shell.html" %}
 {% block title %}CRM Review - FieldCRM{% endblock %}
 {% block page_title %}CRM Dossier Review{% endblock %}
 {% block breadcrumb %}CRM -> Review -> {{ app.ref_no }}{% endblock %}
@@ -21,7 +21,16 @@
     <tbody>
     {% for doc in documents %}
     <tr>
-      <td>{{ doc.doc_type.replace('_',' ').title() }}<br><small style="color:var(--text-muted)">{{ doc.original_name }}</small></td>
+      <td>
+        {% if doc.url %}
+          <a href="{{ doc.url }}" target="_blank" style="color: var(--color-brand-shield); text-decoration: none; font-weight: 500;">
+            {{ doc.doc_type.replace('_',' ').title() }} &nearr;
+          </a>
+        {% else %}
+          {{ doc.doc_type.replace('_',' ').title() }}
+        {% endif %}
+        <br><small style="color:var(--text-muted)">{{ doc.original_name }}</small>
+      </td>
       <td><span class="status-badge {% if doc.quality_status == 'clear' %}approved{% else %}needs-review{% endif %}">{{ doc.quality_status }}</span></td>
       <td>{% if doc.verified %}<span style="color:#2e7d32">&#10003; Verified</span>{% else %}<span style="color:#c62828">&#10007; Unverified</span>{% endif %}</td>
     </tr>
@@ -64,7 +73,15 @@
       {% for doc in documents if doc.doc_type in ('crm_memo','credit_committee_report','approval_recommendation','denial_recommendation') %}
       <tr>
         <td>{{ doc.doc_type.replace('_',' ').title() }}</td>
-        <td style="font-size:13px;">{{ doc.original_name or '—' }}</td>
+        <td style="font-size:13px;">
+          {% if doc.url %}
+            <a href="{{ doc.url }}" target="_blank" style="color: var(--color-brand-shield); text-decoration: none; font-weight: 500;">
+              {{ doc.original_name or '—' }} &nearr;
+            </a>
+          {% else %}
+            {{ doc.original_name or '—' }}
+          {% endif %}
+        </td>
         <td style="font-size:12px;color:var(--text-muted);">{{ doc.created_at.strftime('%d %b %Y') if doc.created_at else '—' }}</td>
       </tr>
       {% else %}

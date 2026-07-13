@@ -1,5 +1,5 @@
-{% set mobile_title_text = "CRM Dashboard" %}
-{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+﻿{% set mobile_title_text = "CRM Dashboard" %}
+{% extends "base/desktop_shell.html" %}
 {% block title %}CRM Dashboard - FieldCRM{% endblock %}
 {% block page_title %}CRM Dashboard{% endblock %}
 {% block breadcrumb %}CRM -> Dashboard{% endblock %}

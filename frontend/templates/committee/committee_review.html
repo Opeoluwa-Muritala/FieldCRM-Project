@@ -1,5 +1,5 @@
-{% set mobile_title_text = "Committee Review" %}
-{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+﻿{% set mobile_title_text = "Committee Review" %}
+{% extends "base/desktop_shell.html" %}
 {% block title %}Committee Review - FieldCRM{% endblock %}
 {% block page_title %}Committee Review{% endblock %}
 {% block breadcrumb %}Committee -> Review -> {{ app.ref_no }}{% endblock %}

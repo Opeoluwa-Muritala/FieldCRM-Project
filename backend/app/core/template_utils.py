@@ -91,6 +91,21 @@ def build_template_context(request, user, **kwargs) -> dict:
     device = detect_device_type(request)
     normalized_role = user.role.lower().replace(" ", "_") if user else "loan_officer"
 
+    if "documents" in kwargs and isinstance(kwargs["documents"], list):
+        mapped_docs = []
+        for doc in kwargs["documents"]:
+            if isinstance(doc, dict):
+                doc_copy = dict(doc)
+                if "doc_type" in doc_copy and "category" not in doc_copy:
+                    doc_copy["category"] = doc_copy["doc_type"]
+                if "verified" in doc_copy and "status" not in doc_copy:
+                    doc_copy["status"] = "verified" if doc_copy["verified"] else "needs_review"
+                doc_copy["url"] = doc_copy.get("cloud_preview_url") or doc_copy.get("stored_path") or ""
+                mapped_docs.append(doc_copy)
+            else:
+                mapped_docs.append(doc)
+        kwargs["documents"] = mapped_docs
+
     ctx = {
         "request": request,
         "current_user": user,

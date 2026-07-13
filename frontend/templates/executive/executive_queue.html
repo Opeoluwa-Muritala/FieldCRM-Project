@@ -1,5 +1,5 @@
-{% set mobile_title_text = "Executive Queue" %}
-{% if device == 'mobile' %}{% extends "base/mobile_shell.html" %}{% else %}{% extends "base/desktop_shell.html" %}{% endif %}
+﻿{% set mobile_title_text = "Executive Queue" %}
+{% extends "base/desktop_shell.html" %}
 {% block title %}Executive Approval Queue - FieldCRM{% endblock %}
 {% block page_title %}Executive Approval Queue{% endblock %}
 {% block breadcrumb %}Executive -> Approval Queue{% endblock %}

@@ -25,6 +25,7 @@ import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.viewmodel.ApplicationViewModel
 import com.fieldcrm.android.ui.viewmodel.BorrowerViewModel
+import com.fieldcrm.android.data.repository.ApplicationDetailResult
 import com.fieldcrm.android.ui.viewmodel.AppViewModel
 import com.fieldcrm.android.ui.viewmodel.Screen
 import com.fieldcrm.shared.model.BorrowerModel
@@ -41,6 +42,7 @@ data class WizardTab(val index: Int, val name: String, val icon: String)
 fun LoanApplicationFormScreen(
     application: LoanApplicationModel,
     borrower: BorrowerModel?,
+    appDetail: ApplicationDetailResult? = null,
     applicationViewModel: ApplicationViewModel,
     borrowerViewModel: BorrowerViewModel,
     appViewModel: AppViewModel,
@@ -50,6 +52,7 @@ fun LoanApplicationFormScreen(
     LoanApplicationFormContent(
         application = application,
         borrower = borrower,
+        appDetail = appDetail,
         onBackClick = onBackClick,
         onNavigateToGuarantorsForm = onNavigateToGuarantorsForm,
         onSubmit = { name, phone, bvn, address, _, _, employment, employer, income, amount, tenure, product, collateralDesc, collateralVal, gName, gPhone, bank, acc ->
@@ -112,6 +115,7 @@ fun LoanApplicationFormScreen(
 fun LoanApplicationFormContent(
     application: LoanApplicationModel,
     borrower: BorrowerModel?,
+    appDetail: ApplicationDetailResult? = null,
     onBackClick: () -> Unit,
     onNavigateToGuarantorsForm: () -> Unit = {},
     onSubmit: (
@@ -125,6 +129,15 @@ fun LoanApplicationFormContent(
     var isDirty by remember { mutableStateOf(false) }
     var showUnsavedDialog by remember { mutableStateOf(false) }
 
+    val intake = appDetail?.intake ?: emptyMap()
+    fun intakeStr(vararg keys: String): String {
+        for (k in keys) {
+            val v = intake[k]?.toString()?.takeIf { it.isNotBlank() && it != "null" }
+            if (v != null) return v
+        }
+        return ""
+    }
+
     val tabs = listOf(
         WizardTab(0, "Applicant Details", "01"),
         WizardTab(1, "Spousal Consent", "02"),
@@ -137,79 +150,79 @@ fun LoanApplicationFormContent(
         WizardTab(8, "Final Review", "09")
     )
 
-    // Form inputs state
-    var nameInput by remember { mutableStateOf(borrower?.name ?: "") }
-    var phoneInput by remember { mutableStateOf(borrower?.phone ?: "") }
-    var bvnInput by remember { mutableStateOf(borrower?.bvn ?: "") }
-    var addressInput by remember { mutableStateOf(borrower?.physical_address ?: "") }
-    var dobInput by remember { mutableStateOf("1992-04-12") }
-    var maritalInput by remember { mutableStateOf("Married") }
+    // Form inputs state — sourced from appDetail.intake first, then BorrowerModel, then defaults
+    var nameInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("applicant_full_name", "full_name", "applicant_name").ifBlank { borrower?.name ?: "" }) }
+    var phoneInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("phone", "phone_number", "phone_numbers").ifBlank { borrower?.phone ?: "" }) }
+    var bvnInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("bvn").ifBlank { borrower?.bvn ?: "" }) }
+    var addressInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("physical_address", "address", "residential_address").ifBlank { borrower?.physical_address ?: "" }) }
+    var dobInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("dob", "date_of_birth")) }
+    var maritalInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("marital_status").ifBlank { "Married" }) }
 
     // Step 1 additional fields
-    var idTypeInput by remember { mutableStateOf("National ID") }
-    var idNumberInput by remember { mutableStateOf("") }
-    var idExpiryInput by remember { mutableStateOf("") }
-    var stateOfOriginInput by remember { mutableStateOf("") }
-    var lgaInput by remember { mutableStateOf("") }
-    var nearestLandmarkInput by remember { mutableStateOf("") }
+    var idTypeInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("id_type").ifBlank { "National ID" }) }
+    var idNumberInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("id_number", "nin").ifBlank { borrower?.nin ?: "" }) }
+    var idExpiryInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("id_expiry")) }
+    var stateOfOriginInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("state_of_origin")) }
+    var lgaInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("lga")) }
+    var nearestLandmarkInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("nearest_landmark")) }
 
-    var spouseNameInput by remember { mutableStateOf("") }
-    var spousePhoneInput by remember { mutableStateOf("") }
-    var spouseChildrenInput by remember { mutableStateOf("2") }
-    var spouseDependantsInput by remember { mutableStateOf("1") }
-    var spouseBusinessAddressInput by remember { mutableStateOf("") }
+    var spouseNameInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("spouse_name", "spouse_full_name")) }
+    var spousePhoneInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("spouse_phone")) }
+    var spouseChildrenInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("children", "spouse_children").ifBlank { "2" }) }
+    var spouseDependantsInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("dependants", "spouse_dependants").ifBlank { "1" }) }
+    var spouseBusinessAddressInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("spouse_business_address")) }
 
     // Step 2 spouse signature
     var spouseSignatureData by remember { mutableStateOf<String?>(null) }
 
-    var gNameInput by remember { mutableStateOf(borrower?.guarantor_name ?: "") }
-    var gPhoneInput by remember { mutableStateOf(borrower?.guarantor_phone ?: "") }
+    var gNameInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("guarantor_1_name", "guarantor_name").ifBlank { borrower?.guarantor_name ?: "" }) }
+    var gPhoneInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("guarantor_1_phone", "guarantor_phone").ifBlank { borrower?.guarantor_phone ?: "" }) }
 
-    var employmentInput by remember { mutableStateOf(borrower?.employment_status ?: "Self-employed") }
-    var employerInput by remember { mutableStateOf(borrower?.employer_name ?: "") }
-    var incomeInput by remember { mutableStateOf(borrower?.monthly_income?.toInt()?.toString() ?: "350000") }
+    var employmentInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("employment_status").ifBlank { borrower?.employment_status ?: "Self-employed" }) }
+    var employerInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("employer_name", "business_name").ifBlank { borrower?.employer_name ?: "" }) }
+    var incomeInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("monthly_income", "monthly_salary").ifBlank { borrower?.monthly_income?.toInt()?.toString() ?: "" }) }
 
-    var industryInput by remember { mutableStateOf("") }
-    var yearsEmployedInput by remember { mutableStateOf("") }
-    var employerAddressInput by remember { mutableStateOf("") }
-    var businessTypeInput by remember { mutableStateOf("") }
-    var businessDetailsInput by remember { mutableStateOf("") }
-    var supportingProofInput by remember { mutableStateOf("") }
+    var industryInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("industry")) }
+    var yearsEmployedInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("years_employed")) }
+    var employerAddressInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("employer_address")) }
+    var businessTypeInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("business_type")) }
+    var businessDetailsInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("business_details")) }
+    var supportingProofInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("supporting_proof")) }
 
-    var facilityBankInput by remember { mutableStateOf("") }
-    var facilityAmountInput by remember { mutableStateOf("") }
-    var facilityTenureInput by remember { mutableStateOf("") }
+    var facilityBankInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("facility_bank")) }
+    var facilityAmountInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("facility_amount")) }
+    var facilityTenureInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("facility_tenure")) }
 
-    var amountInput by remember { mutableStateOf(application.amount?.toInt()?.toString() ?: "") }
-    var tenureInput by remember { mutableStateOf(application.tenor_months?.toString() ?: "") }
-    var productInput by remember { mutableStateOf(application.loan_type) }
+    var amountInput by remember(application) { mutableStateOf(application.amount?.toInt()?.toString() ?: "") }
+    var tenureInput by remember(application) { mutableStateOf(application.tenor_months?.toString() ?: "") }
+    var productInput by remember(application) { mutableStateOf(application.loan_type) }
 
     // Step 6 mode of repayment
-    var modeOfRepayment by remember { mutableStateOf(application.repayment_mode ?: "direct_debit") }
+    var modeOfRepayment by remember(application) { mutableStateOf(application.repayment_mode ?: "direct_debit") }
 
     // Step 7 additional fields
-    var accountNameInput by remember { mutableStateOf("") }
-    var sortCodeInput by remember { mutableStateOf("") }
+    var accountNameInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("account_name")) }
+    var sortCodeInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("sort_code")) }
 
-    var collateralDescInput by remember { mutableStateOf(application.purpose ?: "") }
-    var collateralValInput by remember { mutableStateOf("") }
+    var collateralDescInput by remember(application) { mutableStateOf(application.purpose ?: "") }
+    var collateralValInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("collateral_value")) }
 
-    var bankInput by remember { mutableStateOf(borrower?.bank_name ?: "") }
-    var accInput by remember { mutableStateOf(borrower?.account_number ?: "") }
+    var bankInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("bank_name").ifBlank { borrower?.bank_name ?: "" }) }
+    var accInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("account_number").ifBlank { borrower?.account_number ?: "" }) }
 
     // Step 9 consent state
-    var educationLevelInput by remember { mutableStateOf("Graduate") }
-    var loanPurposeInput by remember { mutableStateOf("Working Capital") }
-    var collateralSecurityInput by remember { mutableStateOf(setOf<String>()) }
+    var educationLevelInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("education_level").ifBlank { "Graduate" }) }
+    var loanPurposeInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("loan_purpose").ifBlank { "Working Capital" }) }
+    var collateralSecurityInput by remember(appDetail, borrower) { mutableStateOf(setOf<String>()) }
 
-    var pledgeBorrowerInput by remember { mutableStateOf(borrower?.name ?: "") }
-    var pledgeObligorInput by remember { mutableStateOf("") }
-    var pledgeLocationInput by remember { mutableStateOf("") }
-    var pledgeDateInput by remember { mutableStateOf("") }
-    var pledgeAmountWordsInput by remember { mutableStateOf("") }
-    var pledgeWitnessNameInput by remember { mutableStateOf("") }
-    var pledgeWitnessAddressInput by remember { mutableStateOf("") }
-    var pledgeLegalAckInput by remember { mutableStateOf(false) }
+    var pledgeBorrowerInput by remember(appDetail, borrower) { mutableStateOf(borrower?.name ?: "") }
+    var pledgeObligorInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("pledge_obligor")) }
+    var pledgeLocationInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("pledge_location")) }
+    var pledgeDateInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("pledge_date")) }
+    var pledgeAmountWordsInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("pledge_amount_words")) }
+    var pledgeWitnessNameInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("pledge_witness_name")) }
+    var pledgeWitnessAddressInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("pledge_witness_address")) }
+    var pledgeLegalAckInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("pledge_legal_ack").toBoolean()) }
 
     var consentBureauDisclosure by remember { mutableStateOf(false) }
     var consentCreditCheck by remember { mutableStateOf(false) }

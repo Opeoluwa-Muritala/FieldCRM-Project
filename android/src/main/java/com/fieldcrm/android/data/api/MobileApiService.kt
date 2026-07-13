@@ -85,6 +85,10 @@ interface MobileApiService {
     suspend fun getMdReview(id: String): String?
     suspend fun submitMdApprove(id: String, action: String, notes: String): String?
     suspend fun addBoardReferral(id: String, email: String, name: String, notes: String): String?
+
+    // User management (admin only)
+    suspend fun listUsers(): List<MobileUserItem>
+    suspend fun createUser(fullName: String, email: String, role: String, password: String): Boolean
 }
 
 @kotlinx.serialization.Serializable
@@ -211,6 +215,24 @@ data class FaqItem(val question: String, val answer: String)
 
 @kotlinx.serialization.Serializable
 data class OnboardingSlide(val title: String, val subtitle: String, val body: String)
+
+@kotlinx.serialization.Serializable
+data class MobileUserItem(
+    val id: String,
+    val full_name: String,
+    val email: String,
+    val role: String,
+    val display_role: String = "",
+    val active: Boolean = true
+)
+
+@kotlinx.serialization.Serializable
+data class CreateUserRequest(
+    val full_name: String,
+    val email: String,
+    val role: String,
+    val password: String
+)
 
 class MobileApiServiceImpl(
     private val client: HttpClient,
@@ -809,5 +831,23 @@ class MobileApiServiceImpl(
             }
             if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
         } catch (e: Exception) { null }
+    }
+
+    override suspend fun listUsers(): List<MobileUserItem> {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/users") { authHeader() }
+            if (response.status == HttpStatusCode.OK) response.body() else emptyList()
+        } catch (e: Exception) { emptyList() }
+    }
+
+    override suspend fun createUser(fullName: String, email: String, role: String, password: String): Boolean {
+        return try {
+            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/users") {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(CreateUserRequest(fullName, email, role, password))
+            }
+            response.status == HttpStatusCode.Created || response.status == HttpStatusCode.OK
+        } catch (e: Exception) { false }
     }
 }

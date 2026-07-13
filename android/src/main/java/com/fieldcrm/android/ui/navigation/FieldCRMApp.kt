@@ -57,11 +57,15 @@ fun FieldCRMApp(
     val applicationUiState by applicationViewModel.uiState.collectAsState()
     val loginUiState by loginViewModel.uiState.collectAsState()
     val restoredSession by loginViewModel.restoredSession.collectAsState()
+    val sessionInvalidated by loginViewModel.sessionInvalidated.collectAsState()
     val servicingUiState by servicingViewModel.uiState.collectAsState()
     val crmReviewUiState by crmReviewViewModel.uiState.collectAsState()
     val syncUiState by syncViewModel.uiState.collectAsState()
 
     val backStack = rememberNavBackStack(Screen.Login)
+
+    var selectedDocUrl by remember { mutableStateOf("") }
+    var selectedDocName by remember { mutableStateOf("") }
 
     val activity = LocalContext.current as? android.app.Activity
     var backPressedOnce by remember { mutableStateOf(false) }
@@ -177,10 +181,20 @@ fun FieldCRMApp(
         return
     }
 
-    // Auto-sync when session becomes active
+    // Auto-sync when session becomes active — both applications and borrowers
     LaunchedEffect(appUiState.session) {
         if (appUiState.session != null) {
             applicationViewModel.syncQueue {}
+            borrowerViewModel.refreshBorrowers()
+        }
+    }
+
+    // Background token validation found session definitively rejected — log out cleanly.
+    LaunchedEffect(sessionInvalidated) {
+        if (sessionInvalidated) {
+            appViewModel.logout()
+            backStack.clear()
+            backStack.add(Screen.Login)
         }
     }
 
@@ -394,7 +408,7 @@ fun FieldCRMApp(
             LaunchedEffect(app.id) { applicationViewModel.loadApplicationDetail(app.id) }
             ApplicationDetailScreenView(
                 application = app,
-                borrower = borrowerUiState.borrowers.find { it.id == app.id },
+                borrower = borrowerUiState.borrowers.find { it.id == app.id || it.phone == app.phone || it.bvn == app.bvn || it.name == app.applicant_name },
                 role = appUiState.session?.role,
                 appDetail = applicationUiState.selectedAppDetail,
                 isLoadingDetail = applicationUiState.isLoadingDetail,
@@ -412,13 +426,18 @@ fun FieldCRMApp(
                         UserRole.COMMITTEE -> Screen.CommitteeReview
                         UserRole.ED -> Screen.EdApproval
                         UserRole.MD -> Screen.MdApproval
+                        UserRole.SYSTEM_ADMIN -> Screen.AdminMcrApproval
                         else -> null
                     }
                     if (reviewScreen != null) backStack.add(reviewScreen)
                 },
                 onNavigateToAuditTrail = { backStack.add(Screen.WorkflowEventAudit) },
                 onNavigateToFormWizard = { backStack.add(Screen.LoanApplicationForm) },
-                onNavigateToDocumentViewer = { backStack.add(Screen.DocumentViewer) },
+                onNavigateToDocumentViewer = { url, name ->
+                    selectedDocUrl = url
+                    selectedDocName = name
+                    backStack.add(Screen.DocumentViewer)
+                },
                 onNavigateToOcrReview = { backStack.add(Screen.OcrReview) }
             )
         }
@@ -438,11 +457,12 @@ fun FieldCRMApp(
 
         Screen.LoanApplicationForm -> {
             val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id } ?: appUiState.selectedBorrower
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name } ?: appUiState.selectedBorrower
             if (app != null) {
                 LoanApplicationFormScreen(
                     application = app,
                     borrower = borrower,
+                    appDetail = applicationUiState.selectedAppDetail,
                     applicationViewModel = applicationViewModel,
                     borrowerViewModel = borrowerViewModel,
                     appViewModel = appViewModel,
@@ -456,7 +476,7 @@ fun FieldCRMApp(
 
         Screen.DocumentUpload -> {
             val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id }
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name }
             DocumentUploadScreen(
                 applicationId = app?.id ?: "",
                 borrower = borrower,
@@ -471,7 +491,7 @@ fun FieldCRMApp(
 
         Screen.GuarantorsForm -> {
             val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id }
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name }
             if (borrower != null) {
                 GuarantorsFormScreen(
                     borrower = borrower,
@@ -486,7 +506,7 @@ fun FieldCRMApp(
 
         Screen.PledgeTrust -> {
             val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id }
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name }
             if (app != null) {
                 PledgeTrustScreen(
                     application = app,
@@ -502,7 +522,7 @@ fun FieldCRMApp(
 
         Screen.VisitationReport -> {
             val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id }
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name }
             if (app != null) {
                 VisitationReportScreen(
                     application = app,
@@ -519,7 +539,7 @@ fun FieldCRMApp(
 
         Screen.BranchManagerReview -> {
             val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id }
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name }
             if (app != null) {
                 BranchManagerReviewScreen(
                     application = app,
@@ -541,7 +561,7 @@ fun FieldCRMApp(
 
         Screen.AdminMcrApproval -> {
             val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id }
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name }
             if (app != null) {
                 AdminMcrApprovalScreen(
                     application = app,
@@ -556,6 +576,8 @@ fun FieldCRMApp(
         }
 
         Screen.DocumentViewer -> DocumentViewerScreen(
+            docType = selectedDocName,
+            docUrl = selectedDocUrl,
             onBackClick = { backStack.removeLastOrNull() }
         )
 
@@ -732,6 +754,7 @@ fun FieldCRMApp(
                             onDone = { backStack.removeLastOrNull() }
                         )
                     },
+                    onUploadDocument = { backStack.add(Screen.DocumentUpload) },
                     onBack = { backStack.removeLastOrNull() }
                 )
             } else {

@@ -234,7 +234,15 @@
                         <tbody>
                             {% for doc in documents %}
                             <tr>
-                                <td>{{ doc.category|replace('_', ' ')|title }}</td>
+                                <td>
+                                    {% if doc.url %}
+                                        <a href="{{ doc.url }}" target="_blank" style="color: var(--color-brand-shield); text-decoration: none; font-weight: 500;">
+                                            {{ doc.category|replace('_', ' ')|title }} &nearr;
+                                        </a>
+                                    {% else %}
+                                        {{ doc.category|replace('_', ' ')|title }}
+                                    {% endif %}
+                                </td>
                                 <td>Loan Officer Upload</td>
                                 <td>{{ doc.created_at.strftime('%d %b %Y') if doc.created_at else '03 Jun 2026' }}</td>
                                 <td>

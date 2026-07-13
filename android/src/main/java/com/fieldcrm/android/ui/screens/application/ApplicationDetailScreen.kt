@@ -44,7 +44,7 @@ fun ApplicationDetailScreenView(
     onNavigateToReview: () -> Unit = {},
     onNavigateToAuditTrail: () -> Unit = {},
     onNavigateToFormWizard: () -> Unit = {},
-    onNavigateToDocumentViewer: () -> Unit = {},
+    onNavigateToDocumentViewer: (url: String, name: String) -> Unit = { _, _ -> },
     onNavigateToOcrReview: () -> Unit = {}
 ) {
     val auditTrailVm: AuditTrailViewModel = koinViewModel()
@@ -383,9 +383,11 @@ fun ApplicationDetailScreenView(
                                             val docType = (doc["doc_type"] as? String ?: "Document")
                                                 .replace("_", " ").replaceFirstChar { it.uppercase() }
                                             val verified = doc["verified"] as? Boolean ?: false
+                                            val docUrl = doc["secure_url"] as? String ?: doc["file_url"] as? String ?: ""
                                             Row(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
+                                                    .clickable { onNavigateToDocumentViewer(docUrl, docType) }
                                                     .padding(vertical = 6.dp),
                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                                 verticalAlignment = Alignment.CenterVertically
@@ -439,14 +441,29 @@ fun ApplicationDetailScreenView(
                                     ?: (borrower?.gps_coordinates?.isNotEmpty() == true)
                                 val hasGuarantor = (r["guarantor_form_submitted"] as? Boolean)
                                     ?: (borrower?.guarantor_name?.isNotEmpty() == true)
-                                val hasDocuments = ((r["verified_docs"] as? Int) ?: (appDetail?.documents?.count { it["verified"] == true } ?: 0)) > 0
+                                val docs = appDetail?.documents ?: emptyList()
+                                val hasDocuments = ((r["verified_docs"] as? Int) ?: docs.count { it["verified"] == true }) > 0
 
-                                val gatesList = listOf(
+                                val firstDocUrl = docs.firstOrNull()
+                                    ?.let { it["secure_url"] as? String ?: it["file_url"] as? String ?: "" } ?: ""
+                                val firstDocName = docs.firstOrNull()
+                                    ?.let { (it["doc_type"] as? String ?: "Document")
+                                        .replace("_", " ").replaceFirstChar { c -> c.uppercase() } } ?: "Document"
+
+                                val gatesList: List<Triple<String, StatusChipVariant, () -> Unit>> = listOf(
                                     Triple("Identity Verification Passed", if (hasIdentity) StatusChipVariant.Verified else StatusChipVariant.Missing, onNavigateToDocumentUpload),
                                     Triple("Pledge Document Signed", if (isPledgeSigned) StatusChipVariant.Signed else StatusChipVariant.Missing, onNavigateToPledgeTrust),
                                     Triple("GPS Visitation Completed", if (hasGps) StatusChipVariant.Verified else StatusChipVariant.Missing, onNavigateToVisitationReport),
                                     Triple("Guarantor Verification Logged", if (hasGuarantor) StatusChipVariant.Verified else StatusChipVariant.Missing, onNavigateToGuarantorsForm),
-                                    Triple("Documents Uploaded & Verified", if (hasDocuments) StatusChipVariant.Verified else StatusChipVariant.Missing, onNavigateToDocumentUpload)
+                                    Triple(
+                                        "Documents Uploaded & Verified",
+                                        if (hasDocuments) StatusChipVariant.Verified else StatusChipVariant.Missing,
+                                        if (hasDocuments) {
+                                            { onNavigateToDocumentViewer(firstDocUrl, firstDocName) }
+                                        } else {
+                                            onNavigateToDocumentUpload
+                                        }
+                                    )
                                 )
                                 gatesList.forEachIndexed { index, gate ->
                                     Row(
@@ -740,28 +757,114 @@ fun ApplicationActionFooter(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        val stage = application?.stage
+
         when (role) {
-            null, UserRole.LOAN_OFFICER -> {
-                if (application != null && application.stage == "ocr_review") {
-                    PrimaryButton(
-                        text = "Verify OCR & Advance to Credit",
-                        onClick = onNavigateToOcrReview,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-                PrimaryButton(
+            null, UserRole.LOAN_OFFICER -> when (stage) {
+                "intake", "returned", null -> PrimaryButton(
                     text = "Continue Application Form",
-                    onClick = onNavigateToFormWizard
+                    onClick = onNavigateToFormWizard,
+                    modifier = Modifier.fillMaxWidth()
                 )
+                "ocr_review" -> PrimaryButton(
+                    text = "Verify OCR & Advance to Credit",
+                    onClick = onNavigateToOcrReview,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                else -> ReadOnlyBanner()
             }
-            else -> {
+
+            UserRole.BRANCH_MANAGER -> if (stage in setOf("credit_review", "branch_approval", "returned")) {
                 PrimaryButton(
                     text = "Open Review Console",
-                    onClick = onNavigateToReview
+                    onClick = onNavigateToReview,
+                    modifier = Modifier.fillMaxWidth()
                 )
+            } else {
+                ReadOnlyBanner()
             }
+
+            UserRole.CRM -> if (stage == "crm_review") {
+                PrimaryButton(
+                    text = "Open Review Console",
+                    onClick = onNavigateToReview,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                ReadOnlyBanner()
+            }
+
+            UserRole.EXECUTIVE -> if (stage == "executive_approval") {
+                PrimaryButton(
+                    text = "Open Review Console",
+                    onClick = onNavigateToReview,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                ReadOnlyBanner()
+            }
+
+            UserRole.COMMITTEE -> if (stage == "committee_review") {
+                PrimaryButton(
+                    text = "Open Review Console",
+                    onClick = onNavigateToReview,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                ReadOnlyBanner()
+            }
+
+            UserRole.ED -> if (stage == "ed_approval") {
+                PrimaryButton(
+                    text = "Open Review Console",
+                    onClick = onNavigateToReview,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                ReadOnlyBanner()
+            }
+
+            UserRole.MD -> if (stage == "md_approval") {
+                PrimaryButton(
+                    text = "Open Review Console",
+                    onClick = onNavigateToReview,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                ReadOnlyBanner()
+            }
+
+            UserRole.AUDITOR, UserRole.SYSTEM_ADMIN -> PrimaryButton(
+                text = "Open Review Console",
+                onClick = onNavigateToReview,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
+    }
+}
+
+@Composable
+private fun ReadOnlyBanner() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(FieldTheme.colors.gray850, RoundedCornerShape(8.dp))
+            .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Icon(
+            imageVector = FieldIcons.SearchOutlined,
+            contentDescription = null,
+            tint = FieldTheme.colors.gray500,
+            modifier = Modifier.size(16.dp)
+        )
+        Text(
+            text = "Read-only — application is not at your action stage",
+            style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+            color = FieldTheme.colors.gray500
+        )
     }
 }
 

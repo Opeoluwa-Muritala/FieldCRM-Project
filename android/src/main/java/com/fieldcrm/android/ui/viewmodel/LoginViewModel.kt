@@ -35,26 +35,43 @@ class LoginViewModel(
         restoreSession()
     }
 
-    // On cold start: restore if stored session is locally valid.
-    // Only invalidate if the server definitively rejects the token (null = network error → keep session).
+    // On cold start: restore from local store immediately so the user is never blocked on a
+    // network call. Then validate the token in the background — only clear the session if the
+    // server definitively rejects it (false). Network errors (null) leave the session untouched.
     private fun restoreSession() {
         _uiState.update { it.copy(isRestoringSession = true) }
         viewModelScope.launch {
             val stored = sessionStore.load()
-            if (stored != null) {
-                val result = authRepository.validateToken(stored.token)
-                when {
-                    result == true -> sessionStore.extendSession()
-                    result == false -> { sessionStore.clear(); _uiState.update { it.copy(isRestoringSession = false) }; return@launch }
-                    // null = network error — keep the session alive using local expiry
-                }
+            if (stored == null) {
                 _uiState.update { it.copy(isRestoringSession = false) }
-                _restoredSession.value = stored
                 return@launch
             }
+
+            // Apply token to network client immediately so any post-restore requests
+            // (syncQueue, refreshBorrowers, etc.) go out authenticated.
+            authRepository.applyStoredToken(stored.token)
+
+            // Restore immediately — no network wait, no blank screen.
+            _restoredSession.value = stored
             _uiState.update { it.copy(isRestoringSession = false) }
+
+            // Background validation: only act on a definitive server rejection.
+            val result = authRepository.validateToken(stored.token)
+            when (result) {
+                true -> sessionStore.extendSession()
+                false -> {
+                    sessionStore.clear()
+                    _restoredSession.value = null
+                    _sessionInvalidated.value = true
+                }
+                null -> { /* network unavailable — local TTL governs expiry */ }
+            }
         }
     }
+
+    // Signals that a background token check found the session definitively rejected.
+    private val _sessionInvalidated = MutableStateFlow(false)
+    val sessionInvalidated: StateFlow<Boolean> = _sessionInvalidated.asStateFlow()
 
     // Emits a non-null value when a restored session is ready — observed by MainActivity
     private val _restoredSession = MutableStateFlow<UserSession?>(null)

@@ -1,9 +1,5 @@
-{% set mobile_title_text = "My Queue" %}
-{% if device == 'mobile' %}
-{% extends "base/mobile_shell.html" %}
-{% else %}
+﻿{% set mobile_title_text = "My Queue" %}
 {% extends "base/desktop_shell.html" %}
-{% endif %}
 
 {% block title %}My Queue - FieldCRM{% endblock %}
 {% block mobile_title %}My Queue{% endblock %}
