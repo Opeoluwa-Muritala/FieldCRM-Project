@@ -1591,13 +1591,14 @@ async def process_md_approve(
             reason=md_notes,
         )
     elif action == "comment":
-        await repo.md_add_comment(UUID(application_id), current_user.org_id, md_notes)
+        if not await repo.md_add_comment(UUID(application_id), current_user.org_id, md_notes):
+            raise HTTPException(status_code=400, detail="Application not in md_approval stage")
         audit = AuditService(conn)
         await audit.log(
             application_id=application_id,
             org_id=str(current_user.org_id),
-            action="MD Comment Added",
-            from_stage="ed_approval",
+            action="MD Comment Added — Returned to ED",
+            from_stage="md_approval",
             to_stage="ed_approval",
             actor_id=str(current_user.id),
             actor_role=current_user.role,
