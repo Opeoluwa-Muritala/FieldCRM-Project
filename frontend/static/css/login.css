@@ -153,6 +153,27 @@ input {
     max-width: 400px;
 }
 
+/* Registration and password reset use the same measured panel as sign-in. */
+.registration-panel {
+    min-height: 100vh;
+}
+
+.registration-form-shell {
+    max-width: 360px;
+}
+
+.registration-header {
+    margin-bottom: 24px;
+}
+
+.registration-form-shell .form-group {
+    margin-bottom: 16px;
+}
+
+.registration-form-shell .login-btn {
+    width: 100%;
+}
+
 .mobile-logo-area {
     display: none;
     justify-content: center;

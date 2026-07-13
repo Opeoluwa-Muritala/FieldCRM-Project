@@ -1559,10 +1559,11 @@ async def submit_mobile_md_approve(
         next_stage = "disbursement_ready"
         action_label = "MD Final Approval — Disbursement Instruction"
     else:
-        await repo.md_add_comment(application_id, current_user.org_id, payload.notes)
-        next_stage = app.stage
-        action_label = "MD Comment Added"
-        updated = app
+        if not await repo.md_add_comment(application_id, current_user.org_id, payload.notes):
+            raise HTTPException(status_code=409, detail="Application not in md_approval stage")
+        updated = await _get_application_or_404(conn, application_id, current_user)
+        next_stage = "ed_approval"
+        action_label = "MD Comment Added — Returned to ED"
     await AuditService(conn).log(
         application_id=str(application_id),
         org_id=str(current_user.org_id),
