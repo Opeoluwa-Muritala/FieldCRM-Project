@@ -31,7 +31,6 @@ _VALID_ROLES = frozenset({
 _ROLE_TEMPLATE_ALIASES = {
     "account_officer": "loan_officer",
     "branch_supervisor": "branch_manager",
-    "credit_analyst": "branch_manager",
     "head_crm": "crm",
 }
 

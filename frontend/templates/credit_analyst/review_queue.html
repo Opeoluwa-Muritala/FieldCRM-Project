@@ -1,0 +1,5 @@
+{% extends "base/desktop_shell.html" %}
+{% block title %}Underwriting Queue | FieldCRM{% endblock %}
+{% block page_title %}Underwriting Queue{% endblock %}
+{% block breadcrumb %}Credit Analysis / Underwriting Queue{% endblock %}
+{% block content %}<section class="page-card"><div class="page-card-header"><h1 class="page-card-title">Files awaiting credit analysis</h1><p class="page-card-subtitle">Review affordability, supporting evidence, and risk before making a recommendation.</p></div><div class="queue-cards">{% for item in reviews %}<a href="/applications/{{ item.id }}/credit-review" class="queue-card"><span class="queue-card-name">{{ item.applicant_name }}</span><span class="queue-card-meta">{{ item.ref_no }} · {{ item.loan_type|title }}</span><span class="queue-card-amount">₦{{ "{:,.0f}".format(item.amount or 0) }}</span><span class="status-badge queue-card-badge needs-review">{{ item.exception_count }} OCR issues</span></a>{% else %}<div class="lo-empty-state">No credit reviews are waiting.</div>{% endfor %}</div></section>{% endblock %}

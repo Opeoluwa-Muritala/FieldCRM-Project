@@ -26,6 +26,8 @@ class DashboardService:
             return await self._loan_officer_data(user)
         elif role == "branch_manager":
             return await self._branch_manager_data(user)
+        elif role == "credit_analyst":
+            return await self._credit_analyst_data(user)
         elif role == "auditor":
             return await self._auditor_data(user)
         elif role == "system_admin":
@@ -138,6 +140,21 @@ class DashboardService:
             "queue": queue,
             "signoffs": signoffs,
             "pipeline": pipeline,
+        }
+
+    async def _credit_analyst_data(self, user) -> dict:
+        """Credit Analyst dashboard: underwriting files and data-quality exceptions."""
+        reviews = await self.get_credit_reviews(user, limit=8)
+        exceptions = await self.get_credit_ocr_exceptions(user, limit=8)
+        return {
+            "metrics": {
+                "reviews_due": len(reviews),
+                "ocr_exceptions": len(exceptions),
+                "reviewed_today": 0,
+                "returned_this_week": 0,
+            },
+            "reviews": reviews,
+            "exceptions": exceptions,
         }
 
     async def _auditor_data(self, user) -> dict:
