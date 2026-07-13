@@ -1,0 +1,12 @@
+{% extends "base/desktop_shell.html" %}
+{% block title %}Credit Analyst Dashboard | FieldCRM{% endblock %}
+{% block page_title %}Credit Analyst Dashboard{% endblock %}
+{% block breadcrumb %}Credit Analysis / Dashboard{% endblock %}
+{% block content %}
+{% set m = data.metrics if data and data.metrics else {} %}
+<div class="role-workspace">
+  <div class="role-hero"><div><div class="dashboard-date">{{ today_label }}</div><h1>Underwriting workstation</h1></div><a class="btn-primary-filled" href="/my-reviews">Open underwriting queue</a></div>
+  <div class="role-stat-grid"><div class="role-stat"><span>Reviews due</span><strong>{{ m.get('reviews_due', 0) }}</strong></div><div class="role-stat warning"><span>OCR exceptions</span><strong>{{ m.get('ocr_exceptions', 0) }}</strong></div><div class="role-stat"><span>Reviewed today</span><strong>{{ m.get('reviewed_today', 0) }}</strong></div><div class="role-stat danger"><span>Returned this week</span><strong>{{ m.get('returned_this_week', 0) }}</strong></div></div>
+  <div class="role-grid-main"><section class="page-card"><div class="role-section-head"><h2>Files awaiting analysis</h2><a href="/my-reviews">View all</a></div><div class="role-card-list">{% for item in data.reviews %}<a class="role-list-card" href="/applications/{{ item.id }}/credit-review"><strong>{{ item.applicant_name }}</strong><span>{{ item.ref_no }} · {{ item.loan_type|title }}</span><em>₦{{ "{:,.0f}".format(item.amount or 0) }}</em></a>{% else %}<div class="lo-empty-state">No files are awaiting analysis.</div>{% endfor %}</div></section><section class="page-card"><div class="role-section-head"><h2>Data exceptions</h2><a href="/ocr-exceptions">Review exceptions</a></div><div class="role-card-list">{% for item in data.exceptions %}<a class="role-list-card" href="/applications/{{ item.loan_id }}/ocr-review"><strong>{{ item.applicant_name }}</strong><span>{{ item.field_name }} · {{ item.confidence or 0 }}% confidence</span><em>{{ item.doc_type }}</em></a>{% else %}<div class="lo-empty-state">No OCR exceptions assigned.</div>{% endfor %}</div></section></div>
+</div>
+{% endblock %}

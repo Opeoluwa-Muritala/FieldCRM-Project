@@ -206,7 +206,7 @@ async def render_pending_signoffs(
 async def render_my_reviews(
     request: Request,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Branch Manager", "System Admin"]))
+    current_user = Depends(RoleChecker(["Branch Manager", "Credit Analyst", "System Admin"]))
 ):
     """Render the credit review queue (now handled by branch manager)."""
     dashboard_svc = DashboardService(conn)
@@ -222,13 +222,14 @@ async def render_my_reviews(
         active_page="reviews",
         today_label=datetime.now().strftime("%A, %d %B %Y"),
     )
-    return templates.TemplateResponse(request, "branch_manager/awaiting_concurrence.html", ctx)
+    template = "credit_analyst/review_queue.html" if current_user.role == "credit_analyst" else "branch_manager/awaiting_concurrence.html"
+    return templates.TemplateResponse(request, template, ctx)
 
 @router.get("/ocr-exceptions")
 async def render_ocr_exceptions(
     request: Request,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Branch Manager", "System Admin"]))
+    current_user = Depends(RoleChecker(["Branch Manager", "Credit Analyst", "System Admin"]))
 ):
     """Render OCR exceptions (now handled by branch manager)."""
     dashboard_svc = DashboardService(conn)
@@ -244,7 +245,8 @@ async def render_ocr_exceptions(
         active_page="exceptions",
         today_label=datetime.now().strftime("%A, %d %B %Y"),
     )
-    return templates.TemplateResponse(request, "branch_manager/awaiting_concurrence.html", ctx)
+    template = "credit_analyst/ocr_exceptions.html" if current_user.role == "credit_analyst" else "branch_manager/awaiting_concurrence.html"
+    return templates.TemplateResponse(request, template, ctx)
 
 @router.get("/audit-trail")
 async def render_audit_trail(
@@ -838,7 +840,7 @@ async def process_credit_review(
     recommendation_decision: str = Form(...),
     recommendation_notes: str = Form(...),
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Credit Officer", "System Admin"]))
+    current_user = Depends(RoleChecker(["Credit Analyst", "System Admin"]))
 ):
     """POST processor for credit underwriting recommendation."""
     repo = LoanRepository(conn)
@@ -954,7 +956,7 @@ async def process_return_page(
     reason_category: str = Form(...),
     notes: str = Form(...),
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Branch Manager", "Credit Officer", "System Admin"]))
+    current_user = Depends(RoleChecker(["Branch Manager", "Credit Analyst", "System Admin"]))
 ):
     """POST processor to return application to draft stage."""
     repo = LoanRepository(conn)
@@ -1050,7 +1052,7 @@ async def render_loan_pipeline(
 async def render_current_loans(
     request: Request,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Branch Manager", "Credit Officer", "Auditor", "System Admin"]))
+    current_user = Depends(RoleChecker(["Branch Manager", "Credit Analyst", "CRM", "Auditor", "System Admin"]))
 ):
     """Renders borrower loans view."""
     repo = LoanRepository(conn)

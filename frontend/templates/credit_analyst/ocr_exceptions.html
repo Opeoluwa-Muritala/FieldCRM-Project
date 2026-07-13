@@ -1,0 +1,5 @@
+{% extends "base/desktop_shell.html" %}
+{% block title %}OCR Exceptions | FieldCRM{% endblock %}
+{% block page_title %}OCR Exceptions{% endblock %}
+{% block breadcrumb %}Credit Analysis / OCR Exceptions{% endblock %}
+{% block content %}<section class="page-card"><div class="page-card-header"><h1 class="page-card-title">Document data exceptions</h1><p class="page-card-subtitle">Verify low-confidence extracted fields before relying on them in an underwriting decision.</p></div><div class="queue-cards">{% for item in exceptions %}<a href="/applications/{{ item.loan_id }}/ocr-review" class="queue-card"><span class="queue-card-name">{{ item.applicant_name }}</span><span class="queue-card-meta">{{ item.doc_type }} · {{ item.field_name }}</span><span class="queue-card-amount">{{ item.confidence or 0 }}% confidence</span></a>{% else %}<div class="lo-empty-state">No OCR exceptions are assigned.</div>{% endfor %}</div></section>{% endblock %}
