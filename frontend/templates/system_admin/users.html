@@ -3,67 +3,47 @@
 
 {% block title %}Users - FieldCRM{% endblock %}
 {% block page_title %}Users{% endblock %}
-{% block breadcrumb %}Control -> Users{% endblock %}
+{% block breadcrumb %}Control / Users{% endblock %}
 
 {% block content %}
-<div class="queue-page-header"><div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">User Management</h1></div></div>
-<section class="page-card" style="margin-bottom:20px;">
-    <h2 class="page-card-title" style="font-size:16px; margin-bottom:14px;">Invite a user</h2>
-    <form id="invite-user-form" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:12px;align-items:end;">
-        <label>Full name<input class="form-input" name="full_name" required minlength="2" placeholder="Jane Doe"></label>
-        <label>Email address<input class="form-input" type="email" name="email" required placeholder="jane@example.com"></label>
-        <label>Role<select class="form-input" name="role" required>
-            <option value="account_officer">Account Officer</option><option value="branch_manager">Branch Manager</option><option value="branch_supervisor">Branch Supervisor</option><option value="credit_analyst">Credit Analyst</option><option value="crm">CRM Officer</option><option value="head_crm">Head CRM</option><option value="auditor">Audit</option><option value="ed">Executive Director</option><option value="md">Managing Director</option><option value="system_admin">System Admin</option>
-        </select></label>
-        <button class="btn-primary-filled" type="submit">Send invite</button>
-    </form>
-    <p id="invite-user-status" aria-live="polite" style="margin:12px 0 0;font-size:13px;"></p>
-</section>
-<div class="role-pipeline-grid role-user-counts">
-    {% for item in role_counts %}
-    <div class="role-stage-card"><span>{{ item.role|replace('_', ' ')|title }}</span><strong>{{ item.count }}</strong><em>active</em></div>
-    {% endfor %}
+{% set total_users = users|length %}
+{% set active_users = users|selectattr('active')|list|length %}
+{% set pending_users = total_users - active_users %}
+{% set admins = users|selectattr('role', 'equalto', 'system_admin')|list|length %}
+<div class="users-page">
+    <header class="users-hero">
+        <div><p class="users-eyebrow">Administration</p><h1>User management</h1><p>Invite colleagues, assign operational roles, and keep access current.</p></div>
+        <div class="users-hero-count"><strong>{{ total_users }}</strong><span>{{ 'user' if total_users == 1 else 'users' }}</span></div>
+    </header>
+
+    <section class="users-invite-card" aria-labelledby="invite-heading">
+        <div class="users-invite-heading"><span class="users-section-kicker">Access control</span><h2 id="invite-heading">Invite a team member</h2></div>
+        <form id="invite-user-form" class="users-invite-form">
+            <label><span>Full name</span><input class="form-input" name="full_name" required minlength="2" placeholder="Jane Doe"></label>
+            <label><span>Email address</span><input class="form-input" type="email" name="email" required placeholder="jane@company.com"></label>
+            <label><span>Role</span><select class="form-input" name="role" required><option value="account_officer">Account Officer</option><option value="branch_manager">Branch Manager</option><option value="branch_supervisor">Branch Supervisor</option><option value="credit_analyst">Credit Analyst</option><option value="crm">CRM Officer</option><option value="head_crm">Head CRM</option><option value="auditor">Audit</option><option value="ed">Executive Director</option><option value="md">Managing Director</option><option value="system_admin">System Admin</option></select></label>
+            <button class="btn-primary-filled users-invite-button" type="submit">Send invite <span aria-hidden="true">→</span></button>
+        </form>
+        <p id="invite-user-status" class="users-invite-status" aria-live="polite"></p>
+    </section>
+
+    <section class="users-stat-row" aria-label="User summary">
+        <div><span>Total users</span><strong>{{ total_users }}</strong></div><div><span>Active</span><strong>{{ active_users }}</strong></div><div><span>Pending invites</span><strong>{{ pending_users }}</strong></div><div><span>Administrators</span><strong>{{ admins }}</strong></div>
+    </section>
+
+    <section class="users-directory page-card">
+        <div class="users-directory-head"><div><span class="users-section-kicker">Directory</span><h2>Team members <em>{{ total_users }} {{ 'user' if total_users == 1 else 'users' }}</em></h2></div><p>Hover a row to manage access.</p></div>
+        <div class="custom-table-container users-table-wrap"><table class="custom-table users-table"><thead><tr><th>Team member</th><th>Role</th><th>Status</th><th>Last login</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>
+        {% for item in users %}
+        <tr><td><div class="user-identity"><span class="user-avatar">{{ item.full_name.split()[0][0] }}{{ item.full_name.split()[-1][0] if item.full_name.split()|length > 1 else '' }}</span><div><strong>{{ item.full_name }}</strong><small>{{ item.email }}</small></div></div></td><td><span class="user-role">{{ item.role|replace('_', ' ')|title }}</span></td><td><span class="user-status {% if item.active %}is-active{% else %}is-pending{% endif %}"><i></i>{{ 'Active' if item.active else 'Pending' }}</span></td><td>{{ item.last_login_at.strftime('%d %b %Y') if item.last_login_at else 'Not yet signed in' }}</td><td><div class="user-row-actions"><button type="button" title="Edit role" aria-label="Edit role for {{ item.full_name }}">Edit role</button>{% if item.active %}<button type="button" class="is-danger" title="Deactivate {{ item.full_name }}">Deactivate</button>{% else %}<button type="button" title="Resend invitation to {{ item.full_name }}">Resend invite</button>{% endif %}</div></td></tr>
+        {% else %}
+        <tr><td colspan="5"><div class="users-empty"><span aria-hidden="true">◌</span><strong>No team members yet</strong><p>Use the invite form above to add the first member of your team.</p></div></td></tr>{% endfor %}
+        </tbody></table></div>
+    </section>
+
+    <section class="users-reference"><div><span class="users-section-kicker">Workflow reference</span><h2>How roles move a file forward</h2><p>Each invitation gives the member the correct desk and review permissions from day one.</p></div><ol><li>Account Officer</li><li>Branch Manager</li><li>Branch Supervisor</li><li>Credit Analyst</li><li>CRM &amp; Head CRM</li><li>Audit → ED → MD</li></ol></section>
 </div>
-<div class="queue-cards">
-    {% for item in users %}
-    <div class="queue-card">
-        <span class="queue-card-name">{{ item.full_name }}</span>
-        <span class="queue-card-meta">{{ item.email }} - {{ item.role|replace('_', ' ')|title }}</span>
-        <span class="queue-card-amount">{{ 'Active' if item.active else 'Inactive' }}</span>
-        <span class="status-badge queue-card-badge {% if item.active %}verified{% else %}missing{% endif %}">{{ item.role|replace('_', ' ')|title }}</span>
-    </div>
-    {% else %}<div class="lo-empty-state">No users found.</div>{% endfor %}
-</div>
-<div class="custom-table-container queue-table-wrap page-card"><table class="custom-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th></tr></thead><tbody>
-{% for item in users %}
-<tr><td>{{ item.full_name }}</td><td>{{ item.email }}</td><td>{{ item.role|replace('_', ' ')|title }}</td><td>{{ 'Active' if item.active else 'Inactive' }}</td><td>{{ item.last_login_at.strftime('%d %b') if item.last_login_at else '-' }}</td></tr>
-{% else %}<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No users found.</td></tr>{% endfor %}
-</tbody></table></div>
 <script>
-document.getElementById('invite-user-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const button = form.querySelector('button');
-    const status = document.getElementById('invite-user-status');
-    button.disabled = true;
-    status.textContent = 'Sending invitation…';
-    try {
-        const data = Object.fromEntries(new FormData(form));
-        const response = await fetch('/api/v1/users/invitations', {
-            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.detail || 'Unable to create invitation.');
-        status.style.color = result.email_sent ? 'var(--accent-success, #15803d)' : 'var(--accent-warning, #a16207)';
-        status.textContent = result.message;
-        if (result.email_sent) {
-            form.reset();
-            window.setTimeout(() => window.location.reload(), 900);
-        }
-    } catch (error) {
-        status.style.color = 'var(--accent-danger, #b91c1c)';
-        status.textContent = error.message;
-    } finally { button.disabled = false; }
-});
+document.getElementById('invite-user-form').addEventListener('submit', async (event) => { event.preventDefault(); const form = event.currentTarget, button = form.querySelector('button'), status = document.getElementById('invite-user-status'); button.disabled = true; status.textContent = 'Sending invitation…'; try { const response = await fetch('/api/v1/users/invitations', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))}); const result = await response.json(); if (!response.ok) throw new Error(result.detail || 'Unable to create invitation.'); status.className = 'users-invite-status ' + (result.email_sent ? 'is-success' : 'is-warning'); status.textContent = result.message; if (result.email_sent) { form.reset(); window.setTimeout(() => window.location.reload(), 900); } } catch (error) { status.className = 'users-invite-status is-error'; status.textContent = error.message; } finally { button.disabled = false; } });
 </script>
 {% endblock %}
