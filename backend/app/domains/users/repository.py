@@ -34,3 +34,6 @@ class UserRepository(BaseRepository):
 
     async def deactivate_user(self, user_id: UUID) -> None:
         await self.conn.execute("UPDATE users SET active = FALSE WHERE id = $1", str(user_id))
+
+    async def update_role(self, user_id: UUID, role: str) -> None:
+        await self.conn.execute("UPDATE users SET role = $2 WHERE id = $1", str(user_id), role)

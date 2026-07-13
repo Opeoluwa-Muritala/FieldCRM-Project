@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from app.core.database import db_conn
 from app.domains.users.repository import UserRepository
 from app.domains.users.service import UserService
-from app.domains.users.schemas import UserResponse, UserCreate, UserInvitationCreate, UserRow
+from app.domains.users.schemas import UserResponse, UserCreate, UserInvitationCreate, UserRoleUpdate, UserRow
+from uuid import UUID
 from app.core.dependencies import get_current_user, RoleChecker
 from app.core.config import settings
 from app.services.email_service import EmailService
@@ -83,3 +84,24 @@ async def invite_user(
         "id": str(user.id), "email": user.email, "role": user.role, "email_sent": delivered,
         "message": "Invitation email sent." if delivered else "User was invited, but the email could not be delivered. Check SMTP settings and server logs before resending.",
     }
+
+
+@router.put("/{user_id}/role")
+async def update_user_role(
+    user_id: UUID,
+    update: UserRoleUpdate,
+    service: UserService = Depends(get_user_service),
+    current_admin: UserRow = Depends(RoleChecker(["System Admin"])),
+):
+    user = await service.update_user_role(current_admin, user_id, update.role)
+    return {"id": str(user.id), "role": user.role, "message": "Role updated."}
+
+
+@router.post("/{user_id}/deactivate")
+async def deactivate_user(
+    user_id: UUID,
+    service: UserService = Depends(get_user_service),
+    current_admin: UserRow = Depends(RoleChecker(["System Admin"])),
+):
+    await service.deactivate_managed_user(current_admin, user_id)
+    return {"id": str(user_id), "active": False, "message": "User deactivated."}

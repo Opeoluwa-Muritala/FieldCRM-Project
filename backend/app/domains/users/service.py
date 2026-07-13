@@ -9,6 +9,10 @@ from app.domains.users.schemas import UserRow
 from app.core.database import get_transaction
 
 class UserService:
+    ALLOWED_ROLES = {
+        "account_officer", "branch_manager", "branch_supervisor", "credit_analyst",
+        "crm", "head_crm", "auditor", "ed", "md", "system_admin",
+    }
     def __init__(self, repo: UserRepository):
         self.repo = repo
 
@@ -78,3 +82,28 @@ class UserService:
         )
         user.active = False
         return user, token
+
+    async def update_user_role(self, current_admin: UserRow, user_id, role: str) -> UserRow:
+        user = await self.repo.get_by_id(user_id)
+        if not user or user.org_id != current_admin.org_id:
+            raise DomainException("User not found.", 404)
+        if user.id == current_admin.id:
+            raise DomainException("You cannot change your own role.", 400)
+
+        normalized_role = role.strip().lower().replace(" ", "_")
+        if normalized_role not in self.ALLOWED_ROLES:
+            raise DomainException("Select a valid role.", 400)
+
+        await self.repo.update_role(user.id, normalized_role)
+        return await self.repo.get_by_id(user.id)
+
+    async def deactivate_managed_user(self, current_admin: UserRow, user_id) -> None:
+        user = await self.repo.get_by_id(user_id)
+        if not user or user.org_id != current_admin.org_id:
+            raise DomainException("User not found.", 404)
+        if user.id == current_admin.id:
+            raise DomainException("You cannot deactivate your own account.", 400)
+        if not user.active:
+            raise DomainException("This user is already inactive.", 400)
+
+        await self.repo.deactivate_user(user.id)
