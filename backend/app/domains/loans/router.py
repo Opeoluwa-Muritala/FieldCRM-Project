@@ -235,7 +235,7 @@ async def render_ocr_review_queue(
 async def render_awaiting_me(
     request: Request,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Branch Manager"]))
+    current_user = Depends(RoleChecker(["Branch Manager", "Branch Supervisor"]))
 ):
     """Render applications awaiting branch manager concurrence."""
     dashboard_svc = DashboardService(conn)
@@ -1000,7 +1000,7 @@ async def process_approval_readiness(
     conn = Depends(db_conn),
     current_user = Depends(RoleChecker(["Branch Manager"]))
 ):
-    """Record Branch Manager concurrence and forward for further review."""
+    """Record the applicable branch concurrence and forward for further review."""
     form_data = await request.form()
     kyc_attested = form_data.get("kyc_attested")
     collateral_attested = form_data.get("collateral_attested")
@@ -1011,18 +1011,26 @@ async def process_approval_readiness(
         application_id, kyc_attested, collateral_attested
     )
 
+    role = current_user.role.lower().replace(" ", "_")
+    expected_stage, next_stage, audit_action = {
+        "branch_manager": ("branch_manager_review", "branch_supervisor_review", "Branch Manager Concurrence — Forwarded to Branch Supervisor"),
+        "branch_supervisor": ("branch_supervisor_review", "credit_analyst_review", "Branch Supervisor Concurrence — Forwarded to Credit Analyst"),
+    }[role]
     repo = LoanRepository(conn)
-    app = await repo.approve(UUID(application_id), current_user.org_id, current_user.id)
+    app = await repo.approve(
+        UUID(application_id), current_user.org_id, current_user.id,
+        expected_stage=expected_stage, next_stage=next_stage,
+    )
     if not app:
-        raise HTTPException(status_code=404, detail="Loan Application not found or not awaiting Branch Manager review")
+        raise HTTPException(status_code=404, detail="Loan Application is not awaiting your review")
         
     audit = AuditService(conn)
     await audit.log(
         application_id=application_id,
         org_id=str(current_user.org_id),
         action="Branch Manager Concurrence — Forwarded for Further Review",
-        from_stage="branch_manager_review",
-        to_stage="branch_supervisor_review",
+        from_stage=expected_stage,
+        to_stage=next_stage,
         actor_id=str(current_user.id),
         actor_role=current_user.role
     )
