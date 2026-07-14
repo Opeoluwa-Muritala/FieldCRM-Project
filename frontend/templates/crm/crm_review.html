@@ -105,7 +105,22 @@
 <div class="audit-action-panel">
   <h3 style="margin-bottom:12px;">{{ 'Head CRM Approval' if current_user.role == 'head_crm' else 'CRM Dossier Review' }}</h3>
   <p class="action-note">{{ 'This approval records the Head CRM decision and routes the file to Audit.' if current_user.role == 'head_crm' else 'This review records dossier completeness and routes the file to Head CRM for approval.' }}</p>
+  {% if request.query_params.get('error') %}
+  <div class="flat-card warning" id="crm-review-error" role="alert" tabindex="-1" style="margin-bottom:16px;"><strong>Review cannot proceed.</strong><br>{{ request.query_params.get('error') }}</div>
+  {% endif %}
   <form method="post" action="/applications/{{ app_id }}/crm-review">
+    {% if current_user.role == 'crm' %}
+    <section id="crm-consents" style="margin:20px 0;padding:18px;border:1px solid var(--border-color);border-radius:8px;">
+      <h4 style="margin:0 0 8px;">Declarations &amp; Consents</h4>
+      <p style="font-size:13px;color:var(--text-muted);">All items below are required before this file can proceed.</p>
+      <label style="display:block;margin:12px 0;"><input type="checkbox" name="consent_credit_bureau" value="1" {% if consent_data.consent_credit_bureau %}checked{% endif %}> Credit Bureau Disclosure (CBN-mandated disclosure consent)</label>
+      <label style="display:block;margin:12px 0;"><input type="checkbox" name="consent_credit_check" value="1" {% if consent_data.consent_credit_check %}checked{% endif %}> Credit Check Authorisation</label>
+      <label style="display:block;margin:12px 0;"><input type="checkbox" name="consent_cheque" value="1" {% if consent_data.consent_cheque %}checked{% endif %}> Cheque Recovery Authorisation</label>
+      <label style="display:block;margin:12px 0;"><input type="checkbox" name="consent_gsi" value="1" {% if consent_data.consent_gsi %}checked{% endif %}> Global Standing Instruction (GSI) Mandate</label>
+      <div style="margin-top:16px;"><label for="applicant_signature">Applicant Signature</label><div class="signature-box" style="margin-top:6px;"><canvas id="applicant_signature_canvas"></canvas><button type="button" class="signature-clear-btn" id="clear-applicant-signature">Clear</button></div><input type="hidden" name="applicant_signature" id="applicant_signature" value="{{ consent_data.applicant_signature or '' }}"></div>
+      <label style="display:block;margin-top:16px;"><input type="checkbox" name="final_declaration" value="1" {% if consent_data.final_declaration %}checked{% endif %}> I declare all information provided is true and correct.</label>
+    </section>
+    {% endif %}
     <div style="margin-bottom:16px;">
       <label for="crm_notes" style="display:block;margin-bottom:6px;font-weight:600;">Notes for Executive (optional)</label>
       <textarea id="crm_notes" name="crm_notes" rows="4"
@@ -119,4 +134,23 @@
     </div>
   </form>
 </div>
+<script>
+(() => {
+  const canvas = document.getElementById('applicant_signature_canvas');
+  const input = document.getElementById('applicant_signature');
+  if (!canvas || !input) return;
+  const context = canvas.getContext('2d');
+  const resize = () => { const rect = canvas.parentElement.getBoundingClientRect(); canvas.width = rect.width; canvas.height = rect.height; };
+  resize();
+  let drawing = false;
+  const point = event => { const rect = canvas.getBoundingClientRect(); const touch = event.touches?.[0] || event; return [touch.clientX - rect.left, touch.clientY - rect.top]; };
+  const start = event => { drawing = true; const [x, y] = point(event); context.beginPath(); context.moveTo(x, y); event.preventDefault(); };
+  const draw = event => { if (!drawing) return; const [x, y] = point(event); context.lineWidth = 2; context.lineCap = 'round'; context.lineTo(x, y); context.stroke(); event.preventDefault(); };
+  const end = () => { if (drawing) input.value = canvas.toDataURL(); drawing = false; };
+  canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', draw); window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, {passive:false}); canvas.addEventListener('touchmove', draw, {passive:false}); canvas.addEventListener('touchend', end);
+  document.getElementById('clear-applicant-signature').addEventListener('click', () => { context.clearRect(0, 0, canvas.width, canvas.height); input.value = ''; });
+  document.getElementById('crm-review-error')?.scrollIntoView({behavior:'smooth', block:'center'});
+})();
+</script>
 {% endblock %}

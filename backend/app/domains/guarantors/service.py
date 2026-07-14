@@ -33,10 +33,17 @@ class GuarantorService:
     ) -> dict:
         existing = await self.loan_repo.get_stage_data(loan_id, "intake")
         data = existing["data_json"] if existing and existing.get("data_json") else {}
-        data[f"guarantor_{slot}_status"] = "Submitted"
-        await self.loan_repo.save_stage_data(loan_id, "intake", data, submitted_by)
-
         g_data = await self.get_wizard_data(loan_id, slot)
+
+        # Keep the parent wizard's summary in sync with the submitted
+        # guarantor record.  The step-three card reads these fields directly.
+        data.update({
+            f"guarantor_{slot}_name": g_data.get("name", ""),
+            f"guarantor_{slot}_relationship": g_data.get("relationship", ""),
+            f"guarantor_{slot}_phone": g_data.get("phone", ""),
+            f"guarantor_{slot}_status": "Submitted",
+        })
+        await self.loan_repo.save_stage_data(loan_id, "intake", data, submitted_by)
 
         full_name = g_data.get("name")
         relationship = g_data.get("relationship")
