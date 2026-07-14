@@ -423,7 +423,11 @@
 
                 <div class="form-group">
                     <label class="field-label">Loan Amount (₦) <span class="required">*</span></label>
-                    <input type="number" name="amount" class="field-input" value="{{ data.amount or '' }}" required>
+                    <input type="number" name="amount" id="loan_amount" class="field-input" value="{{ data.amount or '' }}" min="0" step="0.01" required>
+                </div>
+                <div class="form-group-full">
+                    <label class="field-label">Amount in Words</label>
+                    <input type="text" name="amount_words" id="amount_words" class="field-input" value="{{ data.amount_words or '' }}" readonly aria-live="polite" placeholder="Automatically generated from the loan amount">
                 </div>
 
                 <div class="form-group">
@@ -833,6 +837,40 @@
         }
     }
 
+    function nairaAmountToWords(value) {
+        const raw = String(value || '').replace(/,/g, '').trim();
+        if (!raw || !/^\d+(?:\.\d{0,2})?$/.test(raw)) return '';
+        const [wholeText, fractionText = ''] = raw.split('.');
+        const whole = Number(wholeText);
+        if (!Number.isSafeInteger(whole) || whole > 999999999999) return '';
+        const units = ['', 'Thousand', 'Million', 'Billion'];
+        const underThousand = n => {
+            const ones = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+            const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+            const parts = [];
+            if (n >= 100) { parts.push(ones[Math.floor(n / 100)] + ' Hundred'); n %= 100; }
+            if (n >= 20) { parts.push(tens[Math.floor(n / 10)] + (n % 10 ? '-' + ones[n % 10] : '')); }
+            else if (n > 0) parts.push(ones[n]);
+            return parts.join(' and ');
+        };
+        let remaining = whole;
+        const groups = [];
+        for (let index = 0; index < units.length; index += 1) {
+            const group = remaining % 1000;
+            if (group) groups.unshift(underThousand(group) + (units[index] ? ' ' + units[index] : ''));
+            remaining = Math.floor(remaining / 1000);
+        }
+        const naira = groups.length ? groups.join(', ') : 'Zero';
+        const kobo = Number((fractionText + '00').slice(0, 2));
+        return `${naira} Naira${kobo ? ', ' + underThousand(kobo) + ' Kobo' : ''} Only`;
+    }
+
+    function updateAmountWords() {
+        const amount = document.getElementById('loan_amount');
+        const words = document.getElementById('amount_words');
+        if (amount && words) words.value = nairaAmountToWords(amount.value);
+    }
+
     function addPledgeRow() {
         const table = document.getElementById('pledgeItemsTable').getElementsByTagName('tbody')[0];
         const rowCount = table.rows.length + 1;
@@ -983,6 +1021,8 @@
         if (document.getElementById('sec_Shop Stock')) {
             checkCollateralSelection();
         }
+        updateAmountWords();
+        document.getElementById('loan_amount')?.addEventListener('input', updateAmountWords);
         
         // Init signatures
         initSignature('spouse_sig_canvas', 'spouse_signature_val');
