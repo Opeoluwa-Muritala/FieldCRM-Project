@@ -107,7 +107,17 @@ class AuditChecklistRequest(BaseModel):
 
 
 def _role(user) -> str:
-    return user.role.lower().replace(" ", "_")
+    raw_role = user.role.lower().replace(" ", "_")
+    # The web workflow is authoritative.  The mobile endpoints are still
+    # backed by the former stage names, so normalize only at this boundary
+    # while their endpoint names are migrated.  API responses retain the
+    # canonical website role supplied by the server.
+    return {
+        "account_officer": "loan_officer",
+        "branch_supervisor": "branch_manager",
+        "credit_analyst": "committee",
+        "head_crm": "executive",
+    }.get(raw_role, raw_role)
 
 
 def _mobile_role(user) -> str:

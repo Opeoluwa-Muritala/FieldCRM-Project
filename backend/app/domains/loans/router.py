@@ -83,7 +83,7 @@ async def render_dashboard(
     data = await dashboard_svc.get_dashboard_data(current_user)
 
     repo = LoanRepository(conn)
-    if current_user.role.lower().replace(" ", "_") == "loan_officer":
+    if current_user.role.lower().replace(" ", "_") in ("account_officer", "loan_officer"):
         applications = data.get("queue", [])
     else:
         applications = await repo.list_recent(current_user.org_id, limit=10)
@@ -392,7 +392,7 @@ async def render_applications_list(
 
     repo = LoanRepository(conn)
     role_name = current_user.role.lower().replace(" ", "_")
-    officer_id = current_user.id if role_name == "loan_officer" else None
+    officer_id = current_user.id if role_name in ("account_officer", "loan_officer") else None
     applications, total = await repo.list_by_stage(
         org_id=current_user.org_id,
         stage=db_stage,
@@ -532,9 +532,9 @@ async def render_wizard_step(
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
     user_role = current_user.role.lower().replace(" ", "_")
-    if user_role != "loan_officer":
+    if user_role not in ("account_officer", "loan_officer"):
         raise HTTPException(status_code=403, detail="Insufficient permissions for this action")
-    if user_role == "loan_officer" and app.created_by != current_user.id:
+    if app.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="You do not have permission to view/modify this application")
 
     data = await service.get_wizard_data(UUID(application_id))
@@ -566,9 +566,9 @@ async def process_wizard_step(
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
     user_role = current_user.role.lower().replace(" ", "_")
-    if user_role != "loan_officer":
+    if user_role not in ("account_officer", "loan_officer"):
         raise HTTPException(status_code=403, detail="Insufficient permissions for this action")
-    if user_role == "loan_officer" and app.created_by != current_user.id:
+    if app.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="You do not have permission to view/modify this application")
     form_data = await request.form()
     data_dict = form_data_to_jsonable_dict(form_data)
@@ -1164,7 +1164,7 @@ async def render_search(
     repo = LoanRepository(conn)
     role_name = current_user.role.lower().replace(" ", "_")
     apps = await repo.search(org_id=current_user.org_id, query=q) if q else []
-    if role_name == "loan_officer":
+    if role_name in ("account_officer", "loan_officer"):
         applications = [app for app in apps if app.created_by == current_user.id]
     else:
         applications = apps

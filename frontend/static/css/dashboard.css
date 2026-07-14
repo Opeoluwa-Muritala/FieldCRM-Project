@@ -2467,6 +2467,102 @@ textarea,
 }
 
 body { background: #F2F2F2; }
+
+/* Loan Officer dashboard: both responsive layouts are rendered by the
+   template, so CSS owns which one is visible at the current window size. */
+.lo-dashboard-mobile { display: none; }
+.lo-dashboard-desktop { display: block; }
+.lo-dashboard-desktop .dashboard-date {
+    color: #766B78;
+    font: 700 11px/1.2 "DM Sans", sans-serif;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+.lo-dashboard-desktop .dashboard-greeting {
+    margin: 8px 0 28px;
+    color: #2E0052;
+    font: 700 clamp(24px, 3vw, 34px)/1.15 "Playfair Display", serif;
+}
+.lo-dashboard-desktop .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.lo-dashboard-desktop .metric-card {
+    min-height: 136px;
+    padding: 18px;
+    border: 1px solid rgba(46,0,82,.10);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 4px 20px rgba(75,0,130,.08);
+}
+.lo-dashboard-desktop .metric-card-top,
+.lo-dashboard-desktop .metric-card-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.lo-dashboard-desktop .metric-card-bottom { margin-top: 22px; align-items: end; }
+.lo-dashboard-desktop .metric-label {
+    color: #766B78;
+    font: 700 10px/1.2 "DM Sans", sans-serif;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.lo-dashboard-desktop .metric-value { color: #2E0052; font-size: 32px; line-height: 1; }
+.lo-dashboard-desktop .metric-delta { color: #64748B; font-size: 12px; }
+.lo-dashboard-desktop .metric-icon-bg {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 6px;
+    background: #F3EAF3;
+}
+.lo-dashboard-desktop .layout-two-col {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(320px, .85fr);
+    gap: 24px;
+    align-items: start;
+}
+
+@media (max-width: 767px) {
+    .lo-dashboard-desktop { display: none; }
+    .lo-dashboard-mobile { display: block; padding: 0 16px 96px; }
+    .lo-greeting-card {
+        margin: 0 -16px 20px;
+        padding: 24px 20px;
+        background: #2E0052;
+        color: #fff;
+    }
+    .lo-greeting-date { color: #E8D6E9; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .lo-greeting-text { margin-top: 10px; font: 700 26px/1.16 "Playfair Display", serif; }
+    .lo-greeting-subtitle { margin-top: 8px; color: rgba(255,255,255,.78); font-size: 14px; }
+    .lo-stat-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 24px; }
+    .lo-stat-chip { min-height: 88px; padding: 14px; border: 1px solid rgba(46,0,82,.10); border-radius: 8px; background: #fff; }
+    .lo-stat-chip-value { display: block; color: #2E0052; font: 700 26px/1 "Playfair Display", serif; }
+    .lo-stat-chip-label { display: block; margin-top: 8px; color: #64748B; font-size: 11px; font-weight: 700; line-height: 1.2; text-transform: uppercase; }
+    .lo-stat-chip-danger .lo-stat-chip-value { color: #B42318; }
+    .lo-section-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 24px 0 12px; }
+    .lo-section-title { color: #2E0052; font: 700 20px/1.2 "Playfair Display", serif; }
+    .lo-section-link { color: #2E0052; font-size: 12px; font-weight: 700; text-decoration: none; }
+    .lo-task-list, .lo-activity-list { display: grid; gap: 10px; }
+    .lo-task-card, .lo-empty-state, .lo-activity-item { border: 1px solid rgba(46,0,82,.10); border-radius: 8px; background: #fff; }
+    .lo-task-card-inner, .lo-activity-item { display: flex; align-items: center; gap: 12px; padding: 14px; }
+    .lo-task-card-info, .lo-activity-info { min-width: 0; flex: 1; }
+    .lo-task-card-name, .lo-activity-name { display: block; color: #2E0052; font-weight: 700; }
+    .lo-task-card-desc, .lo-activity-stage, .lo-activity-time { color: #64748B; font-size: 12px; }
+    .lo-empty-state { display: flex; align-items: center; gap: 10px; padding: 18px; color: #64748B; }
+    .lo-activity-item { color: inherit; text-decoration: none; }
+    .lo-activity-dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: #89268B; }
+}
+
+@media (min-width: 768px) and (max-width: 1080px) {
+    .lo-dashboard-desktop .metrics-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lo-dashboard-desktop .layout-two-col { grid-template-columns: 1fr; }
+}
 .responsive-shell { grid-template-columns: 264px minmax(0, 1fr); min-width: 1180px; }
 .desktop-sidebar { position: sticky; top: 0; height: 100vh; width: 264px; background: #2E0052; }
 .sidebar-logo { min-height: 104px; padding: 16px 24px; justify-content: flex-start; }
@@ -2541,3 +2637,13 @@ body { background: #F2F2F2; }
 .pipeline-column-header { padding: 16px; border-bottom: 1px solid #E7E3E8; background: #F7F4F7; }
 .pipeline-column-header h2 { color: #2E0052; font-size: 18px; }
 .pipeline-card { border: 1px solid #E7E3E8; border-radius: 4px; box-shadow: none; }
+
+/* Keep the mobile dashboard usable even though the server currently renders
+   the desktop shell for every user agent. These overrides intentionally come
+   after the desktop shell refinement above. */
+@media (max-width: 767px) {
+    .responsive-shell { display: block; min-width: 0; }
+    .desktop-sidebar, .desktop-topbar { display: none; }
+    .responsive-main { display: block; min-height: 100dvh; }
+    .content-wrapper { padding: 0; }
+}

@@ -112,7 +112,7 @@
 <div class="lo-dashboard-desktop">
     {# Date and greeting line #}
     <div class="dashboard-date">{{ today_label }}</div>
-    <div class="dashboard-greeting">Good morning, {{ user.name if user else 'Officer' }} — Loan Officer.</div>
+    <div class="dashboard-greeting">Good morning, {{ user.name if user else 'Officer' }} — {{ user.display_role if user and user.display_role else 'Account Officer' }}.</div>
 
     {# 4 Metric Cards #}
     <div class="metrics-row">
@@ -128,7 +128,7 @@
         </div>
         <div class="metric-card">
             <div class="metric-card-top">
-                <span class="metric-label">Visits Due</span>
+                <span class="metric-label">Pending Sync</span>
                 <div class="metric-icon-bg">&#x1F4E4;</div>
             </div>
             <div class="metric-card-bottom">
@@ -138,7 +138,7 @@
         </div>
         <div class="metric-card">
             <div class="metric-card-top">
-                <span class="metric-label">Pending Sync</span>
+                <span class="metric-label">Visits Due</span>
                 <div class="metric-icon-bg">&#x1F4CD;</div>
             </div>
             <div class="metric-card-bottom">

@@ -1,6 +1,7 @@
 package com.fieldcrm.android.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -29,7 +30,8 @@ fun FieldCRMNavDisplay(
         backStack = backStack,
         onBack = onBack,
         entryDecorators = listOf(
-            rememberSaveableStateHolderNavEntryDecorator<NavKey>()
+            rememberSaveableStateHolderNavEntryDecorator<NavKey>(),
+            rememberViewModelStoreNavEntryDecorator<NavKey>()
         ),
         entryProvider = entryProvider(
             fallback = { unknownScreen ->
