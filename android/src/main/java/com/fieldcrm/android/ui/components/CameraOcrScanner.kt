@@ -127,7 +127,7 @@ private fun DocumentScanMode(
 
     // Accumulated page bitmaps
     val pages = remember { mutableStateListOf<Bitmap>() }
-    var statusMessage by remember { mutableStateOf("Align A4 document within the frame") }
+    var statusMessage by remember { mutableStateOf("Fill most of the frame and keep the document parallel to the camera") }
     var isCapturing by remember { mutableStateOf(false) }
 
     LaunchedEffect(cameraProviderFuture) {
@@ -174,6 +174,13 @@ private fun DocumentScanMode(
             )
             Spacer(Modifier.height(4.dp))
             Text(statusMessage, style = FieldTheme.typography.body, color = Color.White, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Use bright, even light. Avoid glare and hold steady before capture.",
+                style = FieldTheme.typography.label,
+                color = Color.White.copy(alpha = 0.78f),
+                textAlign = TextAlign.Center
+            )
         }
 
         // Thumbnail strip of captured pages
@@ -260,6 +267,15 @@ private fun DocumentScanMode(
             }
 
             if (pages.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                SecondaryButton(
+                    text = "Retake last page",
+                    onClick = {
+                        pages.removeLast()
+                        statusMessage = "Last page removed. Align the document and capture again."
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 Spacer(Modifier.height(10.dp))
                 PrimaryButton(
                     text = "Done — Build PDF (${pages.size} page${if (pages.size > 1) "s" else ""})",

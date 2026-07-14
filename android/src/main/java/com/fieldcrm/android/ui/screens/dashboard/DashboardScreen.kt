@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -39,6 +40,7 @@ import androidx.activity.compose.BackHandler
 import org.koin.androidx.compose.koinViewModel
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 @Composable
 fun DashboardScreenView(
     role: UserRole?,
@@ -106,12 +108,12 @@ fun DashboardScreenView(
             .joinToString(" ") { it.replaceFirstChar { c -> c.uppercaseChar() } }
     } else {
         when (resolvedRole) {
-            UserRole.LOAN_OFFICER -> "Loan Officer"
-            UserRole.BRANCH_MANAGER -> "Branch Manager"
+            UserRole.LOAN_OFFICER, UserRole.ACCOUNT_OFFICER -> "Loan Officer"
+            UserRole.BRANCH_MANAGER, UserRole.BRANCH_SUPERVISOR -> "Branch Manager"
             UserRole.AUDITOR -> "Auditor"
             UserRole.CRM -> "CRM Officer"
-            UserRole.EXECUTIVE -> "Executive"
-            UserRole.COMMITTEE -> "Committee Member"
+            UserRole.EXECUTIVE, UserRole.HEAD_CRM -> "Executive"
+            UserRole.COMMITTEE, UserRole.CREDIT_ANALYST -> "Committee Member"
             UserRole.ED -> "Executive Director"
             UserRole.MD -> "Managing Director"
             UserRole.SYSTEM_ADMIN -> "System Admin"
@@ -128,13 +130,13 @@ fun DashboardScreenView(
 
     // Role-specific metrics mapping — values overridden by live API data when available
     val metrics = when (resolvedRole) {
-        UserRole.LOAN_OFFICER -> listOf(
+        UserRole.LOAN_OFFICER, UserRole.ACCOUNT_OFFICER -> listOf(
             MetricData(liveMetrics?.apps_today?.toString() ?: "—", "APPS TODAY", FieldIcons.DocumentOutlined, FieldTheme.colors.purple600),
             MetricData(liveMetrics?.pending_sync?.toString() ?: "—", "PENDING SYNC", FieldIcons.SyncOutlined, FieldTheme.colors.statusWarning),
             MetricData(liveMetrics?.visits_due?.toString() ?: "—", "VISITS DUE", FieldIcons.LocationOutlined, FieldTheme.colors.purple600),
             MetricData(liveMetrics?.missing_docs?.toString() ?: "—", "MISSING DOCS", FieldIcons.AlertOutlined, FieldTheme.colors.statusDanger)
         )
-        UserRole.BRANCH_MANAGER -> listOf(
+        UserRole.BRANCH_MANAGER, UserRole.BRANCH_SUPERVISOR -> listOf(
             MetricData(liveMetrics?.awaiting_signoff?.toString() ?: "—", "AWAITING SIGNOFF", FieldIcons.PenOutlined, FieldTheme.colors.statusWarning),
             MetricData(liveMetrics?.let { "₦${String.format(Locale.US, "%,.1fM", it.branch_disbursed / 1_000_000)}" } ?: "—", "BRANCH DISBURSED", FieldIcons.PaymentsOutlined, FieldTheme.colors.statusSuccess),
             MetricData(liveMetrics?.let { "${it.target_met_pct}%" } ?: "—", "TARGET MET", FieldIcons.PaymentsOutlined, FieldTheme.colors.purple600),
@@ -152,13 +154,13 @@ fun DashboardScreenView(
             MetricData(liveMetrics?.high_risk_cases?.toString() ?: "—", "HIGH RISK CASES", FieldIcons.AlertOutlined, FieldTheme.colors.statusDanger),
             MetricData(liveMetrics?.missing_docs?.toString() ?: "—", "MISSING DOCS", FieldIcons.DocumentOutlined, FieldTheme.colors.statusWarning)
         )
-        UserRole.EXECUTIVE -> listOf(
+        UserRole.EXECUTIVE, UserRole.HEAD_CRM -> listOf(
             MetricData(liveMetrics?.decisions_signed?.toString() ?: "—", "DECISIONS SIGNED", FieldIcons.CheckCircleOutlined, FieldTheme.colors.statusSuccess),
             MetricData(liveMetrics?.let { "₦${String.format(Locale.US, "%,.1fM", it.mcr_disbursed / 1_000_000)}" } ?: "—", "DISBURSED", FieldIcons.PaymentsOutlined, FieldTheme.colors.statusSuccess),
             MetricData(liveMetrics?.alert_escalations?.toString() ?: "—", "ESCALATIONS", FieldIcons.BellFilled, FieldTheme.colors.purple600),
             MetricData(liveMetrics?.board_tickets?.toString() ?: "—", "BOARD TICKETS", FieldIcons.DocumentOutlined, FieldTheme.colors.statusWarning)
         )
-        UserRole.COMMITTEE -> listOf(
+        UserRole.COMMITTEE, UserRole.CREDIT_ANALYST -> listOf(
             MetricData(liveMetrics?.underwriting_queue?.toString() ?: "—", "COMMITTEE QUEUE", FieldIcons.QueueOutlined, FieldTheme.colors.purple600),
             MetricData(liveMetrics?.approved_today?.toString() ?: "—", "RECOMMENDED TODAY", FieldIcons.CheckCircleOutlined, FieldTheme.colors.statusSuccess),
             MetricData(liveMetrics?.high_risk_cases?.toString() ?: "—", "RETURNED", FieldIcons.AlertOutlined, FieldTheme.colors.statusDanger),
@@ -187,11 +189,11 @@ fun DashboardScreenView(
     // Role-based status sets — values must match backend _stage_status() output (title-case)
     val relevantStatuses: Set<String> = remember(resolvedRole) {
         when (resolvedRole) {
-            UserRole.LOAN_OFFICER -> emptySet()
-            UserRole.BRANCH_MANAGER -> setOf("credit review", "branch approval", "returned")
+            UserRole.LOAN_OFFICER, UserRole.ACCOUNT_OFFICER -> emptySet()
+            UserRole.BRANCH_MANAGER, UserRole.BRANCH_SUPERVISOR -> setOf("branch manager review", "branch supervisor review", "returned")
             UserRole.CRM -> setOf("branch approval", "crm review", "disbursement ready")
-            UserRole.EXECUTIVE -> setOf("crm review", "executive approval", "disbursement ready")
-            UserRole.COMMITTEE -> setOf("committee review")
+            UserRole.EXECUTIVE, UserRole.HEAD_CRM -> setOf("head crm review")
+            UserRole.COMMITTEE, UserRole.CREDIT_ANALYST -> setOf("credit analyst review")
             UserRole.ED -> setOf("ed approval")
             UserRole.MD -> setOf("md approval")
             UserRole.AUDITOR, UserRole.SYSTEM_ADMIN -> emptySet()
@@ -678,13 +680,13 @@ fun PhoneDashboardHome(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     when (role) {
-                        UserRole.LOAN_OFFICER -> {
+                        UserRole.LOAN_OFFICER, UserRole.ACCOUNT_OFFICER -> {
                             item { ShuttleChip("New Client", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") } }
                             item { ShuttleChip("New Loan", FieldIcons.AddOutlined) { onQuickActionClick("NEW_APP") } }
                             item { ShuttleChip("My Queue", FieldIcons.QueueOutlined) { onQuickActionClick("MY_QUEUE") } }
                             item { ShuttleChip("Visits Due", FieldIcons.MapOutlined) { onQuickActionClick("VISITS_DUE") } }
                         }
-                        UserRole.BRANCH_MANAGER -> {
+                        UserRole.BRANCH_MANAGER, UserRole.BRANCH_SUPERVISOR -> {
                             item { ShuttleChip("Pending Signoffs", FieldIcons.PenOutlined) { onQuickActionClick("PENDING_SIGNOFFS") } }
                             item { ShuttleChip("Awaiting Concurrence", FieldIcons.CheckCircleOutlined) { onQuickActionClick("AWAITING_CONCURRENCE") } }
                             item { ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") } }
@@ -702,12 +704,12 @@ fun PhoneDashboardHome(
                             item { ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") } }
                             item { ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") } }
                         }
-                        UserRole.EXECUTIVE -> {
+                        UserRole.EXECUTIVE, UserRole.HEAD_CRM -> {
                             item { ShuttleChip("Approvals", FieldIcons.ShieldOutlined) { onQuickActionClick("EXECUTIVE_QUEUE") } }
                             item { ShuttleChip("PAR Dashboard", FieldIcons.PaymentsOutlined) { onQuickActionClick("PAR_DASHBOARD") } }
                             item { ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") } }
                         }
-                        UserRole.COMMITTEE -> {
+                        UserRole.COMMITTEE, UserRole.CREDIT_ANALYST -> {
                             item { ShuttleChip("Committee Queue", FieldIcons.QueueOutlined) { onQuickActionClick("COMMITTEE_QUEUE") } }
                             item { ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") } }
                         }
@@ -898,13 +900,13 @@ fun TabletDashboardHome(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     when (role) {
-                        UserRole.LOAN_OFFICER -> {
+                        UserRole.LOAN_OFFICER, UserRole.ACCOUNT_OFFICER -> {
                             ShuttleChip("New Client", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") }
                             ShuttleChip("New Loan", FieldIcons.AddOutlined) { onQuickActionClick("NEW_APP") }
                             ShuttleChip("My Queue", FieldIcons.QueueOutlined) { onQuickActionClick("MY_QUEUE") }
                             ShuttleChip("Visits Due", FieldIcons.MapOutlined) { onQuickActionClick("VISITS_DUE") }
                         }
-                        UserRole.BRANCH_MANAGER -> {
+                        UserRole.BRANCH_MANAGER, UserRole.BRANCH_SUPERVISOR -> {
                             ShuttleChip("Pending Signoffs", FieldIcons.PenOutlined) { onQuickActionClick("PENDING_SIGNOFFS") }
                             ShuttleChip("Concurrence", FieldIcons.CheckCircleOutlined) { onQuickActionClick("AWAITING_CONCURRENCE") }
                             ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") }
@@ -922,12 +924,12 @@ fun TabletDashboardHome(
                             ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") }
                             ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") }
                         }
-                        UserRole.EXECUTIVE -> {
+                        UserRole.EXECUTIVE, UserRole.HEAD_CRM -> {
                             ShuttleChip("Approvals", FieldIcons.ShieldOutlined) { onQuickActionClick("EXECUTIVE_QUEUE") }
                             ShuttleChip("PAR Dashboard", FieldIcons.PaymentsOutlined) { onQuickActionClick("PAR_DASHBOARD") }
                             ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") }
                         }
-                        UserRole.COMMITTEE -> {
+                        UserRole.COMMITTEE, UserRole.CREDIT_ANALYST -> {
                             ShuttleChip("Committee Queue", FieldIcons.QueueOutlined) { onQuickActionClick("COMMITTEE_QUEUE") }
                             ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") }
                         }

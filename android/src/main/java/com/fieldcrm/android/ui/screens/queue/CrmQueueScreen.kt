@@ -22,7 +22,7 @@ import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
 
 private val CRM_STATUSES = setOf(
-    "crm_review", "branch_approval", "disbursement_ready"
+    "crm_review", "disbursement_ready"
 )
 
 @Composable

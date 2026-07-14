@@ -1329,7 +1329,7 @@ fun AuditTrailEntry(
             Text(
                 text = action,
                 style = FieldTheme.typography.bodyStrong.copy(fontSize = 13.sp),
-                color = FieldTheme.colors.gray200
+                color = FieldTheme.colors.gray300
             )
             if (diff != null && diff != "— → —") {
                 Spacer(modifier = Modifier.height(6.dp))

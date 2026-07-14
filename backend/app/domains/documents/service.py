@@ -30,7 +30,6 @@ ALLOWED_EXTENSIONS = {
     "image/png": ".png",
 }
 
-MAX_UPLOAD_BYTES = 3 * 1024 * 1024
 _SIGNATURES = {
     "application/pdf": b"%PDF-",
     "image/jpeg": b"\xff\xd8\xff",
@@ -42,8 +41,8 @@ def validate_file(file_bytes: bytes, mimetype: str, allowed: set[str], filename:
     """Validate declared type, extension, and binary signature before upload."""
     if not file_bytes:
         return "Uploaded file is empty."
-    if enforce_size and len(file_bytes) > MAX_UPLOAD_BYTES:
-        return "Document exceeds the 3 MB limit."
+    if enforce_size and len(file_bytes) > settings.DOCUMENT_MAX_UPLOAD_BYTES:
+        return f"Document exceeds the {settings.DOCUMENT_MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit."
     if mimetype not in allowed:
         return "Unsupported document type. Upload PDF, JPEG, or PNG."
     extension = Path(filename or "").suffix.lower()
@@ -91,8 +90,10 @@ def prepare_upload_file(file_bytes: bytes, mimetype: str, allowed: set[str], fil
     if error:
         return file_bytes, mimetype, error
     prepared, prepared_type = compress_image(file_bytes, mimetype)
-    if len(prepared) > MAX_UPLOAD_BYTES:
-        return prepared, prepared_type, "Document exceeds the 3 MB limit after image optimisation."
+    if len(prepared) > settings.DOCUMENT_MAX_UPLOAD_BYTES:
+        return prepared, prepared_type, (
+            f"Document exceeds the {settings.DOCUMENT_MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit after image optimisation."
+        )
     return prepared, prepared_type, None
 
 
@@ -114,7 +115,7 @@ class DocumentService:
     ) -> dict:
         original_name = file.filename or "document"
         mime_type = file.content_type or mimetypes.guess_type(original_name)[0] or ""
-        content = await file.read(MAX_UPLOAD_BYTES + 1)
+        content = await file.read(settings.DOCUMENT_MAX_UPLOAD_BYTES + 1)
         content, mime_type, error = prepare_upload_file(
             content, mime_type, set(settings.DOCUMENT_ALLOWED_MIME_TYPES), original_name
         )

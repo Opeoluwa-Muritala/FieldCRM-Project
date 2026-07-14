@@ -10,7 +10,7 @@ Falls back to local disk storage when credentials are absent.
 """
 from __future__ import annotations
 
-import base64
+import io
 import logging
 from typing import NamedTuple
 
@@ -51,7 +51,10 @@ def upload_to_cloudinary(
     _configure_cloudinary()
     import cloudinary.uploader
 
-    data_uri = f"data:{mime_type};base64,{base64.b64encode(file_bytes).decode()}"
+    # Send a binary stream, not a base64 data URI. Data URIs are submitted as
+    # a multipart form field and Cloudinary rejects fields above 1024 KB before
+    # its normal upload handling can accept the document.
+    upload_stream = io.BytesIO(file_bytes)
 
     upload_opts: dict = {
         "folder": folder,
@@ -62,7 +65,10 @@ def upload_to_cloudinary(
     if public_id:
         upload_opts["public_id"] = public_id
 
-    result = cloudinary.uploader.upload(data_uri, **{k: v for k, v in upload_opts.items() if v is not None})
+    result = cloudinary.uploader.upload(
+        upload_stream,
+        **{k: v for k, v in upload_opts.items() if v is not None},
+    )
 
     secure_url: str = result["secure_url"]
     pid: str = result["public_id"]

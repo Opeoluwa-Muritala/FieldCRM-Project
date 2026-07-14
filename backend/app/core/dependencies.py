@@ -48,7 +48,17 @@ async def get_current_user(
 
 class RoleChecker:
     def __init__(self, allowed_roles: list[str]):
-        self.allowed_roles = [r.lower().replace(" ", "_") for r in allowed_roles]
+        # The web UI still calls the field role "Loan Officer", while the
+        # canonical workflow and mobile API use "account_officer".  Treat
+        # these as the same role at the authorization boundary so legacy web
+        # links do not bounce a valid Account Officer back to the dashboard.
+        role_aliases = {
+            "loan_officer": "account_officer",
+        }
+        self.allowed_roles = [
+            role_aliases.get(r.lower().replace(" ", "_"), r.lower().replace(" ", "_"))
+            for r in allowed_roles
+        ]
 
     def __call__(self, current_user: UserRow = Depends(get_current_user)) -> UserRow:
         # UserRow.role is already stored as lowercase snake_case in the new schema

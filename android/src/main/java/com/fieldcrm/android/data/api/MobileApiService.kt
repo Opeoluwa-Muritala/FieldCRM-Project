@@ -34,6 +34,7 @@ interface MobileApiService {
     suspend fun getGuarantorData(id: String, slot: Int): String?
     suspend fun saveGuarantorStep(id: String, slot: Int, step: Int, data: Map<String, JsonElement>): String?
     suspend fun uploadDocument(id: String, category: String, fileBytes: ByteArray? = null, fileName: String = "document"): String?
+    suspend fun getOcrFields(id: String): OcrFieldsResponse?
     suspend fun submitOcrReview(id: String, corrections: Map<String, String>): String?
     suspend fun getVisitationReport(id: String): String?
     suspend fun submitVisitationReport(id: String, metWith: String, premises: String, direction: String): String?
@@ -85,6 +86,9 @@ interface MobileApiService {
     suspend fun getMdReview(id: String): String?
     suspend fun submitMdApprove(id: String, action: String, notes: String): String?
     suspend fun addBoardReferral(id: String, email: String, name: String, notes: String): String?
+
+    // Canonical operational workflow: Account Officer through CRM disbursement readiness.
+    suspend fun advanceWorkflow(id: String, notes: String): WorkflowAdvanceResponse?
 
     // User management (admin only)
     suspend fun listUsers(): List<MobileUserItem>
@@ -378,6 +382,17 @@ class MobileApiServiceImpl(
                 authHeader()
             }
             if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    override suspend fun getOcrFields(id: String): OcrFieldsResponse? {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/applications/$id/ocr-fields") {
+                authHeader()
+            }
+            if (response.status == HttpStatusCode.OK) response.body() else null
         } catch (e: Exception) {
             null
         }
@@ -831,6 +846,19 @@ class MobileApiServiceImpl(
             }
             if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
         } catch (e: Exception) { null }
+    }
+
+    override suspend fun advanceWorkflow(id: String, notes: String): WorkflowAdvanceResponse? {
+        return try {
+            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/applications/$id/workflow/advance") {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(WorkflowAdvanceRequest(notes))
+            }
+            if (response.status == HttpStatusCode.OK) response.body() else null
+        } catch (e: Exception) {
+            null
+        }
     }
 
     override suspend fun listUsers(): List<MobileUserItem> {

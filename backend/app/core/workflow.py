@@ -2,9 +2,6 @@
 
 WORKFLOW_STAGES = (
     ("intake", "account_officer"),
-    # OCR is an internal validation step performed by the Account Officer
-    # before the file reaches the Branch Manager.
-    ("ocr_review", "account_officer"),
     ("branch_manager_review", "branch_manager"),
     ("branch_supervisor_review", "branch_supervisor"),
     ("credit_analyst_review", "credit_analyst"),

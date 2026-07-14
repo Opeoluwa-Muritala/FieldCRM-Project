@@ -28,34 +28,22 @@ fun EdApprovalScreen(
     val isSmallLoan = amount < 10_000_000
 
     if (showApproveDialog) {
-        AlertDialog(
-            onDismissRequest = { showApproveDialog = false },
-            title = { Text("Issue Disbursement Instruction?") },
-            text = { Text("This approves the loan and issues a disbursement instruction. This action cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = { showApproveDialog = false; onApprove() }) {
-                    Text("Approve", color = FieldTheme.colors.statusSuccess)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showApproveDialog = false }) { Text("Cancel") }
-            }
+        ReviewDecisionSheet(
+            title = "Issue disbursement instruction?",
+            message = "This records an approval and issues a disbursement instruction. Confirm only after the full dossier is complete.",
+            confirmLabel = "Approve and issue instruction",
+            onConfirm = { showApproveDialog = false; onApprove() },
+            onDismiss = { showApproveDialog = false }
         )
     }
 
     if (showForwardDialog) {
-        AlertDialog(
-            onDismissRequest = { showForwardDialog = false },
-            title = { Text("Forward to MD?") },
-            text = { Text("This forwards the file to the Managing Director for final approval.") },
-            confirmButton = {
-                TextButton(onClick = { showForwardDialog = false; onForwardToMd() }) {
-                    Text("Forward", color = FieldTheme.colors.purple600)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showForwardDialog = false }) { Text("Cancel") }
-            }
+        ReviewDecisionSheet(
+            title = "Forward to Managing Director?",
+            message = "The file will move to the Managing Director’s approval queue with its complete review history.",
+            confirmLabel = "Forward to Managing Director",
+            onConfirm = { showForwardDialog = false; onForwardToMd() },
+            onDismiss = { showForwardDialog = false }
         )
     }
 
