@@ -1413,7 +1413,7 @@ async def process_crm_review(
                     status_code=status.HTTP_303_SEE_OTHER,
                 )
             await repo.save_stage_data(UUID(application_id), "crm_review", consent_data, current_user.id)
-        next_stage = "audit_review" if role == "head_crm" else "head_crm_review"
+        next_stage = "ed_approval" if role == "head_crm" else "head_crm_review"
         app = await repo.advance_stage(UUID(application_id), current_user.org_id, next_stage)
         if not app:
             raise HTTPException(status_code=400, detail="Unable to advance application")
@@ -1674,6 +1674,11 @@ async def process_ed_approve(
             actor_role=current_user.role,
         )
     elif action == "escalate_md":
+        application = await repo.get_by_id(UUID(application_id), current_user.org_id)
+        if not application or application.stage != "ed_approval":
+            raise HTTPException(status_code=400, detail="Application not in ED approval stage")
+        if (application.amount or 0) > 10_000_000:
+            raise HTTPException(status_code=400, detail="MD input can only be requested for loans of ₦10,000,000 or less")
         app = await repo.ed_escalate_to_md(UUID(application_id), current_user.org_id, current_user.id)
         if not app:
             raise HTTPException(status_code=400, detail="Application not in ed_approval stage")
@@ -1747,7 +1752,12 @@ async def process_md_approve(
     current_user=Depends(RoleChecker(["md"])),
 ):
     repo = LoanRepository(conn)
+    application = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not application:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
     if action == "approve":
+        if (application.amount or 0) <= 10_000_000 and application.ed_escalated_to_md:
+            raise HTTPException(status_code=400, detail="MD input must return to ED for final approval")
         app = await repo.md_approve(UUID(application_id), current_user.org_id, current_user.id, md_notes)
         if not app:
             raise HTTPException(status_code=400, detail="Application not in md_approval stage")
