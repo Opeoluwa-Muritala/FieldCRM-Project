@@ -24,6 +24,9 @@ class VisitationService:
         account_officer: str | None = None,
         gps_coordinates: str | None = None,
         site_photo_url: str | None = None,
+        visiting_officer: str | None = None,
+        visiting_officer_sig: str | None = None,
+        account_officer_sig: str | None = None,
         submitted_by: UUID,
         user_role: str,
     ) -> dict:
@@ -40,6 +43,9 @@ class VisitationService:
             account_officer=account_officer,
             gps_coordinates=gps_coordinates,
             site_photo_url=site_photo_url,
+            visiting_officer=visiting_officer,
+            visiting_officer_sig=visiting_officer_sig,
+            account_officer_sig=account_officer_sig,
         )
         await self.audit.insert(
             org_id=org_id,
@@ -63,6 +69,8 @@ class VisitationService:
         manager_role: str,
         notes: str,
         decision: str,
+        signature: str | None = None,
+        return_reason: str | None = None,
     ) -> dict | None:
         report = await self.repo.manager_signoff(
             loan_id=loan_id,
@@ -70,6 +78,8 @@ class VisitationService:
             manager_id=manager_id,
             notes=notes,
             decision=decision,
+            signature=signature,
+            return_reason=return_reason,
         )
         if report:
             await self.audit.insert(

@@ -872,7 +872,7 @@ async def process_visitation_report(
     await service.submit_report(
         loan_id=UUID(application_id),
         org_id=current_user.org_id,
-        met_with=form_data.get("met_with"),
+        met_with=form_data.get("person_met") or form_data.get("met_with"),
         premises_description=form_data.get("premises_description"),
         direction_from_branch=form_data.get("direction_from_branch"),
         visit_date=form_data.get("visit_date"),
@@ -880,6 +880,9 @@ async def process_visitation_report(
         relationship=form_data.get("relationship"),
         business_condition=form_data.get("business_condition"),
         account_officer=form_data.get("account_officer"),
+        visiting_officer=form_data.get("visiting_officer"),
+        visiting_officer_sig=form_data.get("visiting_officer_sig"),
+        account_officer_sig=form_data.get("account_officer_sig"),
         submitted_by=current_user.id,
         user_role=current_user.role,
     )
@@ -892,6 +895,8 @@ async def process_visitation_report(
             manager_role=current_user.role,
             notes="Branch Manager Concurred",
             decision="concurred",
+            signature=form_data.get("bm_sig"),
+            return_reason=form_data.get("concurrence_return_reason"),
         )
         
     return RedirectResponse(url=f"/applications/{application_id}", status_code=status.HTTP_303_SEE_OTHER)

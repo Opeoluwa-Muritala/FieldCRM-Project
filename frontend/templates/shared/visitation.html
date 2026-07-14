@@ -28,7 +28,7 @@
                 </div>
                 <div class="form-group">
                     <label class="field-label">Person Met <span class="required">*</span></label>
-                    <input type="text" name="person_met" class="field-input" value="{{ data.person_met or '' }}" placeholder="Customer, spouse, landlord, etc." required>
+                    <input type="text" name="person_met" class="field-input" value="{{ data.met_with or '' }}" placeholder="Customer, spouse, landlord, etc." required>
                 </div>
                 <div class="form-group">
                     <label class="field-label">Relationship to Applicant</label>
@@ -130,7 +130,7 @@
 
                 <div class="form-group-full" id="concurrenceReasonSlot" style="display: none; margin-top: 12px;">
                     <label class="field-label">Reason for Return <span class="required">*</span></label>
-                    <textarea name="concurrence_return_reason" id="concurrence_return_reason" class="field-textarea" placeholder="Specify corrections or omissions..."></textarea>
+                    <textarea name="concurrence_return_reason" id="concurrence_return_reason" class="field-textarea" placeholder="Specify corrections or omissions...">{{ data.concurrence_return_reason or '' }}</textarea>
                 </div>
 
                 <div class="form-group-full">
