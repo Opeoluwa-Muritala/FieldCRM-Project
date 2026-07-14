@@ -54,10 +54,12 @@ class LoanRepository(BaseRepository):
         loan_id: UUID,
         org_id: UUID,
         approved_by: UUID,
+        expected_stage: str = "branch_manager_review",
+        next_stage: str = "branch_supervisor_review",
     ) -> LoanRow | None:
         row = await self.conn.fetchrow(
             self.sql("approve"),
-            loan_id, org_id, approved_by
+            loan_id, org_id, approved_by, expected_stage, next_stage
         )
         return LoanRow(**row) if row else None
 

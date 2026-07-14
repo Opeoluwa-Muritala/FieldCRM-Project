@@ -24,6 +24,8 @@ from app.domains.guarantors.repository import GuarantorRepository
 from app.domains.guarantors.service import GuarantorService
 from app.domains.visitation.repository import VisitationRepository
 from app.domains.visitation.service import VisitationService
+from app.domains.notifications.repository import NotificationRepository
+from app.domains.notifications.service import NotificationService
 
 router = APIRouter()
 
@@ -548,6 +550,11 @@ async def render_application_detail(
     # On desktop, render role-specific detail workstation
     role = current_user.role.lower().replace(" ", "_")
     template_name = get_role_template(role, "application_detail.html")
+    # Branch Supervisor and Credit Analyst use their own dashboards/queues,
+    # but share the Branch Manager's read-only application review layout.
+    # Those role folders intentionally do not contain a duplicate detail view.
+    if role in ("branch_supervisor", "credit_analyst"):
+        template_name = "branch_manager/application_detail.html"
     
     # Load all data needed for the detail view
     loan_svc = get_loan_service(conn)
