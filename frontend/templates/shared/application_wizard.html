@@ -10,8 +10,8 @@
 {% block content %}
     <!-- Horizontal Step Indicator -->
     <div class="wizard-steps">
-        {% set step_labels = ["Details", "Consent", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge", "Submit Application"] %}
-        {% for s_num in range(1, 10) %}
+        {% set step_labels = ["Details", "Spousal Consent", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge"] %}
+        {% for s_num in range(1, 9) %}
             {% set is_active = (s_num == step) %}
             {% set is_completed = (s_num < step) %}
             <div class="wizard-step-segment {% if is_active %}active{% elif is_completed %}completed{% endif %}">
@@ -25,6 +25,11 @@
 
     <!-- Main Card wrapper -->
     <div class="page-card no-shadow">
+        {% if request.query_params.get('error') %}
+        <div class="flat-card warning" id="wizard-error" role="alert" tabindex="-1" style="margin-bottom:16px;">
+            <strong>We could not save this section.</strong><br>{{ request.query_params.get('error') }}
+        </div>
+        {% endif %}
         <div class="page-card-header">
             <h2 class="page-card-title">
                 {% if step == 1 %}Applicant Details
@@ -35,7 +40,6 @@
                 {% elif step == 6 %}Loan Request Details
                 {% elif step == 7 %}Disbursement Account
                 {% elif step == 8 %}Pledge and Trust Receipt (MMFB/CRM/02)
-                {% elif step == 9 %}Declarations & Consents
                 {% endif %}
             </h2>
             <p class="page-card-subtitle">
@@ -47,7 +51,6 @@
                 {% elif step == 6 %}Specify the amount, tenor, purpose, and security.
                 {% elif step == 7 %}Where the approved facility will be paid.
                 {% elif step == 8 %}Collateral security terms and description.
-                {% elif step == 9 %}All disclosures and consents must be accepted before submission.
                 {% endif %}
             </p>
         </div>
@@ -359,24 +362,28 @@
             </div>
 
             <div id="facilitiesContainer" style="display: flex; flex-direction: column; gap: 12px;">
-                <!-- Initial Facility Row 1 -->
+                {% set facility_banks = data.facility_bank if data.facility_bank is iterable and data.facility_bank is not string else [data.facility_bank or ''] %}
+                {% set facility_amounts = data.facility_amount if data.facility_amount is iterable and data.facility_amount is not string else [data.facility_amount or ''] %}
+                {% set facility_tenors = data.facility_tenor if data.facility_tenor is iterable and data.facility_tenor is not string else [data.facility_tenor or ''] %}
+                {% for bank in facility_banks %}
                 <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: end;">
                     <div class="form-group">
                         <label class="field-label">Bank Name</label>
-                        <input type="text" name="facility_bank[]" class="field-input" placeholder="e.g. Access Bank">
+                        <input type="text" name="facility_bank[]" class="field-input" value="{{ bank }}" placeholder="e.g. Access Bank">
                     </div>
                     <div class="form-group">
                         <label class="field-label">Amount (₦)</label>
-                        <input type="number" name="facility_amount[]" class="field-input" placeholder="e.g. 200000">
+                        <input type="number" name="facility_amount[]" class="field-input" value="{{ facility_amounts[loop.index0] if facility_amounts|length > loop.index0 else '' }}" placeholder="e.g. 200000">
                     </div>
                     <div class="form-group">
                         <label class="field-label">Tenor (Months)</label>
-                        <input type="number" name="facility_tenor[]" class="field-input" placeholder="e.g. 12">
+                        <input type="number" name="facility_tenor[]" class="field-input" value="{{ facility_tenors[loop.index0] if facility_tenors|length > loop.index0 else '' }}" placeholder="e.g. 12">
                     </div>
                     <div style="padding-bottom: 8px;">
                         <button type="button" class="btn-ghost-link" style="color: var(--accent-danger);" onclick="this.parentElement.parentElement.remove()">Remove</button>
                     </div>
                 </div>
+                {% endfor %}
             </div>
 
             <div style="margin-top: 12px; margin-bottom: 32px;">
@@ -536,14 +543,20 @@
                             </tr>
                         </thead>
                         <tbody>
+                            {% set pledge_names = data.pledge_item_name if data.pledge_item_name is iterable and data.pledge_item_name is not string else [data.pledge_item_name or ''] %}
+                            {% set pledge_qtys = data.pledge_item_qty if data.pledge_item_qty is iterable and data.pledge_item_qty is not string else [data.pledge_item_qty or ''] %}
+                            {% set pledge_descs = data.pledge_item_desc if data.pledge_item_desc is iterable and data.pledge_item_desc is not string else [data.pledge_item_desc or ''] %}
+                            {% set pledge_values = data.pledge_item_val if data.pledge_item_val is iterable and data.pledge_item_val is not string else [data.pledge_item_val or ''] %}
+                            {% for name in pledge_names %}
                             <tr>
-                                <td>1</td>
-                                <td><input type="text" name="pledge_item_name[]" class="field-input" placeholder="e.g. Sharp Refrigerator" required></td>
-                                <td><input type="number" name="pledge_item_qty[]" class="field-input" placeholder="1" required></td>
-                                <td><input type="text" name="pledge_item_desc[]" class="field-input" placeholder="Model SJ-X380"></td>
-                                <td><input type="number" name="pledge_item_val[]" class="field-input" placeholder="350000" oninput="calculatePledgeTotal()" required></td>
+                                <td>{{ loop.index }}</td>
+                                <td><input type="text" name="pledge_item_name[]" class="field-input" value="{{ name }}" placeholder="e.g. Sharp Refrigerator" required></td>
+                                <td><input type="number" name="pledge_item_qty[]" class="field-input" value="{{ pledge_qtys[loop.index0] if pledge_qtys|length > loop.index0 else '' }}" placeholder="1" required></td>
+                                <td><input type="text" name="pledge_item_desc[]" class="field-input" value="{{ pledge_descs[loop.index0] if pledge_descs|length > loop.index0 else '' }}" placeholder="Model SJ-X380"></td>
+                                <td><input type="number" name="pledge_item_val[]" class="field-input" value="{{ pledge_values[loop.index0] if pledge_values|length > loop.index0 else '' }}" placeholder="350000" oninput="calculatePledgeTotal()" required></td>
                                 <td><button type="button" class="btn-ghost-link" style="color: var(--accent-danger);" onclick="removePledgeRow(this)">Remove</button></td>
                             </tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
@@ -559,7 +572,7 @@
                         The borrower declares that the listed goods are their absolute property, free from any lien. The borrower holds the goods in trust for Mainstreet Microfinance Bank, and agrees that any proceeds from sales will be paid immediately to the bank to retire the outstanding loan amount.
                     </p>
                     <div style="margin-top: 12px;">
-                        <input type="checkbox" name="pledge_legal_ack" id="pledge_legal_ack" value="1" required>
+                        <input type="checkbox" name="pledge_legal_ack" id="pledge_legal_ack" value="1" {% if data.pledge_legal_ack %}checked{% endif %} required>
                         <label for="pledge_legal_ack" style="font-size: 12px; cursor: pointer; font-weight: 500; color: var(--text-main);">I confirm I have read and understood the terms of this Pledge and Trust Receipt.</label>
                     </div>
                 </div>
@@ -571,7 +584,7 @@
                             <canvas id="borrower_pledge_canvas"></canvas>
                             <button type="button" class="signature-clear-btn" onclick="clearSignature('borrower_pledge_canvas')">Clear</button>
                         </div>
-                        <input type="hidden" name="borrower_pledge_signature" id="borrower_pledge_sig_val">
+                        <input type="hidden" name="borrower_pledge_signature" id="borrower_pledge_sig_val" value="{{ data.borrower_pledge_signature or '' }}">
                     </div>
                     <div class="form-group">
                         <label class="field-label">Witness Signature <span class="required">*</span></label>
@@ -579,15 +592,15 @@
                             <canvas id="witness_pledge_canvas"></canvas>
                             <button type="button" class="signature-clear-btn" onclick="clearSignature('witness_pledge_canvas')">Clear</button>
                         </div>
-                        <input type="hidden" name="witness_pledge_signature" id="witness_pledge_sig_val">
+                        <input type="hidden" name="witness_pledge_signature" id="witness_pledge_sig_val" value="{{ data.witness_pledge_signature or '' }}">
                     </div>
                     <div class="form-group">
                         <label class="field-label">Witness Name</label>
-                        <input type="text" name="witness_name" class="field-input">
+                        <input type="text" name="witness_name" class="field-input" value="{{ data.witness_name or '' }}">
                     </div>
                     <div class="form-group">
                         <label class="field-label">Witness Address</label>
-                        <input type="text" name="witness_address" class="field-input">
+                        <input type="text" name="witness_address" class="field-input" value="{{ data.witness_address or '' }}">
                     </div>
                 </div>
             </div>
@@ -683,7 +696,7 @@
                 </div>
                 <div style="display:flex; flex-direction:column; align-items:flex-end;">
                     <button type="submit" class="btn-primary-filled" id="continueBtn">
-                        {% if step == 9 %}Complete Intake &amp; Send to Branch Manager &rarr;{% else %}Save & Continue &rarr;{% endif %}
+                        {% if step == 8 %}Complete Intake &amp; Send to Branch Manager &rarr;{% else %}Save & Continue &rarr;{% endif %}
                     </button>
                     <span id="consent_remaining" style="font-size: 12px; color:var(--accent-danger); margin-top:4px; display:none;">Consents still required.</span>
                 </div>
@@ -963,6 +976,7 @@
 
     // Initialize triggers on page load
     window.addEventListener('load', () => {
+        document.getElementById('wizard-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         if (document.getElementById('emp_Full-time')) {
             toggleEmploymentFields();
         }

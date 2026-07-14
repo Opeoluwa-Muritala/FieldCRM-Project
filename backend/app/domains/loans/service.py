@@ -144,37 +144,9 @@ class LoanService:
                     tenor_months=_optional_int(tenor_months),
                 )
                 
-            if step == 9:
-                # The wizard posts these field names.  Accept the two former
-                # service names as well, so a draft saved before this fix can
-                # still be submitted.  Store the canonical nested shape used
-                # by the readiness query at the same time.
-                consent_sources = {
-                    "credit_bureau": ("consent_credit_bureau", "consent_bureau_disclosure"),
-                    "credit_check": ("consent_credit_check",),
-                    "cheque_authority": ("consent_cheque", "consent_cheque_recovery"),
-                    "gsi_mandate": ("consent_gsi",),
-                }
-                consent_values = {
-                    name: next(
-                        (existing_data[key] for key in keys if existing_data.get(key)),
-                        None,
-                    )
-                    for name, keys in consent_sources.items()
-                }
-                missing = [name for name, value in consent_values.items() if not value]
-                if missing:
-                    raise DomainException(
-                        f"All legal consents must be accepted before submission. Missing: {', '.join(missing)}",
-                        422
-                    )
-                existing_data["consents"] = {
-                    name: "true" for name in consent_values
-                }
-
             await tx_repo.save_stage_data(app_id, "intake", existing_data, user_id)
 
-            if step == 9:
+            if step == 8:
                 # Account Officers complete field intake but do not formally
                 # submit loan applications. The Branch Manager owns the first
                 # review and submission decision.

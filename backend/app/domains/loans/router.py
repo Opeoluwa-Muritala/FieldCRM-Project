@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlencode
 from datetime import datetime
 from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
@@ -6,6 +7,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.core.database import db_conn
+from app.core.exceptions import DomainException
 from app.domains.loans.repository import LoanRepository
 from app.domains.loans.service import LoanService
 from app.core.audit import AuditService
@@ -526,7 +528,9 @@ async def render_wizard_step(
     conn = Depends(db_conn),
     current_user = Depends(get_current_user)
 ):
-    """GET handler for Borrower intake wizard steps 1 to 9."""
+    """GET handler for Borrower intake wizard steps 1 to 8."""
+    if step not in range(1, 9):
+        raise HTTPException(status_code=404, detail="Unknown intake step")
     repo = LoanRepository(conn)
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not app:
@@ -573,9 +577,20 @@ async def process_wizard_step(
         raise HTTPException(status_code=403, detail="You do not have permission to view/modify this application")
     form_data = await request.form()
     data_dict = form_data_to_jsonable_dict(form_data)
-    await service.save_wizard_step(UUID(application_id), step, data_dict, current_user.id, current_user.org_id)
+    if step not in range(1, 9):
+        raise HTTPException(status_code=404, detail="Unknown intake step")
+    try:
+        await service.save_wizard_step(UUID(application_id), step, data_dict, current_user.id, current_user.org_id)
+    except DomainException as exc:
+        # Browser form posts should return users to the relevant field, not
+        # the API's JSON exception response.
+        query = urlencode({"error": exc.message, "focus": "wizardForm"})
+        return RedirectResponse(
+            url=f"/applications/{application_id}/step/{step}?{query}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
-    if step < 9:
+    if step < 8:
         next_step = step + 1
         return RedirectResponse(url=f"/applications/{application_id}/step/{next_step}", status_code=status.HTTP_303_SEE_OTHER)
     else:
@@ -1223,10 +1238,12 @@ async def render_crm_review(
     doc_svc = get_document_service(conn)
     documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
     readiness = await repo.get_readiness_summary(UUID(application_id), current_user.org_id)
+    consent_stage = await repo.get_stage_data(UUID(application_id), "crm_review")
     ctx = build_template_context(
         request, current_user,
         app=app, app_id=application_id,
         documents=documents, summary=readiness,
+        consent_data=(consent_stage or {}).get("data_json", {}),
         active_tab="crm_queue", active_page="crm_queue",
     )
     return templates.TemplateResponse(request, "crm/crm_review.html", ctx)
@@ -1234,6 +1251,7 @@ async def render_crm_review(
 
 @router.post("/applications/{application_id}/crm-review")
 async def process_crm_review(
+    request: Request,
     application_id: str,
     action: str = Form(...),
     crm_notes: str = Form(""),
@@ -1251,6 +1269,34 @@ async def process_crm_review(
         raise HTTPException(status_code=400, detail="Application is not awaiting Head CRM approval")
 
     if action == "advance":
+        if role == "crm":
+            form_data = await request.form()
+            required = {
+                "consent_credit_bureau": "Credit Bureau Disclosure",
+                "consent_credit_check": "Credit Check Authorisation",
+                "consent_cheque": "Cheque Recovery Authorisation",
+                "consent_gsi": "Global Standing Instruction (GSI) Mandate",
+                "applicant_signature": "Applicant Signature",
+                "final_declaration": "Final declaration",
+            }
+            missing = [label for key, label in required.items() if not form_data.get(key)]
+            # Preserve the reviewer’s completed consents/signature even when
+            # another required item is still missing on this attempt.
+            existing_consent_stage = await repo.get_stage_data(UUID(application_id), "crm_review")
+            consent_data = (existing_consent_stage or {}).get("data_json", {})
+            for key in ("consent_credit_bureau", "consent_credit_check", "consent_cheque", "consent_gsi", "final_declaration"):
+                if form_data.get(key):
+                    consent_data[key] = "true"
+            if form_data.get("applicant_signature"):
+                consent_data["applicant_signature"] = str(form_data.get("applicant_signature"))
+            if missing:
+                await repo.save_stage_data(UUID(application_id), "crm_review", consent_data, current_user.id)
+                query = urlencode({"error": "Please complete: " + ", ".join(missing), "focus": "crm-consents"})
+                return RedirectResponse(
+                    url=f"/applications/{application_id}/crm-review?{query}",
+                    status_code=status.HTTP_303_SEE_OTHER,
+                )
+            await repo.save_stage_data(UUID(application_id), "crm_review", consent_data, current_user.id)
         next_stage = "audit_review" if role == "head_crm" else "head_crm_review"
         app = await repo.advance_stage(UUID(application_id), current_user.org_id, next_stage)
         if not app:

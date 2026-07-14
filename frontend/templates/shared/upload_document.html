@@ -11,7 +11,7 @@
         <div class="page-card-header">
             <h2 class="page-card-title">Upload Document</h2>
             <p class="page-card-subtitle">
-                Attach a supporting document for <strong>{{ borrower_name }}</strong>.
+                Upload the source document for <strong>{{ borrower_name }}</strong>. Each supported PDF or image is securely stored and queued for OCR extraction automatically.
                 Category: <strong style="color:var(--color-brand-shield);">{{ doc_type|upper }}</strong>
             </p>
         </div>
@@ -30,7 +30,7 @@
                     <use href="/static/img/icons.svg#icon-doc-upload-o"/>
                 </svg>
                 <span style="font-weight:500; margin-top:8px;">Drag and drop file here, or tap to browse</span>
-                <span style="font-size:12px; color:var(--text-muted); margin-top:4px;">PDF, JPG, JPEG, PNG - max 3 MB</span>
+                <span style="font-size:12px; color:var(--text-muted); margin-top:4px;">OCR source files: PDF, JPG, JPEG, PNG - max 3 MB</span>
                 <input type="file" name="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png"
                        style="display:none;" onchange="handleFileSelected(this)">
             </div>
