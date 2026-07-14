@@ -22,6 +22,13 @@
 </div>
 {% endif %}
 
+{% if head_crm_notes %}
+<div class="page-card" style="margin-bottom:20px;background:#f3f8ff;border:1px solid #90caf9;">
+  <strong>Head CRM Handover:</strong>
+  <p style="margin:8px 0 0;color:var(--text-secondary);white-space:pre-wrap;">{{ head_crm_notes }}</p>
+</div>
+{% endif %}
+
 {# ── Committee Votes ── #}
 {% if votes %}
 <div class="page-card" style="margin-bottom:20px;">
@@ -49,7 +56,7 @@
     <tbody>
     {% for doc in documents %}
     <tr>
-      <td>{{ doc.doc_type.replace('_',' ').title() }}</td>
+      <td>{% if doc.url %}<a href="{{ doc.url }}" target="_blank" rel="noopener">{{ doc.doc_type.replace('_',' ').title() }}</a>{% else %}{{ doc.doc_type.replace('_',' ').title() }}{% endif %}</td>
       <td><span class="status-badge {% if doc.quality_status == 'clear' %}approved{% else %}needs-review{% endif %}">{{ doc.quality_status }}</span></td>
       <td>{% if doc.verified %}&#10003;{% else %}<span style="color:#c62828">&#10007;</span>{% endif %}</td>
     </tr>

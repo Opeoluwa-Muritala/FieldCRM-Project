@@ -103,7 +103,7 @@
 
 <div class="audit-action-panel">
   <h3 style="margin-bottom:12px;">{{ 'Head CRM Approval' if current_user.role == 'head_crm' else 'CRM Dossier Review' }}</h3>
-  <p class="action-note">{{ 'This approval records the Head CRM decision and routes the file to Audit.' if current_user.role == 'head_crm' else 'This review records dossier completeness and routes the file to Head CRM for approval.' }}</p>
+  <p class="action-note">{{ 'This approval records the Head CRM handover and routes the complete dossier to ED.' if current_user.role == 'head_crm' else 'This review records dossier completeness and routes the file to Head CRM for approval.' }}</p>
   {% if request.query_params.get('error') %}
   <div class="flat-card warning" id="crm-review-error" role="alert" tabindex="-1" style="margin-bottom:16px;"><strong>Review cannot proceed.</strong><br>{{ request.query_params.get('error') }}</div>
   {% endif %}
@@ -127,7 +127,7 @@
         placeholder="Summarise dossier completeness and any flags…"></textarea>
     </div>
     <div style="display:flex;gap:12px;">
-      <button type="submit" name="action" value="advance" class="btn btn-primary">{{ 'Approve and send to Audit' if current_user.role == 'head_crm' else 'Send to Head CRM' }}</button>
+      <button type="submit" name="action" value="advance" class="btn btn-primary">{{ 'Approve and send to ED' if current_user.role == 'head_crm' else 'Send to Head CRM' }}</button>
       <button type="submit" name="action" value="return" class="btn btn-secondary"
         onclick="return confirm('Return this application to the branch?')">Return Application</button>
     </div>

@@ -1413,6 +1413,10 @@ async def process_crm_review(
                     status_code=status.HTTP_303_SEE_OTHER,
                 )
             await repo.save_stage_data(UUID(application_id), "crm_review", consent_data, current_user.id)
+        elif role == "head_crm":
+            await repo.save_stage_data(
+                UUID(application_id), "head_crm_review", {"notes": crm_notes}, current_user.id
+            )
         next_stage = "ed_approval" if role == "head_crm" else "head_crm_review"
         app = await repo.advance_stage(UUID(application_id), current_user.org_id, next_stage)
         if not app:
@@ -1642,10 +1646,12 @@ async def render_ed_approve(
     votes = await repo.get_committee_votes(UUID(application_id), current_user.org_id)
     doc_svc = get_document_service(conn)
     documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
+    head_crm_data = await repo.get_stage_data(UUID(application_id), "head_crm_review")
     ctx = build_template_context(
         request, current_user,
         app=app, app_id=application_id,
         votes=votes, documents=documents,
+        head_crm_notes=(head_crm_data or {}).get("data_json", {}).get("notes", ""),
         active_tab="ed_queue", active_page="ed_queue",
     )
     return templates.TemplateResponse(request, "executive/ed_approve.html", ctx)
