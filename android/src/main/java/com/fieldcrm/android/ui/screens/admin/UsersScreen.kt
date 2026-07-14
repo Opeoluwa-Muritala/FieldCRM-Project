@@ -137,7 +137,7 @@ fun UsersScreen(
                             readOnly = true,
                             label = { Text("Role") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = roleExpanded) },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = FieldTheme.colors.purple600,
                                 unfocusedBorderColor = FieldTheme.colors.gray700

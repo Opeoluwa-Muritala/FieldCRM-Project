@@ -7,6 +7,10 @@ from app.core.base_repository import BaseRepository
 class OcrRepository(BaseRepository):
     domain = "ocr"
 
+    async def list_fields_for_loan(self, *, loan_id: UUID) -> list[dict]:
+        rows = await self.conn.fetch(self.sql("list_fields_for_loan"), loan_id)
+        return [dict(row) for row in rows]
+
     async def list_low_confidence(self, *, loan_id: UUID, threshold: int = 70) -> list[dict]:
         rows = await self.conn.fetch(self.sql("list_low_confidence"), loan_id, threshold)
         return [dict(row) for row in rows]

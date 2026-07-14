@@ -94,6 +94,7 @@ fun LoginScreenContent(
     var emailError by remember { mutableStateOf<String?>(null) }
     var passwordError by remember { mutableStateOf<String?>(null) }
     var showPassword by remember { mutableStateOf(false) }
+    var showNewDeviceNotice by remember { mutableStateOf(false) }
 
     val haptic = LocalHapticFeedback.current
     val shakeOffset = remember { Animatable(0f) }
@@ -392,7 +393,32 @@ fun LoginScreenContent(
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
- 
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SecondaryButton(
+                            text = "Sign in on a new device",
+                            onClick = { showNewDeviceNotice = !showNewDeviceNotice },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = FieldIcons.LockOutlined,
+                                    contentDescription = "New device sign-in",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        if (showNewDeviceNotice) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Passkey sign-in will appear here once your organisation enables secure passkey verification. Use your staff password for this device today.",
+                                style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                                color = FieldTheme.colors.gray500,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+
                         Spacer(modifier = Modifier.height(32.dp))
  
                         // Bottom Anchored Helper Label

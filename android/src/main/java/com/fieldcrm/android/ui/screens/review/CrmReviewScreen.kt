@@ -35,18 +35,13 @@ fun CrmReviewScreen(
     val allChecked = bureau1 && bureau2 && crmsSearch && ncrReg
 
     if (showReturnDialog) {
-        AlertDialog(
-            onDismissRequest = { showReturnDialog = false },
-            title = { Text("Return to Branch Manager?") },
-            text = { Text("This will send the file back to the Branch Manager for correction.") },
-            confirmButton = {
-                TextButton(onClick = { showReturnDialog = false; onReturnToBranchManager() }) {
-                    Text("Return", color = FieldTheme.colors.statusDanger)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showReturnDialog = false }) { Text("Cancel") }
-            }
+        ReviewDecisionSheet(
+            title = "Return this file to the Branch Manager?",
+            message = "The Branch Manager will receive the file for correction. Add review notes before returning it.",
+            confirmLabel = "Return for correction",
+            destructive = true,
+            onConfirm = { showReturnDialog = false; onReturnToBranchManager() },
+            onDismiss = { showReturnDialog = false }
         )
     }
 

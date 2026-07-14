@@ -1,309 +1,242 @@
-# FieldCRM Android App
+# FieldCRM Android
 
-The `android` module contains FieldCRM's native Android application for field and back-office lending workflows. It is built with Kotlin, Jetpack Compose, and depends on the shared Kotlin Multiplatform module for models, API access, local storage, and synchronization foundations.
+The Android module is the native, offline-capable FieldCRM client for Mainstreet Microfinance Bank loan operations. It is a Kotlin and Jetpack Compose application for Android 8.0+ (`minSdk 26`). The module is a client of the existing backend workflow: it does not replace loan rules, authorization, OCR processing, Room persistence, Ktor networking, or synchronization policy.
 
-## What This App Does
+## What this module is responsible for
 
-The Android app supports core mobile workflows for FieldCRM:
+- Native Compose screens, adaptive layouts, theming, navigation, and accessible interaction.
+- Local screen state and user intents through the existing MVI-style ViewModels.
+- Local biometric device gate, with password fallback messaging.
+- On-device document capture, PDF assembly, upload, and an OCR review interface.
+- Rendering local/offline and server synchronization status.
+- Calling the established Ktor-backed `MobileApiService` and repositories.
 
-- Authentication with password, passcode, and biometric sign-in
-- Role-aware dashboards and queue entry points
-- Borrower search, detail, and creation
-- Loan application list, detail, and draft creation
-- Loan intake form workflows
-- Document upload and viewing
-- Guarantor verification and pledge/trust capture
-- Visitation report capture and signoff
-- Review screens for credit officers, branch managers, auditors, and admins
-- Audit event inspection
-- Settings and offline queue management
+## What this module is not responsible for
 
-Some flows are still under development. Certain backend API endpoints and offline sync behaviors are scaffolded or in progress.
+- Authorizing a user or a role. The backend remains the authority.
+- Deciding loan eligibility, approval thresholds, or advancing a workflow without a backend action.
+- Replacing Room, SQLDelight, Koin, Ktor, the OCR engine, or biometric security implementation.
+- Performing WebAuthn/passkey verification. That requires backend relying-party endpoints and Digital Asset Links.
+- Displaying borrower data outside the authenticated app, including in notifications or widgets.
 
-## Technology
+## Build and run
 
-- Kotlin 1.9.22
-- Android Gradle Plugin 8.2.2
-- Jetpack Compose + Material 3
-- Android ViewModel and lifecycle components
-- WorkManager for background sync
-- Ktor HTTP client
-- SQLDelight local storage
-- Shared Kotlin Multiplatform module
-
-## Requirements
-
-- Android Studio
-- Android SDK 34
-- JDK 17
-- Physical device or emulator with API 24+
-
-Current app configuration:
-
-| Setting | Value |
-| --- | --- |
-| Application ID | `com.fieldcrm.android` |
-| Minimum SDK | 24 |
-| Target SDK | 34 |
-| Compile SDK | 34 |
-| Version | `1.0` (`versionCode` 1) |
-
-## Project Structure
-
-```text
-android/
-|-- build.gradle.kts
-`-- src/main/
-    |-- AndroidManifest.xml
-    `-- java/com/fieldcrm/android/
-        |-- MainActivity.kt
-        |-- core/
-        |   |-- network/
-        |   `-- session/
-        |-- data/repository/
-        |-- sync/
-        `-- ui/
-            |-- components/
-            |-- screens/
-            |-- theme/
-            `-- viewmodel/
-```
-
-## Navigation Model
-
-Navigation is driven by a central `Screen` sealed class in `AppViewModel` and a back stack managed in `MainActivity.kt`. The app does not currently use Jetpack Navigation; instead, each screen transition is explicit and the visible back arrow follows the user-defined back stack.
-
-## Screen Navigation
-
-The app does not currently maintain a Jetpack Navigation back stack. Each
-screen receives explicit callbacks, and `MainActivity.kt` changes
-`AppViewModel.currentScreen`. The back arrow therefore goes to the fixed
-destination documented below rather than automatically returning through
-navigation history.
-
-### Main Flow
-
-```text
-Login
-  -> Dashboard
-     -> Borrower List -> Borrower Detail -> Create Application
-     |                `-> Create Borrower
-     -> Application List -> Application Detail -> workflow task screens
-     `-> Offline Queue
-```
-
-### Every Screen
-
-| Screen | How to open it | Actions and destination |
-| --- | --- | --- |
-| Login | Initial app screen or Logout | Successful login saves the session and opens Dashboard. |
-| Dashboard | Successful login; back from Borrower List, Application List, Settings, or Offline Queue | Opens Borrower List, Application List, or Offline Queue. Logout clears the session and returns to Login. |
-| Borrower List | Dashboard borrower module/action | Select a borrower to open Borrower Detail. Add opens Create Borrower. Back opens Dashboard. |
-| Borrower Detail | Select a borrower in Borrower List | Create Application opens Create Application with that borrower preselected. Back clears the selected borrower and opens Borrower List. |
-| Create Borrower | Add action in Borrower List | Successful creation opens Borrower List. Back cancels and opens Borrower List. |
-| Application List | Dashboard application module/action | Select an application to open Application Detail. Add opens Create Application. Back opens Dashboard. |
-| Create Application | Add action in Application List, or Create Application from Borrower Detail | Successful creation opens Application List. Back cancels and opens Application List. |
-| Application Detail | Select an application in Application List | Opens Loan Application Form, Document Upload, Document Viewer, Guarantors Form, Pledge & Trust, Visitation Report, role-specific Review, or Workflow Event Audit. Back clears the selected application and opens Application List. |
-| Loan Application Form | Form/wizard action in Application Detail | Back or Finish returns to Application Detail. Internal form steps remain inside this screen. |
-| Document Upload | Identity/document requirement in Application Detail | Back or Complete returns to Application Detail. |
-| Document Viewer | Select a displayed application document | Back returns to Application Detail. |
-| Guarantors Form | Guarantor verification requirement in Application Detail | Back or Save returns to Application Detail. |
-| Pledge & Trust | Pledge document requirement in Application Detail | Back or signature completion returns to Application Detail. |
-| Visitation Report | GPS/visitation requirement in Application Detail | Back or Submit returns to Application Detail. |
-| Branch Manager Review | Review action from Application Detail when the session role is Branch Manager | Back or decision submission returns to Application Detail. |
-| Credit Officer Review | Review action from Application Detail when the role is Credit Officer; also the current fallback for unrecognized roles | Back or completed review returns to Application Detail. |
-| Auditor Compliance | Review action from Application Detail when the role is Auditor | Back or completed audit returns to Application Detail. |
-| Admin MCR Approval | Review action from Application Detail when the role is `ADMIN_MCR` | Back or disbursement trigger returns to Application Detail. |
-| Workflow Event Audit | Audit-trail action in Application Detail | Back returns to Application Detail. |
-| Settings | Settings state or the settings area rendered inside Dashboard | Back opens Dashboard. Its Offline Queue row opens Offline Queue. |
-| Offline Queue | Dashboard offline action or Settings | Back opens Dashboard. Retry/remove actions currently update the local mock queue without leaving the screen. |
-
-### Role-Based Review Routing
-
-The Review action on Application Detail chooses a destination from the active
-session role:
-
-| Session role | Review screen |
-| --- | --- |
-| `BRANCH_MANAGER` | Branch Manager Review |
-| `CREDIT_OFFICER` | Credit Officer Review |
-| `AUDITOR` | Auditor Compliance |
-| `ADMIN_MCR` | Admin MCR Approval |
-| Any other or missing role | Credit Officer Review fallback |
-
-### Dashboard Navigation
-
-Dashboard content changes with the user role, but its top-level callbacks are
-shared:
-
-- Borrower-related cards and modules open Borrower List.
-- Application, queue, review, and pipeline cards open Application List.
-- The offline/settings area can open Offline Queue.
-- The logout icon clears all `AppUiState`, including the session and selected
-  borrower/application, then displays Login.
-
-Dashboard also uses internal tab state for its main and settings content. That
-tab state is local to `DashboardScreen`; it is separate from the app-level
-`Screen.Settings` state.
-
-### Application Detail Navigation
-
-Application Detail is the Android app's central workflow hub:
-
-- The application-form card opens Loan Application Form.
-- A displayed document opens Document Viewer.
-- Identity verification opens Document Upload.
-- Pledge status opens Pledge & Trust.
-- GPS visitation status opens Visitation Report.
-- Guarantor verification opens Guarantors Form.
-- Approve, return, and reject actions all open the role-based Review screen.
-- The audit-history action opens Workflow Event Audit.
-
-All these child screens explicitly return to Application Detail. They depend on
-`selectedApplication` remaining in `AppUiState`; only leaving Application
-Detail for Application List clears that selection.
-
-### Android System Back
-
-There is not yet a centralized handler that maps the Android system Back button
-to the same destinations as each screen's top-app-bar arrow. Until navigation
-is migrated to Jetpack Navigation or a custom back handler is added, test both
-the visible back arrow and the device Back gesture when changing navigation.
-
-## Setup
-
-Run Gradle commands from the repository root because `android` depends on the
-sibling `shared` module.
-
-### 1. Configure the Android SDK
-
-Android Studio usually creates `local.properties` automatically. If needed,
-create it in the repository root:
-
-```properties
-sdk.dir=C\:\\Users\\YOUR_USER\\AppData\\Local\\Android\\Sdk
-```
-
-`local.properties` is machine-specific and must not be committed.
-
-### 2. Compile the app
+From the repository root:
 
 ```powershell
 .\gradlew.bat :android:compileDebugKotlin
-```
-
-### 3. Build a debug APK
-
-```powershell
 .\gradlew.bat :android:assembleDebug
 ```
 
-The APK is generated under:
-
-```text
-android/build/outputs/apk/debug/
-```
-
-### 4. Run from Android Studio
-
-Open the repository root in Android Studio, allow Gradle synchronization to
-finish, select the `android` run configuration, and choose an emulator or
-connected device.
-
-## Connect to the Backend
-
-Start the FastAPI backend on the development machine:
-
-```powershell
-uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8000 --reload
-```
-
-The current ViewModels use:
-
-- `http://10.0.2.2:8000` for a standard Android emulator.
-- `http://localhost:8000` for non-emulator detection.
-
-`localhost` on a physical device means the device itself, not the development
-computer. For a physical device, change the base URL to the computer's LAN IP,
-for example `http://192.168.1.20:8000`, and ensure the firewall allows the
-connection.
-
-The manifest currently permits internet access. Because development uses plain
-HTTP, verify the emulator/device network policy if requests are blocked; a
-production build should use HTTPS.
-
-## Shared Module Dependency
-
-The `android` module imports `project(":shared")`. The shared module provides:
-
-- `FieldCRMClient`
-- Borrower and loan application models
-- SQLDelight `AppDatabase`
-- Offline synchronization foundations
-
-Both modules must remain included in the root `settings.gradle.kts`:
+All external Android dependencies are declared in [`../gradle/libs.versions.toml`](../gradle/libs.versions.toml). `android/build.gradle.kts` uses the generated `libs.*` accessors. The only non-catalog dependency is the local shared module:
 
 ```kotlin
-include(":shared")
-include(":android")
+implementation(project(":shared"))
 ```
 
-## Architecture Notes
+## Module map
 
-- Composables belong under `ui/screens` or `ui/components`.
-- Screen state and user actions belong in ViewModels.
-- Network and persistence logic belong in repositories or the shared module.
-- Long-running synchronization belongs in WorkManager workers.
-- Session and role information belongs under `core/session`.
+| Location | Purpose |
+| --- | --- |
+| `src/main/java/com/fieldcrm/android/ui/navigation/` | Nav3 app entry point, screen destinations, and back-stack handling. |
+| `ui/screens/` | Feature screens grouped by dashboard, application, document, queue, review, admin, audit, auth, onboarding, and borrower flows. |
+| `ui/components/` | Reusable Compose building blocks: app bars, buttons, cards, navigation, sync status, capture UI, and approval sheets. |
+| `ui/theme/` | Brand tokens, dark/light themes, typography, shapes, and the existing custom `FieldIcons`. |
+| `ui/viewmodel/` | Existing screen state/actions and UI orchestration. |
+| `data/api/` | Ktor `MobileApiService`, transport DTOs, and compatibility-safe API calls. |
+| `data/repository/` | Local/cache and remote repository coordination. |
+| `core/session/` | Session and role representation, including the canonical-to-legacy UI bridge. |
 
-Avoid performing network calls directly from composables.
+## Navigation
 
-## Tests and Verification
+Navigation uses Navigation 3 only. The app retains the existing Nav3 back stack and decorators for saved state and ViewModel scope. Do not add `androidx.navigation:navigation-compose` or another navigation library.
 
-Compile after making changes:
+Primary navigation adapts by window size:
 
-```powershell
-.\gradlew.bat :android:compileDebugKotlin
+- **Compact phones:** branded bottom navigation and thumb-reachable primary actions.
+- **Medium/expanded windows:** navigation rail/shell treatment and wider content lanes; dashboards use the Compose Material 3 window-size class rather than a hand-built width breakpoint.
+
+The current navigation structure intentionally preserves existing destinations and deep workflow links. A redesign must not create a parallel back stack.
+
+## Shared design system
+
+The Android design system follows the root [`../DESIGN.md`](../DESIGN.md) reference. The visual language is Shield Purple, neutral financial-document surfaces, deliberate hierarchy, and the app’s custom vector icon set.
+
+### Core components
+
+| Component | Does | Does not do |
+| --- | --- | --- |
+| `PrimaryButton` | Presents the one highest-priority action for a screen or decision. | Infer permissions or submit data itself. |
+| `SecondaryButton` | Provides non-destructive alternatives such as retry, cancel, upload, or return. | Replace a primary action merely for visual variety. |
+| `FieldCard` / `SectionCard` | Groups a loan summary, evidence set, review checklist, or status information. | Imply all content has equal priority. |
+| `FieldTopAppBar` | Supplies consistent title, back navigation, and optional actions. | Own navigation state. |
+| `FieldBottomNavigation` / rail | Provides app-level navigation using the current Nav3 destination model. | Use Material stock icons in place of `FieldIcons`. |
+| `SyncStatusBar` | Shows persistent saved/syncing/failed state and exposes retry where supplied. | Claim server success for locally saved work. |
+| `CameraOcrScanner` | Guides framing, scan capture, document page handling, retake, and local OCR hand-off. | Invent real-time glare/blur confidence when the OCR engine does not provide it. |
+| `OcrFieldsCard` | Lets staff review and manually correct extracted identity fields. Flags per-field server confidence when available. | Treat a local text parse as a verified financial record. |
+| `ReviewDecisionSheet` | Confirms consequential approve, forward, or return decisions with a clear outcome. | Alter approval logic, permissions, or backend workflow. |
+
+Every custom icon must have a meaningful `contentDescription` where it is actionable or communicates state. Status is always text plus color. Touch targets must remain at least 48dp.
+
+## Authentication and security screens
+
+### Login and biometric gate
+
+The login experience is the authenticated app boundary. It supports the existing local biometric gate and password fallback.
+
+- **Does:** explain unavailable hardware, unenrolled biometrics, cancellation, lockout, and keystore invalidation recovery as a stable unauthenticated state.
+- **Does not:** bypass Android `BiometricPrompt`, store secrets in Compose state, or present the device as authenticated when the prompt is cancelled.
+
+### New-device passkey entry and passkey settings
+
+The UI includes a clearly labelled **Create a passkey** affordance and a manage-passkeys settings entry.
+
+- **Does:** explain that passkeys are for new-device sign-in and retain the existing daily biometric gate.
+- **Does not yet do:** create, list, delete, register, or authenticate a real passkey. Credential Manager integration must wait for a confirmed backend WebAuthn contract, relying-party verification endpoints, and hosted `assetlinks.json`. API 26–27 devices must remain on the biometric/password fallback path.
+
+## Dashboard
+
+`DashboardScreen` is the authenticated starting surface. It displays role-aware metrics, short actions, queue items, recent activity, and persistent sync state.
+
+### Dashboard behavior
+
+- Displays server metrics when available without pretending local drafts are server-synced.
+- Shows individual record state in relevant lists and a global sync summary with a retry action.
+- Uses tablet layout when the Compose window size class is not compact.
+- Keeps navigation callbacks outside deeply nested UI components.
+
+### Dashboard limitations
+
+- The dashboard does not determine role permissions; it reflects the current session/backend role.
+- It does not silently overwrite a conflict. A backend conflict must surface a dedicated resolution flow.
+- It does not use dynamic color; dark mode is a tonal version of the same brand.
+
+## Roles and workflow ownership
+
+The canonical server workflow is:
+
+```text
+Account Officer → Branch Manager → Branch Supervisor → Credit Analyst
+→ CRM Officer → Head CRM → Auditor → Executive Director
+→ Managing Director → CRM disbursement
 ```
 
-Run unit tests:
+The Android app keeps some legacy screen names while the backend/API moves to canonical routing. `UserRole.legacyUiRole` is a temporary presentation bridge:
 
-```powershell
-.\gradlew.bat :android:testDebugUnitTest
+| Canonical role | Current UI bridge | Primary responsibility |
+| --- | --- | --- |
+| Account Officer | Loan Officer | Capture borrowers, complete intake, field visits, documents, OCR review. |
+| Branch Manager | Branch Manager | Review branch-level dossiers and submit the branch decision. |
+| Branch Supervisor | Branch Manager presentation | Supervisor-stage review until its dedicated screen is separated. |
+| Credit Analyst | Committee presentation | Analyst-stage review until its dedicated screen is separated. |
+| CRM Officer | CRM | Credit-file completeness, compliance evidence, disbursement readiness. |
+| Head CRM | Executive presentation | Head-CRM-stage review until its dedicated screen is separated. |
+| Auditor | Auditor | Consent, signature, exhibit, and audit evidence checks. |
+| Executive Director | ED | Executive approval or forward to MD. |
+| Managing Director | MD | Final senior approval or board referral. |
+| System Admin | System Admin | User administration, system activity, and configuration surfaces. |
+
+### Role matrix
+
+| Role | Main Android surfaces | Can do | Must not do |
+| --- | --- | --- | --- |
+| Account Officer | Dashboard, borrowers, intake wizard, visits, documents, OCR, offline queue | Create and update assigned dossiers; capture documents; correct OCR values; see local sync status. | Approve a loan or present locally saved work as server-approved. |
+| Branch Manager | Dashboard, queues, branch review, visitation concurrence | Review assigned branch work and return/advance using existing actions. | Replace CRM, audit, or executive decision-making. |
+| Branch Supervisor | Dashboard/branch-review bridge | Review supervisor-stage records via the existing compatible review surface. | Gain a new backend permission solely from the UI bridge. |
+| Credit Analyst | Dashboard/review bridge | Review analyst-stage files through existing compatible review surface. | Vote/approve as a separate committee role unless backend authorizes it. |
+| CRM Officer | CRM queue, CRM review, document viewer, disbursement surfaces | Verify file completeness, add notes/documents, return for correction, advance approved work. | Bypass required review stages. |
+| Head CRM | Executive-review bridge | Inspect and action Head CRM work through compatible routing. | Gain direct ED/MD authority. |
+| Auditor | Auditor verification, audit trail, compliance flags | Record checklist evidence and audit observations. | Change borrower financial data without an existing authorized workflow. |
+| Executive Director | ED queue and ED approval | Approve within existing backend authority or forward to MD. | Issue a result without backend confirmation. |
+| Managing Director | MD queue and MD approval | Give final decision and use existing board-referral action. | Override history silently. |
+| System Admin | Users, system activity, configuration/audit surfaces | Manage users through existing admin endpoint and review system state. | Access or mutate records outside backend authorization. |
+
+## Document and OCR flow
+
+1. Staff selects a supported file or opens the camera scanner.
+2. The capture surface gives framing and retake guidance. It does not claim live glare/blur detection unless provided by the capture engine.
+3. The document is uploaded through the existing document service and Ktor client.
+4. The backend processes supported documents asynchronously and persists OCR fields with confidence.
+5. Android requests optional field-level OCR data from `GET /api/v1/mobile/applications/{id}/ocr-fields`.
+6. The review screen populates empty identity values when data is ready and marks low-confidence or unverified critical values for checking.
+7. Staff can manually correct values and submit the existing OCR review action.
+
+### OCR compatibility
+
+The OCR-fields endpoint is additive. An older online backend can return `404`; `MobileApiService` treats that as unavailable data and the manual review UI remains functional. No existing mobile endpoint or response contract is changed.
+
+## Offline and synchronization behavior
+
+The app is offline-first through the existing Room/SQLDelight cache and sync layer.
+
+- **Saved locally:** display as saved on device/pending sync.
+- **Syncing:** display a persistent syncing state.
+- **Synced:** display only when the established sync layer confirms server completion.
+- **Failed:** display a human-readable failure and one retry action.
+- **Conflict:** must be surfaced as a separate resolution UI when supplied by the backend; never silently overwrite.
+
+The UI does not implement sync policy. It renders `SyncUiState` and invokes the existing sync action supplied by the parent.
+
+## Review and approval screens
+
+| Screen area | Purpose | Boundary |
+| --- | --- | --- |
+| Branch review | Dossier/visit review and branch decision. | Uses existing ViewModel/repository action contracts. |
+| CRM review | CBN-oriented credit-file checklist, notes, supporting document action, return or advance. | Checklist UI does not itself grant approval. |
+| Audit verification | Consent, signature, and exhibit checklist with auditor sign-off. | Does not alter unrelated borrower data. |
+| ED approval | Shows authority context, approve/issue instruction or forward to MD. | Final workflow transition remains backend-owned. |
+| MD approval | Final senior decision and board referral surfaces. | Does not bypass audit trail or backend authorization. |
+| Committee/executive legacy screens | Compatibility screens kept while canonical API routing is being completed. | Do not treat legacy labels as a different backend role. |
+
+## Queues and pipeline
+
+Queue screens are lists backed by current application data. They use `LazyColumn`, do not create a desktop table on a phone, and preserve the existing callback that opens the selected dossier.
+
+The Pipeline screen groups canonical stages as **Intake**, **OCR Review**, **Review**, **Approval**, and **Disbursed**. It does not invent a workflow state; it maps backend stage values for scanning.
+
+## Adding or changing a screen
+
+1. Check `DESIGN.md`, existing screen folder conventions, and `FieldIcons` first.
+2. Preserve the existing screen State/Action/ViewModel contract. Stop and ask before a visual change requires a new business contract.
+3. Create one component/state/action class per file in the feature folder; put reusable UI in `ui/components/`.
+4. Keep leaf composables stateless: receive state and callbacks rather than obtaining a ViewModel deep in the tree.
+5. Use `LazyColumn`/`LazyVerticalGrid` for repeated content.
+6. Add compact, dark, and expanded/tablet `@Preview` functions for redesigned screens/components.
+7. Use string resources for new production copy and provide meaningful icon descriptions.
+8. Use purpose-driven Compose motion only for transition, progress, sync state, or confirmation.
+
+## Backend/API additions made for the OCR review UI
+
+The Android client can consume the optional response:
+
+```json
+{
+  "items": [
+    {
+      "field_name": "bvn",
+      "ocr_value": "22345678927",
+      "final_value": "22345678927",
+      "confidence": 95.0,
+      "is_critical": true,
+      "verified": false,
+      "ocr_status": "done"
+    }
+  ],
+  "processing": false
+}
 ```
 
-Run connected instrumentation tests with an emulator or device available:
+This is intentionally optional so the Android app continues to work against older deployed backends.
 
-```powershell
-.\gradlew.bat :android:connectedDebugAndroidTest
-```
+## Development seed data
 
-Manually verify affected screens with at least one narrow and one larger device
-profile, and test offline/reconnection behavior when changing repositories or
-workers.
+`../backend/migrations/014_seed_review_stage_dossiers.sql` seeds one complete, clearly labelled development dossier for each canonical workflow stage. It includes forms, verified documents, image/signature records, guarantors, signed field visits, stage data, and workflow events. It is re-runnable through conflict guards.
 
-## Known Development Gaps
+Do not run development seeds against a production tenant without explicit approval.
 
-- Authentication in `AuthRepository` is currently mocked.
-- Some camera and offline queue behavior is placeholder UI.
-- API URLs are constructed in multiple ViewModels and the sync worker.
-- The mobile API contract is not fully aligned with the mounted backend routes.
-- Release minification and production signing are not configured.
+## Current follow-up work
 
-Before production release, centralize environment-specific URLs, complete the
-API contract, replace mocks, use HTTPS, configure signing, and add automated
-coverage for critical lending workflows.
-
-## Troubleshooting
-
-If Gradle uses an unsupported Java version, set `JAVA_HOME` to JDK 17 and
-restart Android Studio.
-
-If the SDK is not found, correct `sdk.dir` in the root `local.properties`.
-
-If the emulator cannot reach the backend, confirm that the backend is running
-on port 8000 and use `10.0.2.2`, not `127.0.0.1`.
-
-If dependency resolution fails on the first build, check internet access and
-retry after Gradle has downloaded the Android, Kotlin, Compose, Ktor, and
-SQLDelight dependencies.
+- Replace canonical-to-legacy UI bridges with dedicated Branch Supervisor, Credit Analyst, and Head CRM surfaces after backend/API routing is fully confirmed.
+- Implement real Credential Manager passkeys only after the WebAuthn backend contract and Digital Asset Links are available.
+- Complete preview, string-resource, and accessibility cleanup across older pre-redesign screens.
+- Run Android compile/build checks after dependency or API-interface changes.

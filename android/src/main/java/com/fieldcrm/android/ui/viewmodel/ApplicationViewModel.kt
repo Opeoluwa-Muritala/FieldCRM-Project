@@ -307,7 +307,7 @@ class ApplicationViewModel(
                 repository.queueStageAction(
                     action = "SUBMIT_INTAKE",
                     entityId = updatedApp.id,
-                    payloadJson = """{"id":"${updatedApp.id}","body":"{\"stage\":\"ocr_review\",\"amount\":${updatedApp.amount},\"tenor_months\":${updatedApp.tenor_months},\"loan_type\":\"${updatedApp.loan_type}\"}"}"""
+                    payloadJson = """{"id":"${updatedApp.id}","body":"{\"stage\":\"branch_manager_review\",\"amount\":${updatedApp.amount},\"tenor_months\":${updatedApp.tenor_months},\"loan_type\":\"${updatedApp.loan_type}\"}"}"""
                 )
             }
             onSuccess()

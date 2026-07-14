@@ -462,7 +462,7 @@ fun FieldCRMApp(
                     selectedDocName = name
                     backStack.add(Screen.DocumentViewer)
                 },
-                onNavigateToOcrReview = { backStack.add(Screen.OcrReview) }
+                onNavigateToOcrReview = { }
             )
         }
 
@@ -676,7 +676,7 @@ fun FieldCRMApp(
             onResolveException = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
                 if (app != null) appViewModel.setSelectedApplication(app)
-                backStack.add(Screen.OcrReview)
+                backStack.add(Screen.ApplicationDetail)
             }
         )
 

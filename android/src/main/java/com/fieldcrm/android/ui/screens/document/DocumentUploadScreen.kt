@@ -49,7 +49,10 @@ fun DocumentUploadScreen(
     val context = LocalContext.current
 
     // Reset on launch so stale state from a previous screen visit doesn't persist
-    LaunchedEffect(applicationId) { viewModel.reset() }
+    LaunchedEffect(applicationId) {
+        viewModel.reset()
+        viewModel.refreshOcrFields(applicationId)
+    }
 
     // File picker — reads bytes + filename from the chosen URI
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -78,7 +81,9 @@ fun DocumentUploadScreen(
                 viewModel.setOcrResult(
                     name = lines.firstOrNull() ?: uiState.extractedName,
                     bvn = bvn,
-                    confidence = 0.97f,
+                    // On-device text parsing does not provide field confidence.
+                    // Persisted server OCR values supply confidence after upload.
+                    confidence = 0f,
                     fileName = "camera_scan_${System.currentTimeMillis()}.jpg"
                 )
                 showCameraScanner = false
@@ -179,6 +184,10 @@ fun DocumentUploadScreen(
                             extractedBvn = uiState.extractedBvn,
                             onBvnChange = viewModel::setExtractedBvn,
                             ocrConfidence = uiState.ocrConfidence,
+                            extractedFields = uiState.extractedFields,
+                            isOcrProcessing = uiState.isOcrProcessing,
+                            isRefreshingOcr = uiState.isRefreshingOcr,
+                            onRefreshOcr = { viewModel.refreshOcrFields(applicationId) },
                             submitState = uiState.ocrSubmitState,
                             onVerifyClick = onVerifyAndConfirm
                         )
@@ -242,6 +251,10 @@ fun DocumentUploadScreen(
                                 extractedBvn = uiState.extractedBvn,
                                 onBvnChange = viewModel::setExtractedBvn,
                                 ocrConfidence = uiState.ocrConfidence,
+                                extractedFields = uiState.extractedFields,
+                                isOcrProcessing = uiState.isOcrProcessing,
+                                isRefreshingOcr = uiState.isRefreshingOcr,
+                                onRefreshOcr = { viewModel.refreshOcrFields(applicationId) },
                                 submitState = uiState.ocrSubmitState,
                                 onVerifyClick = onVerifyAndConfirm
                             )
@@ -396,6 +409,10 @@ fun OcrFieldsCard(
     extractedBvn: String,
     onBvnChange: (String) -> Unit,
     ocrConfidence: Float,
+    extractedFields: List<com.fieldcrm.android.data.api.OcrExtractedField> = emptyList(),
+    isOcrProcessing: Boolean = false,
+    isRefreshingOcr: Boolean = false,
+    onRefreshOcr: () -> Unit = {},
     submitState: UploadState,
     onVerifyClick: () -> Unit
 ) {
@@ -414,7 +431,22 @@ fun OcrFieldsCard(
         }
         Spacer(modifier = Modifier.height(12.dp))
 
-        if (ocrConfidence > 0f) {
+        if (isOcrProcessing) {
+            Text(
+                text = "Extraction is still processing. You can enter values manually and refresh the results.",
+                style = FieldTheme.typography.body,
+                color = FieldTheme.colors.gray400
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        if (extractedFields.isNotEmpty()) {
+            Text(
+                text = "Only fields marked for review need extra checking.",
+                style = FieldTheme.typography.body,
+                color = FieldTheme.colors.gray400
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        } else if (ocrConfidence > 0f) {
             Text(
                 text = "SCANNER CONFIDENCE LEVEL",
                 style = FieldTheme.typography.label,
@@ -438,12 +470,22 @@ fun OcrFieldsCard(
             label = "Full Name (from document)",
             isRequired = true
         )
+        OcrFieldConfidenceNotice(
+            field = extractedFields.firstOrNull { it.field_name == "applicant_name" || it.field_name == "full_name" }
+        )
         Spacer(modifier = Modifier.height(12.dp))
         FieldTextField(
             value = extractedBvn,
             onValueChange = onBvnChange,
             label = "BVN Reference",
             isRequired = true
+        )
+        OcrFieldConfidenceNotice(field = extractedFields.firstOrNull { it.field_name == "bvn" })
+        Spacer(modifier = Modifier.height(12.dp))
+        SecondaryButton(
+            text = if (isRefreshingOcr) "Refreshing extraction…" else "Refresh extracted fields",
+            onClick = onRefreshOcr,
+            enabled = !isRefreshingOcr
         )
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -493,6 +535,38 @@ fun OcrFieldsCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun OcrFieldConfidenceNotice(field: com.fieldcrm.android.data.api.OcrExtractedField?) {
+    val confidence = field?.confidence ?: return
+    val needsReview = confidence < 80f || field.is_critical && !field.verified
+    if (needsReview) {
+        Row(
+            modifier = Modifier.padding(top = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = FieldIcons.AlertOutlined,
+                contentDescription = "Needs review",
+                tint = FieldTheme.colors.statusWarning,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = "Check this value — low confidence (${confidence.toInt()}%)",
+                style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                color = FieldTheme.colors.statusWarning
+            )
+        }
+    } else {
+        Text(
+            text = "Extracted with ${confidence.toInt()}% confidence",
+            style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+            color = FieldTheme.colors.gray500,
+            modifier = Modifier.padding(top = 6.dp)
+        )
     }
 }
 

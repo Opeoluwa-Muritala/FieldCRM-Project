@@ -3,6 +3,7 @@ package com.fieldcrm.android.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fieldcrm.android.data.api.MobileApiService
+import com.fieldcrm.android.data.api.OcrExtractedField
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +24,9 @@ data class DocumentUploadUiState(
     val extractedName: String = "",
     val extractedBvn: String = "",
     val ocrConfidence: Float = 0f,
+    val extractedFields: List<OcrExtractedField> = emptyList(),
+    val isOcrProcessing: Boolean = false,
+    val isRefreshingOcr: Boolean = false,
     val uploadState: UploadState = UploadState.Idle,
     val ocrSubmitState: UploadState = UploadState.Idle
 ) {
@@ -35,6 +39,9 @@ data class DocumentUploadUiState(
             extractedName == other.extractedName &&
             extractedBvn == other.extractedBvn &&
             ocrConfidence == other.ocrConfidence &&
+            extractedFields == other.extractedFields &&
+            isOcrProcessing == other.isOcrProcessing &&
+            isRefreshingOcr == other.isRefreshingOcr &&
             uploadState == other.uploadState &&
             ocrSubmitState == other.ocrSubmitState
     }
@@ -45,6 +52,9 @@ data class DocumentUploadUiState(
         result = 31 * result + extractedName.hashCode()
         result = 31 * result + extractedBvn.hashCode()
         result = 31 * result + ocrConfidence.hashCode()
+        result = 31 * result + extractedFields.hashCode()
+        result = 31 * result + isOcrProcessing.hashCode()
+        result = 31 * result + isRefreshingOcr.hashCode()
         result = 31 * result + uploadState.hashCode()
         result = 31 * result + ocrSubmitState.hashCode()
         return result
@@ -90,6 +100,35 @@ class DocumentUploadViewModel(private val apiService: MobileApiService) : ViewMo
             )
             _uiState.update {
                 it.copy(uploadState = if (result != null) UploadState.Done else UploadState.Failed("Upload failed — will retry on next sync"))
+            }
+            if (result != null) refreshOcrFields(applicationId)
+        }
+    }
+
+    fun refreshOcrFields(applicationId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshingOcr = true) }
+            val response = apiService.getOcrFields(applicationId)
+            _uiState.update { current ->
+                if (response == null) {
+                    current.copy(isRefreshingOcr = false)
+                } else {
+                    val applicantName = response.items.firstOrNull {
+                        it.field_name == "applicant_name" || it.field_name == "full_name"
+                    }
+                    val bvn = response.items.firstOrNull { it.field_name == "bvn" }
+                    current.copy(
+                        extractedFields = response.items,
+                        isOcrProcessing = response.processing,
+                        isRefreshingOcr = false,
+                        extractedName = current.extractedName.ifBlank {
+                            applicantName?.final_value ?: applicantName?.ocr_value.orEmpty()
+                        },
+                        extractedBvn = current.extractedBvn.ifBlank {
+                            bvn?.final_value ?: bvn?.ocr_value.orEmpty()
+                        }
+                    )
+                }
             }
         }
     }

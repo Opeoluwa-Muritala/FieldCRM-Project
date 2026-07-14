@@ -11,6 +11,7 @@ from app.core.dependencies import get_current_user
 from app.core.workflow import NEXT_STAGE, ROLE_LABELS, STAGE_ROLE
 from app.domains.documents.repository import DocumentRepository
 from app.domains.documents.service import DocumentService
+from app.domains.ocr.repository import OcrRepository
 from app.domains.guarantors.repository import GuarantorRepository
 from app.domains.guarantors.service import GuarantorService
 from app.domains.loans.repository import LoanRepository
@@ -362,6 +363,9 @@ async def get_mobile_queue(
         "visits-due",
         "awaiting-concurrence",
         "pending-signoffs",
+        "branch-supervisor-review",
+        "credit-analyst-review",
+        "head-crm-review",
         "credit-reviews",
         "ocr-exceptions",
         "compliance-flags",
@@ -391,6 +395,15 @@ async def get_mobile_queue(
     elif queue_name == "pending-signoffs":
         _ensure_roles(current_user, {"branch_manager", "system_admin"})
         items = await dashboard.get_pending_signoffs(current_user, limit=limit, offset=offset)
+    elif queue_name == "branch-supervisor-review":
+        _ensure_roles(current_user, {"branch_supervisor", "system_admin"})
+        items = await dashboard.get_supervisory_review_queue(current_user, limit=limit, offset=offset)
+    elif queue_name == "credit-analyst-review":
+        _ensure_roles(current_user, {"credit_analyst", "system_admin"})
+        items = await dashboard.get_credit_reviews(current_user, limit=limit, offset=offset)
+    elif queue_name == "head-crm-review":
+        _ensure_roles(current_user, {"head_crm", "system_admin"})
+        items = await dashboard.get_crm_queue(current_user, limit=limit, offset=offset)
     elif queue_name == "credit-reviews":
         _ensure_roles(current_user, {"branch_manager", "system_admin"})
         items = await dashboard.get_credit_reviews(current_user, limit=limit, offset=offset)
@@ -683,6 +696,22 @@ async def list_mobile_documents(
     await _get_application_or_404(conn, application_id, current_user)
     documents = await DocumentRepository(conn).get_by_loan(application_id, current_user.org_id)
     return {"items": documents}
+
+
+@router.get("/applications/{application_id}/ocr-fields")
+async def list_mobile_ocr_fields(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    """Return persisted per-field OCR confidence for an authorised dossier."""
+    await _get_application_or_404(conn, application_id, current_user)
+    fields = await OcrRepository(conn).list_fields_for_loan(loan_id=application_id)
+    documents = await DocumentRepository(conn).get_by_loan(application_id, current_user.org_id)
+    return {
+        "items": fields,
+        "processing": any(document.get("ocr_status") in {"pending", "processing"} for document in documents),
+    }
 
 
 @router.post("/applications/{application_id}/ocr-review")
@@ -1640,6 +1669,11 @@ async def advance_review_workflow(
     required_role = STAGE_ROLE.get(app.stage)
     if required_role is None:
         raise HTTPException(status_code=409, detail="This application is not in the operational review workflow")
+    if app.stage == "intake":
+        raise HTTPException(
+            status_code=409,
+            detail="Account Officers complete intake only; the Branch Manager submits the application for review.",
+        )
     if role not in {required_role, "system_admin"}:
         raise HTTPException(status_code=403, detail=f"This stage is assigned to {ROLE_LABELS[required_role]}")
     if app.stage in {"ed_approval", "md_approval"}:

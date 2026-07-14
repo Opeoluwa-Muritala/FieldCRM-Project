@@ -145,28 +145,45 @@ class LoanService:
                 )
                 
             if step == 9:
-                required_consents = [
-                    "consent_bureau_disclosure",
-                    "consent_credit_check",
-                    "consent_cheque_recovery",
-                    "consent_gsi"
-                ]
-                missing = [k for k in required_consents if not existing_data.get(k)]
+                # The wizard posts these field names.  Accept the two former
+                # service names as well, so a draft saved before this fix can
+                # still be submitted.  Store the canonical nested shape used
+                # by the readiness query at the same time.
+                consent_sources = {
+                    "credit_bureau": ("consent_credit_bureau", "consent_bureau_disclosure"),
+                    "credit_check": ("consent_credit_check",),
+                    "cheque_authority": ("consent_cheque", "consent_cheque_recovery"),
+                    "gsi_mandate": ("consent_gsi",),
+                }
+                consent_values = {
+                    name: next(
+                        (existing_data[key] for key in keys if existing_data.get(key)),
+                        None,
+                    )
+                    for name, keys in consent_sources.items()
+                }
+                missing = [name for name, value in consent_values.items() if not value]
                 if missing:
                     raise DomainException(
                         f"All legal consents must be accepted before submission. Missing: {', '.join(missing)}",
                         422
                     )
+                existing_data["consents"] = {
+                    name: "true" for name in consent_values
+                }
 
             await tx_repo.save_stage_data(app_id, "intake", existing_data, user_id)
 
             if step == 9:
-                await tx_repo.advance_stage(app_id, org_id, "ocr_review")
+                # Account Officers complete field intake but do not formally
+                # submit loan applications. The Branch Manager owns the first
+                # review and submission decision.
+                await tx_repo.advance_stage(app_id, org_id, "branch_manager_review")
                 await tx_audit.log(
                     application_id=str(app_id),
                     org_id=str(org_id),
-                    action="Submit Intake Form",
+                    action="Complete Intake Form",
                     from_stage="intake",
-                    to_stage="ocr_review",
+                    to_stage="branch_manager_review",
                     actor_id=str(user_id)
                 )

@@ -145,7 +145,7 @@ fun ApplicationDetailScreenView(
                             Spacer(modifier = Modifier.height(4.dp))
                             Box(modifier = Modifier.clickable { onNavigateToFormWizard() }) {
                                 LoanStageTimeline(
-                                    stages = listOf("Intake", "OCR Review", "Credit Review", "BM Approved", "Ready"),
+                                    stages = listOf("Intake", "Branch Manager", "Credit Analysis", "Approval", "Ready"),
                                     currentStageIndex = application.stageIndex
                                 )
                             }
@@ -760,21 +760,17 @@ fun ApplicationActionFooter(
         val stage = application?.stage
 
         when (role) {
-            null, UserRole.LOAN_OFFICER -> when (stage) {
+            null, UserRole.LOAN_OFFICER, UserRole.ACCOUNT_OFFICER -> when (stage) {
                 "intake", "returned", null -> PrimaryButton(
                     text = "Continue Application Form",
                     onClick = onNavigateToFormWizard,
                     modifier = Modifier.fillMaxWidth()
                 )
-                "ocr_review" -> PrimaryButton(
-                    text = "Verify OCR & Advance to Credit",
-                    onClick = onNavigateToOcrReview,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                "ocr_review" -> ReadOnlyBanner()
                 else -> ReadOnlyBanner()
             }
 
-            UserRole.BRANCH_MANAGER -> if (stage in setOf("credit_review", "branch_approval", "returned")) {
+            UserRole.BRANCH_MANAGER, UserRole.BRANCH_SUPERVISOR -> if (stage in setOf("branch_manager_review", "branch_supervisor_review", "returned")) {
                 PrimaryButton(
                     text = "Open Review Console",
                     onClick = onNavigateToReview,
@@ -794,7 +790,7 @@ fun ApplicationActionFooter(
                 ReadOnlyBanner()
             }
 
-            UserRole.EXECUTIVE -> if (stage == "executive_approval") {
+            UserRole.EXECUTIVE, UserRole.HEAD_CRM -> if (stage in setOf("head_crm_review", "executive_approval")) {
                 PrimaryButton(
                     text = "Open Review Console",
                     onClick = onNavigateToReview,
@@ -804,7 +800,7 @@ fun ApplicationActionFooter(
                 ReadOnlyBanner()
             }
 
-            UserRole.COMMITTEE -> if (stage == "committee_review") {
+            UserRole.COMMITTEE, UserRole.CREDIT_ANALYST -> if (stage in setOf("credit_analyst_review", "committee_review")) {
                 PrimaryButton(
                     text = "Open Review Console",
                     onClick = onNavigateToReview,

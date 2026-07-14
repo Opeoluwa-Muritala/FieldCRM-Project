@@ -467,7 +467,8 @@ async def render_application_detail(
         if app.current_stage == 1:
             return RedirectResponse(url=f"/applications/{application_id}/step/1", status_code=status.HTTP_303_SEE_OTHER)
         elif app.current_stage == 2:
-            return RedirectResponse(url=f"/applications/{application_id}/ocr-review", status_code=status.HTTP_303_SEE_OTHER)
+            # Legacy OCR-review records no longer have a manual review page.
+            return RedirectResponse(url=f"/applications/{application_id}/approve", status_code=status.HTTP_303_SEE_OTHER)
         elif app.current_stage == 3:
             return RedirectResponse(url=f"/applications/{application_id}/credit-review", status_code=status.HTTP_303_SEE_OTHER)
         else:
@@ -578,7 +579,9 @@ async def process_wizard_step(
         next_step = step + 1
         return RedirectResponse(url=f"/applications/{application_id}/step/{next_step}", status_code=status.HTTP_303_SEE_OTHER)
     else:
-        return RedirectResponse(url=f"/applications/{application_id}/ocr-review", status_code=status.HTTP_303_SEE_OTHER)
+        # OCR extraction continues in the background. There is no manual OCR
+        # review stage; completed intake is handed to the Branch Manager.
+        return RedirectResponse(url=f"/applications/{application_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 @router.get("/applications/{application_id}/guarantors/{guarantor_index}/step/{step}")
 async def render_guarantor_step(
@@ -706,33 +709,11 @@ async def render_ocr_review(
     conn = Depends(db_conn),
     current_user = Depends(get_current_user)
 ):
-    """Page 14 OCR Review Page."""
-    from app.domains.documents.repository import DocumentRepository
-    from uuid import UUID
-    
-    doc_repo = DocumentRepository(conn)
-    documents = await doc_repo.get_by_loan(UUID(application_id), current_user.org_id)
-    
-    doc_url = None
-    target_categories = ['id', 'statement', 'payslip', 'other'] if doc == 'loan' else [doc]
-    for d in documents:
-        if d.get("doc_type") in target_categories:
-            doc_url = d.get("cloud_preview_url") or d.get("stored_path")
-            break
-    if not doc_url and documents:
-        doc_url = documents[0].get("cloud_preview_url") or documents[0].get("stored_path")
-
-    ctx = build_template_context(
-        request,
-        current_user,
-        app_id=application_id,
-        doc_type=doc,
-        doc_name="Loan Application Form" if doc == 'loan' else "Pledge Receipt Form",
-        doc_url=doc_url or "/static/img/logo.png",
-        active_tab="ocr",
-        active_page="ocr",
+    """Compatibility redirect for retired manual OCR-review links."""
+    return RedirectResponse(
+        url=f"/applications/{application_id}",
+        status_code=status.HTTP_303_SEE_OTHER,
     )
-    return templates.TemplateResponse(request, "shared/ocr_review.html", ctx)
 
 @router.post("/applications/{application_id}/ocr-review")
 async def process_ocr_review(
@@ -741,7 +722,7 @@ async def process_ocr_review(
     conn = Depends(db_conn),
     current_user = Depends(RoleChecker(["Account Officer"]))
 ):
-    """POST processor for OCR validation overrides."""
+    """Compatibility handler for clients that still post the retired screen."""
     repo = LoanRepository(conn)
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not app:

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.core.session.UserRole
 import com.fieldcrm.android.ui.components.*
+import com.fieldcrm.android.ui.screens.auth.PasskeyUnavailableCard
 import com.fieldcrm.android.ui.screens.common.DetailItem
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
@@ -159,6 +160,9 @@ fun SettingsScreen(
                             },
                             onDismiss = { activeModal = null }
                         )
+                        "PASSKEYS" -> PasskeyUnavailableCard(
+                            onDismiss = { activeModal = null }
+                        )
                         "HELP" -> HelpCenterModal(
                             onDismiss = { activeModal = null },
                             supportEmail = config?.support_email
@@ -272,6 +276,10 @@ fun SettingsScreen(
                                 FieldDivider()
                                 SettingsRow(label = "Update Phone Number", leadingIcon = FieldIcons.PhoneOutlined) {
                                     activeModal = "PHONE"
+                                }
+                                FieldDivider()
+                                SettingsRow(label = "Manage Passkeys", leadingIcon = FieldIcons.LockOutlined) {
+                                    activeModal = "PASSKEYS"
                                 }
                                 FieldDivider()
                                 SettingsRow(label = "Offline Sync Queue", leadingIcon = FieldIcons.PaymentsOutlined) {
@@ -867,4 +875,3 @@ fun SettingsToggleRow(
         )
     }
 }
-

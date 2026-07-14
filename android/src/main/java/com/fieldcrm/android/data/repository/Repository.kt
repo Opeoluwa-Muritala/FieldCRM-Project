@@ -107,6 +107,7 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun getGuarantorData(id: String, slot: Int): String? = null
     override suspend fun saveGuarantorStep(id: String, slot: Int, step: Int, data: Map<String, JsonElement>): String? = null
     override suspend fun uploadDocument(id: String, category: String, fileBytes: ByteArray?, fileName: String): String? = null
+    override suspend fun getOcrFields(id: String): com.fieldcrm.android.data.api.OcrFieldsResponse? = null
     override suspend fun submitOcrReview(id: String, corrections: Map<String, String>): String? = null
     override suspend fun getVisitationReport(id: String): String? = null
     override suspend fun submitVisitationReport(id: String, metWith: String, premises: String, direction: String): String? = null
@@ -144,6 +145,9 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun getMdReview(id: String): String? = null
     override suspend fun submitMdApprove(id: String, action: String, notes: String): String? = null
     override suspend fun addBoardReferral(id: String, email: String, name: String, notes: String): String? = null
+    override suspend fun advanceWorkflow(id: String, notes: String): com.fieldcrm.android.data.api.WorkflowAdvanceResponse? = null
+    override suspend fun listUsers() = emptyList<com.fieldcrm.android.data.api.MobileUserItem>()
+    override suspend fun createUser(fullName: String, email: String, role: String, password: String) = false
 }
 
 class ApplicationRepository(

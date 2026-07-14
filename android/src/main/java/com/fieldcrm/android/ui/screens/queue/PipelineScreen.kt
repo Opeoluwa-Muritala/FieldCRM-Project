@@ -41,16 +41,20 @@ private val placeholderPipelineEntries = listOf(
     PipelineEntry("Bola Tinubu-Adeyemi", "₦900,000", "Disbursed", "")
 )
 
-private val stageOrder = listOf("Intake", "OCR Review", "Approved", "Disbursed")
+private val stageOrder = listOf("Intake", "OCR Review", "Review", "Approval", "Disbursed")
 
 private val stageMapping = mapOf(
     "intake" to "Intake",
     "ocr_review" to "OCR Review",
-    "branch_approval" to "Approved",
-    "crm_review" to "Approved",
-    "committee_review" to "Approved",
-    "executive_approval" to "Approved",
-    "disbursement_ready" to "Disbursed",
+    "branch_manager_review" to "Review",
+    "branch_supervisor_review" to "Review",
+    "credit_analyst_review" to "Review",
+    "crm_review" to "Review",
+    "head_crm_review" to "Review",
+    "audit_review" to "Review",
+    "ed_approval" to "Approval",
+    "md_approval" to "Approval",
+    "disbursement_ready" to "Approval",
     "disbursed" to "Disbursed",
     "returned" to "Returned",
     "rejected" to "Returned"
@@ -116,7 +120,7 @@ fun PipelineScreen(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "${placeholderPipelineEntries.size} TOTAL",
+                            text = "${pipelineEntries.size} TOTAL",
                             style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
                             color = FieldTheme.colors.purple400
                         )
