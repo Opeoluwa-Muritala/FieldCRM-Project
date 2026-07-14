@@ -9,7 +9,6 @@ SELECT
     la.loan_type,
     la.stage,
     la.crm_notes,
-    la.committee_recommendation,
     la.ed_escalated_to_md,
     la.md_notes,
     la.updated_at,

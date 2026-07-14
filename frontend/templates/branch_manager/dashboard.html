@@ -11,7 +11,7 @@
     <div class="role-hero">
         <div>
             <div class="dashboard-date">{{ today_label }}</div>
-            <h1>Approval command desk</h1>
+            <h1>Review and signoff desk</h1>
         </div>
         <a class="btn-primary-filled desktop-only" href="/awaiting-me">Open Queue</a>
     </div>
@@ -19,13 +19,13 @@
     <div class="role-stat-grid">
         <div class="role-stat"><span>Awaiting Signoff</span><strong>{{ m.get('awaiting_concurrence', 0) }}</strong></div>
         <div class="role-stat"><span>Active Agents</span><strong>{{ m.get('pending_signoffs', 0) }}</strong></div>
-        <div class="role-stat"><span>Branch Disbursed</span><strong>{{ m.get('approved_today', 0) }}</strong></div>
+        <div class="role-stat"><span>Reviewed Today</span><strong>{{ m.get('approved_today', 0) }}</strong></div>
         <div class="role-stat danger"><span>Target Met %</span><strong>{{ m.get('returned_this_week', 0) }}</strong></div>
     </div>
 
     <div class="role-grid-main">
         <section class="page-card">
-            <div class="role-section-head"><h2>Priority Approvals</h2><a href="/awaiting-me">View all</a></div>
+            <div class="role-section-head"><h2>Priority Reviews</h2><a href="/awaiting-me">View all</a></div>
             <div class="role-card-list">
                 {% for item in data.queue %}
                 <a class="role-list-card" href="/applications/{{ item.id }}/approve">
@@ -33,7 +33,7 @@
                     <span>{{ item.ref_no }} - {{ item.loan_type|title }} - {{ item.days_waiting }}d waiting</span>
                     <em>{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}No amount{% endif %}</em>
                 </a>
-                {% else %}<div class="lo-empty-state">No approvals waiting.</div>{% endfor %}
+                {% else %}<div class="lo-empty-state">No reviews waiting.</div>{% endfor %}
             </div>
         </section>
 

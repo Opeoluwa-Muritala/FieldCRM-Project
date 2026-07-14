@@ -9,7 +9,7 @@
 <div class="page-card no-shadow">
     <div class="page-card-header">
         <h2 class="page-card-title">Approval Readiness Review</h2>
-        <p class="page-card-subtitle">Verify all structural checklist items before disbursement release. ID: {{ app_id }} · Borrower: {{ borrower_name }}</p>
+        <p class="page-card-subtitle">Verify all structural checklist items before forwarding this application to the next review stage. ID: {{ app_id }} · Borrower: {{ borrower_name }}</p>
     </div>
 
     <!-- Summary progress strip -->
@@ -145,9 +145,9 @@
         </div>
     </div>
 
-    <!-- Committee Vote Tracker -->
+    <!-- Review status tracker -->
     <div style="margin-bottom:24px; padding:16px; background:var(--bg-surface,#fff); border:1px solid var(--border-color,#e5e7eb); border-radius:8px;">
-        <h3 style="font-size:14px; font-weight:600; margin-bottom:12px; color:var(--color-text,#111827);">Committee Vote Tracker</h3>
+        <h3 style="font-size:14px; font-weight:600; margin-bottom:12px; color:var(--color-text,#111827);">Review Status</h3>
         <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
             {% for i in range(total_votes|default(5)) %}
             <div style="width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; {% if i < (yes_votes|default(0)) %}background:#22c55e; color:#fff;{% else %}background:var(--bg-muted,#f3f4f6); color:var(--color-text-muted,#6b7280); border:1px solid var(--border-color,#e5e7eb);{% endif %}">
@@ -155,7 +155,7 @@
             </div>
             {% endfor %}
         </div>
-        <p style="font-size:13px; color:var(--color-text-muted,#6b7280);">{{ yes_votes|default(0) }} of {{ total_votes|default(5) }} votes (quorum: {{ quorum|default(3) }})</p>
+        <p style="font-size:13px; color:var(--color-text-muted,#6b7280);">{{ yes_votes|default(0) }} completed review checks.</p>
     </div>
 
     <!-- Manager Attestations -->
@@ -178,12 +178,9 @@
         </div>
 
         <form action="/applications/{{ app_id }}/approve" method="POST" style="display:flex; flex-direction:column; align-items:flex-end;">
-            <!-- Simple query override mock to make testing possible -->
-            <input type="hidden" name="force_approve" value="1">
             <button type="submit" class="btn-primary-filled" id="approveBtn">
-                Approve for Disbursement &rarr;
+                Concur &amp; Forward for Review &rarr;
             </button>
-            <span style="font-size: 12px; color:var(--accent-warning); margin-top:4px;">Force approval bypass enables testing overrides.</span>
         </form>
     </div>
 

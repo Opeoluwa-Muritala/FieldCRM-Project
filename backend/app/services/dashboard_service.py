@@ -40,8 +40,6 @@ class DashboardService:
             return await self._ed_data(user)
         elif role == "md":
             return await self._md_data(user)
-        elif role == "committee":
-            return await self._committee_data(user)
         elif role in ("md", "ed"):
             return await self._executive_data(user)
         # Fallback
@@ -118,7 +116,6 @@ class DashboardService:
             "branch_supervisor_review": "Branch Supervisor Review",
             "credit_analyst_review": "Credit Analyst Review",
             "crm_review": "CRM Review",
-            "committee_review": "Committee Review",
             "ed_approval": "ED Approval",
             "md_approval": "MD Approval",
             "executive_approval": "Executive Approval",
