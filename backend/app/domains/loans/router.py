@@ -944,8 +944,11 @@ async def process_credit_review(
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
+    if app.stage != "credit_analyst_review":
+        raise HTTPException(status_code=400, detail="Application is not awaiting Credit Analyst review")
+
     if recommendation_decision == "Recommend Approval":
-        stage_val = 'branch_approval'
+        stage_val = 'crm_review'
     elif recommendation_decision == "Return for Correction":
         stage_val = 'returned'
     else:
@@ -959,7 +962,7 @@ async def process_credit_review(
         application_id=application_id,
         org_id=str(current_user.org_id),
         action="Credit Underwriting Verdict",
-        from_stage="credit_review",
+        from_stage="credit_analyst_review",
         to_stage=stage_val,
         actor_id=str(current_user.id),
         actor_role=current_user.role,

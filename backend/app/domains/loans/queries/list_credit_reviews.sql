@@ -1,6 +1,6 @@
 -- loans/queries/list_credit_reviews.sql
--- Credit officer review queue.
--- Params: $1=org_id, $2=credit_officer_user_id, $3=limit, $4=offset
+-- Credit Analyst review queue.
+-- Params: $1=org_id, $2=credit_analyst_user_id, $3=limit, $4=offset
 
 SELECT
     la.id,
@@ -22,8 +22,10 @@ FROM loan_applications la
 LEFT JOIN users officer ON officer.id = la.created_by
 LEFT JOIN ocr_fields of ON of.loan_id = la.id
 WHERE la.org_id = $1
-  AND la.credit_officer_id = $2
-  AND la.stage = 'credit_review'
+  -- The branch workflow has a shared Credit Analyst queue; applications
+  -- are not assigned to the former credit_officer_id field.
+  AND $2::UUID IS NOT NULL
+  AND la.stage = 'credit_analyst_review'
   AND la.deleted_at IS NULL
 GROUP BY la.id, officer.full_name
 ORDER BY exception_count DESC, la.updated_at ASC
