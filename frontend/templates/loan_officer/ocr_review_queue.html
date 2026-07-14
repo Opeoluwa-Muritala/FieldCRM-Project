@@ -1,0 +1,7 @@
+{% extends shell %}
+{% block title %}OCR Review Queue | FieldCRM{% endblock %}
+{% block page_title %}OCR Review Queue{% endblock %}
+{% block breadcrumb %}Documents &rarr; OCR Review Queue{% endblock %}
+{% block content %}
+<section class="page-card"><div class="page-card-header"><h2 class="page-card-title">OCR Review Queue</h2><p class="page-card-subtitle">Only applications with uploaded source documents appear here. OCR runs automatically and does not block workflow progression.</p></div><div class="queue-cards">{% for app in applications %}<a class="queue-card" href="/applications/{{ app.id }}"><span class="queue-card-name">{{ app.applicant_name }}</span><span class="queue-card-meta">{{ app.ref_no }} · {{ app.document_count }} document{{ '' if app.document_count == 1 else 's' }} uploaded</span><span class="queue-card-amount">{% if app.amount %}₦{{ "{:,.0f}".format(app.amount) }}{% endif %}</span><span class="status-badge queue-card-badge needs-review">OCR processing / results</span></a>{% else %}<div class="lo-empty-state">No uploaded documents are awaiting or have OCR results.</div>{% endfor %}</div></section>
+{% endblock %}

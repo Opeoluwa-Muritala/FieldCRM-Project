@@ -1,0 +1,7 @@
+{% extends shell %}
+{% block title %}My Visitation Reports | FieldCRM{% endblock %}
+{% block page_title %}My Visitation Reports{% endblock %}
+{% block breadcrumb %}Field &rarr; My Visitation Reports{% endblock %}
+{% block content %}
+<section class="page-card"><div class="page-card-header"><h2 class="page-card-title">My Visitation Reports</h2><p class="page-card-subtitle">Reports you have submitted for your applications.</p></div><div class="queue-cards">{% for report in reports %}<a class="queue-card" href="/applications/{{ report.loan_id }}/visitation"><span class="queue-card-name">{{ report.applicant_name }}</span><span class="queue-card-meta">{{ report.ref_no }} · {{ report.visit_date or 'Date not recorded' }}</span><span class="queue-card-amount">{% if report.amount %}₦{{ "{:,.0f}".format(report.amount) }}{% endif %}</span><span class="status-badge queue-card-badge needs-review">{{ report.status|title }}</span></a>{% else %}<div class="lo-empty-state">You have not submitted any visitation reports yet.</div>{% endfor %}</div></section>
+{% endblock %}
