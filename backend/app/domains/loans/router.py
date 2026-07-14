@@ -922,7 +922,7 @@ async def render_credit_review(
         current_user,
         app_id=application_id,
         borrower_name=borrower_name,
-        amount=app.amount if app else 500000,
+        amount=(app.amount or 0) if app else 500000,
         tenure=app.tenure if app else 12,
         product_type=app.product_type if app else "MSEF",
         active_tab="reviews",
@@ -1180,6 +1180,30 @@ async def render_current_loans(
         active_page="borrowers",
     )
     return templates.TemplateResponse(request, "shared/borrowers.html", ctx)
+
+
+@router.get("/applications/{application_id}/view")
+async def render_read_only_application_view(
+    request: Request,
+    application_id: str,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["Branch Manager", "Branch Supervisor", "Credit Analyst", "CRM", "Head CRM", "Auditor", "ED", "MD"])),
+):
+    """Read-only application view used by the Current Loans screen."""
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    documents = await get_document_service(conn).repo.get_by_loan(UUID(application_id), current_user.org_id)
+    ctx = build_template_context(
+        request,
+        current_user,
+        app=app,
+        documents=documents,
+        active_tab="borrowers",
+        active_page="borrowers",
+    )
+    return templates.TemplateResponse(request, "shared/loan_view.html", ctx)
 
 @router.get("/notifications")
 async def render_notifications(

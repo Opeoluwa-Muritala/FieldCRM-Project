@@ -18,7 +18,7 @@
     <section class="loan-control-strip" aria-label="Credit review control summary">
         <div><span>Loan file</span><strong>{{ app_id }}</strong></div>
         <div><span>Borrower</span><strong>{{ borrower_name }}</strong></div>
-        <div><span>Requested amount</span><strong>&#x20A6;{{ "{:,}".format(amount) }}</strong></div>
+        <div><span>Requested amount</span><strong>&#x20A6;{{ "{:,}".format(amount or 0) }}</strong></div>
         <div><span>Product</span><strong>{{ product_type }}</strong></div>
         <div><span>Tenor</span><strong>{{ tenure }} months</strong></div>
         <div><span>Decision owner</span><strong>Credit Analyst</strong></div>

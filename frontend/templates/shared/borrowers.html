@@ -70,7 +70,7 @@
 <section class="page-card">
     <div class="page-card-header">
         <h2 class="page-card-title">Loan State List</h2>
-        <p class="page-card-subtitle">Open a loan record to continue the next full-page workflow step.</p>
+        <p class="page-card-subtitle">Select a loan to view its details. This screen is read-only.</p>
     </div>
 
     <div class="loan-table" role="table" aria-label="Current loans and states">
@@ -84,7 +84,7 @@
         </div>
 
         {% for app in applications %}
-        <a class="loan-row loan-row-link" role="row" href="/applications/{{ app.id }}">
+        <a class="loan-row loan-row-link" role="row" href="/applications/{{ app.id }}/view" aria-label="View {{ app.borrower.name }} loan details">
             <span>
                 <strong>{{ app.borrower.name }}</strong>
                 <small>{{ app.product_type|replace("_", " ")|title }} · {{ app.repayment_frequency }}</small>
