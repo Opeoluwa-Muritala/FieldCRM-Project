@@ -5,7 +5,7 @@
 SELECT
     COUNT(*) FILTER (
         WHERE branch_manager_id = $2
-          AND stage = 'branch_approval'
+          AND stage = 'branch_manager_review'
     ) AS awaiting_concurrence,
     COUNT(*) FILTER (
         WHERE branch_manager_id = $2

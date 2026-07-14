@@ -1010,15 +1010,15 @@ async def process_approval_readiness(
     repo = LoanRepository(conn)
     app = await repo.approve(UUID(application_id), current_user.org_id, current_user.id)
     if not app:
-        raise HTTPException(status_code=404, detail="Loan Application not found or not in branch_approval stage")
+        raise HTTPException(status_code=404, detail="Loan Application not found or not awaiting Branch Manager review")
         
     audit = AuditService(conn)
     await audit.log(
         application_id=application_id,
         org_id=str(current_user.org_id),
-        action="Branch Final Approval",
-        from_stage="branch_approval",
-        to_stage="crm_review",
+        action="Branch Manager Approval",
+        from_stage="branch_manager_review",
+        to_stage="branch_supervisor_review",
         actor_id=str(current_user.id),
         actor_role=current_user.role
     )
