@@ -93,7 +93,7 @@ fun LoanApplicationFormScreen(
                 tenor_months = tenure.toIntOrNull(),
                 loan_type = product,
                 purpose = collateralDesc.ifBlank { null },
-                stage = "ocr_review"
+                stage = "branch_manager_review"
             )
 
             borrowerViewModel.updateBorrowerLocal(updatedBorrower) {
@@ -102,7 +102,7 @@ fun LoanApplicationFormScreen(
                     appViewModel.setSelectedBorrower(updatedBorrower)
                     appViewModel.triggerSuccessScreen(
                         title = "Intake Complete",
-                        subtitle = "Application dossier successfully advanced to OCR Review pipeline stage.",
+                        subtitle = "Application dossier successfully sent to Branch Manager review.",
                         destination = Screen.ApplicationDetail
                     )
                 }

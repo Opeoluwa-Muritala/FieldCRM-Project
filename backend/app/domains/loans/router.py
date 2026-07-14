@@ -160,6 +160,78 @@ async def render_visits_due(
     )
     return templates.TemplateResponse(request, "loan_officer/visits.html", ctx)
 
+
+@router.get("/visitation-reports")
+async def render_my_visitation_reports(
+    request: Request,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["Loan Officer"])),
+):
+    """Completed visitation reports owned by the current Account Officer."""
+    reports = await conn.fetch(
+        """
+        SELECT vr.loan_id, vr.visit_date, vr.met_with, vr.status, vr.updated_at,
+               la.ref_no, la.applicant_name, la.amount
+        FROM visitation_reports vr
+        JOIN loan_applications la ON la.id = vr.loan_id
+        WHERE vr.org_id = $1 AND la.created_by = $2 AND la.deleted_at IS NULL
+        ORDER BY vr.updated_at DESC
+        """,
+        current_user.org_id, current_user.id,
+    )
+    data = await DashboardService(conn).get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request, current_user, reports=[dict(row) for row in reports],
+        metrics=data.get("metrics", {}), active_tab="visits", active_page="visit_reports",
+    )
+    return templates.TemplateResponse(request, "loan_officer/visitation_reports.html", ctx)
+
+
+@router.get("/document-upload")
+async def render_document_upload_selector(
+    request: Request,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["Loan Officer"])),
+):
+    """Choose an Account Officer-owned application before uploading a document."""
+    applications, _ = await LoanRepository(conn).list_by_stage(
+        current_user.org_id, None, current_user.id, page=1, size=100
+    )
+    data = await DashboardService(conn).get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request, current_user, applications=applications,
+        metrics=data.get("metrics", {}), active_tab="upload", active_page="upload",
+    )
+    return templates.TemplateResponse(request, "loan_officer/document_upload_selector.html", ctx)
+
+
+@router.get("/ocr-review-queue")
+async def render_ocr_review_queue(
+    request: Request,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["Loan Officer"])),
+):
+    """OCR worklist, limited to applications that have source documents."""
+    rows = await conn.fetch(
+        """
+        SELECT la.id, la.ref_no, la.applicant_name, la.amount, la.stage,
+               MAX(d.uploaded_at) AS last_document_at,
+               COUNT(d.id)::int AS document_count
+        FROM loan_applications la
+        JOIN documents d ON d.loan_id = la.id AND d.org_id = la.org_id AND d.deleted_at IS NULL
+        WHERE la.org_id = $1 AND la.created_by = $2 AND la.deleted_at IS NULL
+        GROUP BY la.id, la.ref_no, la.applicant_name, la.amount, la.stage
+        ORDER BY last_document_at DESC
+        """,
+        current_user.org_id, current_user.id,
+    )
+    data = await DashboardService(conn).get_dashboard_data(current_user)
+    ctx = build_template_context(
+        request, current_user, applications=[dict(row) for row in rows],
+        metrics=data.get("metrics", {}), active_tab="upload", active_page="ocr_queue",
+    )
+    return templates.TemplateResponse(request, "loan_officer/ocr_review_queue.html", ctx)
+
 @router.get("/awaiting-me")
 async def render_awaiting_me(
     request: Request,
@@ -2197,6 +2269,8 @@ async def render_client_wizard_step(
     session = Depends(get_client_session_data),
     conn = Depends(db_conn)
 ):
+    if step not in range(1, 9):
+        raise HTTPException(status_code=404, detail="Unknown intake step")
     app_id = session.get("app_id")
     org_id = session.get("org_id")
     officer_id = session.get("officer_id")
@@ -2235,6 +2309,8 @@ async def process_client_wizard_step(
     session = Depends(get_client_session_data),
     conn = Depends(db_conn)
 ):
+    if step not in range(1, 9):
+        raise HTTPException(status_code=404, detail="Unknown intake step")
     app_id = session.get("app_id")
     org_id = session.get("org_id")
     officer_id = session.get("officer_id")
@@ -2253,7 +2329,7 @@ async def process_client_wizard_step(
     service = get_loan_service(conn)
     await service.save_wizard_step(UUID(app_id), step, data_dict, UUID(officer_id), UUID(org_id))
 
-    if step < 9:
+    if step < 8:
         next_step = step + 1
         return RedirectResponse(url=f"/client-form/apply/step/{next_step}", status_code=status.HTTP_303_SEE_OTHER)
     else:

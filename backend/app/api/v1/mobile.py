@@ -595,7 +595,7 @@ async def get_mobile_intake(
 @router.put("/applications/{application_id}/intake/steps/{step}")
 async def save_mobile_intake_step(
     application_id: UUID,
-    step: int = Path(..., ge=1, le=9),
+    step: int = Path(..., ge=1, le=8),
     payload: SaveStepRequest = None,
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
@@ -610,10 +610,10 @@ async def save_mobile_intake_step(
         current_user.org_id,
     )
     updated = await _loan_service(conn).get_wizard_data(application_id)
-    next_step = step + 1 if step < 9 else None
+    next_step = step + 1 if step < 8 else None
     return {
         "application_id": application_id,
-        "stage": "ocr_review" if step == 9 else app.stage,
+        "stage": "branch_manager_review" if step == 8 else app.stage,
         "step": step,
         "next_step": next_step,
         "data": updated,

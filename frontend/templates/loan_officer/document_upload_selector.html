@@ -1,0 +1,7 @@
+{% extends shell %}
+{% block title %}Upload Form | FieldCRM{% endblock %}
+{% block page_title %}Upload Form{% endblock %}
+{% block breadcrumb %}Documents &rarr; Upload Form{% endblock %}
+{% block content %}
+<section class="page-card"><div class="page-card-header"><h2 class="page-card-title">Choose an Application</h2><p class="page-card-subtitle">Select the application whose source document you want to upload for OCR processing.</p></div><div class="queue-cards">{% for app in applications %}<a class="queue-card" href="/applications/{{ app.id }}/documents/upload"><span class="queue-card-name">{{ app.applicant_name }}</span><span class="queue-card-meta">{{ app.ref_no }} · {{ app.stage|replace('_', ' ')|title }}</span><span class="queue-card-amount">{% if app.amount %}₦{{ "{:,.0f}".format(app.amount) }}{% endif %}</span><span class="status-badge queue-card-badge needs-review">Upload document</span></a>{% else %}<div class="lo-empty-state">No applications are available for upload.</div>{% endfor %}</div></section>
+{% endblock %}

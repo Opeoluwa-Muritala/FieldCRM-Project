@@ -44,7 +44,7 @@
             <span class="sidebar-badge">{{ metrics.visits_due }}</span>
             {% endif %}
         </a>
-        <a href="/applications" class="sidebar-nav-link {% if active_page == 'visit_reports' %}active{% endif %}">
+        <a href="/visitation-reports" class="sidebar-nav-link {% if active_page == 'visit_reports' %}active{% endif %}">
             <span>My Visitation Reports</span>
         </a>
     </div>
@@ -54,14 +54,11 @@
 <div class="sidebar-nav-group">
     <div class="sidebar-nav-group-title">Documents</div>
     <div class="sidebar-nav-links">
-        <a href="/applications" class="sidebar-nav-link {% if active_page == 'upload' %}active{% endif %}">
+        <a href="/document-upload" class="sidebar-nav-link {% if active_page == 'upload' %}active{% endif %}">
             <span>Upload Form</span>
         </a>
-        <a href="/applications?stage=ocr_review" class="sidebar-nav-link {% if active_page == 'ocr_queue' %}active{% endif %}">
+        <a href="/ocr-review-queue" class="sidebar-nav-link {% if active_page == 'ocr_queue' %}active{% endif %}">
             <span>OCR Review Queue</span>
-            {% if metrics and metrics.ocr_review %}
-            <span class="sidebar-badge sidebar-badge-warning">{{ metrics.ocr_review }}</span>
-            {% endif %}
         </a>
     </div>
 </div>
