@@ -46,6 +46,8 @@ fun LoginScreenView(
     viewModel: LoginViewModel,
     hasEnrolledBiometrics: Boolean,
     hasPasscode: Boolean,
+    biometricNotice: String? = null,
+    onDismissBiometricNotice: () -> Unit = {},
     onLoginSuccess: (UserSession) -> Unit,
     onForgotPasswordClick: () -> Unit,
     onBiometricClick: () -> Unit,
@@ -64,6 +66,8 @@ fun LoginScreenView(
         state = state,
         hasEnrolledBiometrics = hasEnrolledBiometrics,
         hasPasscode = hasPasscode,
+        biometricNotice = biometricNotice,
+        onDismissBiometricNotice = onDismissBiometricNotice,
         onEmailChange = { viewModel.setEmail(it) },
         onPasswordChange = { viewModel.setPassword(it) },
         onLoginClick = { viewModel.login(onSuccess = onLoginSuccess) },
@@ -78,6 +82,8 @@ fun LoginScreenContent(
     state: LoginUiState,
     hasEnrolledBiometrics: Boolean,
     hasPasscode: Boolean = false,
+    biometricNotice: String? = null,
+    onDismissBiometricNotice: () -> Unit = {},
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onLoginClick: () -> Unit,
@@ -187,6 +193,46 @@ fun LoginScreenContent(
                         )
  
                         Spacer(modifier = Modifier.height(if (isNetworkError) 16.dp else 32.dp))
+
+                        if (biometricNotice != null) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        FieldTheme.colors.statusWarning.copy(alpha = 0.1f),
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .border(
+                                        1.dp,
+                                        FieldTheme.colors.statusWarning.copy(alpha = 0.45f),
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable(onClick = onDismissBiometricNotice)
+                                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = FieldIcons.FingerprintOutlined,
+                                    contentDescription = "Biometric sign-in notice",
+                                    tint = FieldTheme.colors.statusWarning,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = biometricNotice,
+                                    style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                                    color = FieldTheme.colors.gray100,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Icon(
+                                    imageVector = FieldIcons.CloseOutlined,
+                                    contentDescription = "Dismiss biometric sign-in notice",
+                                    tint = FieldTheme.colors.gray400,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
 
                         // Network / server error banner (shown above fields, not tied to a specific input)
                         if (isNetworkError) {

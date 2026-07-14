@@ -36,7 +36,7 @@ fun OnboardingScreen(
     role: UserRole?,
     onDismiss: () -> Unit
 ) {
-    val currentRole = role ?: UserRole.LOAN_OFFICER
+    val currentRole = role?.legacyUiRole ?: UserRole.LOAN_OFFICER
 
     // Skip onboarding for Auditor as they have no release changes
     if (currentRole == UserRole.AUDITOR) {

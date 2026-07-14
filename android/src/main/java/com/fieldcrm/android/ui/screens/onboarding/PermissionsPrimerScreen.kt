@@ -27,7 +27,7 @@ fun PermissionsPrimerScreen(
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
 
-    val currentRole = role ?: UserRole.LOAN_OFFICER
+    val currentRole = role?.legacyUiRole ?: UserRole.LOAN_OFFICER
     val needsCamera = currentRole == UserRole.LOAN_OFFICER
     val needsLocation = currentRole == UserRole.LOAN_OFFICER || currentRole == UserRole.BRANCH_MANAGER
     val needsNotifications = true
@@ -195,4 +195,3 @@ fun PermissionRow(icon: ImageVector, title: String, description: String) {
         }
     }
 }
-

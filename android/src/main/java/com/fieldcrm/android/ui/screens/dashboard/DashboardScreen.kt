@@ -19,7 +19,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -29,6 +31,8 @@ import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.viewmodel.DashboardViewModel
+import com.fieldcrm.android.ui.viewmodel.SyncItemStatus
+import com.fieldcrm.android.ui.viewmodel.SyncUiState
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import androidx.activity.compose.BackHandler
@@ -65,11 +69,14 @@ fun DashboardScreenView(
     onNavigateToParDashboard: () -> Unit = {},
     onNavigateToCommitteeQueue: () -> Unit = {},
     onNavigateToEdQueue: () -> Unit = {},
-    onNavigateToMdQueue: () -> Unit = {}
+    onNavigateToMdQueue: () -> Unit = {},
+    syncState: SyncUiState = SyncUiState(),
+    onSyncNow: () -> Unit = {}
 ) {
-    val resolvedRole = role ?: UserRole.LOAN_OFFICER
-    val configuration = LocalConfiguration.current
-    val isTablet = configuration.screenWidthDp >= 600
+    val resolvedRole = role?.legacyUiRole ?: UserRole.LOAN_OFFICER
+    val activity = LocalContext.current as android.app.Activity
+    val windowSizeClass = calculateWindowSizeClass(activity)
+    val isTablet = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
 
     var selectedTab by remember { mutableStateOf(0) }
     val tabHistory = remember { mutableStateListOf<Int>() }
@@ -111,6 +118,13 @@ fun DashboardScreenView(
         }
     }
     val userEmail = sessionEmail ?: ""
+    val failedSyncCount = syncState.items.count { it.status == SyncItemStatus.FAILED }
+    val syncBanner = when {
+        syncState.isSyncing -> Triple("Syncing saved changes…", SyncStatusTone.Pending, null)
+        failedSyncCount > 0 -> Triple("$failedSyncCount change${if (failedSyncCount == 1) "" else "s"} need attention", SyncStatusTone.Failed, "Retry now")
+        syncState.items.isNotEmpty() -> Triple("${syncState.items.size} change${if (syncState.items.size == 1) "" else "s"} saved on this device", SyncStatusTone.Pending, "Sync now")
+        else -> null
+    }
 
     // Role-specific metrics mapping — values overridden by live API data when available
     val metrics = when (resolvedRole) {
@@ -347,7 +361,17 @@ fun DashboardScreenView(
                     onItemSelect = { if (it != selectedTab) tabHistory.add(selectedTab); selectedTab = it }
                 )
 
-                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    if (syncBanner != null) {
+                        SyncStatusBar(
+                            message = syncBanner.first,
+                            tone = syncBanner.second,
+                            actionLabel = syncBanner.third,
+                            onActionClick = if (syncBanner.third != null) onSyncNow else null,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
                     when (selectedTab) {
                         0 -> TabletDashboardHome(
                             userName = userName,
@@ -374,6 +398,7 @@ fun DashboardScreenView(
                             onSignOutClick = { showSignOutConfirmation = true }
                         )
                     }
+                    }
                 }
             }
         } else {
@@ -394,11 +419,21 @@ fun DashboardScreenView(
                 },
                 containerColor = FieldTheme.colors.gray950
             ) { paddingValues ->
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
                 ) {
+                    if (syncBanner != null) {
+                        SyncStatusBar(
+                            message = syncBanner.first,
+                            tone = syncBanner.second,
+                            actionLabel = syncBanner.third,
+                            onActionClick = if (syncBanner.third != null) onSyncNow else null,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
                     when (selectedTab) {
                         0 -> PhoneDashboardHome(
                             userName = userName,
@@ -424,6 +459,7 @@ fun DashboardScreenView(
                             onNavigateToOfflineQueue = onNavigateToOfflineQueue,
                             onSignOutClick = { showSignOutConfirmation = true }
                         )
+                    }
                     }
                 }
             }

@@ -47,19 +47,24 @@ fun FieldBottomBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(56.dp)
+            .height(72.dp)
             .background(FieldTheme.colors.gray900)
-            .borderTop(0.5.dp, FieldTheme.colors.gray700.copy(alpha = 0.4f))
+            .borderTop(1.dp, FieldTheme.colors.gray800.copy(alpha = 0.72f))
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.Bottom
+            verticalAlignment = Alignment.CenterVertically
         ) {
             items.forEachIndexed { index, item ->
                 val isSelected = index == selectedItemIndex
-                val isNewTab = item.label == "New"
-                
+                val contentColor = if (isSelected) FieldTheme.colors.purple600 else FieldTheme.colors.gray400
+                val indicatorWidth by animateDpAsState(
+                    targetValue = if (isSelected) 28.dp else 0.dp,
+                    animationSpec = tween(durationMillis = 180),
+                    label = "tabIndicatorWidth"
+                )
+
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -69,36 +74,7 @@ fun FieldBottomBar(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (isNewTab) {
-                        // Center FAB style (56dp circular icon raised above the bar line)
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .offset(y = (-10).dp)
-                                .background(
-                                    color = if (isSelected) FieldTheme.colors.purple700 else FieldTheme.colors.purple600,
-                                    shape = CircleShape
-                                )
-                                .border(2.dp, FieldTheme.colors.gray900, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = item.filledIcon,
-                                contentDescription = item.label,
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    } else {
-                        val contentColor = if (isSelected) FieldTheme.colors.purple600 else FieldTheme.colors.gray400
-                        val scale by animateFloatAsState(
-                            targetValue = if (isSelected) 1.2f else 1.0f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessLow
-                            ),
-                            label = "tabIconScale"
-                        )
+                    run {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
@@ -108,12 +84,7 @@ fun FieldBottomBar(
                                 imageVector = if (isSelected) item.filledIcon else item.outlinedIcon,
                                 contentDescription = item.label,
                                 tint = contentColor,
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .graphicsLayer(
-                                        scaleX = scale,
-                                        scaleY = scale
-                                    )
+                                modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
@@ -126,15 +97,13 @@ fun FieldBottomBar(
                             )
                             
                             // Active item indicator pill
-                            if (isSelected) {
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .width(12.dp)
-                                        .height(3.dp)
-                                        .background(FieldTheme.colors.purple600, RoundedCornerShape(1.5.dp))
-                                )
-                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(indicatorWidth)
+                                    .height(3.dp)
+                                    .background(FieldTheme.colors.purple600, RoundedCornerShape(1.5.dp))
+                            )
                         }
                     }
                 }
@@ -162,18 +131,24 @@ fun FieldNavigationRail(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
+            Spacer(modifier = Modifier.height(20.dp))
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(FieldTheme.colors.purple600, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = FieldIcons.ShieldOutlined,
+                    contentDescription = "FieldCRM",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
             Spacer(modifier = Modifier.height(24.dp))
             items.forEachIndexed { index, item ->
                 val isSelected = index == selectedItemIndex
                 val contentColor = if (isSelected) FieldTheme.colors.purple400 else FieldTheme.colors.gray400
-                val scale by animateFloatAsState(
-                    targetValue = if (isSelected) 1.15f else 1.0f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    ),
-                    label = "railIconScale"
-                )
                 
                 Box(
                     modifier = Modifier
@@ -187,12 +162,7 @@ fun FieldNavigationRail(
                         imageVector = if (isSelected) item.filledIcon else item.outlinedIcon,
                         contentDescription = item.label,
                         tint = contentColor,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .graphicsLayer(
-                                scaleX = scale,
-                                scaleY = scale
-                            )
+                        modifier = Modifier.size(24.dp)
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))

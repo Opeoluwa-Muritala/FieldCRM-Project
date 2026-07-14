@@ -22,7 +22,7 @@ class DashboardService:
     async def get_dashboard_data(self, user) -> dict:
         """Dispatch to role-specific data method."""
         role = user.role.lower().replace(" ", "_")
-        if role == "loan_officer":
+        if role in ("account_officer", "loan_officer"):
             return await self._loan_officer_data(user)
         elif role == "branch_manager":
             return await self._branch_manager_data(user)

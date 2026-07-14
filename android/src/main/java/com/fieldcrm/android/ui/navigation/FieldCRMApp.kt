@@ -66,6 +66,7 @@ fun FieldCRMApp(
 
     var selectedDocUrl by remember { mutableStateOf("") }
     var selectedDocName by remember { mutableStateOf("") }
+    var biometricNotice by remember { mutableStateOf<String?>(null) }
 
     val activity = LocalContext.current as? android.app.Activity
     var backPressedOnce by remember { mutableStateOf(false) }
@@ -90,6 +91,7 @@ fun FieldCRMApp(
     LaunchedEffect(biometricResult) {
         when (val result = biometricResult) {
             BiometricResult.AuthenticationSuccess -> {
+                biometricNotice = null
                 when (appUiState.pendingBiometricAction) {
                     BiometricAction.LOGIN -> loginViewModel.restoreStoredSession(
                         onSuccess = { session ->
@@ -121,6 +123,7 @@ fun FieldCRMApp(
                 appViewModel.setBiometricAction(null)
             }
             BiometricResult.AuthenticationNotSet -> {
+                biometricNotice = "Biometric sign-in is not available on this device. Use your password or passcode to continue."
                 if (Build.VERSION.SDK_INT >= 30) {
                     val enrollIntent = Intent(Settings.ACTION_BIOMETRIC_ENROLL).apply {
                         putExtra(
@@ -130,6 +133,23 @@ fun FieldCRMApp(
                     }
                     enrollLauncher.launch(enrollIntent)
                 }
+                appViewModel.setBiometricAction(null)
+            }
+            BiometricResult.HardwareUnavailable,
+            BiometricResult.FeatureUnavailable -> {
+                biometricNotice = "Biometric sign-in is unavailable right now. Use your password or passcode to continue."
+                appViewModel.setBiometricAction(null)
+            }
+            is BiometricResult.AuthenticationError -> {
+                biometricNotice = if (result.error.contains("lockout", ignoreCase = true)) {
+                    "Biometric sign-in is temporarily locked. Try again later or use your password or passcode."
+                } else {
+                    "Biometric sign-in was not completed. Use your password or passcode to continue."
+                }
+                appViewModel.setBiometricAction(null)
+            }
+            BiometricResult.AuthenticationFailed -> {
+                biometricNotice = "We could not verify your biometric. Try again or use your password or passcode."
                 appViewModel.setBiometricAction(null)
             }
             else -> {}
@@ -218,6 +238,8 @@ fun FieldCRMApp(
                 viewModel = loginViewModel,
                 hasEnrolledBiometrics = appUiState.hasEnrolledBiometrics,
                 hasPasscode = appUiState.hasPasscode,
+                biometricNotice = biometricNotice,
+                onDismissBiometricNotice = { biometricNotice = null },
                 onLoginSuccess = { session ->
                     appViewModel.setSession(session)
                     NotificationSyncWorker.schedule(context)
@@ -352,7 +374,9 @@ fun FieldCRMApp(
             onNavigateToParDashboard = { servicingViewModel.loadParDashboard(); backStack.add(Screen.ParDashboard) },
             onNavigateToCommitteeQueue = { backStack.add(Screen.CommitteeQueue) },
             onNavigateToEdQueue = { backStack.add(Screen.EdQueue) },
-            onNavigateToMdQueue = { backStack.add(Screen.MdQueue) }
+            onNavigateToMdQueue = { backStack.add(Screen.MdQueue) },
+            syncState = syncUiState,
+            onSyncNow = { syncViewModel.syncNow() }
         )
 
         Screen.Settings -> {
@@ -418,7 +442,7 @@ fun FieldCRMApp(
                 onNavigateToVisitationReport = { backStack.add(Screen.VisitationReport) },
                 onNavigateToGuarantorsForm = { backStack.add(Screen.GuarantorsForm) },
                 onNavigateToReview = {
-                    val reviewScreen: Screen? = when (appUiState.session?.role) {
+                    val reviewScreen: Screen? = when (appUiState.session?.role?.legacyUiRole) {
                         UserRole.BRANCH_MANAGER -> Screen.BranchManagerReview
                         UserRole.AUDITOR -> Screen.AuditorCompliance
                         UserRole.CRM -> Screen.CrmReview
