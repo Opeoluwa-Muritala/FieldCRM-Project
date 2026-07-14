@@ -24,7 +24,7 @@ LEFT JOIN users credit ON credit.id = la.credit_officer_id
 LEFT JOIN visitation_reports vr ON vr.loan_id = la.id
 WHERE la.org_id = $1
   AND la.branch_manager_id = $2
-  AND la.stage = 'branch_approval'
+  AND la.stage = 'branch_manager_review'
   AND la.deleted_at IS NULL
 ORDER BY
     CASE WHEN vr.status = 'submitted' THEN 0 ELSE 1 END,

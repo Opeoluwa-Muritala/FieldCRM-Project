@@ -124,6 +124,9 @@ class LoanRepository(BaseRepository):
         row = await self.conn.fetchrow(self.sql("advance_stage"), stage, loan_id, org_id)
         return LoanRow(**row) if row else None
 
+    async def assign_default_branch_manager(self, loan_id: UUID, org_id: UUID) -> None:
+        await self.conn.execute(self.sql("assign_default_branch_manager"), loan_id, org_id)
+
     async def list_workflow_events(self, org_id: UUID):
         return await self.conn.fetch(self.sql("list_workflow_events"), org_id)
 

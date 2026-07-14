@@ -1,16 +1,16 @@
 -- loans/queries/approve.sql
--- Branch manager approval: branch_approval -> crm_review.
+-- Branch manager approval: branch_manager_review -> branch_supervisor_review.
 -- Params: $1=loan_id, $2=org_id, $3=approved_by
 
 UPDATE loan_applications
 SET
-    stage        = 'crm_review',
+    stage        = 'branch_supervisor_review',
     approved_by  = $3,
     approved_at  = NOW(),
     updated_at   = NOW()
 WHERE id         = $1
   AND org_id     = $2
-  AND stage      = 'branch_approval'
+  AND stage      = 'branch_manager_review'
   AND deleted_at IS NULL
 RETURNING
     id, org_id, ref_no, customer_type, loan_type, stage, applicant_name,
