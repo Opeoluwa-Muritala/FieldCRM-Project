@@ -1001,7 +1001,7 @@ async def process_approval_readiness(
     request: Request,
     application_id: str,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Branch Manager"]))
+    current_user = Depends(RoleChecker(["Branch Manager", "Branch Supervisor"]))
 ):
     """Record the applicable branch concurrence and forward for further review."""
     form_data = await request.form()
