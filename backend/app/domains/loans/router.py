@@ -2304,12 +2304,13 @@ async def process_client_document_upload(
         raise HTTPException(status_code=404, detail="Loan Application not found")
 
     doc_service = get_document_service(conn)
-    await doc_service.upload_document(
+    await doc_service.save_upload(
         loan_id=UUID(app_id),
         org_id=UUID(org_id),
-        category=category,
+        doc_type=category,
         file=file,
-        uploaded_by=UUID(officer_id)
+        uploaded_by=UUID(officer_id),
+        user_role="client",
     )
 
     return {"redirect": "/client-form/apply/step/4"}

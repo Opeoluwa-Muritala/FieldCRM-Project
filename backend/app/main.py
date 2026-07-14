@@ -181,7 +181,11 @@ async def login_web(
         value=token,
         httponly=True,
         secure=is_secure,
-        samesite="strict",
+        # Account Officers commonly open upload and visitation tasks from
+        # notification/deep links. Lax keeps the authenticated session on
+        # safe top-level navigation while retaining CSRF protection for
+        # cross-site form submissions.
+        samesite="lax",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
