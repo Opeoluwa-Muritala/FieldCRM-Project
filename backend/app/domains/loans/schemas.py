@@ -60,6 +60,11 @@ class LoanRow(BaseModel):
     approved_by: Optional[UUID] = None
     approved_at: Optional[datetime] = None
     disbursed_at: Optional[datetime] = None
+    ed_escalated_to_md: bool = False
+    ed_approved_by: Optional[UUID] = None
+    md_approved_by: Optional[UUID] = None
+    md_approved_at: Optional[datetime] = None
+    md_notes: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
