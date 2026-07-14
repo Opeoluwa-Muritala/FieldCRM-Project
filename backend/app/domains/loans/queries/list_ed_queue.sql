@@ -9,7 +9,6 @@ SELECT
     la.loan_type,
     la.stage,
     la.crm_notes,
-    la.committee_recommendation,
     la.updated_at,
     u.full_name  AS officer_name,
     bm.full_name AS branch_manager_name,

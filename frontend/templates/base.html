@@ -20,8 +20,7 @@
         "system_admin": "System Admin",
         "crm": "CRM Officer",
         "md": "Managing Director",
-        "ed": "Executive Director",
-        "committee": "Committee Member"
+        "ed": "Executive Director"
     } %}
     {% set role = role_labels.get(db_role, db_role) %}
     <div class="app-shell">
@@ -39,7 +38,7 @@
                         <a href="/dashboard" class="sidebar-nav-link {% if active_page == 'dashboard' %}active{% endif %}">
                             <span>Dashboard</span>
                         </a>
-                        {% if db_role in ["branch_manager", "auditor", "system_admin", "crm", "md", "ed", "committee"] %}
+                        {% if db_role in ["branch_manager", "auditor", "system_admin", "crm", "md", "ed"] %}
                         <a href="/borrowers" id="navBorrowers" class="sidebar-nav-link {% if active_page == 'borrowers' %}active{% endif %}">
                             <span>Current Loans</span>
                         </a>
@@ -72,7 +71,7 @@
                 </div>
 
                 <!-- REVIEW Group -->
-                {% if db_role in ["branch_manager", "auditor", "system_admin", "crm", "md", "ed", "committee"] %}
+                {% if db_role in ["branch_manager", "auditor", "system_admin", "crm", "md", "ed"] %}
                 <div class="sidebar-nav-group">
                     <div class="sidebar-nav-group-title">Review</div>
                     <div class="sidebar-nav-links">

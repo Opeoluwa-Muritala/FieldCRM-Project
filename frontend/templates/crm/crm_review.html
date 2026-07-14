@@ -51,7 +51,7 @@
 <div class="page-card" style="margin-bottom:20px;">
   <h3 style="margin-bottom:12px;">Upload Supporting Document</h3>
   <p style="font-size:14px;color:var(--text-secondary);margin-bottom:14px;">
-    Attach a memo, credit committee report, or any document explaining the approval or denial recommendation.
+    Attach a memo or any document explaining the approval or denial recommendation.
   </p>
   <form method="post" action="/applications/{{ app_id }}/crm-upload" enctype="multipart/form-data">
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
@@ -59,7 +59,6 @@
         <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Document Type</label>
         <select name="doc_label" style="padding:8px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;">
           <option value="crm_memo">CRM Memo</option>
-          <option value="credit_committee_report">Credit Committee Report</option>
           <option value="approval_recommendation">Approval Recommendation</option>
           <option value="denial_recommendation">Denial Recommendation</option>
           <option value="other">Other</option>
@@ -79,7 +78,7 @@
     <table class="custom-table" style="margin-top:8px;">
       <thead><tr><th>Type</th><th>File</th><th>Uploaded</th></tr></thead>
       <tbody>
-      {% for doc in documents if doc.doc_type in ('crm_memo','credit_committee_report','approval_recommendation','denial_recommendation') %}
+      {% for doc in documents if doc.doc_type in ('crm_memo','approval_recommendation','denial_recommendation') %}
       <tr>
         <td>{{ doc.doc_type.replace('_',' ').title() }}</td>
         <td style="font-size:13px;">

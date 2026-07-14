@@ -101,9 +101,6 @@ async def render_dashboard(
         return RedirectResponse(url="/md-dashboard", status_code=status.HTTP_303_SEE_OTHER)
     if role in ("md", "ed"):
         return RedirectResponse(url="/executive-dashboard", status_code=status.HTTP_303_SEE_OTHER)
-    if role == "committee":
-        return RedirectResponse(url="/committee-dashboard", status_code=status.HTTP_303_SEE_OTHER)
-
     template_name = get_role_template(role, "dashboard.html")
 
     ctx = build_template_context(
@@ -996,7 +993,7 @@ async def process_approval_readiness(
     conn = Depends(db_conn),
     current_user = Depends(RoleChecker(["Branch Manager"]))
 ):
-    """POST processor to complete branch approval."""
+    """Record Branch Manager concurrence and forward for further review."""
     form_data = await request.form()
     kyc_attested = form_data.get("kyc_attested")
     collateral_attested = form_data.get("collateral_attested")
@@ -1016,7 +1013,7 @@ async def process_approval_readiness(
     await audit.log(
         application_id=application_id,
         org_id=str(current_user.org_id),
-        action="Branch Manager Approval",
+        action="Branch Manager Concurrence — Forwarded for Further Review",
         from_stage="branch_manager_review",
         to_stage="branch_supervisor_review",
         actor_id=str(current_user.id),
