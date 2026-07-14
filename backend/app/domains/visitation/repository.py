@@ -25,6 +25,9 @@ class VisitationRepository(BaseRepository):
         account_officer: str | None = None,
         gps_coordinates: str | None = None,
         site_photo_url: str | None = None,
+        visiting_officer: str | None = None,
+        visiting_officer_sig: str | None = None,
+        account_officer_sig: str | None = None,
     ) -> dict:
         row = await self.conn.fetchrow(
             self.sql("upsert_report"),
@@ -37,7 +40,10 @@ class VisitationRepository(BaseRepository):
             visit_time,
             relationship,
             business_condition,
+            visiting_officer,
             account_officer,
+            visiting_officer_sig,
+            account_officer_sig,
             gps_coordinates,
             site_photo_url,
         )
@@ -51,6 +57,8 @@ class VisitationRepository(BaseRepository):
         manager_id: UUID,
         notes: str,
         decision: str,
+        signature: str | None = None,
+        return_reason: str | None = None,
     ) -> dict | None:
         row = await self.conn.fetchrow(
             self.sql("manager_signoff"),
@@ -59,5 +67,7 @@ class VisitationRepository(BaseRepository):
             manager_id,
             notes,
             decision,
+            signature,
+            return_reason,
         )
         return dict(row) if row else None
