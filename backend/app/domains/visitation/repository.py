@@ -1,4 +1,5 @@
 from uuid import UUID
+from datetime import date, time
 
 from app.core.base_repository import BaseRepository
 
@@ -29,6 +30,12 @@ class VisitationRepository(BaseRepository):
         visiting_officer_sig: str | None = None,
         account_officer_sig: str | None = None,
     ) -> dict:
+        # asyncpg binds PostgreSQL DATE/TIME columns from Python date/time
+        # values; browser form posts arrive as ISO strings.
+        if isinstance(visit_date, str) and visit_date:
+            visit_date = date.fromisoformat(visit_date)
+        if isinstance(visit_time, str) and visit_time:
+            visit_time = time.fromisoformat(visit_time)
         row = await self.conn.fetchrow(
             self.sql("upsert_report"),
             loan_id,
