@@ -8,6 +8,10 @@ document.addEventListener("DOMContentLoaded", () => {
     initRipples();
     initDrawerBackdrop();
     initScrollReveals();
+    initSidebarIcons();
+    initPageContextIcons();
+    initRoleStatIcons();
+    initSubmitFeedback();
 });
 
 let currentTourStep = 0;
@@ -271,6 +275,90 @@ function bindFormChoices() {
             }
 
             openFormWorkspace(card.dataset.formType || "loan_application", mode);
+        });
+    });
+}
+
+function getFieldCrmIcon(value) {
+    const normalized = (value || '').toLowerCase();
+    if (normalized.includes('dashboard') || normalized.includes('control desk')) return 'icon-home-o';
+    if (normalized.includes('disbursement') || normalized.includes('disbursed')) return 'icon-cash-o';
+    if (normalized.includes('borrower') || normalized.includes('loan') || normalized.includes('portfolio') || normalized.includes('/reports/par')) return 'icon-loans-o';
+    if (normalized.includes('pipeline')) return 'icon-pipeline-o';
+    if (normalized.includes('awaiting')) return 'icon-awaiting-o';
+    if (normalized.includes('signoff')) return 'icon-signoffs-o';
+    if (normalized.includes('visit')) return 'icon-visits-o';
+    if (normalized.includes('upload') || normalized.includes('document')) return 'icon-doc-upload-o';
+    if (normalized.includes('ocr')) return 'icon-ocr-o';
+    if (normalized.includes('flag')) return 'icon-flags-o';
+    if (normalized.includes('policy') || normalized.includes('risk') || normalized.includes('alert') || normalized.includes('escalation')) return 'icon-flags-o';
+    if (normalized.includes('audit')) return 'icon-audit-o';
+    if (normalized.includes('workflow')) return 'icon-audit-o';
+    if (normalized.includes('user')) return 'icon-users-o';
+    if (normalized.includes('agent') || normalized.includes('ticket')) return 'icon-users-o';
+    if (normalized.includes('activity')) return 'icon-activity-o';
+    if (normalized.includes('turnaround') || normalized.includes('target')) return 'icon-activity-o';
+    if (normalized.includes('new')) return 'icon-new-o';
+    if (normalized.includes('approved') || normalized.includes('decision')) return 'icon-signoffs-o';
+    if (normalized.includes('review')) return 'icon-reviews-o';
+    if (normalized.includes('queue') || normalized.includes('application') || normalized.includes('draft') || normalized.includes('returned')) return 'icon-queue-o';
+    return null;
+}
+
+function createFieldCrmIcon(iconId, className = 'app-icon') {
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.classList.add(className);
+    icon.setAttribute('viewBox', '0 0 24 24');
+    icon.setAttribute('width', '17');
+    icon.setAttribute('height', '17');
+    icon.setAttribute('aria-hidden', 'true');
+    icon.setAttribute('focusable', 'false');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', `/static/img/icons.svg#${iconId}`);
+    icon.appendChild(use);
+    return icon;
+}
+
+function initSidebarIcons() {
+    document.querySelectorAll('.sidebar-nav-link[href]').forEach((link) => {
+        if (link.querySelector('.app-icon')) return;
+        const iconId = getFieldCrmIcon(link.getAttribute('href'));
+        if (!iconId) return;
+        link.insertBefore(createFieldCrmIcon(iconId), link.firstChild);
+    });
+}
+
+function initPageContextIcons() {
+    const screenPath = window.location.pathname;
+    document.querySelectorAll('.topbar-title, .responsive-content h1, .responsive-content .page-card-title, .responsive-content .role-section-head h2').forEach((heading) => {
+        if (heading.querySelector('.page-context-icon')) return;
+        const iconId = getFieldCrmIcon(heading.textContent) || getFieldCrmIcon(screenPath);
+        if (!iconId) return;
+        heading.classList.add('has-page-context-icon');
+        heading.insertBefore(createFieldCrmIcon(iconId, 'page-context-icon'), heading.firstChild);
+    });
+}
+
+function initRoleStatIcons() {
+    document.querySelectorAll('.role-stat-grid .role-stat').forEach((stat) => {
+        if (stat.querySelector('.role-stat-icon')) return;
+        const label = stat.querySelector('span')?.textContent || '';
+        const iconId = getFieldCrmIcon(label);
+        if (!iconId) return;
+        stat.appendChild(createFieldCrmIcon(iconId, 'role-stat-icon'));
+    });
+}
+
+function initSubmitFeedback() {
+    document.querySelectorAll('form[data-submit-feedback]').forEach((form) => {
+        form.addEventListener('submit', () => {
+            if (!form.checkValidity()) return;
+            const button = form.querySelector('button[type="submit"]');
+            if (!button) return;
+            form.classList.add('is-submitting');
+            button.classList.add('is-loading');
+            button.setAttribute('aria-busy', 'true');
+            button.disabled = true;
         });
     });
 }

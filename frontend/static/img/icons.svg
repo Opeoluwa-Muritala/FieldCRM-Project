@@ -171,6 +171,15 @@
          M12,12.8 C13.22,12.8 14.2,13.78 14.2,15 C14.2,16.22 13.22,17.2 12,17.2 C10.78,17.2 9.8,16.22 9.8,15 C9.8,13.78 10.78,12.8 12,12.8 Z"/>
   </symbol>
 
+  <symbol id="icon-cash-o" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+      d="M3,7 H18 Q20,7 20,9 V18 Q20,20 18,20 H5 Q3,20 3,18 Z M6,4 H19 Q21,4 21,6 V16 M12,10 C10.34,10 9,11.79 9,14 C9,16.21 10.34,18 12,18 C13.66,18 15,16.21 15,14 C15,11.79 13.66,10 12,10 Z M7,13 H17 M7,15 H17"/>
+  </symbol>
+  <symbol id="icon-cash-f" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M3,7 H18 Q20,7 20,9 V18 Q20,20 18,20 H5 Q3,20 3,18 Z M6,4 H19 Q21,4 21,6 V16 H19 V7 H6 Z M12,10 C10.34,10 9,11.79 9,14 C9,16.21 10.34,18 12,18 C13.66,18 15,16.21 15,14 C15,11.79 13.66,10 12,10 Z"/>
+    <path fill="none" stroke="#fff" stroke-width="1.35" stroke-linecap="round" d="M7,13 H17 M7,15 H17"/>
+  </symbol>
+
   <!-- ── FLAGS / COMPLIANCE ────────────────────────────────── -->
   <!-- Flagpole with triangular flag, exclamation inside -->
   <symbol id="icon-flags-o" viewBox="0 0 24 24">
