@@ -1,5 +1,6 @@
 from uuid import UUID
 import json
+from datetime import date
 from app.core.base_repository import BaseRepository
 from app.domains.loans.schemas import LoanRow, LoanListItem, StageCount, ReadinessSummary
 
@@ -33,10 +34,15 @@ class LoanRepository(BaseRepository):
         officer_id: UUID | None,
         page: int,
         size: int,
+        loan_type: str | None = None,
+        query: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
     ) -> tuple[list[LoanListItem], int]:
         rows = await self.conn.fetch(
             self.sql("list_by_stage"),
-            org_id, stage, officer_id, size, (page - 1) * size
+            org_id, stage, officer_id, loan_type, query, from_date, to_date,
+            size, (page - 1) * size,
         )
         total = rows[0]["total_count"] if rows else 0
         return [LoanListItem(**r) for r in rows], total

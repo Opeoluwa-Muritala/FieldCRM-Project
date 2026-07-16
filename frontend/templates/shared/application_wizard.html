@@ -10,15 +10,23 @@
 {% block content %}
     <!-- Horizontal Step Indicator -->
     <div class="wizard-steps">
-        {% set step_labels = ["Details", "Spousal Consent", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge"] %}
-        {% for s_num in range(1, 9) %}
+        {% set is_single = (data.marital_status == 'Single') %}
+        {% if is_single %}
+            {% set steps_list = [1, 3, 4, 5, 6, 7, 8] %}
+            {% set step_labels = ["Details", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge"] %}
+        {% else %}
+            {% set steps_list = [1, 2, 3, 4, 5, 6, 7, 8] %}
+            {% set step_labels = ["Details", "Spousal Consent", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge"] %}
+        {% endif %}
+        {% for s_num in steps_list %}
             {% set is_active = (s_num == step) %}
-            {% set is_completed = (s_num < step) %}
+            {% set current_idx = steps_list.index(step) if step in steps_list else 0 %}
+            {% set is_completed = (loop.index0 < current_idx) %}
             <div class="wizard-step-segment {% if is_active %}active{% elif is_completed %}completed{% endif %}">
                 <div class="wizard-step-circle">
-                    {% if is_completed %}&#x2713;{% else %}{{ s_num }}{% endif %}
+                    {% if is_completed %}&#x2713;{% else %}{{ loop.index }}{% endif %}
                 </div>
-                <div class="wizard-step-label">{{ step_labels[s_num - 1] }}</div>
+                <div class="wizard-step-label">{{ step_labels[loop.index0] }}</div>
             </div>
         {% endfor %}
     </div>
@@ -694,7 +702,11 @@
             <div class="wizard-footer">
                 <div>
                     {% if step > 1 %}
-                    <a href="/applications/{{ app_id }}/step/{{ step - 1 }}" class="btn-ghost-link">&larr; Back</a>
+                        {% if is_single and step == 3 %}
+                        <a href="/applications/{{ app_id }}/step/1" class="btn-ghost-link">&larr; Back</a>
+                        {% else %}
+                        <a href="/applications/{{ app_id }}/step/{{ step - 1 }}" class="btn-ghost-link">&larr; Back</a>
+                        {% endif %}
                     {% endif %}
                     <span style="margin-left: 20px; font-size: 12px; color: var(--text-muted); cursor: pointer;" onclick="saveDraft()">Save Draft</span>
                 </div>

@@ -106,15 +106,23 @@
                 {% for cat_key, cat_name in doc_categories %}
                     {% set doc_found = false %}
                     {% set doc_status = 'missing' %}
+                    {% set doc_url = '' %}
                     {% for doc in documents %}
                         {% if doc.category == cat_key %}
                             {% set doc_found = true %}
                             {% set doc_status = doc.status %}
+                            {% set doc_url = doc.url %}
                         {% endif %}
                     {% endfor %}
                     
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
-                        <span>{{ cat_name }}</span>
+                        {% if doc_found and doc_url %}
+                            <a href="{{ doc_url }}" target="_blank" style="color: var(--color-brand-shield); text-decoration: none; font-weight: 500;">
+                                {{ cat_name }} &nearr;
+                            </a>
+                        {% else %}
+                            <span>{{ cat_name }}</span>
+                        {% endif %}
                         {% if doc_status == 'verified' %}
                             <span style="color: var(--accent-success); font-weight: bold;">✓</span>
                         {% elif doc_status == 'needs_review' %}
@@ -311,6 +319,10 @@
                 <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 16px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Risk Verdict Decision</h3>
                 
                 <div class="form-grid-2">
+                    <div class="form-group-full">
+                        <label class="field-label">Approved/Recommended Amount (₦) <span class="required">*</span></label>
+                        <input type="number" name="amount" class="field-input" value="{{ app.amount or 0 }}" required style="max-width: 300px; margin-bottom: 12px;">
+                    </div>
                     <div class="form-group-full">
                         <label class="field-label">Risk Verdict Decision <span class="required">*</span></label>
                         <div class="pill-radio-group">

@@ -1,4 +1,4 @@
-﻿{% set mobile_title_text = "ED Approval" %}
+{% set mobile_title_text = "ED Approval" %}
 {% extends "base/desktop_shell.html" %}
 {% block title %}ED Approval - FieldCRM{% endblock %}
 {% block page_title %}ED Approval{% endblock %}
@@ -72,7 +72,11 @@
     As ED, you have final approval authority for this loan (below &#x20A6;10,000,000).
     You may approve directly, or request MD's input inside FieldCRM. MD's input returns the file to you for the final decision.
   </p>
-  <form method="post" action="/applications/{{ app_id }}/ed-approve">
+  <form method="post" action="/applications/{{ app_id }}/ed-approve" style="display: flex; flex-direction: column; gap: 16px; max-width: 320px; margin-bottom: 12px;">
+    <div class="form-group" style="text-align: left;">
+        <label class="field-label" style="font-weight: 600;">Approved/Recommended Amount (₦)</label>
+        <input type="number" name="amount" class="field-input" value="{{ app.amount or 0 }}" required style="width: 100%;">
+    </div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;">
       <button type="submit" name="action" value="approve" class="btn btn-primary"
         onclick="return confirm('Issue disbursement instruction for {{ app.applicant_name }}?')"

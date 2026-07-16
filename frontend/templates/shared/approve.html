@@ -177,7 +177,11 @@
             <a href="/applications/{{ app_id }}/return?type=officer" style="color: var(--accent-danger); font-size:12px; font-weight:500; text-decoration:none;">Return to Loan Officer</a>
         </div>
 
-        <form action="/applications/{{ app_id }}/approve" method="POST" style="display:flex; flex-direction:column; align-items:flex-end;">
+        <form action="/applications/{{ app_id }}/approve" method="POST" style="display:flex; flex-direction:column; align-items:flex-end; gap: 12px; width: 100%; max-width: 320px;">
+            <div class="form-group" style="width: 100%; text-align: left;">
+                <label class="field-label" style="font-weight: 600;">Approved/Recommended Amount (₦)</label>
+                <input type="number" name="amount" class="field-input" value="{{ app.amount or 0 }}" required>
+            </div>
             <button type="submit" class="btn-primary-filled" id="approveBtn">
                 Concur &amp; Forward for Review &rarr;
             </button>

@@ -1,4 +1,4 @@
-﻿{% set mobile_title_text = "Issue Instruction" %}
+{% set mobile_title_text = "Issue Instruction" %}
 {% extends "base/desktop_shell.html" %}
 {% block title %}Executive Approval - FieldCRM{% endblock %}
 {% block page_title %}Issue Disbursement Instruction{% endblock %}
@@ -45,13 +45,19 @@
     <strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}the approved amount{% endif %}</strong>
     to <strong>{{ app.applicant_name }}</strong>. This action is logged and cannot be undone.
   </p>
-  <form method="post" action="/applications/{{ app_id }}/executive-approve">
-    <button type="submit" class="btn btn-primary"
-      onclick="return confirm('Issue disbursement instruction for {{ app.applicant_name }}?')"
-      style="font-size:15px;padding:12px 28px;">
-      &#10003; Issue Disbursement Instruction
-    </button>
-    <a href="/executive-queue" class="btn btn-secondary" style="margin-left:12px;">Cancel</a>
+  <form method="post" action="/applications/{{ app_id }}/executive-approve" style="display: flex; flex-direction: column; gap: 16px; max-width: 320px;">
+    <div class="form-group" style="text-align: left;">
+        <label class="field-label" style="font-weight: 600;">Approved/Recommended Amount (₦)</label>
+        <input type="number" name="amount" class="field-input" value="{{ app.amount or 0 }}" required style="width: 100%;">
+    </div>
+    <div>
+        <button type="submit" class="btn btn-primary"
+          onclick="return confirm('Issue disbursement instruction for {{ app.applicant_name }}?')"
+          style="font-size:15px;padding:12px 28px;">
+          &#10003; Issue Disbursement Instruction
+        </button>
+        <a href="/executive-queue" class="btn btn-secondary" style="margin-left:12px;">Cancel</a>
+    </div>
   </form>
 </div>
 {% endblock %}

@@ -1,0 +1,57 @@
+-- Development-only PAR dashboard seed.
+-- Prerequisite: migration 007_servicing_roles.sql (adds the servicing fields).
+-- Safe to re-run: the application reference number is unique per organisation.
+
+INSERT INTO loan_applications (
+    id, org_id, ref_no, customer_type, loan_type, stage, applicant_name,
+    bvn, phone, amount, tenor_months, purpose, repayment_mode, created_by,
+    current_owner_id, approved_by, approved_at, disbursed_at,
+    disbursed_amount, disbursement_ref, disbursement_method, interest_rate,
+    repayment_frequency, schedule_method, sector, classification,
+    days_past_due, classification_updated_at, created_at, updated_at
+) VALUES
+    ('d0000000-0000-4000-8000-000000000001', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+     'MMFB-2026-PAR-001', 'existing', 'msef', 'disbursed', 'Amaka Nwosu',
+     '31000000001', '08030000001', 850000, 12, 'Provision store expansion', 'direct_debit',
+     'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a02', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a02',
+     'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a01', NOW() - INTERVAL '75 days', NOW() - INTERVAL '60 days',
+     850000, 'PAR-001', 'bank_transfer', 18.00, 'monthly', 'flat_rate', 'Retail & Wholesale',
+     'current', 0, NOW(), NOW() - INTERVAL '90 days', NOW()),
+    ('d0000000-0000-4000-8000-000000000002', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+     'MMFB-2026-PAR-002', 'new', 'enterprise', 'disbursed', 'Bola Adeyemi',
+     '31000000002', '08030000002', 1250000, 18, 'Food distribution working capital', 'cheque',
+     'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a02', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a02',
+     'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a01', NOW() - INTERVAL '80 days', NOW() - INTERVAL '45 days',
+     1250000, 'PAR-002', 'bank_transfer', 20.00, 'monthly', 'flat_rate', 'Food & Agriculture',
+     'olem', 14, NOW(), NOW() - INTERVAL '90 days', NOW()),
+    ('d0000000-0000-4000-8000-000000000003', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+     'MMFB-2026-PAR-003', 'existing', 'enterprise', 'disbursed', 'Chukwudi Okeke',
+     '31000000003', '08030000003', 2400000, 24, 'Small-scale manufacturing equipment', 'direct_debit',
+     'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a02', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a02',
+     'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a01', NOW() - INTERVAL '120 days', NOW() - INTERVAL '95 days',
+     2400000, 'PAR-003', 'bank_transfer', 19.00, 'monthly', 'flat_rate', 'Manufacturing',
+     'substandard', 60, NOW(), NOW() - INTERVAL '150 days', NOW()),
+    ('d0000000-0000-4000-8000-000000000004', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+     'MMFB-2026-PAR-004', 'new', 'payee', 'disbursed', 'Damilola Yusuf',
+     '31000000004', '08030000004', 650000, 10, 'Professional services expansion', 'standing_order',
+     'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a02', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a02',
+     'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a01', NOW() - INTERVAL '180 days', NOW() - INTERVAL '150 days',
+     650000, 'PAR-004', 'bank_transfer', 16.00, 'monthly', 'flat_rate', 'Professional Services',
+     'doubtful', 120, NOW(), NOW() - INTERVAL '210 days', NOW()),
+    ('d0000000-0000-4000-8000-000000000005', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+     'MMFB-2026-PAR-005', 'existing', 'enterprise', 'disbursed', 'Emeka Martins',
+     '31000000005', '08030000005', 3100000, 30, 'Logistics fleet acquisition', 'cheque',
+     'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a02', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a02',
+     'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a01', NOW() - INTERVAL '270 days', NOW() - INTERVAL '240 days',
+     3100000, 'PAR-005', 'bank_transfer', 21.00, 'monthly', 'flat_rate', 'Transport & Logistics',
+     'lost', 195, NOW(), NOW() - INTERVAL '300 days', NOW())
+ON CONFLICT (org_id, ref_no) DO UPDATE SET
+    disbursed_amount = EXCLUDED.disbursed_amount,
+    interest_rate = EXCLUDED.interest_rate,
+    repayment_frequency = EXCLUDED.repayment_frequency,
+    schedule_method = EXCLUDED.schedule_method,
+    sector = EXCLUDED.sector,
+    classification = EXCLUDED.classification,
+    days_past_due = EXCLUDED.days_past_due,
+    classification_updated_at = EXCLUDED.classification_updated_at,
+    updated_at = NOW();

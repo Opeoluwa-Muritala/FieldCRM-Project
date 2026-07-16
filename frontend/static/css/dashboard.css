@@ -2722,17 +2722,18 @@ body { background: #F2F2F2; }
 
 @media (min-width: 1180px) {
     .responsive-shell {
-        grid-template-columns: 264px minmax(0, 1fr);
-        display: grid;
+        display: block !important;
     }
     .desktop-sidebar {
-        position: sticky;
+        position: fixed !important;
         top: 0;
+        left: 0;
         height: 100vh;
         width: 264px;
         background: #2E0052;
         transform: none !important;
         box-shadow: none !important;
+        z-index: 100;
     }
     .sidebar-logo {
         min-height: 104px;
@@ -2787,6 +2788,7 @@ body { background: #F2F2F2; }
     .responsive-main {
         grid-template-rows: 80px minmax(0, 1fr);
         display: grid;
+        margin-left: 264px;
     }
     .desktop-topbar {
         min-height: 80px;
@@ -2937,6 +2939,366 @@ body { background: #F2F2F2; }
 }
 .custom-table-container.queue-table-wrap ~ .queue-cards {
     display: none !important;
+}
+
+/* === Institutional Modernist Refinements === */
+.loan-control-strip {
+    display: grid;
+    grid-template-columns: 1.2fr repeat(5, minmax(112px, 1fr));
+    gap: 0;
+    margin: 0 0 24px;
+    border: 1px solid rgba(46,0,82,.14);
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+}
+.loan-control-strip > div {
+    min-height: 72px;
+    padding: 14px 16px;
+    border-right: 1px solid #E7E3E8;
+}
+.loan-control-strip > div:last-child {
+    border-right: 0;
+}
+.loan-control-strip span {
+    display: block;
+    margin-bottom: 5px;
+    color: #766B78;
+    font: 700 10px/1 "DM Sans", sans-serif;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.loan-control-strip strong {
+    color: #2E0052;
+    font-size: 14px;
+}
+.audit-action-panel {
+    padding: 20px 24px;
+    border: 1px solid rgba(46,0,82,.18);
+    border-left: 4px solid #2E0052;
+    border-radius: 8px;
+    background: #fff;
+}
+.audit-action-panel h2, .audit-action-panel h3 {
+    color: #2E0052;
+}
+.audit-action-panel .action-note {
+    margin: 8px 0 16px;
+    color: #64748B;
+    font-size: 13px;
+}
+
+.status-badge, .user-status {
+    border-radius: 999px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    padding: 4px 12px;
+    font-size: 12px;
+    display: inline-block;
+}
+.status-badge::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    vertical-align: middle;
+}
+.status-badge.verified, .status-badge.approved {
+    color: #167047;
+    background: #E8F4EC;
+}
+.status-badge.needs-review, .status-badge.low-confidence {
+    color: #8A5100;
+    background: #FFF2D8;
+}
+.status-badge.returned, .status-badge.missing {
+    color: #B42318;
+    background: #FDECEC;
+}
+
+.page-card {
+    border: 1px solid rgba(46,0,82,.10);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 4px 20px rgba(75,0,130,.08);
+    padding: 24px;
+}
+.page-card-title {
+    color: #2E0052;
+    font-size: 24px;
+    line-height: 1.25;
+    margin: 0 0 12px;
+}
+
+
+/* === LOAN OFFICER DASHBOARD WIDGETS === */
+.lo-dashboard-mobile,
+.lo-dashboard-desktop {
+    display: none;
+}
+.lo-greeting-card {
+    padding: 16px;
+    background: var(--role-accent, var(--color-brand-shield));
+    color: #fff;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+.lo-greeting-date {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+}
+.lo-greeting-text {
+    font-family: "Playfair Display", serif;
+    font-size: 20px;
+    font-weight: 700;
+    margin-top: 4px;
+}
+.lo-greeting-subtitle {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-top: 6px;
+}
+.lo-stat-chips {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.lo-stat-chip {
+    padding: 12px;
+    background: #fff;
+    border: 0.5px solid var(--border-color);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.lo-stat-chip-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+.lo-stat-chip-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.lo-stat-chip-danger .lo-stat-chip-value {
+    color: var(--accent-danger);
+}
+.lo-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 18px 0 10px;
+}
+.lo-section-title {
+    font-size: 14px;
+    font-weight: 500;
+}
+.lo-section-link {
+    color: var(--role-accent, var(--color-brand-shield));
+    font-size: 12px;
+    text-decoration: none;
+}
+.lo-task-list,
+.lo-activity-list,
+.lo-activity-feed {
+    display: grid;
+    gap: 10px;
+}
+.lo-task-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #fff;
+    border: 0.5px solid var(--border-color);
+    touch-action: pan-y;
+}
+.lo-task-card-inner {
+    position: relative;
+    z-index: 2;
+    min-height: 76px;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: #fff;
+    transition: transform 160ms ease;
+}
+.lo-task-card-type {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--role-accent-tint, var(--color-brand-tint));
+}
+.lo-task-card-name,
+.lo-activity-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-main);
+}
+.lo-task-card-desc,
+.lo-activity-stage,
+.lo-activity-time,
+.lo-activity-feed-action,
+.lo-activity-feed-time {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.lo-task-card-amount {
+    font-size: 12px;
+    font-weight: 500;
+}
+.lo-swipe-action {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 500;
+}
+.lo-swipe-left {
+    justify-content: flex-start;
+    background: var(--role-accent, var(--color-brand-shield));
+}
+.lo-swipe-right {
+    justify-content: flex-end;
+    background: var(--accent-success);
+}
+.lo-empty-state {
+    min-height: 96px;
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    background: #fff;
+    text-align: center;
+}
+.lo-activity-item {
+    min-height: 54px;
+    border-bottom: 0.5px solid var(--color-divider);
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-main);
+    text-decoration: none;
+}
+.lo-activity-dot,
+.lo-activity-feed-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--role-accent, var(--color-brand-shield));
+}
+.lo-activity-info,
+.lo-activity-feed-content {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+.lo-pipeline-bar {
+    min-height: 42px;
+    display: flex;
+    overflow: hidden;
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border-color);
+}
+.lo-pipeline-segment {
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    text-decoration: none;
+}
+.lo-pipeline-segment.stage-intake {
+    background: var(--role-accent, var(--color-brand-shield));
+}
+.lo-pipeline-segment.stage-ocr_review {
+    background: var(--accent-warning);
+}
+.lo-pipeline-segment.stage-returned {
+    background: var(--accent-danger);
+}
+.lo-pipeline-empty {
+    width: 100%;
+    color: var(--text-muted);
+    background: transparent;
+}
+.lo-pipeline-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.lo-activity-feed-item {
+    min-height: 44px;
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+}
+
+@media (min-width: 768px) {
+    .lo-dashboard-mobile {
+        display: none;
+    }
+    .lo-dashboard-desktop {
+        display: block;
+    }
+}
+
+/* === Colored Buttons Text Color White === */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Montserrat", sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 0 24px;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    text-decoration: none;
+    min-height: 48px;
+}
+.btn-primary, .btn-primary-filled {
+    min-height: 52px;
+    background-color: #2E0052 !important;
+    color: #ffffff !important;
+}
+.btn-primary:hover, .btn-primary-filled:hover {
+    background-color: #4B0082 !important;
+    color: #ffffff !important;
+}
+.btn-secondary {
+    background-color: #89268B !important;
+    color: #ffffff !important;
+}
+.btn-secondary:hover {
+    background-color: #701c72 !important;
+    color: #ffffff !important;
 }
 
 /* === FLUID STACKING & VIEWPORT SCALING === */

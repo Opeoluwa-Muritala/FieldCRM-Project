@@ -93,7 +93,7 @@
             {% for app in applications %}
             {% set app_id = app.id|string %}
             <a class="queue-card" href="/applications/{{ app_id }}">
-                <span class="queue-card-name">{{ app.borrower.name if app.borrower else 'Borrower ' ~ app_id[:8] }}</span>
+                <span class="queue-card-name">{{ app.applicant_name }}</span>
                 <span class="queue-card-badge">
                     {% if app.stage in ['disbursement_ready', 'disbursed'] %}
                         <span class="status-badge verified"><span class="status-badge-label">{{ app.status }}</span></span>
@@ -105,7 +105,7 @@
                         <span class="status-badge needs-review"><span class="status-badge-label">{{ app.status }}</span></span>
                     {% endif %}
                 </span>
-                <span class="queue-card-meta">{{ app.ref_no }} · {{ (app.product_type or 'msef')|replace('_', ' ')|title }}</span>
+                <span class="queue-card-meta">{{ app.ref_no }} · {{ app.loan_type|replace('_', ' ')|title }}</span>
                 <span class="queue-card-amount">NGN {{ "{:,}".format((app.amount or 0)|int) }}</span>
             </a>
             {% endfor %}
@@ -136,27 +136,18 @@
                     {% set app_id = app.id|string %}
                     <tr onclick="window.location.href='/applications/{{ app_id }}'">
                         <td>{{ app.ref_no }}</td>
-                        <td style="font-weight: 500;">{{ app.borrower.name if app.borrower else 'Borrower ' ~ app_id[:8] }}</td>
-                        <td>{{ (app.product_type or 'msef')|replace('_', ' ')|title }}</td>
+                        <td style="font-weight: 500;">{{ app.applicant_name }}</td>
+                        <td>{{ app.loan_type|replace('_', ' ')|title }}</td>
                         <td>₦{{ "{:,}".format(app.amount|int) }}</td>
+                        <td>{{ app.stage|replace('_', ' ')|title }}</td>
+                        <td>{{ app.officer_name or 'Unassigned' }}</td>
+                        <td>{{ app.updated_at.strftime('%d %b %Y') }}</td>
                         <td>
-                            {% if app.current_stage == 1 %}Intake
-                            {% elif app.current_stage == 2 %}OCR Review
-                            {% elif app.current_stage == 3 %}Credit Review
-                            {% elif app.current_stage == 4 %}Branch Approval
-                            {% elif app.current_stage == 5 %}Disbursement Ready
-                            {% elif app.current_stage == 6 %}Disbursed
-                            {% else %}Stage {{ app.current_stage }}
-                            {% endif %}
-                        </td>
-                        <td>{{ app.current_owner.name if app.current_owner else 'Unassigned' }}</td>
-                        <td>{{ app.created_at.strftime('%d %b %Y') if app.created_at else '03 Jun 2026' }}</td>
-                        <td>
-                            {% if app.status == 'Approved' or app.status == 'Active' %}
+                            {% if app.stage in ['disbursement_ready', 'disbursed'] %}
                                 <span class="status-badge verified">Verified</span>
-                            {% elif app.status == 'Returned' %}
+                            {% elif app.stage == 'returned' %}
                                 <span class="status-badge returned">Returned</span>
-                            {% elif app.current_stage == 2 %}
+                            {% elif app.stage == 'ocr_review' %}
                                 <span class="status-badge low-confidence">OCR Review</span>
                             {% else %}
                                 <span class="status-badge needs-review">Needs Review</span>
@@ -168,30 +159,8 @@
                     </tr>
                     {% endfor %}
                 {% else %}
-                    <!-- Fallback Mock Applications -->
-                    <tr onclick="window.location.href='/applications/1/step/1'">
-                        <td>REF-G820F1A1</td>
-                        <td style="font-weight: 500;">Grace Omowunmi</td>
-                        <td>MSEF</td>
-                        <td>₦500,000</td>
-                        <td>Intake</td>
-                        <td>Segun Alao</td>
-                        <td>--</td>
-                        <td>03 Jun 2026</td>
-                        <td><span class="status-badge returned">Returned</span></td>
-                        <td><a href="/applications/1/step/1" style="color: var(--color-brand-shield); text-decoration:none; font-weight:500;">Open &rarr;</a></td>
-                    </tr>
-                    <tr onclick="window.location.href='/applications/2/step/1'">
-                        <td>REF-I890A2E2</td>
-                        <td style="font-weight: 500;">Ibrahim Musa</td>
-                        <td>Enterprise Loan</td>
-                        <td>₦1,200,000</td>
-                        <td>OCR Review</td>
-                        <td>Segun Alao</td>
-                        <td>--</td>
-                        <td>02 Jun 2026</td>
-                        <td><span class="status-badge low-confidence">Low Confidence</span></td>
-                        <td><a href="/applications/2/step/1" style="color: var(--color-brand-shield); text-decoration:none; font-weight:500;">Open &rarr;</a></td>
+                    <tr>
+                        <td colspan="9" class="empty-loans">No applications match the selected filters.</td>
                     </tr>
                 {% endif %}
             </tbody>
@@ -199,7 +168,7 @@
     </div>
 
     <div class="simple-pagination">
-        <span>Showing 1–10 of 47</span>
+        <span>Showing {{ applications|length }} of {{ total }} application{{ '' if total == 1 else 's' }}</span>
         <div style="display:flex; gap: 8px;">
             <a href="#">&larr; Prev</a>
             <a href="#">Next &rarr;</a>
