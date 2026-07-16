@@ -7,16 +7,14 @@
 
 {% block content %}
 <div class="queue-page-header"><div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">System Activity</h1></div></div>
-{% if control_queue is defined %}
 <section class="page-card">
-    <div class="role-section-head"><h2>Final Control Queue</h2></div>
+    <div class="role-section-head"><h2>User Login &amp; Activity</h2><a href="/users">Manage</a></div>
     <div class="role-card-list">
-        {% for item in control_queue %}
-        <a class="role-list-card" href="/applications/{{ item.id }}/approve"><strong>{{ item.applicant_name }}</strong><span>{{ item.ref_no }} - {{ item.status }}</span><em>{{ item.branch_manager_name or item.officer_name or 'Unassigned' }}</em></a>
-        {% else %}<div class="lo-empty-state">No final-control files.</div>{% endfor %}
+        {% for item in data.user_activity %}
+        <div class="role-list-card"><strong>{{ item.full_name }}</strong><span>{{ item.role|replace('_', ' ')|title }} · Last login: {{ item.last_login_at.strftime('%d %b %Y, %H:%M') if item.last_login_at else 'Not yet signed in' }}</span><em>{% if item.latest_action %}{{ item.latest_action.action|replace('_', ' ')|title }} · {{ item.latest_action.created_at.strftime('%d %b, %H:%M') if item.latest_action.created_at else '' }}{% else %}No recorded system action{% endif %}</em></div>
+        {% else %}<div class="lo-empty-state">No user activity to show.</div>{% endfor %}
     </div>
 </section>
-{% endif %}
 <section class="page-card">
     <div class="role-section-head"><h2>Recent Audit Events</h2></div>
     <div class="role-card-list">

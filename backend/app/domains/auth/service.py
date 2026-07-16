@@ -19,6 +19,7 @@ class AuthService:
         if not verify_password(password, user.hashed_password):
             raise DomainException("Incorrect email or password.", 401)
 
+        await self.repo.record_login(str(user.id))
         token = create_access_token(user.id, role=user.role, org_id=user.org_id, session_type=session_type)
         return token
 
