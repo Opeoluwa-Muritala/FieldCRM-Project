@@ -1,4 +1,4 @@
-﻿{% set mobile_title_text = "MD Review" %}
+{% set mobile_title_text = "MD Review" %}
 {% extends "base/desktop_shell.html" %}
 {% block title %}MD Approval - FieldCRM{% endblock %}
 {% block page_title %}MD Approval{% endblock %}
@@ -78,6 +78,10 @@
     to <strong>{{ app.applicant_name }}</strong>. This action is logged and cannot be undone.
   </p>
   <form method="post" action="/applications/{{ app_id }}/md-approve">
+    <div style="margin-bottom:14px; max-width: 300px;">
+      <label for="amount" style="display:block;font-weight:600;margin-bottom:6px;">Approved/Recommended Amount (₦)</label>
+      <input type="number" id="amount" name="amount" class="field-input" value="{{ app.amount or 0 }}" required style="width: 100%;">
+    </div>
     <div style="margin-bottom:14px;">
       <label for="md_notes_approve" style="display:block;font-weight:600;margin-bottom:6px;">Notes (optional)</label>
       <textarea id="md_notes_approve" name="md_notes" rows="3"

@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/login.css">
 </head>
-<body>
+<body{% if error %} class="onboarding-complete"{% endif %}>
     <main class="onboarding-shell">
         <section class="onboarding-hero" id="onboardingHero" aria-labelledby="hero-title">
             <div class="hero-grid" aria-hidden="true"></div>
@@ -58,7 +58,13 @@
         (() => {
             const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             const revealLogin = () => document.body.classList.add('onboarding-complete');
-            window.addEventListener('load', () => window.setTimeout(revealLogin, reducedMotion ? 0 : 2600), { once: true });
+            const hasError = {% if error %}true{% else %}false{% endif %};
+            
+            if (hasError) {
+                revealLogin();
+            } else {
+                window.addEventListener('load', () => window.setTimeout(revealLogin, reducedMotion ? 0 : 2600), { once: true });
+            }
             document.getElementById('loginForm').addEventListener('submit', function () {
                 if (!this.checkValidity()) return;
                 const button = this.querySelector('button[type="submit"]');

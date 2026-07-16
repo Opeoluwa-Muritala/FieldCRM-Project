@@ -1,6 +1,6 @@
 import os
 from urllib.parse import urlencode
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import RedirectResponse
@@ -437,8 +437,8 @@ async def render_applications_list(
     stage: str = None,
     loan_type: str = None,
     q: str = None,
-    from_date: str = None,
-    to_date: str = None,
+    from_date: date | None = None,
+    to_date: date | None = None,
     conn = Depends(db_conn),
     current_user = Depends(get_current_user)
 ):
@@ -469,12 +469,17 @@ async def render_applications_list(
         stage=db_stage,
         officer_id=officer_id,
         page=1,
-        size=100
+        size=100,
+        loan_type=loan_type if loan_type and loan_type != "all" else None,
+        query=q.strip() if q and q.strip() else None,
+        from_date=from_date,
+        to_date=to_date,
     )
     ctx = build_template_context(
         request,
         current_user,
         applications=applications,
+        total=total,
         current_stage=stage,
         current_loan_type=loan_type,
         search_query=q,
@@ -605,8 +610,12 @@ async def render_wizard_step(
     """GET handler for Borrower intake wizard steps 1 to 8."""
     if step not in range(1, 9):
         raise HTTPException(status_code=404, detail="Unknown intake step")
+    try:
+        app_uuid = UUID(application_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
     repo = LoanRepository(conn)
-    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    app = await repo.get_by_id(app_uuid, current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
@@ -616,7 +625,10 @@ async def render_wizard_step(
     if app.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="You do not have permission to view/modify this application")
 
-    data = await service.get_wizard_data(UUID(application_id))
+    data = await service.get_wizard_data(app_uuid)
+
+    if step == 2 and data.get("marital_status") == "Single":
+        return RedirectResponse(url=f"/applications/{application_id}/step/3", status_code=status.HTTP_303_SEE_OTHER)
 
     ctx = build_template_context(
         request,
@@ -639,8 +651,12 @@ async def process_wizard_step(
     current_user = Depends(get_current_user)
 ):
     """POST handler to persist wizard values and advance flow."""
+    try:
+        app_uuid = UUID(application_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
     repo = LoanRepository(conn)
-    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    app = await repo.get_by_id(app_uuid, current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
@@ -666,6 +682,8 @@ async def process_wizard_step(
 
     if step < 8:
         next_step = step + 1
+        if step == 1 and data_dict.get("marital_status") == "Single":
+            next_step = 3
         return RedirectResponse(url=f"/applications/{application_id}/step/{next_step}", status_code=status.HTTP_303_SEE_OTHER)
     else:
         # OCR extraction continues in the background. There is no manual OCR
@@ -933,6 +951,7 @@ async def process_credit_review(
     application_id: str,
     recommendation_decision: str = Form(...),
     recommendation_notes: str = Form(...),
+    amount: float | None = Form(None),
     conn = Depends(db_conn),
     current_user = Depends(RoleChecker(["Credit Analyst"]))
 ):
@@ -944,6 +963,9 @@ async def process_credit_review(
         
     if app.stage != "credit_analyst_review":
         raise HTTPException(status_code=400, detail="Application is not awaiting Credit Analyst review")
+
+    if amount is not None:
+        await conn.execute("UPDATE loan_applications SET amount = $1 WHERE id = $2", Decimal(str(amount)), UUID(application_id))
 
     if recommendation_decision == "Recommend Approval":
         stage_val = 'crm_review'
@@ -1003,6 +1025,10 @@ async def process_approval_readiness(
 ):
     """Record the applicable branch concurrence and forward for further review."""
     form_data = await request.form()
+    new_amount = form_data.get("amount")
+    if new_amount:
+        await conn.execute("UPDATE loan_applications SET amount = $1 WHERE id = $2", Decimal(new_amount), UUID(application_id))
+
     kyc_attested = form_data.get("kyc_attested")
     collateral_attested = form_data.get("collateral_attested")
     import logging
@@ -1376,6 +1402,12 @@ async def process_crm_review(
     application = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not application:
         raise HTTPException(status_code=404, detail="Loan Application not found")
+
+    form_data = await request.form()
+    new_amount = form_data.get("amount")
+    if new_amount:
+        await conn.execute("UPDATE loan_applications SET amount = $1 WHERE id = $2", Decimal(new_amount), UUID(application_id))
+
     role = current_user.role
     if role == "crm" and application.stage != "crm_review":
         raise HTTPException(status_code=400, detail="Application is not awaiting CRM review")
@@ -1480,10 +1512,16 @@ async def render_executive_approve(
 
 @router.post("/applications/{application_id}/executive-approve")
 async def process_executive_approve(
+    request: Request,
     application_id: str,
     conn=Depends(db_conn),
     current_user=Depends(RoleChecker(["md", "ed"])),
 ):
+    form_data = await request.form()
+    new_amount = form_data.get("amount")
+    if new_amount:
+        await conn.execute("UPDATE loan_applications SET amount = $1 WHERE id = $2", Decimal(new_amount), UUID(application_id))
+
     repo = LoanRepository(conn)
     app = await repo.executive_approve(UUID(application_id), current_user.org_id, current_user.id)
     if not app:
@@ -1659,10 +1697,14 @@ async def render_ed_approve(
 async def process_ed_approve(
     application_id: str,
     action: str = Form(...),
+    amount: float | None = Form(None),
     conn=Depends(db_conn),
     current_user=Depends(RoleChecker(["ed"])),
 ):
     repo = LoanRepository(conn)
+    if amount is not None:
+        await conn.execute("UPDATE loan_applications SET amount = $1 WHERE id = $2", Decimal(str(amount)), UUID(application_id))
+
     if action == "approve":
         app = await repo.ed_approve(UUID(application_id), current_user.org_id, current_user.id)
         if not app:
@@ -1752,10 +1794,14 @@ async def process_md_approve(
     application_id: str,
     action: str = Form(...),
     md_notes: str = Form(""),
+    amount: float | None = Form(None),
     conn=Depends(db_conn),
     current_user=Depends(RoleChecker(["md"])),
 ):
     repo = LoanRepository(conn)
+    if amount is not None:
+        await conn.execute("UPDATE loan_applications SET amount = $1 WHERE id = $2", Decimal(str(amount)), UUID(application_id))
+
     application = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not application:
         raise HTTPException(status_code=404, detail="Loan Application not found")
@@ -2343,6 +2389,9 @@ async def render_client_wizard_step(
 
     service = get_loan_service(conn)
     data = await service.get_wizard_data(UUID(app_id))
+
+    if step == 2 and data.get("marital_status") == "Single":
+        return RedirectResponse(url=f"/client-form/apply/step/3", status_code=status.HTTP_303_SEE_OTHER)
     
     from app.domains.users.repository import UserRepository
     officer = await UserRepository(conn).get_by_id(UUID(officer_id))
@@ -2389,6 +2438,8 @@ async def process_client_wizard_step(
 
     if step < 8:
         next_step = step + 1
+        if step == 1 and data_dict.get("marital_status") == "Single":
+            next_step = 3
         return RedirectResponse(url=f"/client-form/apply/step/{next_step}", status_code=status.HTTP_303_SEE_OTHER)
     else:
         return RedirectResponse(url="/client-form/success", status_code=status.HTTP_303_SEE_OTHER)
