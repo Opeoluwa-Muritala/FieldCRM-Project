@@ -21,6 +21,12 @@ class AuthRepository(BaseRepository):
     async def get_user_by_id(self, user_id: str):
         return await self.conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
 
+    async def record_login(self, user_id: str) -> None:
+        await self.conn.execute(
+            "UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1",
+            str(user_id),
+        )
+
     async def create_reset_token(self, user_id: str, token: str, expires_at) -> None:
         await self.conn.execute(
             "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)",

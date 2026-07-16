@@ -415,16 +415,14 @@ async def render_system_activity(
     conn = Depends(db_conn),
     current_user = Depends(RoleChecker(["System Admin"]))
 ):
-    """Render system admin activity and final-control queue."""
+    """Render system admin activity and user access overview."""
     dashboard_svc = DashboardService(conn)
     activity = await dashboard_svc.get_recent_audit_activity(current_user)
-    control_queue = await dashboard_svc.get_system_control_queue(current_user)
     data = await dashboard_svc.get_dashboard_data(current_user)
     ctx = build_template_context(
         request,
         current_user,
         activity=activity,
-        control_queue=control_queue,
         data=data,
         metrics=data.get("metrics", {}),
         active_tab="activity",

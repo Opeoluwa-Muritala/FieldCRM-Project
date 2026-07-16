@@ -203,16 +203,25 @@ class DashboardService:
     async def _system_admin_data(self, user) -> dict:
         """System Admin dashboard: user and system control overview."""
         metrics = await self._fetch_one("loans", "dashboard_system_admin", user.org_id)
-        users = await self.get_admin_users(user, limit=8)
+        users = await self.get_admin_users(user, limit=50)
         role_counts = await self.get_user_counts_by_role(user)
-        control_queue = await self.get_system_control_queue(user, limit=8)
-        activity = await self.get_recent_audit_activity(user, limit=8)
+        activity = await self.get_recent_audit_activity(user, limit=200)
+
+        latest_actions_by_user = {}
+        for item in activity:
+            if item.get("user_id") and item["user_id"] not in latest_actions_by_user:
+                latest_actions_by_user[item["user_id"]] = item
+
+        user_activity = [
+            {**item, "latest_action": latest_actions_by_user.get(item["id"])}
+            for item in users
+        ]
 
         return {
             "metrics": metrics,
             "users": users,
+            "user_activity": user_activity,
             "role_counts": role_counts,
-            "control_queue": control_queue,
             "activity": activity,
         }
 

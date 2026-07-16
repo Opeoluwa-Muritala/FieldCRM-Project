@@ -331,6 +331,7 @@ function initSidebarIcons() {
 function initPageContextIcons() {
     const screenPath = window.location.pathname;
     document.querySelectorAll('.topbar-title, .responsive-content h1, .responsive-content .page-card-title, .responsive-content .role-section-head h2').forEach((heading) => {
+        if (heading.closest('.role-hero')) return;
         if (heading.querySelector('.page-context-icon')) return;
         const iconId = getFieldCrmIcon(heading.textContent) || getFieldCrmIcon(screenPath);
         if (!iconId) return;
@@ -692,9 +693,6 @@ function initializeRoleShell() {
     const role = document.body?.dataset.role;
     if (!role) return;
     document.documentElement.dataset.role = role;
-    document.querySelectorAll("[data-role-label]").forEach((node) => {
-        node.textContent = getCurrentRole();
-    });
 }
 
 /* === PHASE 5: RIPPLE, FORM INTERACTIONS, DRAWER BACKDROP === */
