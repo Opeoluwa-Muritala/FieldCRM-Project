@@ -1746,7 +1746,7 @@ textarea,
         display: block;
     }
 
-    .queue-cards {
+    .custom-table-container.queue-table-wrap ~ .queue-cards {
         display: none;
     }
 
@@ -2935,7 +2935,7 @@ body { background: #F2F2F2; }
 .custom-table-container.queue-table-wrap {
     display: block !important;
 }
-.queue-cards {
+.custom-table-container.queue-table-wrap ~ .queue-cards {
     display: none !important;
 }
 

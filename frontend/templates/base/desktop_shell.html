@@ -27,10 +27,8 @@
     {% set initials = "U" %}
 {% endif %}
 
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebarDrawer()" aria-hidden="true"></div>
 <div class="responsive-shell">
-    {# === SIDEBAR BACKDROP === #}
-    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebarDrawer()" aria-hidden="true"></div>
-
     {# === DESKTOP SIDEBAR / MOBILE NAV DRAWER — visible as sidebar on desktop, off-canvas drawer on mobile === #}
     <aside class="desktop-sidebar" id="desktopSidebar" aria-label="Primary navigation">
         <div class="sidebar-logo">
