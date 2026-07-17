@@ -25,6 +25,44 @@
 
     <script src="/static/js/dashboard.js"></script>
     <script>
+        window.showFieldMessage = function(message, tone = 'error') {
+            let region = document.getElementById('field-message-region');
+            if (!region) {
+                region = document.createElement('div');
+                region.id = 'field-message-region';
+                region.setAttribute('aria-live', 'polite');
+                region.style.cssText = 'position:fixed;right:20px;bottom:20px;z-index:2000;max-width:360px;';
+                document.body.appendChild(region);
+            }
+            const messageElement = document.createElement('div');
+            messageElement.setAttribute('role', 'status');
+            messageElement.style.cssText = `background:${tone === 'error' ? '#7f1d1d' : '#14532d'};color:#fff;border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.22);padding:14px 42px 14px 16px;line-height:1.45;position:relative;margin-top:8px;`;
+            messageElement.textContent = message;
+            const dismiss = document.createElement('button');
+            dismiss.type = 'button'; dismiss.textContent = '×'; dismiss.setAttribute('aria-label', 'Dismiss message');
+            dismiss.style.cssText = 'position:absolute;right:10px;top:7px;border:0;background:transparent;color:#fff;font-size:24px;cursor:pointer;';
+            dismiss.addEventListener('click', () => messageElement.remove());
+            messageElement.appendChild(dismiss); region.appendChild(messageElement);
+            window.setTimeout(() => messageElement.remove(), 6000);
+        };
+
+        document.addEventListener('click', function(event) {
+            const control = event.target.closest('[data-confirm]');
+            if (!control || control.dataset.confirmed === 'true') return;
+            event.preventDefault();
+            const existing = document.getElementById('field-confirmation');
+            if (existing) existing.remove();
+            const panel = document.createElement('div');
+            panel.id = 'field-confirmation'; panel.setAttribute('role', 'alertdialog'); panel.setAttribute('aria-modal', 'true');
+            panel.style.cssText = 'position:fixed;inset:auto 20px 20px auto;z-index:2001;max-width:380px;background:#fff;border:1px solid #e5c7ca;border-radius:12px;box-shadow:0 14px 38px rgba(0,0,0,.22);padding:18px;color:#2d172e;';
+            const message = document.createElement('p'); message.textContent = control.dataset.confirm; message.style.margin = '0 0 16px';
+            const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel'; cancel.className = 'btn btn-secondary';
+            const proceed = document.createElement('button'); proceed.type = 'button'; proceed.textContent = 'Confirm'; proceed.className = 'btn btn-primary'; proceed.style.marginLeft = '8px';
+            cancel.addEventListener('click', () => panel.remove());
+            proceed.addEventListener('click', () => { panel.remove(); control.dataset.confirmed = 'true'; control.click(); delete control.dataset.confirmed; });
+            panel.append(message, cancel, proceed); document.body.appendChild(panel); proceed.focus();
+        });
+
         // Global inactivity timeout handler (15 minutes)
         (function() {
             let timeoutTimer;

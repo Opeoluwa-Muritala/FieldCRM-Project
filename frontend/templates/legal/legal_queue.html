@@ -1,0 +1,69 @@
+{% set mobile_title_text = "Legal Review Queue" %}
+{% extends "base/desktop_shell.html" %}
+{% block title %}Legal Review Queue - FieldCRM{% endblock %}
+{% block page_title %}Legal Review Queue{% endblock %}
+{% block breadcrumb %}Legal &rarr; Review Queue{% endblock %}
+{% block content %}
+<div class="queue-page-header" style="margin-bottom: 24px;">
+  <div>
+    <div class="dashboard-date" style="font-size: 13px; color: var(--text-muted); font-family: 'Montserrat', sans-serif;">{{ today_label }}</div>
+    <h1 class="page-card-title" style="font-family: 'Montserrat', sans-serif; font-size: 24px; font-weight: 600; color: var(--text-main); margin-top: 4px;">Legal Valuation Queue</h1>
+    <p style="font-size: 14px; color: var(--text-muted); font-family: 'Montserrat', sans-serif; margin-top: 4px;">Appraise pledged collateral items and record legal valuations for processing dossiers.</p>
+  </div>
+</div>
+
+<div class="queue-cards">
+  {% for item in queue %}
+  <a href="/applications/{{ item.id }}/valuation" class="queue-card" style="text-decoration: none; display: block; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 12px; font-family: 'Montserrat', sans-serif; transition: transform 0.2s, box-shadow 0.2s;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+      <span class="queue-card-name" style="font-weight: 600; font-size: 16px; color: var(--text-main);">{{ item.applicant_name }}</span>
+      <span class="status-badge queue-card-badge needs-review" style="font-size: 11px;">{{ item.days_waiting }}d waiting</span>
+    </div>
+    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">
+      {{ item.ref_no }} &middot; Officer: {{ item.officer_name or '—' }} &middot; BM: {{ item.branch_manager_name or '—' }}
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-size: 12px; font-weight: 500; color: var(--color-brand-shield); background: rgba(0, 94, 166, 0.05); padding: 4px 8px; border-radius: 4px;">{{ item.stage|replace('_', ' ')|title }}</span>
+      <span class="queue-card-amount" style="font-weight: 600; font-size: 15px; color: var(--text-main);">{% if item.amount %}&#x20A6;{{ "{:,.2f}".format(item.amount) }}{% else %}No amount{% endif %}</span>
+    </div>
+  </a>
+  {% else %}
+  <div class="lo-empty-state" style="padding: 48px; text-align: center; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; font-family: 'Montserrat', sans-serif; color: var(--text-muted);">
+    No dossiers currently awaiting Legal Valuation.
+  </div>
+  {% endfor %}
+</div>
+
+<div class="custom-table-container queue-table-wrap page-card" style="margin-top: 16px; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; font-family: 'Montserrat', sans-serif;">
+  <table class="custom-table" style="width: 100%; border-collapse: collapse;">
+    <thead>
+      <tr style="border-bottom: 1px solid var(--color-divider); text-align: left;">
+        <th style="padding: 12px 8px; font-weight: 600; font-size: 13px; color: var(--text-muted);">Applicant</th>
+        <th style="padding: 12px 8px; font-weight: 600; font-size: 13px; color: var(--text-muted);">Ref</th>
+        <th style="padding: 12px 8px; font-weight: 600; font-size: 13px; color: var(--text-muted);">Stage</th>
+        <th style="padding: 12px 8px; font-weight: 600; font-size: 13px; color: var(--text-muted);">Amount</th>
+        <th style="padding: 12px 8px; font-weight: 600; font-size: 13px; color: var(--text-muted);">Waiting</th>
+        <th style="padding: 12px 8px; font-weight: 600; font-size: 13px; color: var(--text-muted); text-align: right;">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in queue %}
+      <tr style="border-bottom: 0.5px solid var(--color-divider);">
+        <td style="padding: 12px 8px; font-size: 13px; font-weight: 500; color: var(--text-main);">{{ item.applicant_name }}</td>
+        <td style="padding: 12px 8px; font-size: 13px; color: var(--text-muted);">{{ item.ref_no }}</td>
+        <td style="padding: 12px 8px; font-size: 12px;"><span style="color: var(--color-brand-shield); background: rgba(0, 94, 166, 0.05); padding: 2px 6px; border-radius: 4px;">{{ item.stage|replace('_', ' ')|title }}</span></td>
+        <td style="padding: 12px 8px; font-size: 13px; font-weight: 500; color: var(--text-main);">{% if item.amount %}&#x20A6;{{ "{:,.2f}".format(item.amount) }}{% else %}—{% endif %}</td>
+        <td style="padding: 12px 8px; font-size: 13px; color: var(--text-muted);">{{ item.days_waiting }}d</td>
+        <td style="padding: 12px 8px; text-align: right;">
+          <a href="/applications/{{ item.id }}/valuation" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px; background: var(--color-brand-shield); color: #fff; text-decoration: none; border-radius: 4px; font-weight: 500; border: none; display: inline-block;">Appraise</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px;">Queue is empty.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

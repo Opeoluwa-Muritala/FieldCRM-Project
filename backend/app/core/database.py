@@ -136,15 +136,41 @@ async def close_pool() -> None:
 
 @asynccontextmanager
 async def get_connection():
-    async with _pool.acquire() as conn:
-        yield conn
+    if _is_sqlite:
+        async with _pool.acquire() as conn:
+            yield conn
+    else:
+        conn = await _pool.acquire()
+        try:
+            yield conn
+        finally:
+            import asyncio
+            await asyncio.shield(_pool.release(conn))
 
 @asynccontextmanager
 async def get_transaction():
-    async with _pool.acquire() as conn:
-        async with conn.transaction():
-            yield conn
+    if _is_sqlite:
+        async with _pool.acquire() as conn:
+            async with conn.transaction():
+                yield conn
+    else:
+        conn = await _pool.acquire()
+        try:
+            async with conn.transaction():
+                yield conn
+        finally:
+            import asyncio
+            await asyncio.shield(_pool.release(conn))
 
 async def db_conn():
-    async with _pool.acquire() as conn:
-        yield conn
+    if _is_sqlite:
+        async with _pool.acquire() as conn:
+            yield conn
+    else:
+        conn = await _pool.acquire()
+        try:
+            yield conn
+        finally:
+            import asyncio
+            await asyncio.shield(_pool.release(conn))
+

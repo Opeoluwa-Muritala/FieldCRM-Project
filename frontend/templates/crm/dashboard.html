@@ -1,4 +1,4 @@
-﻿{% set mobile_title_text = "CRM Dashboard" %}
+{% set mobile_title_text = "CRM Dashboard" %}
 {% extends "base/desktop_shell.html" %}
 {% block title %}CRM Dashboard - FieldCRM{% endblock %}
 {% block page_title %}CRM Dashboard{% endblock %}
@@ -49,12 +49,15 @@
     <thead><tr><th>Borrower</th><th>Ref</th><th>Amount</th><th>Classification</th><th>Action</th></tr></thead>
     <tbody>
     {% for loan in recent_disbursements %}
-    <tr>
+    <tr style="cursor:pointer;" onclick="window.location='/applications/{{ loan.id }}/repayment-schedule';">
       <td>{{ loan.applicant_name }}</td>
       <td>{{ loan.ref_no }}</td>
       <td>{% if loan.disbursed_amount %}&#x20A6;{{ "{:,.0f}".format(loan.disbursed_amount) }}{% else %}—{% endif %}</td>
       <td><span class="status-badge {% if loan.classification == 'current' %}approved{% else %}needs-review{% endif %}">{{ loan.classification|upper }}</span></td>
-      <td><a href="/applications/{{ loan.id }}/repayment-schedule">Schedule</a> | <a href="/applications/{{ loan.id }}/payments">Payment</a></td>
+      <td>
+        <a href="/applications/{{ loan.id }}/repayment-schedule" onclick="event.stopPropagation();">Schedule</a> | 
+        <a href="/applications/{{ loan.id }}/payments" onclick="event.stopPropagation();">Payment</a>
+      </td>
     </tr>
     {% else %}<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No disbursed loans yet.</td></tr>{% endfor %}
     </tbody>

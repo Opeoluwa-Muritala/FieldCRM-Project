@@ -132,6 +132,90 @@
                 {% endfor %}
             </div>
         </div>
+
+        {# Verification & Integrations Card #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Verification & Screening</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                
+                {# Qore ID Verification #}
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+                    <span>Qore ID (BVN Check)</span>
+                    {% if not VERIFICATION_ENABLED %}
+                        <span class="status-badge" style="background-color: var(--color-neutral-light, #f0f0f0); color: #666;">Not Configured</span>
+                    {% elif ver_check %}
+                        {% if ver_check.is_valid %}
+                            <span class="status-badge verified">Verified (Valid)</span>
+                        {% elif ver_check.status == 'failed' %}
+                            <span class="status-badge returned">Failed (Mismatch)</span>
+                        {% else %}
+                            <span class="status-badge needs-review">{{ ver_check.status|title }}</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="status-badge needs-review">Awaiting Check</span>
+                    {% endif %}
+                </div>
+                
+                {# Credit Bureau Check #}
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+                    <span>{% if bureau_multiple_configured %}{% if bureau_sub %}{{ 'CRC' if bureau_sub.provider == 'crc' else 'Credit Registry' }}{% else %}Credit Bureau{% endif %}{% else %}{{ active_bureau_provider or 'Credit Bureau' }}{% endif %} Check</span>
+                    {% if not BUREAU_REPORTING_ENABLED %}
+                        <span class="status-badge" style="background-color: var(--color-neutral-light, #f0f0f0); color: #666;">Not Configured</span>
+                    {% elif bureau_sub %}
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            {% if bureau_multiple_configured %}
+                                <span style="font-size: 11px; color: var(--text-muted);">({{ 'CRC' if bureau_sub.provider == 'crc' else 'CreditRegistry' }})</span>
+                            {% endif %}
+                            <span class="status-badge {% if bureau_sub.status == 'success' %}verified{% else %}returned{% endif %}">
+                                {{ bureau_sub.status|replace('_', ' ')|title }}
+                            </span>
+                        </div>
+                    {% else %}
+                        <span class="status-badge needs-review">Awaiting Pull</span>
+                    {% endif %}
+                </div>
+                
+                {# Youverify AML / Sanctions Screening #}
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+                    <span>Youverify (AML Screening)</span>
+                    {% if not AML_SCREENING_ENABLED %}
+                        <span class="status-badge" style="background-color: var(--color-neutral-light, #f0f0f0); color: #666;">Not Configured</span>
+                    {% elif aml_check %}
+                        <span class="status-badge {% if aml_check.status == 'clear' %}verified{% elif aml_check.status in ('pep_hit', 'sanctions_hit', 'review_required') %}returned{% else %}needs-review{% endif %}">
+                            {{ aml_check.status|replace('_', ' ')|title }}
+                        </span>
+                    {% else %}
+                        <span class="status-badge needs-review">Awaiting Screening</span>
+                    {% endif %}
+                </div>
+                
+            </div>
+        </div>
+
+        {# Offer Letter Generation Card #}
+        {% if app.status == 'Approved' or app.stage in ('crm_review', 'disbursement_ready') or app.current_stage >= 5 %}
+            <div class="page-card" style="margin-bottom: 0;">
+                <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Offer Letter</h3>
+                {% set offer_generated = false %}
+                {% for doc in documents %}
+                    {% if doc.category == 'offer_letter' %}
+                        {% set offer_generated = true %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if offer_generated %}
+                    <div style="font-size: 13px; color: var(--accent-success); font-weight: 500;">
+                        ✓ Offer letter has been issued.
+                    </div>
+                {% else %}
+                    <form action="/applications/{{ app_id }}/generate-offer" method="POST" style="margin: 0;">
+                        <button type="submit" class="btn-primary-filled" style="width: 100%; font-size: 12px; min-height: 32px; height: 32px; background-color: var(--color-brand-shield);">
+                            Generate &amp; Issue Offer Letter
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        {% endif %}
         
     </div>
     
@@ -177,32 +261,84 @@
             <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 12px;">Verification Audit Groups</h2>
             
             <div style="display: flex; flex-direction: column; gap: 12px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">
-                    <span>Loan Application Form (MMFB/CRM/01)</span>
-                    <span class="status-badge verified">Verified</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">
-                    <span>Guarantor Form 1</span>
-                    <span class="status-badge verified">Verified</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">
-                    <span>Guarantor Form 2</span>
-                    <span class="status-badge returned">Missing</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">
-                    <span>Pledge and Trust Receipt (MMFB/CRM/02)</span>
-                    <span class="status-badge verified">Verified</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">
-                    <span>BVN Verification</span>
-                    <span class="status-badge verified">Verified</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">
-                    <span>Field Visitation Report</span>
-                    <span class="status-badge verified">Verified</span>
-                </div>
+                {% set checklist_items = [
+                    ('loan_application_form', 'Loan Application Form (MMFB/CRM/01)'),
+                    ('guarantor_form_1', 'Guarantor Form 1'),
+                    ('guarantor_form_2', 'Guarantor Form 2'),
+                    ('pledge_form', 'Pledge and Trust Receipt (MMFB/CRM/02)'),
+                    ('bvn_verification', 'BVN Verification'),
+                    ('visitation_report', 'Field Visitation Report')
+                ] %}
+                
+                {% for item_key, item_label in checklist_items %}
+                    {% set is_checked = checklist_map.get("concurrence:" ~ item_key, false) %}
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; margin-bottom: 0;">
+                            <input type="checkbox" 
+                                   class="checklist-checkbox" 
+                                   data-context="concurrence" 
+                                   data-key="{{ item_key }}" 
+                                   data-label="{{ item_label }}"
+                                   {% if is_checked %}checked{% endif %}
+                                   onchange="toggleChecklistItem(this)"
+                                   style="width: 16px; height: 16px; accent-color: var(--color-brand-shield);">
+                            <span>{{ item_label }}</span>
+                        </label>
+                        <span class="status-badge-indicator" id="badge-concurrence-{{ item_key }}">
+                            {% if is_checked %}
+                                <span class="status-badge verified">Verified</span>
+                            {% else %}
+                                <span class="status-badge returned">Pending</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                {% endfor %}
             </div>
         </div>
+
+        <script>
+            function toggleChecklistItem(checkbox) {
+                const context = checkbox.getAttribute('data-context');
+                const itemKey = checkbox.getAttribute('data-key');
+                const itemLabel = checkbox.getAttribute('data-label');
+                const isChecked = checkbox.checked;
+                
+                // Show optimistic UI update
+                const badge = document.getElementById(`badge-${context}-${itemKey}`);
+                if (isChecked) {
+                    badge.innerHTML = '<span class="status-badge verified">Verified</span>';
+                } else {
+                    badge.innerHTML = '<span class="status-badge returned">Pending</span>';
+                }
+
+                fetch(`/applications/{{ app_id }}/checklist`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        context: context,
+                        item_key: itemKey,
+                        item_label: itemLabel,
+                        is_checked: isChecked
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Success:', data);
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    // Revert UI on failure
+                    checkbox.checked = !isChecked;
+                    if (!isChecked) {
+                        badge.innerHTML = '<span class="status-badge verified">Verified</span>';
+                    } else {
+                        badge.innerHTML = '<span class="status-badge returned">Pending</span>';
+                    }
+                });
+            }
+        </script>
 
         {# Concur / Return Action Bar #}
         <div class="page-card" style="margin-bottom: 0;">

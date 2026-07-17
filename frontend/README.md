@@ -1,23 +1,51 @@
-# FieldCRM Web Frontend
+# FieldCRM web frontend
 
-This module contains the server-rendered web UI for FieldCRM. It provides the role-aware pages that the backend renders for loan officers, credit officers, branch managers, auditors, and system administrators.
+This directory is the server-rendered web user interface for FieldCRM. It contains templates, styling, browser JavaScript, image assets, and local development uploads. FastAPI in `../backend` renders it and serves `/static`; this is not a Node project and has no separate build or development server.
 
-## What this module does
+## What it provides
 
-- hosts the Jinja2 templates and shared page shells
-- serves the CSS and JavaScript assets used by the web app
-- renders role-specific dashboards and workflow screens
-- works alongside the FastAPI backend rather than running independently
+- Responsive, authenticated browser UI for loan origination, review, approval, disbursement, servicing, and administration.
+- Desktop and mobile shells with role-specific sidebars and tab bars.
+- Shared templates for login, password recovery, settings, notifications, search, borrowers, applications, workflow actions, documents, client intake, and reports.
+- Role-specific dashboards, queues, application/detail views, shared CSS, browser-side dashboard behavior, and bank brand assets.
 
-## Stack
+The backend selects templates from the current user's role and authorizes every route/action. Browser code presents data and submits forms; it does not decide permissions or advance workflow state.
 
-- Jinja2 templates
-- HTML/CSS/JavaScript
-- FastAPI template and static-file integration
+## Screen catalogue
 
-## Run the frontend
+| Area | Screens represented |
+| --- | --- |
+| Shared/authentication | Login, forgot/reset password, notifications, settings, search, error, audit, pipeline, repayment, return/approve, loan view, applications, borrowers. |
+| Account officer | Dashboard, work queue, application detail/wizard, document selector/upload, OCR-review queue, visits and visitation reports. |
+| Branch manager/supervisor | Dashboard, application detail, awaiting concurrence, pending sign-offs, pipeline, supervisory review queue. |
+| Credit analyst/officer | Dashboard, review queue, application detail, OCR exceptions. |
+| CRM | Dashboard, CRM queue/review, disbursement, payment recording. |
+| Committee/executive | Committee queue/review/MCC summary; executive, ED, and MD dashboards, queues, and decision pages. |
+| Auditor/legal | Auditor dashboard, application detail, audit trail, compliance flags; legal queue and valuation. |
+| System admin | Dashboard, application detail, users, system activity, interest presets. |
+| External client intake | Share-link start, multi-step application and guarantor forms, upload, success, and error pages. |
 
-The frontend runs as part of the backend. From the repository root:
+## Layout
+
+```text
+frontend/
+├── templates/
+│   ├── base/              desktop, mobile, and shared shells
+│   ├── components/        reusable navigation and application flags
+│   ├── shared/            cross-role and client-intake pages
+│   └── <role>/            role-specific screens and dashboards
+└── static/
+    ├── css/               login, dashboard, borrower, and role-theme styles
+    ├── js/                browser-side UI behaviour
+    ├── img/               logos and icon sprite
+    └── uploads/           local document-storage fallback
+```
+
+`backend/app/main.py` mounts `static/` at `/static` and configures Jinja with `templates/`.
+
+## Run and configure
+
+Start the backend from the repository root:
 
 ```powershell
 python -m venv .venv
@@ -26,52 +54,30 @@ pip install -r backend\requirements.txt
 uvicorn app.main:app --app-dir backend --reload
 ```
 
-Then open:
-
-- http://127.0.0.1:8000/login
-- http://127.0.0.1:8000/dashboard
-
-## Module structure
-
-```text
-frontend/
-|-- static/
-|   |-- css/
-|   |-- img/
-|   `-- js/
-`-- templates/
-    |-- base/
-    |-- components/
-    |-- shared/
-    |-- loan_officer/
-    |-- credit_officer/
-    |-- branch_manager/
-    |-- auditor/
-    `-- system_admin/
-```
+Open `http://127.0.0.1:8000/login` or `http://127.0.0.1:8000/dashboard`. Database, session security, email, external services, and document storage are configured in `backend/.env`; see [`../backend/README.md`](../backend/README.md).
 
 ## Rendering model
 
-The backend configures the template and static directories from the FastAPI app. The rendered view depends on:
+1. The backend authenticates the user and creates an HTTP-only session cookie.
+2. A protected route resolves role and permitted workflow data.
+3. FastAPI renders the appropriate Jinja template.
+4. The browser loads CSS, JS, and assets from `/static`.
+5. Forms return to the backend for validation, audit logging, document processing, and workflow transitions.
 
-- user role
-- request device type
-- current workflow stage for the selected application
+Unauthorized page requests are redirected to login or dashboard as appropriate; API calls return JSON errors.
 
-## Shared conventions
+## Development and verification
 
-- keep templates reusable and small
-- keep business logic in Python rather than in templates
-- reuse shared workflow pages across roles where possible
-- test both desktop and mobile layouts after UI changes
+- Keep business and authorization rules in Python, not Jinja or JavaScript.
+- Reuse base, component, and shared templates before creating role-specific markup.
+- Update desktop and mobile navigation together for new top-level role screens.
+- Preserve accessibility and responsive behavior; status must not rely on color alone.
+- Treat `static/uploads/` as user data, not design assets.
 
-## Verification
-
-With the backend running, you can validate the web routes with:
+Because the frontend is served through FastAPI, use its route checks:
 
 ```powershell
 python backend\test_http.py
 python backend\test_routes_render.py
+python backend\test_responsive_smoke.py
 ```
-
-The root README contains the full setup workflow and demo account details.

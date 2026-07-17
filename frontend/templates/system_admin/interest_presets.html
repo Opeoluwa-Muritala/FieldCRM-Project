@@ -1,0 +1,85 @@
+{% extends shell %}
+
+{% block title %}Interest Rate Presets — FieldCRM{% endblock %}
+{% block page_title %}System Settings &amp; Presets{% endblock %}
+{% block breadcrumb %}Admin &rarr; Interest Rate Presets{% endblock %}
+
+{% block content %}
+<div class="page-card no-shadow" style="font-family: 'Montserrat', sans-serif;">
+    <div class="page-card-header" style="margin-bottom: 20px;">
+        <h2 class="page-card-title" style="font-weight: 600;">Interest Rate Presets</h2>
+        <p class="page-card-subtitle">Manage base interest rates and calculation models for loan products.</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+        {# Create Preset Form #}
+        <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; background: var(--bg-secondary);">
+            <h3 style="font-size: 14px; font-weight: 600; margin-top: 0; margin-bottom: 16px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Create Preset</h3>
+            <form action="/admin/interest-presets" method="POST">
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; flex-direction: column;">
+                        <label class="field-label" style="font-size: 12px; margin-bottom: 4px; font-weight: 500;">Product / Loan Type <span style="color: var(--accent-danger);">*</span></label>
+                        <select name="loan_type" class="field-select" required style="width: 100%;">
+                            <option value="msef">MSEF</option>
+                            <option value="enterprise">Enterprise</option>
+                        </select>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column;">
+                        <label class="field-label" style="font-size: 12px; margin-bottom: 4px; font-weight: 500;">Base Rate (% Annual) <span style="color: var(--accent-danger);">*</span></label>
+                        <input type="number" step="0.01" name="rate" class="field-input" placeholder="e.g. 24.5" required style="width: 100%; box-sizing: border-box;">
+                    </div>
+
+                    <div style="display: flex; flex-direction: column;">
+                        <label class="field-label" style="font-size: 12px; margin-bottom: 4px; font-weight: 500;">Rate Calculation Method <span style="color: var(--accent-danger);">*</span></label>
+                        <select name="rate_type" class="field-select" required style="width: 100%;">
+                            <option value="flat">Flat Rate</option>
+                            <option value="reducing">Reducing Balance</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn-primary-filled" style="background: var(--color-brand-shield); margin-top: 8px; width: 100%;">Save Preset</button>
+                </div>
+            </form>
+        </div>
+
+        {# Presets Table #}
+        <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; background: #fff;">
+            <h3 style="font-size: 14px; font-weight: 600; margin-top: 0; margin-bottom: 16px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Active Presets</h3>
+            
+            <div class="custom-table-container">
+                <table class="custom-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--color-divider); text-align: left;">
+                            <th style="padding: 8px; font-size: 12px; color: var(--text-muted);">Product</th>
+                            <th style="padding: 8px; font-size: 12px; color: var(--text-muted);">Rate</th>
+                            <th style="padding: 8px; font-size: 12px; color: var(--text-muted);">Method</th>
+                            <th style="padding: 8px; font-size: 12px; color: var(--text-muted);">Effective From</th>
+                            <th style="padding: 8px; font-size: 12px; color: var(--text-muted); text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for preset in presets %}
+                        <tr style="border-bottom: 0.5px solid var(--color-divider);">
+                            <td style="padding: 8px; font-size: 13px; font-weight: 600;">{{ preset.loan_type|upper }}</td>
+                            <td style="padding: 8px; font-size: 13px; font-weight: 500; color: var(--color-brand-shield);">{{ preset.rate }}%</td>
+                            <td style="padding: 8px; font-size: 13px; color: var(--text-muted);">{{ preset.rate_type|title }}</td>
+                            <td style="padding: 8px; font-size: 13px; color: var(--text-muted);">{{ preset.set_at.strftime('%d %b %Y') if preset.set_at else '' }}</td>
+                            <td style="padding: 8px; text-align: right;">
+                                <form action="/admin/interest-presets/{{ preset.id }}/delete" method="POST" style="margin: 0; display: inline;">
+                                    <button type="submit" style="background: none; border: none; color: var(--accent-danger); font-weight: 500; font-size: 12px; cursor: pointer; padding: 4px;">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px;">No active interest presets.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

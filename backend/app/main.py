@@ -1,11 +1,13 @@
 import os
 import logging
 from datetime import timedelta
+from urllib.parse import urlparse
 from fastapi import FastAPI, Depends, Form, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from contextlib import asynccontextmanager
 from app.config import settings
@@ -74,6 +76,45 @@ templates = Jinja2Templates(directory=templates_dir)
 
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+
+def render_not_found_page(request: Request, message: str = "The page you requested could not be found."):
+    return templates.TemplateResponse(
+        request,
+        "shared/not_found.html",
+        {"message": message},
+        status_code=status.HTTP_404_NOT_FOUND,
+    )
+
+
+def return_to_internal_referrer(request: Request):
+    """Keep users on their previous app page when an internal link is unimplemented."""
+    if request.method not in {"GET", "HEAD"}:
+        return None
+
+    referrer = request.headers.get("referer")
+    if not referrer:
+        return None
+
+    parsed = urlparse(referrer)
+    if parsed.scheme not in {"http", "https"} or parsed.netloc != request.url.netloc:
+        return None
+    if parsed.path == request.url.path and parsed.query == request.url.query:
+        return None
+
+    return RedirectResponse(url=referrer, status_code=status.HTTP_303_SEE_OTHER)
+
+
+async def browser_domain_exception_handler(request: Request, exc: DomainException):
+    if exc.status_code == status.HTTP_404_NOT_FOUND and not request.url.path.startswith("/api/"):
+        redirect = return_to_internal_referrer(request)
+        if redirect:
+            return redirect
+        return render_not_found_page(request, exc.message)
+    return await domain_exception_handler(request, exc)
+
+
+app.add_exception_handler(DomainException, browser_domain_exception_handler)
+
 # Mount Routers
 app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"])
 app.include_router(users_router, prefix=f"{settings.API_V1_STR}/users", tags=["Users"])
@@ -87,6 +128,7 @@ logger = logging.getLogger("FieldCRMMain")
 from fastapi.responses import JSONResponse
 import urllib.parse
 
+@app.exception_handler(StarletteHTTPException)
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     # Only redirect page requests (non-API) to login on 401/403
@@ -105,6 +147,11 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             url=f"/login?next={encoded_next}",
             status_code=status.HTTP_303_SEE_OTHER
         )
+    if exc.status_code == status.HTTP_404_NOT_FOUND and not is_api:
+        redirect = return_to_internal_referrer(request)
+        if redirect:
+            return redirect
+        return render_not_found_page(request, str(exc.detail))
 
     request_id = getattr(request.state, "request_id", "unknown")
     return JSONResponse(
