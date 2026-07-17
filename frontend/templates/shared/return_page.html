@@ -10,7 +10,7 @@
     <div class="page-card no-shadow" style="max-width: 600px; width: 100%;">
         <div class="page-card-header">
             <h2 class="page-card-title">{{ title }}</h2>
-            <p class="page-card-subtitle">Specify reasons and checklist corrections for returning this workspace.</p>
+            <p class="page-card-subtitle">Specify the corrections required before the file returns to the preceding workflow stage.</p>
         </div>
 
         <form action="/applications/{{ app_id }}/return" method="POST">
@@ -64,7 +64,7 @@
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <a href="/applications/{{ app_id }}" class="btn-ghost-link">Cancel — Go Back</a>
                 <button type="submit" class="btn-primary-filled" style="background-color: var(--accent-danger);">
-                    Confirm Return &rarr;
+                    Return to previous stage &rarr;
                 </button>
             </div>
 

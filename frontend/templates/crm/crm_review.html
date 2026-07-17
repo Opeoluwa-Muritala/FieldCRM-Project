@@ -132,13 +132,24 @@
     </div>
     <div style="display:flex;gap:12px;">
       <button type="submit" name="action" value="advance" class="btn btn-primary">{{ 'Approve and send to ED' if current_user.role == 'head_crm' else 'Send to Head CRM' }}</button>
-      <button type="submit" name="action" value="return" class="btn btn-secondary"
-        onclick="return confirm('Return this application to the branch?')">Return Application</button>
+      <button type="button" id="show-crm-return" class="btn btn-secondary">Return Application</button>
+    </div>
+    <div id="crm-return-confirmation" class="flat-card warning" hidden style="margin-top:16px;">
+      <strong>Return this application to the branch?</strong>
+      <p style="margin:6px 0 12px;">The file will move back to the preceding pipeline stage.</p>
+      <button type="submit" name="action" value="return" class="btn btn-secondary">Confirm return</button>
+      <button type="button" id="cancel-crm-return" class="btn btn-ghost">Cancel</button>
     </div>
   </form>
 </div>
 <script>
 (() => {
+  const returnPanel = document.getElementById('crm-return-confirmation');
+  document.getElementById('show-crm-return')?.addEventListener('click', () => {
+    returnPanel.hidden = false;
+    returnPanel.scrollIntoView({behavior:'smooth', block:'center'});
+  });
+  document.getElementById('cancel-crm-return')?.addEventListener('click', () => { returnPanel.hidden = true; });
   const canvas = document.getElementById('applicant_signature_canvas');
   const input = document.getElementById('applicant_signature');
   if (!canvas || !input) return;

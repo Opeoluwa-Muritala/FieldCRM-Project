@@ -79,12 +79,12 @@
     </div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;">
       <button type="submit" name="action" value="approve" class="btn btn-primary"
-        onclick="return confirm('Issue disbursement instruction for {{ app.applicant_name }}?')"
+        data-confirm="Issue disbursement instruction for {{ app.applicant_name }}?"
         style="font-size:15px;padding:12px 24px;">
         &#10003; Approve — Issue Disbursement Instruction
       </button>
       {% if (app.amount or 0) <= 10000000 %}<button type="submit" name="action" value="escalate_md" class="btn btn-secondary"
-        onclick="return confirm('Request MD input? The file will return to you for final approval.')"
+        data-confirm="Request MD input? The file will return to you for final approval."
         style="padding:12px 24px;">
         &#8679; Request MD Input
       </button>{% endif %}

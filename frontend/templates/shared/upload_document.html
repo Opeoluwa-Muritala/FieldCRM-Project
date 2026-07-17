@@ -115,7 +115,7 @@
     function applyFile(file) {
         const MAX_MB = 3;
         if (file.size > MAX_MB * 1024 * 1024) {
-            alert('File exceeds ' + MAX_MB + ' MB. Please choose a smaller file.');
+            window.showFieldMessage('File exceeds ' + MAX_MB + ' MB. Please choose a smaller file.');
             return;
         }
 

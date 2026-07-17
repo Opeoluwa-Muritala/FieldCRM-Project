@@ -5,6 +5,7 @@ Resolves the correct Jinja2 template path based on the authenticated user's role
 and the requesting device type (mobile vs desktop).
 """
 import re
+from app.core.workflow import WORKFLOW_STAGES, ROLE_LABELS
 
 
 # Pre-compiled mobile User-Agent pattern — avoids regex compilation per request
@@ -26,6 +27,7 @@ _VALID_ROLES = frozenset({
     "head_crm",
     "md",
     "ed",
+    "legal",
 })
 
 _ROLE_TEMPLATE_ALIASES = {
@@ -108,11 +110,45 @@ def build_template_context(request, user, **kwargs) -> dict:
                     doc_copy["category"] = doc_copy["doc_type"]
                 if "verified" in doc_copy and "status" not in doc_copy:
                     doc_copy["status"] = "verified" if doc_copy["verified"] else "needs_review"
-                doc_copy["url"] = doc_copy.get("cloud_preview_url") or doc_copy.get("stored_path") or ""
+                
+                url = doc_copy.get("stored_path") or doc_copy.get("cloud_preview_url") or ""
+                if url:
+                    # Clean up Cloudinary URLs to allow inline rendering
+                    url = url.replace("fl_attachment,", "").replace(",fl_attachment", "").replace("fl_attachment", "")
+                    url = url.replace("/raw/upload/", "/image/upload/").replace("/raw/authenticated/", "/image/authenticated/")
+                doc_copy["url"] = url
+                
+                # Determine mime type
+                mime_type = "application/octet-stream"
+                lower_url = url.lower()
+                if ".pdf" in lower_url or "pdf" in lower_url:
+                    mime_type = "application/pdf"
+                elif ".jpg" in lower_url or ".jpeg" in lower_url or "jpg" in lower_url or "jpeg" in lower_url:
+                    mime_type = "image/jpeg"
+                elif ".png" in lower_url or "png" in lower_url:
+                    mime_type = "image/png"
+                elif doc_copy.get("category") in ("bank_statement", "pledge_form", "guarantor_form_1", "guarantor_form_2"):
+                    mime_type = "application/pdf"
+                doc_copy["mime_type"] = mime_type
+                
                 mapped_docs.append(doc_copy)
             else:
                 mapped_docs.append(doc)
         kwargs["documents"] = mapped_docs
+
+    app = kwargs.get("app")
+    app_stage = app.get("stage") if isinstance(app, dict) else getattr(app, "stage", None)
+    workflow_roles = dict(WORKFLOW_STAGES)
+    prior_stages = {
+        stage: WORKFLOW_STAGES[index - 1][0]
+        for index, (stage, _) in enumerate(WORKFLOW_STAGES)
+        if index > 0
+    }
+    previous_stage = prior_stages.get(app_stage)
+    role_for_stage = workflow_roles.get(app_stage)
+    can_return_previous = bool(
+        user and previous_stage and normalized_role in {role_for_stage, "system_admin"}
+    )
 
     ctx = {
         "request": request,
@@ -123,6 +159,11 @@ def build_template_context(request, user, **kwargs) -> dict:
         "sidebar_component": get_role_sidebar_component(user.role) if user else "",
         "tabbar_component": get_role_tabbar_component(user.role) if user else "",
         "user_role": normalized_role,
+        "can_return_previous": can_return_previous,
+        "return_target_label": ROLE_LABELS.get(
+            workflow_roles.get(previous_stage, ""),
+            (previous_stage or "").replace("_", " ").title(),
+        ),
     }
     ctx.update(kwargs)
     return ctx

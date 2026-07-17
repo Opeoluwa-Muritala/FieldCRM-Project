@@ -33,6 +33,7 @@
         <button type="button" class="tab-btn" id="tabRecBtn" onclick="switchReviewTab('recommendation')">Recommendation</button>
     </div>
 
+    <form id="creditBureauPullForm" action="/applications/{{ app_id }}/credit-bureau-pull" method="POST"></form>
     <form id="creditReviewForm" action="/applications/{{ app_id }}/credit-review" method="POST">
         
         <!-- Tab 1: Summary -->
@@ -58,6 +59,93 @@
                     <label class="field-label">Collateral Pledged</label>
                     <textarea class="field-textarea" readonly>{{ collateral_desc or 'Shop Stock, Household Appliances' }}</textarea>
                 </div>
+            </div>
+
+            <div style="margin-top: 24px; border-top: 1px solid var(--color-divider); padding-top: 16px;">
+                <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 16px;">External Verification & Screening Results</h3>
+                
+                <div style="display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+                    <!-- AML Check -->
+                    <div style="flex: 1; min-width: 250px; border: 1px solid var(--color-divider); border-radius: 6px; padding: 12px; background: var(--bg-secondary);">
+                        <div style="font-weight: 500; font-size: 13px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <span>Youverify AML Check</span>
+                            {% if aml_check %}
+                                <span class="status-badge {% if aml_check.status == 'clear' %}verified{% elif aml_check.status in ('pep_hit', 'sanctions_hit', 'review_required') %}returned{% else %}needs-review{% endif %}">
+                                    {{ aml_check.status|replace('_', ' ')|title }}
+                                </span>
+                            {% else %}
+                                <span class="status-badge needs-review">Awaiting Check</span>
+                            {% endif %}
+                        </div>
+                        <p style="font-size: 11px; color: var(--text-muted); margin: 0;">
+                            Automatic screening of borrower name against PEP lists, sanctions lists, and crime databases.
+                        </p>
+                    </div>
+
+                    <!-- Credit Bureau Provider Card -->
+                    <div style="flex: 1; min-width: 250px; border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; background: var(--bg-secondary);">
+                        <div style="font-weight: 500; font-size: 13px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <span>{% if bureau_multiple_configured %}{% if bureau_sub %}{{ 'CRC' if bureau_sub.provider == 'crc' else 'Credit Registry' }}{% else %}Credit Bureau{% endif %}{% else %}{{ active_bureau_provider or 'Credit Bureau' }}{% endif %} Pull</span>
+                            {% if bureau_sub %}
+                                <div style="display: flex; gap: 6px; align-items: center;">
+                                    {% if bureau_multiple_configured %}
+                                        <span style="font-size: 11px; color: var(--text-muted);">({{ 'CRC' if bureau_sub.provider == 'crc' else 'CreditRegistry' }})</span>
+                                    {% endif %}
+                                    <span class="status-badge {% if bureau_sub.status == 'success' %}verified{% else %}returned{% endif %}">
+                                        {{ bureau_sub.status|replace('_', ' ')|title }}
+                                    </span>
+                                </div>
+                            {% else %}
+                                <span class="status-badge needs-review">Not Pulled</span>
+                            {% endif %}
+                        </div>
+                        
+                        <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
+                            <button form="creditBureauPullForm" type="submit" class="btn-primary-filled" style="min-height: 32px; height: 32px; padding: 0 12px; font-size: 12px; background-color: var(--color-brand-shield);">
+                                {% if bureau_sub %}Re-Run Bureau Check{% else %}Run Bureau Check{% endif %}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Credit Bureau Report Summary Inline -->
+                {% if bureau_sub and bureau_sub.status == 'success' %}
+                    <div style="border: 1px solid var(--border-color); border-radius: 6px; padding: 16px; background: #fff; margin-bottom: 16px;">
+                        <h4 style="font-size: 13px; font-weight: 500; margin-top: 0; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">Credit Report Summary ({% if bureau_sub.provider == 'crc' %}CRC Summary{% else %}AutoCred v8{% endif %})</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+                            <div>
+                                <span style="font-size: 11px; color: var(--text-muted); display: block;">Credit Score</span>
+                                <strong style="font-size: 16px; color: var(--color-brand-shield);">
+                                    {{ bureau_report.score }}
+                                </strong>
+                            </div>
+                            <div>
+                                <span style="font-size: 11px; color: var(--text-muted); display: block;">Active Loans Count</span>
+                                <strong style="font-size: 14px; color: var(--text-main);">
+                                    {{ bureau_report.active_loans_count }}
+                                </strong>
+                            </div>
+                            <div>
+                                <span style="font-size: 11px; color: var(--text-muted); display: block;">Total Outstanding</span>
+                                <strong style="font-size: 14px; color: var(--text-main);">
+                                    ₦{{ "{:,}".format(bureau_report.total_outstanding_balance|int) }}
+                                </strong>
+                            </div>
+                            <div>
+                                <span style="font-size: 11px; color: var(--text-muted); display: block;">Monthly Repayments</span>
+                                <strong style="font-size: 14px; color: var(--text-main);">
+                                    ₦{{ "{:,}".format(bureau_report.total_monthly_repayments|int) }}
+                                </strong>
+                            </div>
+                            <div>
+                                <span style="font-size: 11px; color: var(--text-muted); display: block;">Delinquent Accounts</span>
+                                <strong style="font-size: 14px; color: {% if bureau_report.total_delinquent_accounts|int > 0 %}var(--accent-danger){% else %}var(--accent-success){% endif %};">
+                                    {{ bureau_report.total_delinquent_accounts }}
+                                </strong>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
             </div>
         </div>
 
@@ -122,32 +210,63 @@
                         </tr>
                     </thead>
                     <tbody>
+                        {% for doc in documents %}
                         <tr>
-                            <td>Passport Photograph</td>
-                            <td>Loan Officer Intake</td>
-                            <td>03 Jun 2026</td>
-                            <td><span class="status-badge verified">Verified</span></td>
+                            <td>
+                                {% if doc.url %}
+                                    <a href="{{ doc.url }}" target="_blank" style="color: var(--color-brand-shield); text-decoration: none; font-weight: 500;">
+                                        {{ doc.category|replace('_', ' ')|title }} &nearr;
+                                    </a>
+                                {% else %}
+                                    {{ doc.category|replace('_', ' ')|title }}
+                                {% endif %}
+                            </td>
+                            <td>Loan Officer Upload</td>
+                            <td>{{ doc.created_at.strftime('%d %b %Y') if doc.created_at else '03 Jun 2026' }}</td>
+                            <td>
+                                <span class="status-badge {{ 'verified' if doc.status == 'verified' else 'needs-review' }}">
+                                    {{ doc.status|replace('_', ' ')|title }}
+                                </span>
+                            </td>
                         </tr>
+                        {% else %}
                         <tr>
-                            <td>Valid Identity Card</td>
-                            <td>OCR Extraction</td>
-                            <td>03 Jun 2026</td>
-                            <td><span class="status-badge verified">Verified</span></td>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted);">No documents uploaded yet.</td>
                         </tr>
-                        <tr>
-                            <td>Utility Bill</td>
-                            <td>File Upload</td>
-                            <td>04 Jun 2026</td>
-                            <td><span class="status-badge needs-review">Needs Review</span></td>
-                        </tr>
-                        <tr>
-                            <td>Salary Bank Statement</td>
-                            <td>NUBAN API</td>
-                            <td>03 Jun 2026</td>
-                            <td><span class="status-badge returned">Missing</span></td>
-                        </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
+            </div>
+
+            <div class="document-previews" style="margin-top: 24px; border-top: 1px solid var(--color-divider); padding-top: 16px;">
+                <h4 style="font-size: 14px; font-weight: 500; margin-bottom: 12px;">Inline Document Previews</h4>
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    {% for doc in documents %}
+                        {% if doc.url %}
+                            <div class="document-preview-card" style="border: 1px solid var(--border-color); padding: 16px; border-radius: 6px; background: var(--bg-secondary);">
+                                <div style="font-weight: 500; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">{{ doc.category|replace('_', ' ')|title }}</span>
+                                    <a href="{{ doc.url }}" download target="_blank" style="color: var(--color-brand-shield); text-decoration: none; font-size: 12px; font-weight: 500;">
+                                        Download Original File &nearr;
+                                    </a>
+                                </div>
+                                <div style="background: #fff; border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; display: flex; justify-content: center; align-items: center; min-height: 200px;">
+                                    {% if doc.mime_type == 'application/pdf' %}
+                                        <iframe src="{{ doc.url }}" style="width: 100%; height: 500px; border: none;" title="{{ doc.category|replace('_', ' ')|title }}"></iframe>
+                                    {% elif doc.mime_type in ('image/jpeg', 'image/png') %}
+                                        <img src="{{ doc.url }}" style="max-width: 100%; max-height: 500px; display: block; cursor: zoom-in;" onclick="window.open(this.src)" alt="{{ doc.category }}">
+                                    {% else %}
+                                        <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px; width: 100%;">
+                                            Preview not supported for this document type ({{ doc.mime_type }}). 
+                                            <br>
+                                            <a href="{{ doc.url }}" target="_blank" style="color: var(--color-brand-shield); font-weight: 500; text-decoration: none; margin-top: 8px; display: inline-block;">Open in New Tab &rarr;</a>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
             </div>
         </div>
 

@@ -54,53 +54,53 @@ colors:
   surface-off-white: '#F2F2F2'
 typography:
   display-lg:
-    fontFamily: Playfair Display
+    fontFamily: Montserrat
     fontSize: 48px
     fontWeight: '700'
     lineHeight: 56px
   headline-lg:
-    fontFamily: Playfair Display
+    fontFamily: Montserrat
     fontSize: 32px
     fontWeight: '700'
     lineHeight: 40px
   headline-md:
-    fontFamily: Playfair Display
+    fontFamily: Montserrat
     fontSize: 24px
     fontWeight: '600'
     lineHeight: 32px
   headline-sm:
-    fontFamily: Playfair Display
+    fontFamily: Montserrat
     fontSize: 20px
     fontWeight: '600'
     lineHeight: 28px
   body-lg:
-    fontFamily: DM Sans
+    fontFamily: Montserrat
     fontSize: 18px
     fontWeight: '400'
     lineHeight: 28px
   body-md:
-    fontFamily: DM Sans
+    fontFamily: Montserrat
     fontSize: 16px
     fontWeight: '400'
     lineHeight: 24px
   body-sm:
-    fontFamily: DM Sans
+    fontFamily: Montserrat
     fontSize: 14px
     fontWeight: '400'
     lineHeight: 20px
   label-tracked:
-    fontFamily: DM Sans
+    fontFamily: Montserrat
     fontSize: 12px
     fontWeight: '700'
     lineHeight: 16px
     letterSpacing: 0.1em
   label-md:
-    fontFamily: DM Sans
+    fontFamily: Montserrat
     fontSize: 12px
     fontWeight: '500'
     lineHeight: 16px
   headline-lg-mobile:
-    fontFamily: Playfair Display
+    fontFamily: Montserrat
     fontSize: 28px
     fontWeight: '700'
     lineHeight: 36px
@@ -140,11 +140,11 @@ The palette is anchored by **Shield Purple**, a deep, authoritative hue that ser
 
 ## Typography
 
-This design system uses a dual-font strategy to differentiate between **Editorial Content** and **Functional UI**.
+This design system uses Montserrat as the single font across the entire application for both headings and body/UI text, establishing a modern, clean, and unified brand identity.
 
-- **Playfair Display:** Reserved for high-level headings (20pt/px and above). It provides the institutional "bank" feel. On mobile devices, use the `headline-lg-mobile` variant to ensure long titles do not break the layout.
-- **DM Sans:** Used for all functional text. It is chosen for its high x-height and geometric clarity, making it ideal for data entry and reading on small screens.
-- **Tracked Labels:** Secondary labels (like category headers or overlines) use DM Sans Bold with 10% letter-spacing and uppercase styling to provide distinct visual separation from body text.
+- **Montserrat (Headings):** Used for all high-level headings (20pt/px and above) with bold weights (600/700) to provide a premium institutional feel.
+- **Montserrat (Body & UI):** Used for all body text, form fields, lists, and metadata with standard weights (400/500) for clean legibility across devices.
+- **Tracked Labels:** Secondary labels (like category headers or overlines) use Montserrat Bold with 10% letter-spacing and uppercase styling to provide distinct visual separation from body text.
 
 ## Layout & Spacing
 
@@ -176,7 +176,7 @@ The shape language is **Soft (0.25rem)**. This subtle rounding provides a modern
 - **Primary Buttons:** 52dp height. Solid **Shield Purple** fill with White text. Use 16px horizontal padding.
 - **Ghost Buttons:** Transparent background with Shield Purple border (1px) and text. Used for secondary actions like "Cancel" or "Back."
 - **Input Fields:** 48dp height. 1px Slate border. On focus, the border thickens to 2px Shield Purple. 
-- **Inline Validation:** Error states must include both a Red border and a 12px DM Sans error message below the field. Success states use a Green checkmark icon within the trailing edge of the input.
+- **Inline Validation:** Error states must include both a Red border and a 12px Montserrat error message below the field. Success states use a Green checkmark icon within the trailing edge of the input.
 - **Brand Mark:** The 64dp Shield + M logo must always be placed with at least 24px of clear space. It is the primary anchor for the top-left of the navigation bar.
 - **Cards:** Used as the primary container for data groups. Cards have no border but use the ambient shadow defined in the Elevation section.
 - **Chips:** For status display (e.g., "Pending," "Approved"). Use high-contrast text on a 10% opacity background of the semantic color (e.g., Success Green text on a light green tint).

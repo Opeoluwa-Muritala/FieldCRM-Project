@@ -1,6 +1,9 @@
+import json
+import logging
 import os
 from urllib.parse import urlencode
 from datetime import date, datetime
+from decimal import Decimal
 from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import RedirectResponse
@@ -17,6 +20,7 @@ from app.core.template_utils import (
     detect_device_type,
     get_role_template,
 )
+from app.core.workflow import WORKFLOW_STAGES, ROLE_LABELS
 from app.services.dashboard_service import DashboardService
 from app.domains.documents.repository import DocumentRepository
 from app.domains.documents.service import DocumentService
@@ -27,12 +31,33 @@ from app.domains.visitation.service import VisitationService
 from app.domains.notifications.repository import NotificationRepository
 from app.domains.notifications.service import NotificationService
 
+from app.config import settings
+
 router = APIRouter()
 
 # Resolve templates folder relatively
 base_dir = os.path.dirname(os.path.abspath(__file__))
 templates_dir = os.path.abspath(os.path.join(base_dir, "../../../../frontend/templates"))
 templates = Jinja2Templates(directory=templates_dir)
+
+PREVIOUS_PIPELINE_STAGE = {
+    stage: WORKFLOW_STAGES[index - 1][0]
+    for index, (stage, _) in enumerate(WORKFLOW_STAGES)
+    if index > 0
+}
+
+
+def return_target_for(app, user_role: str) -> str | None:
+    """Return the preceding stage when the user owns the application's current stage."""
+    current_stage = app.stage
+    target_stage = PREVIOUS_PIPELINE_STAGE.get(current_stage)
+    normalized_role = user_role.lower().replace(" ", "_")
+    if normalized_role == "loan_officer":
+        normalized_role = "account_officer"
+    expected_role = dict(WORKFLOW_STAGES).get(current_stage)
+    if not target_stage or (normalized_role not in {expected_role, "system_admin"}):
+        return None
+    return target_stage
 
 def form_data_to_jsonable_dict(form_data) -> dict:
     payload = {}
@@ -57,6 +82,19 @@ def form_data_to_jsonable_dict(form_data) -> dict:
         else:
             payload[normalized_key] = cleaned[-1]
     return payload
+
+
+def normalize_json_object(value) -> dict:
+    """Return a JSON database value as a mapping for template rendering."""
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
 
 def get_loan_service(conn = Depends(db_conn)) -> LoanService:
     repo = LoanRepository(conn)
@@ -101,6 +139,8 @@ async def render_dashboard(
         return RedirectResponse(url="/ed-dashboard", status_code=status.HTTP_303_SEE_OTHER)
     if role == "md":
         return RedirectResponse(url="/md-dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    if role == "legal":
+        return RedirectResponse(url="/legal-queue", status_code=status.HTTP_303_SEE_OTHER)
     if role in ("md", "ed"):
         return RedirectResponse(url="/executive-dashboard", status_code=status.HTTP_303_SEE_OTHER)
     template_name = get_role_template(role, "dashboard.html")
@@ -578,6 +618,34 @@ async def render_application_detail(
     all_flags = await dashboard_svc.get_compliance_flags(current_user, limit=1000)
     flags = [f for f in all_flags if str(f.get("loan_id")) == application_id]
 
+    # Fetch verification/bureau/AML checks
+    ver_check = await conn.fetchrow(
+        "SELECT status, is_valid, checked_at FROM verification_checks WHERE loan_application_id = $1 ORDER BY checked_at DESC LIMIT 1;",
+        UUID(application_id)
+    )
+    bureau_sub = await conn.fetchrow(
+        "SELECT status, registry_id, provider, submitted_at FROM bureau_submissions WHERE loan_application_id = $1 ORDER BY submitted_at DESC LIMIT 1;",
+        UUID(application_id)
+    )
+    aml_check = await conn.fetchrow(
+        "SELECT status, category_count, checked_at FROM sanctions_checks WHERE loan_application_id = $1 ORDER BY checked_at DESC LIMIT 1;",
+        UUID(application_id)
+    )
+
+    # Fetch checklist items
+    checklist_rows = await conn.fetch(
+        "SELECT context, item_key, is_checked FROM checklist_items WHERE loan_application_id = $1;",
+        UUID(application_id)
+    )
+    checklist_map = {}
+    for row in checklist_rows:
+        checklist_map[f"{row['context']}:{row['item_key']}"] = row["is_checked"]
+
+    crc_configured = bool(settings.CRC_API_KEY)
+    cr_configured = bool(settings.CREDIT_REGISTRY_USERNAME and settings.CREDIT_REGISTRY_PASSWORD)
+    bureau_multiple_configured = crc_configured and cr_configured
+    active_bureau_provider = "CRC" if crc_configured else "CreditRegistry"
+
     ctx = build_template_context(
         request,
         current_user,
@@ -593,6 +661,15 @@ async def render_application_detail(
         summary=readiness_summary,
         audit_events=audit_events,
         flags=flags,
+        ver_check=dict(ver_check) if ver_check else None,
+        bureau_sub=dict(bureau_sub) if bureau_sub else None,
+        bureau_multiple_configured=bureau_multiple_configured,
+        active_bureau_provider=active_bureau_provider,
+        aml_check=dict(aml_check) if aml_check else None,
+        checklist_map=checklist_map,
+        VERIFICATION_ENABLED=settings.VERIFICATION_ENABLED,
+        BUREAU_REPORTING_ENABLED=settings.BUREAU_REPORTING_ENABLED,
+        AML_SCREENING_ENABLED=settings.AML_SCREENING_ENABLED,
         active_tab="applications",
         active_page="applications",
     )
@@ -931,20 +1008,157 @@ async def render_credit_review(
     """Page 17 Credit Underwriter Review."""
     repo = LoanRepository(conn)
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+        
     borrower_name = app.applicant_name if app else "Borrower"
+
+    # Automatically run Youverify AML screening if no check row exists yet
+    aml_exists = await conn.fetchval(
+        "SELECT count(*) FROM sanctions_checks WHERE loan_application_id = $1;",
+        UUID(application_id)
+    )
+    if aml_exists == 0:
+        try:
+            from app.domains.aml.service import screen_entity
+            await screen_entity(borrower_name, loan_application_id=app.id, conn=conn)
+        except Exception as e:
+            logging.error(f"Failed to run Youverify AML screening: {e}")
+
+    # Fetch verification/bureau/AML checks
+    ver_check = await conn.fetchrow(
+        "SELECT status, is_valid, checked_at FROM verification_checks WHERE loan_application_id = $1 ORDER BY checked_at DESC LIMIT 1;",
+        UUID(application_id)
+    )
+    bureau_sub = await conn.fetchrow(
+        "SELECT status, registry_id, raw_response, provider, submitted_at FROM bureau_submissions WHERE loan_application_id = $1 ORDER BY submitted_at DESC LIMIT 1;",
+        UUID(application_id)
+    )
+    if bureau_sub:
+        bureau_sub = dict(bureau_sub)
+        bureau_sub["raw_response"] = normalize_json_object(bureau_sub.get("raw_response"))
+    bureau_report_data = (bureau_sub or {}).get("raw_response", {}).get("data", {})
+    if not isinstance(bureau_report_data, dict):
+        bureau_report_data = {}
+    aml_check = await conn.fetchrow(
+        "SELECT status, category_count, raw_response, checked_at FROM sanctions_checks WHERE loan_application_id = $1 ORDER BY checked_at DESC LIMIT 1;",
+        UUID(application_id)
+    )
     
+    doc_svc = get_document_service(conn)
+    documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
+
+    crc_configured = bool(settings.CRC_API_KEY)
+    cr_configured = bool(settings.CREDIT_REGISTRY_USERNAME and settings.CREDIT_REGISTRY_PASSWORD)
+    bureau_multiple_configured = crc_configured and cr_configured
+    active_bureau_provider = "CRC" if crc_configured else "CreditRegistry"
+
     ctx = build_template_context(
         request,
         current_user,
+        app=app,
         app_id=application_id,
         borrower_name=borrower_name,
         amount=(app.amount or 0) if app else 500000,
         tenure=app.tenure if app else 12,
         product_type=app.product_type if app else "MSEF",
+        documents=documents,
+        ver_check=dict(ver_check) if ver_check else None,
+        bureau_sub=bureau_sub,
+        bureau_report={
+            "score": bureau_report_data.get("score", "N/A"),
+            "active_loans_count": bureau_report_data.get("active_loans_count", 0),
+            "total_outstanding_balance": bureau_report_data.get("total_outstanding_balance", 0),
+            "total_monthly_repayments": bureau_report_data.get("total_monthly_repayments", 0),
+            "total_delinquent_accounts": bureau_report_data.get("total_delinquent_accounts", 0),
+        },
+        bureau_multiple_configured=bureau_multiple_configured,
+        active_bureau_provider=active_bureau_provider,
+        aml_check=dict(aml_check) if aml_check else None,
+        VERIFICATION_ENABLED=settings.VERIFICATION_ENABLED,
+        BUREAU_REPORTING_ENABLED=settings.BUREAU_REPORTING_ENABLED,
+        AML_SCREENING_ENABLED=settings.AML_SCREENING_ENABLED,
         active_tab="reviews",
         active_page="reviews",
     )
     return templates.TemplateResponse(request, "shared/credit_review.html", ctx)
+
+
+@router.post("/applications/{application_id}/credit-bureau-pull")
+async def pull_credit_bureau_report(
+    application_id: str,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["credit_analyst"]))
+):
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+        
+    from app.domains.credit_bureau.service import CreditBureauService
+    bureau_service = CreditBureauService(conn)
+    session_code = await bureau_service.get_session_code()
+    if session_code:
+        # Find customer registry_id
+        registry_id = await bureau_service.find_customer(
+            session_code=session_code,
+            bvn=app.bvn,
+            phone=app.phone,
+            name=app.applicant_name
+        )
+        if registry_id:
+            await bureau_service.get_report(
+                loan_application_id=str(app.id),
+                registry_id=registry_id,
+                session_code=session_code
+            )
+            
+    return RedirectResponse(
+        url=f"/applications/{application_id}/credit-review",
+        status_code=status.HTTP_303_SEE_OTHER
+    )
+
+
+@router.post("/applications/{application_id}/checklist")
+async def toggle_checklist_item(
+    application_id: str,
+    payload: dict,
+    conn = Depends(db_conn),
+    current_user = Depends(get_current_user)
+):
+    context = payload.get("context", "default")
+    item_key = payload.get("item_key")
+    item_label = payload.get("item_label", "")
+    is_checked = payload.get("is_checked", False)
+    if not item_key:
+        raise HTTPException(status_code=400, detail="item_key is required")
+        
+    await conn.execute(
+        """
+        INSERT INTO checklist_items (loan_application_id, context, item_key, item_label, is_checked, checked_by, checked_at)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        ON CONFLICT (loan_application_id, context, item_key)
+        DO UPDATE SET is_checked = EXCLUDED.is_checked, checked_by = EXCLUDED.checked_by, checked_at = NOW();
+        """,
+        UUID(application_id), context, item_key, item_label, is_checked, current_user.id
+    )
+    
+    # Log workflow event
+    audit = AuditService(conn)
+    action_text = f"Checklist item '{item_label}' under '{context}' marked as {'checked' if is_checked else 'unchecked'}"
+    await audit.log(
+        application_id=application_id,
+        org_id=str(current_user.org_id),
+        action="Checklist Item Update",
+        from_stage="",
+        to_stage="",
+        actor_id=str(current_user.id),
+        actor_role=current_user.role,
+        reason=action_text
+    )
+    
+    return {"status": "success", "item_key": item_key, "is_checked": is_checked}
+
 
 @router.post("/applications/{application_id}/credit-review")
 async def process_credit_review(
@@ -964,6 +1178,13 @@ async def process_credit_review(
     if app.stage != "credit_analyst_review":
         raise HTTPException(status_code=400, detail="Application is not awaiting Credit Analyst review")
 
+    allowed_decisions = {"Recommend Approval", "Recommend Rejection", "Return for Correction"}
+    if recommendation_decision not in allowed_decisions:
+        raise HTTPException(status_code=400, detail="Select a valid underwriting recommendation")
+    recommendation_notes = recommendation_notes.strip()
+    if not recommendation_notes:
+        raise HTTPException(status_code=400, detail="Provide underwriting recommendation notes")
+
     if amount is not None:
         await conn.execute("UPDATE loan_applications SET amount = $1 WHERE id = $2", Decimal(str(amount)), UUID(application_id))
 
@@ -973,7 +1194,17 @@ async def process_credit_review(
         stage_val = 'returned'
     else:
         stage_val = 'rejected'
-        
+
+    await repo.save_stage_data(
+        UUID(application_id),
+        "credit_analyst_review",
+        {
+            "recommendation_decision": recommendation_decision,
+            "recommendation_notes": recommendation_notes,
+            "recommended_amount": str(amount) if amount is not None else None,
+        },
+        current_user.id,
+    )
     await repo.advance_stage(UUID(application_id), current_user.org_id, stage_val)
     
     # Save recommendation to workflow
@@ -1070,12 +1301,20 @@ async def render_return_page(
     conn = Depends(db_conn),
     current_user = Depends(get_current_user)
 ):
-    """Page 20 Return Reason Page."""
+    """Render a return-to-previous-stage form for the current reviewer."""
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    target_stage = return_target_for(app, current_user.role)
+    if not target_stage:
+        raise HTTPException(status_code=403, detail="You cannot return this application from its current pipeline stage")
     ctx = build_template_context(
         request,
         current_user,
         app_id=application_id,
-        title="Return Loan Application",
+        title=f"Return to {ROLE_LABELS.get(dict(WORKFLOW_STAGES)[target_stage], target_stage.replace('_', ' ').title())}",
+        return_target_stage=target_stage,
         active_tab="awaiting",
         active_page="awaiting",
     )
@@ -1083,33 +1322,51 @@ async def render_return_page(
 
 @router.post("/applications/{application_id}/return")
 async def process_return_page(
+    request: Request,
     application_id: str,
     reason_category: str = Form(...),
     notes: str = Form(...),
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Branch Manager", "Credit Analyst"]))
+    current_user = Depends(get_current_user)
 ):
-    """POST processor to return application to draft stage."""
+    """Return a loan to the previous pipeline stage with a recorded reason."""
     repo = LoanRepository(conn)
-    success = await repo.mark_returned(
-        UUID(application_id), 
-        current_user.org_id, 
-        f"Category: {reason_category}. Notes: {notes}", 
-        current_user.id
-    )
-    if not success:
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
-        
+    target_stage = return_target_for(app, current_user.role)
+    if not target_stage:
+        raise HTTPException(status_code=403, detail="You cannot return this application from its current pipeline stage")
+
+    notes = notes.strip()
+    if not notes:
+        raise HTTPException(status_code=400, detail="Provide return instructions")
+    form_data = await request.form()
+    corrections = [value for value in form_data.getlist("corrections[]") if value]
+    reason = f"Category: {reason_category}. Notes: {notes}"
+    if corrections:
+        reason += ". Required corrections: " + ", ".join(corrections)
+
+    returned = await repo.advance_stage(UUID(application_id), current_user.org_id, target_stage)
+    if not returned:
+        raise HTTPException(status_code=400, detail="Unable to return the application")
+    await conn.execute(
+        "UPDATE loan_applications SET return_reason = $1, returned_at = NOW() WHERE id = $2 AND org_id = $3",
+        reason,
+        UUID(application_id),
+        current_user.org_id,
+    )
+
     audit = AuditService(conn)
     await audit.log(
         application_id=application_id,
         org_id=str(current_user.org_id),
-        action="Return Application",
-        from_stage="branch_approval",
-        to_stage="returned",
+        action="Return Application to Previous Pipeline Stage",
+        from_stage=app.stage,
+        to_stage=target_stage,
         actor_id=str(current_user.id),
         actor_role=current_user.role,
-        reason=f"Category: {reason_category}. Notes: {notes}"
+        reason=reason,
     )
     return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -1381,7 +1638,7 @@ async def render_crm_review(
     consent_stage = await repo.get_stage_data(UUID(application_id), "crm_review")
     ctx = build_template_context(
         request, current_user,
-        app=app, app_id=application_id,
+        app=app, application=app, app_id=application_id,
         documents=documents, summary=readiness,
         consent_data=(consent_stage or {}).get("data_json", {}),
         active_tab="crm_queue", active_page="crm_queue",
@@ -1961,9 +2218,452 @@ async def process_disburse(
         actor_id=str(current_user.id),
         actor_role=current_user.role,
     )
+
+    # Submit disbursed account to CreditRegistry
+    try:
+        from app.domains.credit_bureau.service import CreditBureauService
+        bureau_service = CreditBureauService(conn)
+        session_code = await bureau_service.get_session_code()
+        if session_code:
+            loan_payload = {
+                "person": {
+                    "RegistryID": "mock_registry_id_999888",
+                    "BVN": app.bvn,
+                    "FirstName": app.applicant_name.split()[0] if app.applicant_name else "",
+                    "LastName": app.applicant_name.split()[-1] if len(app.applicant_name.split()) > 1 else "",
+                    "PhoneNumber": app.phone
+                },
+                "account": {
+                    "LoanAmount": disbursed_amount,
+                    "DisbursementDate": str(disbursement_date),
+                    "Tenor": app.tenor_months or 12,
+                    "InterestRate": interest_rate,
+                    "RepaymentFrequency": repayment_frequency
+                }
+            }
+            await bureau_service.submit_account(
+                loan_application_id=str(app.id),
+                session_code=session_code,
+                loan_data=loan_payload
+            )
+    except Exception as e:
+        import logging
+        logging.getLogger("Disburse").error(f"Failed to submit account to CreditRegistry: {e}")
+
     return RedirectResponse(
         url=f"/applications/{application_id}/repayment-schedule",
         status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+# =============================================================================
+# LEGAL ROLE & VALUATION WORKSPACE
+# =============================================================================
+
+@router.get("/legal-queue")
+async def render_legal_queue(
+    request: Request,
+    page: int = 1,
+    size: int = 20,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["legal"]))
+):
+    rows = await conn.fetch(
+        """
+        SELECT
+            la.id,
+            la.ref_no,
+            la.applicant_name,
+            la.amount,
+            la.loan_type,
+            la.stage,
+            la.created_at,
+            la.updated_at,
+            u.full_name AS officer_name,
+            bm.full_name AS branch_manager_name,
+            EXTRACT(DAY FROM NOW() - la.updated_at)::INTEGER AS days_waiting
+        FROM loan_applications la
+        LEFT JOIN users u  ON u.id  = la.created_by
+        LEFT JOIN users bm ON bm.id = la.branch_manager_id
+        WHERE la.org_id     = $1
+          AND la.stage      IN ('branch_manager_review', 'credit_analyst_review', 'crm_review')
+          AND la.deleted_at IS NULL
+        ORDER BY la.updated_at ASC
+        LIMIT $2 OFFSET $3;
+        """,
+        current_user.org_id, size, (page - 1) * size
+    )
+    
+    ctx = build_template_context(
+        request,
+        current_user,
+        queue=[dict(r) for r in rows],
+        active_tab="legal_queue",
+        active_page="legal_queue",
+        today_label=date.today().strftime('%d %B %Y')
+    )
+    return templates.TemplateResponse(request, "legal/legal_queue.html", ctx)
+
+
+@router.get("/applications/{application_id}/valuation")
+async def render_valuation_screen(
+    request: Request,
+    application_id: str,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["legal"]))
+):
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+        
+    items = await conn.fetch(
+        """
+        SELECT id, item_number, item_name, serial_number, description, estimated_value, 
+               appraised_value, valuer_name, valuer_license_no, valuation_date, loan_to_value_ratio
+        FROM pledged_items
+        WHERE loan_id = $1
+        ORDER BY item_number;
+        """,
+        UUID(application_id)
+    )
+    
+    ctx = build_template_context(
+        request,
+        current_user,
+        app=app,
+        app_id=application_id,
+        borrower_name=app.applicant_name,
+        amount=app.amount or 500000,
+        tenure=app.tenure or 12,
+        product_type=app.product_type or "MSEF",
+        items=[dict(i) for i in items],
+        active_tab="legal_queue",
+        active_page="legal_queue"
+    )
+    return templates.TemplateResponse(request, "legal/valuation.html", ctx)
+
+
+@router.post("/applications/{application_id}/valuation")
+async def process_valuation_submission(
+    application_id: str,
+    request: Request,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["legal"]))
+):
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+        
+    form_data = await request.form()
+    
+    item_ids = set()
+    for k in form_data.keys():
+        if k.startswith("appraised_value_"):
+            item_id_str = k.replace("appraised_value_", "")
+            item_ids.add(item_id_str)
+            
+    for item_id_str in item_ids:
+        item_uuid = UUID(item_id_str)
+        appraised_value_val = form_data.get(f"appraised_value_{item_id_str}")
+        valuer_name_val = form_data.get(f"valuer_name_{item_id_str}")
+        valuer_license_no_val = form_data.get(f"valuer_license_no_{item_id_str}")
+        valuation_date_val = form_data.get(f"valuation_date_{item_id_str}")
+        
+        appraised_value = Decimal(appraised_value_val) if appraised_value_val else Decimal(0)
+        ltv = None
+        if appraised_value > 0 and app.amount:
+            ltv = Decimal(str(app.amount)) / appraised_value
+            
+        await conn.execute(
+            """
+            UPDATE pledged_items
+            SET appraised_value = $1,
+                valuer_name = $2,
+                valuer_license_no = $3,
+                valuation_date = $4,
+                loan_to_value_ratio = $5
+            WHERE id = $6 AND loan_id = $7;
+            """,
+            appraised_value,
+            valuer_name_val or None,
+            valuer_license_no_val or None,
+            datetime.strptime(valuation_date_val, "%Y-%m-%d").date() if valuation_date_val else None,
+            ltv,
+            item_uuid,
+            UUID(application_id)
+        )
+        
+    audit = AuditService(conn)
+    await audit.log(
+        application_id=application_id,
+        org_id=str(current_user.org_id),
+        action="Collateral Valuation Recorded",
+        from_stage=app.stage,
+        to_stage=app.stage,
+        actor_id=str(current_user.id),
+        actor_role=current_user.role,
+        reason=f"Collateral valuation and appraisal updated by Legal officer: {current_user.name}"
+    )
+    
+    return RedirectResponse(
+        url=f"/legal-queue",
+        status_code=status.HTTP_303_SEE_OTHER
+    )
+
+
+# =============================================================================
+# MANAGEMENT CREDIT COMMITTEE (MCC)
+# =============================================================================
+
+@router.get("/applications/{application_id}/mcc")
+async def render_mcc_summary(
+    request: Request,
+    application_id: str,
+    conn = Depends(db_conn),
+    current_user = Depends(get_current_user)
+):
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+        
+    # Gated: stage must be 'committee_review'
+    if app.stage != 'committee_review':
+        raise HTTPException(status_code=403, detail="Application is not in the Credit Committee review stage")
+        
+    # Fetch audit / workflow history
+    all_audit_events = await repo.list_workflow_events(current_user.org_id)
+    audit_events = [e for e in all_audit_events if str(e.get("loan_id")) == application_id]
+    
+    # Fetch valuation details (pledged items)
+    items = await conn.fetch(
+        """
+        SELECT id, item_number, item_name, serial_number, description, estimated_value, 
+               appraised_value, valuer_name, valuer_license_no, valuation_date, loan_to_value_ratio
+        FROM pledged_items
+        WHERE loan_id = $1
+        ORDER BY item_number;
+        """,
+        UUID(application_id)
+    )
+    
+    # Fetch integration status (latest checks)
+    ver_check = await conn.fetchrow(
+        "SELECT status, is_valid, checked_at FROM verification_checks WHERE loan_application_id = $1 ORDER BY checked_at DESC LIMIT 1;",
+        UUID(application_id)
+    )
+    bureau_sub = await conn.fetchrow(
+        "SELECT status, registry_id, raw_response, provider, submitted_at FROM bureau_submissions WHERE loan_application_id = $1 ORDER BY submitted_at DESC LIMIT 1;",
+        UUID(application_id)
+    )
+    aml_check = await conn.fetchrow(
+        "SELECT status, category_count, checked_at FROM sanctions_checks WHERE loan_application_id = $1 ORDER BY checked_at DESC LIMIT 1;",
+        UUID(application_id)
+    )
+
+    crc_configured = bool(settings.CRC_API_KEY)
+    cr_configured = bool(settings.CREDIT_REGISTRY_USERNAME and settings.CREDIT_REGISTRY_PASSWORD)
+    bureau_multiple_configured = crc_configured and cr_configured
+    active_bureau_provider = "CRC" if crc_configured else "CreditRegistry"
+
+    ctx = build_template_context(
+        request,
+        current_user,
+        app=app,
+        app_id=application_id,
+        borrower_name=app.applicant_name,
+        amount=app.amount or 500000,
+        tenure=app.tenure or 12,
+        product_type=app.product_type or "MSEF",
+        audit_events=audit_events,
+        items=[dict(i) for i in items],
+        ver_check=dict(ver_check) if ver_check else None,
+        bureau_sub=dict(bureau_sub) if bureau_sub else None,
+        bureau_multiple_configured=bureau_multiple_configured,
+        active_bureau_provider=active_bureau_provider,
+        aml_check=dict(aml_check) if aml_check else None,
+        VERIFICATION_ENABLED=settings.VERIFICATION_ENABLED,
+        BUREAU_REPORTING_ENABLED=settings.BUREAU_REPORTING_ENABLED,
+        AML_SCREENING_ENABLED=settings.AML_SCREENING_ENABLED,
+        active_tab="committee_queue",
+        active_page="committee_queue"
+    )
+    return templates.TemplateResponse(request, "committee/mcc_summary.html", ctx)
+
+
+# =============================================================================
+# ADMIN INTEREST RATE PRESETS & OFFER LETTER GENERATION
+# =============================================================================
+
+@router.get("/admin/interest-presets")
+async def list_interest_presets(
+    request: Request,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["system_admin"]))
+):
+    rows = await conn.fetch(
+        "SELECT id, loan_type, rate, rate_type, effective_from, set_at FROM interest_rate_presets ORDER BY set_at DESC;"
+    )
+    ctx = build_template_context(
+        request,
+        current_user,
+        presets=[dict(r) for r in rows],
+        active_tab="admin",
+        active_page="interest_presets"
+    )
+    return templates.TemplateResponse(request, "system_admin/interest_presets.html", ctx)
+
+
+@router.post("/admin/interest-presets")
+async def create_interest_preset(
+    loan_type: str = Form(...),
+    rate: float = Form(...),
+    rate_type: str = Form(...),
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["system_admin"]))
+):
+    await conn.execute(
+        """
+        INSERT INTO interest_rate_presets (loan_type, rate, rate_type, set_by)
+        VALUES ($1, $2, $3, $4);
+        """,
+        loan_type, Decimal(str(rate)), rate_type, current_user.id
+    )
+    return RedirectResponse(url="/admin/interest-presets", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/admin/interest-presets/{preset_id}/delete")
+async def delete_interest_preset(
+    preset_id: str,
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["system_admin"]))
+):
+    await conn.execute(
+        "DELETE FROM interest_rate_presets WHERE id = $1;",
+        UUID(preset_id)
+    )
+    return RedirectResponse(url="/admin/interest-presets", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/applications/{application_id}/generate-offer")
+async def generate_offer_letter(
+    application_id: str,
+    conn = Depends(db_conn),
+    current_user = Depends(get_current_user)
+):
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+        
+    # 1. Fetch interest rate preset
+    preset = await conn.fetchrow(
+        "SELECT rate FROM interest_rate_presets WHERE loan_type = $1 ORDER BY set_at DESC LIMIT 1;",
+        app.loan_type
+    )
+    rate = preset["rate"] if preset else Decimal("24.0")
+    
+    # 2. Update interest_rate_snapshot in loan_applications
+    await conn.execute(
+        "UPDATE loan_applications SET interest_rate_snapshot = $1 WHERE id = $2;",
+        rate, UUID(application_id)
+    )
+    
+    # 3. Fetch clause set
+    clause_row = await conn.fetchrow(
+        "SELECT id, clause_keys FROM offer_letter_clause_sets WHERE loan_type = $1;",
+        app.loan_type
+    )
+    if clause_row:
+        clause_keys = json.loads(clause_row["clause_keys"])
+    else:
+        clause_keys = [
+            "Interest is subject to market review.",
+            "Penalty fee of 1% daily applies to all past due amounts.",
+            "Global Standing Instruction (GSI) mandate is active on all accounts."
+        ]
+        await conn.execute(
+            "INSERT INTO offer_letter_clause_sets (loan_type, clause_keys) VALUES ($1, $2) ON CONFLICT DO NOTHING;",
+            app.loan_type, json.dumps(clause_keys)
+        )
+        
+    # 4. Generate PDF using pdf_service
+    from app.services.pdf_service import generate_offer_letter_pdf
+    org_row = await conn.fetchrow("SELECT name FROM organisations WHERE id = $1;", current_user.org_id)
+    org_name = org_row["name"] if org_row else "Mainstreet Microfinance Bank"
+    
+    pdf_bytes = generate_offer_letter_pdf(
+        loan={
+            "ref_no": app.ref_no,
+            "applicant_name": app.applicant_name,
+            "amount": app.amount or 500000,
+            "tenor_months": app.tenor_months or 12,
+            "loan_type": app.loan_type,
+            "repayment_frequency": "Monthly"
+        },
+        org={"name": org_name},
+        rate=float(rate),
+        clauses=clause_keys
+    )
+    
+    # 5. Upload to Cloudinary or fallback to local storage
+    from app.services.cloud_storage_service import upload_to_cloudinary
+    from app.core.config import settings
+    import os
+    
+    pdf_url = None
+    if settings.cloudinary_enabled:
+        try:
+            folder = f"fieldcrm/{current_user.org_id}/{application_id}"
+            res = upload_to_cloudinary(pdf_bytes, "application/pdf", folder=folder, public_id=f"{folder}/offer_letter")
+            pdf_url = res.stored_path
+        except Exception as e:
+            logging.getLogger("OfferLetter").error(f"Failed to upload to Cloudinary: {e}")
+            
+    if not pdf_url:
+        os.makedirs("frontend/static/uploads", exist_ok=True)
+        local_path = f"frontend/static/uploads/offer_letter_{application_id}.pdf"
+        with open(local_path, "wb") as f:
+            f.write(pdf_bytes)
+        pdf_url = f"/static/uploads/offer_letter_{application_id}.pdf"
+        
+    # 6. Save to offer_letters table
+    await conn.execute(
+        """
+        INSERT INTO offer_letters (loan_application_id, loan_type, clause_set_version, clauses_included, interest_rate_snapshot, generated_pdf_url, generated_by, status)
+        VALUES ($1, $2, 'v1', $3, $4, $5, $6, 'issued');
+        """,
+        UUID(application_id), app.loan_type, json.dumps(clause_keys), rate, pdf_url, current_user.id
+    )
+    
+    # 7. Log workflow event
+    audit = AuditService(conn)
+    await audit.log(
+        application_id=application_id,
+        org_id=str(current_user.org_id),
+        action="Offer Letter Generated & Issued",
+        from_stage=app.stage,
+        to_stage=app.stage,
+        actor_id=str(current_user.id),
+        actor_role=current_user.role,
+        reason=f"Offer letter compiled and issued. Rate snapshot: {rate}%."
+    )
+    
+    # 8. Add to documents table
+    await conn.execute(
+        """
+        INSERT INTO documents (loan_id, org_id, doc_type, category, filename, mime_type, cloud_preview_url, status, created_by)
+        VALUES ($1, $2, 'offer_letter', 'offer_letter', 'offer_letter.pdf', 'application/pdf', $3, 'verified', $4)
+        ON CONFLICT DO NOTHING;
+        """,
+        UUID(application_id), current_user.org_id, pdf_url, current_user.id
+    )
+    
+    return RedirectResponse(
+        url=f"/applications/{application_id}",
+        status_code=status.HTTP_303_SEE_OTHER
     )
 
 

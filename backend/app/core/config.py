@@ -108,6 +108,32 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str = os.getenv("CLOUDINARY_API_KEY", "")
     CLOUDINARY_API_SECRET: str = os.getenv("CLOUDINARY_API_SECRET", "")
 
+    # External Integrations settings
+    QORE_API_KEY: str | None = os.getenv("QORE_API_KEY", None)
+    QORE_BASE_URL: str = os.getenv("QORE_BASE_URL", "https://api.qoreid.com")
+
+    CREDIT_REGISTRY_USERNAME: str | None = os.getenv("CREDIT_REGISTRY_USERNAME", None)
+    CREDIT_REGISTRY_PASSWORD: str | None = os.getenv("CREDIT_REGISTRY_PASSWORD", None)
+    CREDIT_REGISTRY_BASE_URL: str = os.getenv("CREDIT_REGISTRY_BASE_URL", "https://api.creditregistry.com")
+
+    CRC_API_KEY: str | None = os.getenv("CRC_API_KEY", None)
+    CRC_BASE_URL: str = os.getenv("CRC_BASE_URL", "https://api.crccreditbureau.com")
+
+    AML_YOUVERIFY_TOKEN: str | None = os.getenv("AML_YOUVERIFY_TOKEN", None)
+    AML_BASE_URL: str | None = os.getenv("AML_BASE_URL", None)
+
+    @property
+    def VERIFICATION_ENABLED(self) -> bool:
+        return bool(self.QORE_API_KEY)
+
+    @property
+    def BUREAU_REPORTING_ENABLED(self) -> bool:
+        return bool((self.CREDIT_REGISTRY_USERNAME and self.CREDIT_REGISTRY_PASSWORD) or self.CRC_API_KEY)
+
+    @property
+    def AML_SCREENING_ENABLED(self) -> bool:
+        return bool(self.AML_YOUVERIFY_TOKEN)
+
     @property
     def cloudinary_enabled(self) -> bool:
         return bool(self.CLOUDINARY_CLOUD_NAME and self.CLOUDINARY_API_KEY and self.CLOUDINARY_API_SECRET)

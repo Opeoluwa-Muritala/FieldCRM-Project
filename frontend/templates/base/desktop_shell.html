@@ -13,7 +13,8 @@
     'crm': 'CRM Officer',
     'head_crm': 'Head CRM',
     'md': 'Managing Director',
-    'ed': 'Executive Director'
+    'ed': 'Executive Director',
+    'legal': 'Legal'
 } %}
 {% set initials = "" %}
 {% if user and user.name %}
@@ -76,6 +77,9 @@
             </div>
             <div class="topbar-right">
                 {% block topbar_actions %}{% endblock %}
+                {% if can_return_previous and app_id %}
+                <a href="/applications/{{ app_id }}/return" class="btn-ghost-link" style="color: var(--accent-danger); white-space: nowrap;">Return to {{ return_target_label }}</a>
+                {% endif %}
                 <form action="/search" method="GET" class="topbar-search">
                     <input type="text" name="q" placeholder="Search..." value="{{ request.query_params.get('q', '') }}"
                            aria-label="Search applications, borrowers, and references">

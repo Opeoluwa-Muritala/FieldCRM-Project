@@ -1,4 +1,4 @@
-﻿{% set mobile_title_text = "PAR Dashboard" %}
+{% set mobile_title_text = "PAR Dashboard" %}
 {% extends "base/desktop_shell.html" %}
 {% block title %}Portfolio at Risk - FieldCRM{% endblock %}
 {% block page_title %}Portfolio at Risk (PAR){% endblock %}
@@ -57,7 +57,7 @@
       <thead><tr><th>Ref</th><th>Borrower</th><th>Disbursed</th><th>Sector</th><th>Classification</th><th>Days Overdue</th><th></th></tr></thead>
       <tbody>
       {% for loan in loans %}
-      <tr>
+      <tr style="cursor:pointer;" onclick="window.location='/applications/{{ loan.id }}/repayment-schedule';">
         <td>{{ loan.ref_no }}</td>
         <td>{{ loan.applicant_name }}</td>
         <td>{% if loan.disbursed_amount %}&#x20A6;{{ "{:,.0f}".format(loan.disbursed_amount) }}{% else %}—{% endif %}</td>

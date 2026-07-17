@@ -184,7 +184,7 @@
             document.getElementById('shareLinkContainer').style.display = 'block';
             btn.textContent = 'Regenerate Link';
         } catch (err) {
-            alert('Error generating link: ' + err.message);
+            window.showFieldMessage('Error generating link: ' + err.message);
             btn.textContent = 'Generate Sharing Link';
         } finally {
             btn.disabled = false;

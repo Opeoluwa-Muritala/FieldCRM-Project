@@ -143,6 +143,14 @@ class LoanService:
                     amount=_optional_float(amount),
                     tenor_months=_optional_int(tenor_months),
                 )
+                if bvn:
+                    try:
+                        import logging
+                        logger = logging.getLogger("LoansService")
+                        from app.domains.verification.service import verify_bvn
+                        await verify_bvn(bvn, loan_application_id=app_id, conn=tx_repo.conn)
+                    except Exception as e:
+                        logger.error(f"Failed to run BVN verification hook: {e}")
                 
             await tx_repo.save_stage_data(app_id, "intake", existing_data, user_id)
 

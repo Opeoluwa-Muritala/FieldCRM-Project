@@ -89,7 +89,7 @@
         placeholder="Any final comments or conditions…"></textarea>
     </div>
     <button type="submit" name="action" value="approve" class="btn btn-primary"
-      onclick="return confirm('Issue disbursement instruction for {{ app.applicant_name }}?')"
+      data-confirm="Issue disbursement instruction for {{ app.applicant_name }}?"
       style="font-size:15px;padding:12px 28px;">
       &#10003; Issue Disbursement Instruction
     </button>

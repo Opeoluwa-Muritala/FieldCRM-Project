@@ -1,0 +1,168 @@
+{% extends shell %}
+
+{% block title %}MCC Summary — FieldCRM{% endblock %}
+{% block page_title %}Management Credit Committee (MCC) Desk{% endblock %}
+{% block breadcrumb %}Committee &rarr; Summary &rarr; {{ app.ref_no }}{% endblock %}
+
+{% block content %}
+<div class="app-detail-layout" style="font-family: 'Montserrat', sans-serif;">
+    
+    {# === LEFT COLUMN: PROFILE CARD === #}
+    <div class="app-detail-sidebar">
+        
+        {# Identity Card #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 4px;">{{ app.ref_no }}</div>
+            <h2 class="page-card-title" style="margin-bottom: 8px; font-size: 20px; font-weight: 600;">{{ borrower_name }}</h2>
+            <div style="font-size: 14px; font-weight: 500; color: var(--color-brand-shield); margin-bottom: 12px;">
+                {{ product_type }} · ₦{{ "{:,}".format(amount|int) }}
+            </div>
+            <span class="status-badge approved">Awaiting Committee Vote</span>
+        </div>
+
+        {# Quick Details #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">Application Parameters</h3>
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--text-muted);">Tenor:</span>
+                    <strong style="color: var(--text-main);">{{ tenure }} Months</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--text-muted);">Amount Requested:</span>
+                    <strong style="color: var(--text-main);">₦{{ "{:,}".format(amount|int) }}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--text-muted);">Product Category:</span>
+                    <strong style="color: var(--text-main);">{{ product_type }}</strong>
+                </div>
+            </div>
+        </div>
+
+        {# Verification Summary Card #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">Integration Status</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                    <span>Qore ID (BVN)</span>
+                    {% if ver_check %}
+                        <span class="status-badge {% if ver_check.is_valid %}verified{% else %}returned{% endif %}">
+                            {{ 'Valid' if ver_check.is_valid else 'Invalid' }}
+                        </span>
+                    {% else %}
+                        <span class="status-badge needs-review">Awaiting Check</span>
+                    {% endif %}
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                    <span>{% if bureau_multiple_configured %}{% if bureau_sub %}{{ 'CRC' if bureau_sub.provider == 'crc' else 'Credit Registry' }}{% else %}Credit Bureau{% endif %}{% else %}{{ active_bureau_provider or 'Credit Bureau' }}{% endif %}</span>
+                    {% if bureau_sub %}
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            {% if bureau_multiple_configured %}
+                                <span style="font-size: 10px; color: var(--text-muted);">({{ 'CRC' if bureau_sub.provider == 'crc' else 'CreditRegistry' }})</span>
+                            {% endif %}
+                            <span class="status-badge {% if bureau_sub.status == 'success' %}verified{% else %}returned{% endif %}">
+                                {{ bureau_sub.status|title }}
+                            </span>
+                        </div>
+                    {% else %}
+                        <span class="status-badge needs-review">Not Run</span>
+                    {% endif %}
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                    <span>Youverify AML</span>
+                    {% if aml_check %}
+                        <span class="status-badge {% if aml_check.status == 'clear' %}verified{% else %}returned{% endif %}">
+                            {{ aml_check.status|title }}
+                        </span>
+                    {% else %}
+                        <span class="status-badge needs-review">Awaiting Screening</span>
+                    {% endif %}
+                </div>
+                
+            </div>
+        </div>
+        
+    </div>
+
+    {# === RIGHT COLUMN: MCC COMPILATION === #}
+    <div class="app-detail-main">
+        
+        {# Collateral Valuation Summary #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Pledged Collateral Valuations</h2>
+            
+            <div class="custom-table-container">
+                <table class="custom-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--color-divider); text-align: left;">
+                            <th style="padding: 8px; font-size: 12px; color: var(--text-muted);">Item</th>
+                            <th style="padding: 8px; font-size: 12px; color: var(--text-muted);">Estimated Value</th>
+                            <th style="padding: 8px; font-size: 12px; color: var(--text-muted);">Appraised Value</th>
+                            <th style="padding: 8px; font-size: 12px; color: var(--text-muted);">LTV Ratio</th>
+                            <th style="padding: 8px; font-size: 12px; color: var(--text-muted);">Valuation Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr style="border-bottom: 0.5px solid var(--color-divider);">
+                            <td style="padding: 8px; font-size: 13px; font-weight: 500;">{{ item.item_name }}</td>
+                            <td style="padding: 8px; font-size: 13px; color: var(--text-muted);">₦{{ "{:,.2f}".format(item.estimated_value) if item.estimated_value else '—' }}</td>
+                            <td style="padding: 8px; font-size: 13px; font-weight: 600; color: var(--color-brand-shield);">
+                                ₦{{ "{:,.2f}".format(item.appraised_value) if item.appraised_value else '—' }}
+                            </td>
+                            <td style="padding: 8px; font-size: 13px; font-weight: 600; color: {% if item.loan_to_value_ratio and item.loan_to_value_ratio > 0.8 %}var(--accent-danger){% else %}var(--accent-success){% endif %};">
+                                {% if item.loan_to_value_ratio %}{{ "{:.2f}%".format(item.loan_to_value_ratio * 100) }}{% else %}—{% endif %}
+                            </td>
+                            <td style="padding: 8px; font-size: 13px; color: var(--text-muted);">{{ item.valuation_date if item.valuation_date else '—' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 12px; color: var(--text-muted); font-size: 12px;">No pledged collateral items found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {# Workflow History Timeline #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Dossier Review & Decision History</h2>
+            
+            <div style="display: flex; flex-direction: column; gap: 16px; position: relative; padding-left: 20px; margin-top: 16px;">
+                <div style="position: absolute; left: 6px; top: 4px; bottom: 4px; width: 2px; background-color: var(--border-color);"></div>
+                
+                {% for event in audit_events %}
+                    <div style="position: relative;">
+                        <div style="position: absolute; left: -20px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background-color: var(--color-brand-shield);"></div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <strong style="font-size: 13px; color: var(--text-main);">{{ event.action }}</strong>
+                            <span style="font-size: 11px; color: var(--text-muted);">{{ event.created_at.strftime('%d %b %Y %H:%M') if event.created_at else '' }}</span>
+                        </div>
+                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                            By: {{ event.actor_role|title }} ({{ event.actor_id }})
+                        </div>
+                        {% if event.reason %}
+                            <div style="font-size: 12px; font-style: italic; color: var(--text-main); background: var(--bg-secondary); border-left: 3px solid var(--color-divider); padding: 6px 12px; margin-top: 6px; border-radius: 0 4px 4px 0;">
+                                "{{ event.reason }}"
+                            </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div style="font-size: 13px; color: var(--text-muted);">No historical audit events logged yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# Back navigation #}
+        <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center;">
+            <a href="/committee-queue" style="text-decoration: none; color: var(--text-muted); font-size: 13px; font-weight: 500;">&larr; Back to Committee Queue</a>
+            <a href="/applications/{{ app_id }}/committee-review" class="btn-primary-filled" style="background: var(--color-brand-shield); text-decoration: none; display: inline-block;">Vote Desk</a>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}

@@ -26,5 +26,6 @@ ROLE_LABELS = {
     "auditor": "Audit",
     "ed": "Executive Director",
     "md": "Managing Director",
+    "legal": "Legal",
     "system_admin": "System Admin",
 }

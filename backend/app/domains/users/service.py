@@ -11,7 +11,7 @@ from app.core.database import get_transaction
 class UserService:
     ALLOWED_ROLES = {
         "account_officer", "branch_manager", "branch_supervisor", "credit_analyst",
-        "crm", "head_crm", "auditor", "ed", "md", "system_admin",
+        "crm", "head_crm", "auditor", "ed", "md", "legal", "system_admin",
     }
     def __init__(self, repo: UserRepository):
         self.repo = repo
@@ -54,6 +54,8 @@ class UserService:
 
         hashed = get_password_hash(user_in.password)
         db_role = user_in.role.lower().replace(" ", "_")
+        if db_role not in self.ALLOWED_ROLES:
+            raise DomainException("Select a valid role.", 400)
         user = await self.repo.create_user(
             org_id=user_in.org_id,
             full_name=user_in.full_name,
@@ -68,11 +70,15 @@ class UserService:
         if await self.repo.get_by_email(email):
             raise DomainException("A user with this email already exists.", 400)
 
+        role = invite_in.role.strip().lower().replace(" ", "_")
+        if role not in self.ALLOWED_ROLES:
+            raise DomainException("Select a valid role.", 400)
+
         user = await self.repo.create_user(
             org_id=current_admin.org_id,
             full_name=invite_in.full_name.strip(),
             email=email,
-            role=invite_in.role.strip().lower().replace(" ", "_"),
+            role=role,
             password_hash=get_password_hash(secrets.token_urlsafe(32)),
         )
         await self.repo.deactivate_user(user.id)
