@@ -5,6 +5,7 @@ from app.domains.auth.repository import AuthRepository
 from app.domains.auth.service import AuthService
 from app.domains.auth.schemas import Token
 from app.config import settings
+from app.core.rate_limit import enforce_login_limits
 
 router = APIRouter()
 
@@ -19,6 +20,7 @@ async def login_cookie(
     form_data: OAuth2PasswordRequestForm = Depends(),
     service: AuthService = Depends(get_auth_service)
 ):
+    await enforce_login_limits(request, form_data.username)
     token = await service.authenticate_user(form_data.username, form_data.password)
     
     is_secure = settings.COOKIE_SECURE or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
@@ -36,19 +38,23 @@ async def login_cookie(
 
 @router.post("/login-bearer", response_model=Token)
 async def login_bearer(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     service: AuthService = Depends(get_auth_service)
 ):
+    await enforce_login_limits(request, form_data.username)
     token = await service.authenticate_user(form_data.username, form_data.password)
     return {"access_token": token, "token_type": "bearer"}
 
 
 @router.post("/login-mobile", response_model=Token)
 async def login_mobile(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     service: AuthService = Depends(get_auth_service)
 ):
     """Mobile/biometric login — issues a 30-day token stored in encrypted device storage."""
+    await enforce_login_limits(request, form_data.username)
     token = await service.authenticate_user(
         form_data.username, form_data.password, session_type="mobile"
     )

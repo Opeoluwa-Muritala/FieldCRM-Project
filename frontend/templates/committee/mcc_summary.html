@@ -157,10 +157,43 @@
             </div>
         </div>
 
+        <div class="page-card" style="margin-top:24px;">
+            <h3 style="margin-top:0;">Forms and supporting documents</h3>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                {% for doc in documents %}
+                <a href="{{ doc.url }}" data-document-preview data-document-title="{{ doc.category|replace('_', ' ')|title }}" style="color:var(--color-brand-shield);text-decoration:none;">
+                    {{ doc.category|replace('_', ' ')|title }}
+                </a>
+                {% else %}<span style="color:var(--text-muted);">No documents uploaded.</span>{% endfor %}
+            </div>
+        </div>
+
+        <div class="page-card" style="margin-top:24px;">
+            <h3 style="margin-top:0;">MCC amount recommendation</h3>
+            <div class="custom-table-container" style="margin-bottom:16px;"><table class="custom-table"><thead><tr><th>Member</th><th>Suggested amount</th><th>Notes</th><th></th></tr></thead><tbody>
+            {% for vote in mcc_votes %}<tr><td>{{ vote.full_name }}</td><td>₦{{ '{:,.2f}'.format(vote.recommended_amount or 0) }}</td><td>{{ vote.notes or '—' }}</td><td><button type="button" class="btn-secondary" data-concur-amount="{{ vote.recommended_amount }}">Concur</button></td></tr>
+            {% else %}<tr><td colspan="4">No recommendations submitted yet.</td></tr>{% endfor %}
+            </tbody></table></div>
+            <form method="post" action="/applications/{{ app_id }}/mcc-vote" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">
+                <label>Recommended amount<input class="form-input" id="mcc-recommended-amount" name="recommended_amount" type="number" min="1" step="0.01" value="{{ amount }}" required></label>
+                <label style="flex:1">Notes<input class="form-input" name="notes"></label>
+                <button class="btn-primary-filled" type="submit">Submit recommendation</button>
+            </form>
+            {% if user_role in ('ed', 'md') %}
+            <hr style="margin:20px 0;border:0;border-top:1px solid var(--border-color);">
+            <form method="post" action="/applications/{{ app_id }}/mcc-finalize" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">
+                <label>Final approved amount<input class="form-input" name="final_amount" type="number" min="1" step="0.01" value="{{ amount }}" required></label>
+                <button class="btn-primary-filled" type="submit">Set final amount</button>
+            </form>
+            {% endif %}
+        </div>
+
+        <script>document.querySelectorAll('[data-concur-amount]').forEach((button) => button.addEventListener('click', () => { document.getElementById('mcc-recommended-amount').value = button.dataset.concurAmount; document.getElementById('mcc-recommended-amount').focus(); }));</script>
+
         {# Back navigation #}
         <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center;">
-            <a href="/committee-queue" style="text-decoration: none; color: var(--text-muted); font-size: 13px; font-weight: 500;">&larr; Back to Committee Queue</a>
-            <a href="/applications/{{ app_id }}/committee-review" class="btn-primary-filled" style="background: var(--color-brand-shield); text-decoration: none; display: inline-block;">Vote Desk</a>
+            <a href="/mcc" style="text-decoration: none; color: var(--text-muted); font-size: 13px; font-weight: 500;">&larr; Back to MCC dossiers</a>
+            <span style="font-size:13px;color:var(--text-muted);">Read-only meeting view</span>
         </div>
         
     </div>

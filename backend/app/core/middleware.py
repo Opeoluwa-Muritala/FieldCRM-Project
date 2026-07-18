@@ -44,19 +44,24 @@ class SecurityHeadersMiddleware:
         async def send_with_security_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
                 headers = MutableHeaders(scope=message)
-                headers["X-Frame-Options"] = "DENY"
+                is_document_preview = scope.get("path", "").startswith("/api/v1/documents/") and scope.get("path", "").endswith("/preview")
+                headers["X-Frame-Options"] = "SAMEORIGIN" if is_document_preview else "DENY"
+                frame_ancestors = "'self'" if is_document_preview else "'none'"
                 headers["Content-Security-Policy"] = (
-                    "default-src 'self'; "
-                    "script-src 'self' 'unsafe-inline'; "
+                    "default-src 'self'; base-uri 'self'; object-src 'none'; "
+                    f"frame-ancestors {frame_ancestors}; form-action 'self'; "
+                    # Existing server-rendered templates include inline
+                    # bootstrap scripts; retain this until they are migrated
+                    # to nonce-based scripts rather than breaking login/forms.
+                    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+                    "worker-src 'self' https://cdnjs.cloudflare.com; "
                     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                     "font-src 'self' https://fonts.gstatic.com; "
-                    "img-src 'self' data: https:; "
-                    "frame-ancestors 'none'; "
-                    "object-src 'none';"
+                    "img-src 'self' data: https://res.cloudinary.com;"
                 )
                 headers["X-Content-Type-Options"] = "nosniff"
-                headers["X-XSS-Protection"] = "1; mode=block"
                 headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+                headers["Permissions-Policy"] = "camera=(self), geolocation=(self), microphone=(), payment=(), usb=()"
                 headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
 
                 scheme = scope.get("scheme", "")

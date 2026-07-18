@@ -37,12 +37,10 @@ _SIGNATURES = {
 }
 
 
-def validate_file(file_bytes: bytes, mimetype: str, allowed: set[str], filename: str, enforce_size: bool = True) -> str | None:
+def validate_file(file_bytes: bytes, mimetype: str, allowed: set[str], filename: str) -> str | None:
     """Validate declared type, extension, and binary signature before upload."""
     if not file_bytes:
         return "Uploaded file is empty."
-    if enforce_size and len(file_bytes) > settings.DOCUMENT_MAX_UPLOAD_BYTES:
-        return f"Document exceeds the {settings.DOCUMENT_MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit."
     if mimetype not in allowed:
         return "Unsupported document type. Upload PDF, JPEG, or PNG."
     extension = Path(filename or "").suffix.lower()
@@ -86,13 +84,20 @@ def compress_image(file_bytes: bytes, mimetype: str) -> tuple[bytes, str]:
 
 
 def prepare_upload_file(file_bytes: bytes, mimetype: str, allowed: set[str], filename: str) -> tuple[bytes, str, str | None]:
-    error = validate_file(file_bytes, mimetype, allowed, filename, enforce_size=False)
+    error = validate_file(file_bytes, mimetype, allowed, filename)
     if error:
         return file_bytes, mimetype, error
+    if mimetype == "application/pdf":
+        if len(file_bytes) > settings.DOCUMENT_MAX_PDF_BYTES:
+            return file_bytes, mimetype, f"PDF exceeds the {settings.DOCUMENT_MAX_PDF_BYTES // (1024 * 1024)} MB limit."
+        return file_bytes, mimetype, None
+    if len(file_bytes) > settings.DOCUMENT_MAX_IMAGE_BYTES:
+        return file_bytes, mimetype, f"Image exceeds the {settings.DOCUMENT_MAX_IMAGE_BYTES // (1024 * 1024)} MB upload limit."
     prepared, prepared_type = compress_image(file_bytes, mimetype)
-    if len(prepared) > settings.DOCUMENT_MAX_UPLOAD_BYTES:
+    if len(prepared) > settings.DOCUMENT_MAX_IMAGE_COMPRESSED_BYTES:
         return prepared, prepared_type, (
-            f"Document exceeds the {settings.DOCUMENT_MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit after image optimisation."
+            "Image exceeds the "
+            f"{settings.DOCUMENT_MAX_IMAGE_COMPRESSED_BYTES // (1024 * 1024)} MB limit after optimisation."
         )
     return prepared, prepared_type, None
 
@@ -115,7 +120,7 @@ class DocumentService:
     ) -> dict:
         original_name = file.filename or "document"
         mime_type = file.content_type or mimetypes.guess_type(original_name)[0] or ""
-        content = await file.read(settings.DOCUMENT_MAX_UPLOAD_BYTES + 1)
+        content = await file.read(settings.DOCUMENT_MAX_IMAGE_BYTES + 1)
         content, mime_type, error = prepare_upload_file(
             content, mime_type, set(settings.DOCUMENT_ALLOWED_MIME_TYPES), original_name
         )
@@ -127,16 +132,8 @@ class DocumentService:
         if extension not in {".pdf", ".jpg", ".jpeg", ".png"}:
             extension = ALLOWED_EXTENSIONS[mime_type]
 
-        upload_root = Path(settings.DOCUMENT_UPLOAD_DIR)
-        relative_dir = Path(str(org_id)) / str(loan_id)
-        target_dir = upload_root / relative_dir
-        target_dir.mkdir(parents=True, exist_ok=True)
-
-        stored_name = f"{safe_doc_type}_{uuid4().hex}{extension}"
-        target_path = target_dir / stored_name
-        target_path.write_bytes(content)
-
-        # Attempt Cloudinary upload; fall back to local path if not configured
+        # Cloudinary is mandatory in production.  The local fallback below is
+        # intentionally retained for local development and test fixtures only.
         from app.services.cloud_storage_service import upload_document as _cloud_upload
         cloud_result = _cloud_upload(
             file_bytes=content,
@@ -146,9 +143,16 @@ class DocumentService:
             doc_type=safe_doc_type,
             filename_stem=uuid4().hex,
         )
-        stored_path = cloud_result.stored_path if cloud_result else (
-            "/static/uploads/" + (relative_dir / stored_name).as_posix()
-        )
+        if cloud_result:
+            stored_path = f"cloudinary://{cloud_result.public_id}"
+        else:
+            upload_root = Path(settings.DOCUMENT_UPLOAD_DIR)
+            relative_dir = Path(str(org_id)) / str(loan_id)
+            target_dir = upload_root / relative_dir
+            target_dir.mkdir(parents=True, exist_ok=True)
+            stored_name = f"{safe_doc_type}_{uuid4().hex}{extension}"
+            (target_dir / stored_name).write_bytes(content)
+            stored_path = "/static/uploads/" + (relative_dir / stored_name).as_posix()
 
         document = await self.repo.create(
             loan_id=loan_id,
@@ -198,6 +202,11 @@ class DocumentService:
         uploaded_by: UUID,
         user_role: str,
     ) -> dict:
+        if settings.is_production:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Mock document uploads are disabled in production.",
+            )
         document = await self.repo.create_mock_upload(
             loan_id=loan_id,
             org_id=org_id,

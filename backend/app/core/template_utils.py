@@ -111,23 +111,28 @@ def build_template_context(request, user, **kwargs) -> dict:
                 if "verified" in doc_copy and "status" not in doc_copy:
                     doc_copy["status"] = "verified" if doc_copy["verified"] else "needs_review"
                 
-                url = doc_copy.get("stored_path") or doc_copy.get("cloud_preview_url") or ""
+                if doc_copy.get("cloud_public_id"):
+                    url = f"/api/v1/documents/{doc_copy['id']}/preview"
+                else:
+                    url = doc_copy.get("stored_path") or doc_copy.get("cloud_preview_url") or ""
                 if url:
                     # Clean up Cloudinary URLs to allow inline rendering
                     url = url.replace("fl_attachment,", "").replace(",fl_attachment", "").replace("fl_attachment", "")
                     url = url.replace("/raw/upload/", "/image/upload/").replace("/raw/authenticated/", "/image/authenticated/")
                 doc_copy["url"] = url
                 
-                # Determine mime type
-                mime_type = "application/octet-stream"
+                # Prefer the MIME type stored at upload time. Protected document
+                # URLs do not expose their file extension, so URL inference alone
+                # incorrectly classifies PDFs as application/octet-stream.
+                mime_type = doc_copy.get("mime_type") or "application/octet-stream"
                 lower_url = url.lower()
-                if ".pdf" in lower_url or "pdf" in lower_url:
+                if mime_type == "application/octet-stream" and (".pdf" in lower_url or "pdf" in lower_url):
                     mime_type = "application/pdf"
-                elif ".jpg" in lower_url or ".jpeg" in lower_url or "jpg" in lower_url or "jpeg" in lower_url:
+                elif mime_type == "application/octet-stream" and (".jpg" in lower_url or ".jpeg" in lower_url or "jpg" in lower_url or "jpeg" in lower_url):
                     mime_type = "image/jpeg"
-                elif ".png" in lower_url or "png" in lower_url:
+                elif mime_type == "application/octet-stream" and (".png" in lower_url or "png" in lower_url):
                     mime_type = "image/png"
-                elif doc_copy.get("category") in ("bank_statement", "pledge_form", "guarantor_form_1", "guarantor_form_2"):
+                elif mime_type == "application/octet-stream" and doc_copy.get("category") in ("bank_statement", "pledge_form", "guarantor_form_1", "guarantor_form_2"):
                     mime_type = "application/pdf"
                 doc_copy["mime_type"] = mime_type
                 

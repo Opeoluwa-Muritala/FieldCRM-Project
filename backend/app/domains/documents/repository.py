@@ -69,3 +69,15 @@ class DocumentRepository(BaseRepository):
             org_id,
         )
         return [dict(row) for row in rows] if rows else []
+
+    async def get_by_id_for_org(self, document_id: UUID, org_id: UUID) -> dict | None:
+        row = await self.conn.fetchrow(
+            """
+            SELECT id, org_id, mime_type, cloud_public_id
+            FROM documents
+            WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL
+            """,
+            document_id,
+            org_id,
+        )
+        return dict(row) if row else None

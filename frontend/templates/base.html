@@ -47,6 +47,9 @@
                         <a href="/pipeline" id="navPipeline" class="sidebar-nav-link {% if active_page == 'pipeline' %}active{% endif %}">
                             <span>Pipeline</span>
                         </a>
+                        <a href="/mcc" class="sidebar-nav-link {% if active_page == 'mcc' %}active{% endif %}">
+                            <span>MCC Meeting</span>
+                        </a>
                         {% if db_role == "loan_officer" %}
                         <a href="/applications/new" class="sidebar-nav-link {% if active_page == 'new_application' %}active{% endif %}">
                             <span>New Application</span>
@@ -146,6 +149,7 @@
             </main>
         </div>
     </div>
+    <script src="/static/js/document-preview.js?v=3"></script>
     <script>
         (() => {
             const sidebar = document.getElementById("sidebar");

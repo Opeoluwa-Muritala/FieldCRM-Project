@@ -1,0 +1,14 @@
+{% extends shell %}
+{% block title %}MCC Dossiers — FieldCRM{% endblock %}
+{% block page_title %}Management Credit Committee{% endblock %}
+{% block breadcrumb %}MCC{% endblock %}
+{% block content %}
+<section class="page-card">
+  <h2 class="page-card-title">ED &amp; MD approval dossiers</h2>
+  <p class="page-card-subtitle">Review the material together and make amount recommendations. Workflow decisions remain outside MCC.</p>
+  <div class="custom-table-container"><table class="custom-table"><thead><tr><th>Reference</th><th>Applicant</th><th>Amount</th><th>Stage</th><th></th></tr></thead><tbody>
+  {% for dossier in dossiers %}<tr><td>{{ dossier.ref_no }}</td><td>{{ dossier.applicant_name }}</td><td>₦{{ '{:,.0f}'.format(dossier.amount or 0) }}</td><td>{{ dossier.stage|replace('_', ' ')|title }}</td><td><a href="/applications/{{ dossier.id }}/mcc">View dossier</a></td></tr>
+  {% else %}<tr><td colspan="5">No dossiers are currently awaiting ED or MD approval.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}
