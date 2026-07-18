@@ -38,6 +38,7 @@
         <nav class="sidebar-nav">
             {% block sidebar_nav %}
             {% include sidebar_component ignore missing %}
+            {% include 'components/mcc_sidebar_link.html' %}
             {% endblock %}
         </nav>
         <div class="sidebar-user">

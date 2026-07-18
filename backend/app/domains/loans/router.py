@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from html import escape
 from urllib.parse import urlencode
 from datetime import date, datetime
 from decimal import Decimal
@@ -22,6 +23,7 @@ from app.core.template_utils import (
 )
 from app.core.workflow import WORKFLOW_STAGES, ROLE_LABELS
 from app.services.dashboard_service import DashboardService
+from app.services.email_service import EmailService
 from app.domains.documents.repository import DocumentRepository
 from app.domains.documents.service import DocumentService
 from app.domains.guarantors.repository import GuarantorRepository
@@ -155,6 +157,7 @@ async def render_dashboard(
     )
 
     return templates.TemplateResponse(request, template_name, ctx)
+
 
 @router.get("/my-queue")
 async def render_my_queue(
@@ -448,6 +451,7 @@ async def render_user_management(
         today_label=datetime.now().strftime("%A, %d %B %Y"),
     )
     return templates.TemplateResponse(request, "system_admin/users.html", ctx)
+
 
 @router.get("/system-activity")
 async def render_system_activity(
@@ -1476,11 +1480,18 @@ async def render_read_only_application_view(
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
     documents = await get_document_service(conn).repo.get_by_loan(UUID(application_id), current_user.org_id)
+    mcc_votes = await conn.fetch(
+        """SELECT cv.recommended_amount, cv.notes, cv.voted_at, u.full_name
+           FROM committee_votes cv JOIN users u ON u.id = cv.member_id
+           WHERE cv.loan_id = $1 AND cv.org_id = $2 ORDER BY cv.voted_at""",
+        UUID(application_id), current_user.org_id,
+    )
     ctx = build_template_context(
         request,
         current_user,
         app=app,
         documents=documents,
+        mcc_votes=[dict(vote) for vote in mcc_votes],
         active_tab="borrowers",
         active_page="borrowers",
     )
@@ -1521,9 +1532,16 @@ async def clear_notifications(
 @router.get("/settings")
 async def render_settings(
     request: Request,
+    conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    ctx = build_template_context(request, current_user, active_page="settings", success=None, error=None)
+    organisation_name = await conn.fetchval(
+        "SELECT name FROM organisations WHERE id = $1", current_user.org_id
+    )
+    ctx = build_template_context(
+        request, current_user, active_page="settings", success=None, error=None,
+        organisation_name=organisation_name or "Organisation",
+    )
     return templates.TemplateResponse(request, "shared/settings.html", ctx)
 
 @router.post("/settings/change-password")
@@ -1537,14 +1555,17 @@ async def change_password(
 ):
     from app.domains.auth.repository import AuthRepository
     from app.domains.auth.service import AuthService
+    organisation_name = await conn.fetchval(
+        "SELECT name FROM organisations WHERE id = $1", current_user.org_id
+    )
     if new_password != confirm_password:
-        ctx = build_template_context(request, current_user, active_page="settings", success=None, error="Passwords do not match.")
+        ctx = build_template_context(request, current_user, active_page="settings", success=None, error="Passwords do not match.", organisation_name=organisation_name or "Organisation")
         return templates.TemplateResponse(request, "shared/settings.html", ctx)
     ok = await AuthService(AuthRepository(conn)).change_password(str(current_user.id), current_password, new_password)
     if not ok:
-        ctx = build_template_context(request, current_user, active_page="settings", success=None, error="Current password is incorrect.")
+        ctx = build_template_context(request, current_user, active_page="settings", success=None, error="Current password is incorrect.", organisation_name=organisation_name or "Organisation")
         return templates.TemplateResponse(request, "shared/settings.html", ctx)
-    ctx = build_template_context(request, current_user, active_page="settings", success="Password updated successfully.", error=None)
+    ctx = build_template_context(request, current_user, active_page="settings", success="Password updated successfully.", error=None, organisation_name=organisation_name or "Organisation")
     return templates.TemplateResponse(request, "shared/settings.html", ctx)
 
 @router.get("/search")
@@ -2123,6 +2144,24 @@ async def process_md_refer_board(
         actor_role=current_user.role,
         reason=notes,
     )
+    # Board advice is a human conversation: replies must go directly to the
+    # referring MD rather than to the generic transactional-mail sender.
+    safe_md_name = escape(current_user.full_name)
+    safe_notes = escape(notes or "No additional notes were provided.")
+    EmailService().send_notification(
+        recipient=board_member_email,
+        subject="FieldCRM: Board advice requested",
+        text=(
+            f"{current_user.full_name} has requested your advice on a loan application.\n\n"
+            f"Notes: {notes or 'No additional notes were provided.'}"
+        ),
+        html_content=(
+            f"<p><strong>{safe_md_name}</strong> has requested your advice on a loan application.</p>"
+            f"<p>{safe_notes}</p>"
+        ),
+        sender_name=current_user.full_name,
+        reply_email=current_user.email,
+    )
     return RedirectResponse(
         url=f"/applications/{application_id}/md-approve",
         status_code=status.HTTP_303_SEE_OTHER,
@@ -2429,9 +2468,8 @@ async def render_mcc_summary(
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
-    # Gated: stage must be 'committee_review'
-    if app.stage != 'committee_review':
-        raise HTTPException(status_code=403, detail="Application is not in the Credit Committee review stage")
+    if app.stage not in {'ed_approval', 'md_approval'}:
+        raise HTTPException(status_code=403, detail="MCC is available only for ED and MD approval dossiers")
         
     # Fetch audit / workflow history
     all_audit_events = await repo.list_workflow_events(current_user.org_id)
@@ -2462,6 +2500,7 @@ async def render_mcc_summary(
         "SELECT status, category_count, checked_at FROM sanctions_checks WHERE loan_application_id = $1 ORDER BY checked_at DESC LIMIT 1;",
         UUID(application_id)
     )
+    documents = await get_document_service(conn).repo.get_by_loan(UUID(application_id), current_user.org_id)
 
     crc_configured = bool(settings.CRC_API_KEY)
     cr_configured = bool(settings.CREDIT_REGISTRY_USERNAME and settings.CREDIT_REGISTRY_PASSWORD)
@@ -2477,6 +2516,7 @@ async def render_mcc_summary(
         amount=app.amount or 500000,
         tenure=app.tenure or 12,
         product_type=app.product_type or "MSEF",
+        documents=documents,
         audit_events=audit_events,
         items=[dict(i) for i in items],
         ver_check=dict(ver_check) if ver_check else None,
@@ -2487,10 +2527,51 @@ async def render_mcc_summary(
         VERIFICATION_ENABLED=settings.VERIFICATION_ENABLED,
         BUREAU_REPORTING_ENABLED=settings.BUREAU_REPORTING_ENABLED,
         AML_SCREENING_ENABLED=settings.AML_SCREENING_ENABLED,
-        active_tab="committee_queue",
-        active_page="committee_queue"
+        active_tab="mcc",
+        active_page="mcc"
     )
     return templates.TemplateResponse(request, "committee/mcc_summary.html", ctx)
+
+
+@router.get("/mcc")
+async def render_mcc_index(
+    request: Request,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    dossiers = await conn.fetch(
+        """
+        SELECT id, ref_no, applicant_name, amount, stage, updated_at
+        FROM loan_applications
+        WHERE org_id = $1 AND deleted_at IS NULL AND stage IN ('ed_approval', 'md_approval')
+        ORDER BY updated_at DESC
+        """,
+        current_user.org_id,
+    )
+    ctx = build_template_context(request, current_user, dossiers=[dict(row) for row in dossiers], active_tab="mcc", active_page="mcc")
+    return templates.TemplateResponse(request, "committee/mcc_index.html", ctx)
+
+
+@router.post("/applications/{application_id}/mcc-vote")
+async def submit_mcc_vote(application_id: str, recommended_amount: float = Form(...), notes: str = Form(""), conn=Depends(db_conn), current_user=Depends(get_current_user)):
+    app = await LoanRepository(conn).get_by_id(UUID(application_id), current_user.org_id)
+    if not app or app.stage not in {'ed_approval', 'md_approval'}:
+        raise HTTPException(status_code=403, detail="This dossier is not available for MCC voting")
+    try:
+        await conn.execute("INSERT INTO committee_votes (loan_id, org_id, member_id, recommendation, notes, recommended_amount) VALUES ($1,$2,$3,'approve',$4,$5)", UUID(application_id), current_user.org_id, current_user.id, notes, recommended_amount)
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="You have already submitted an MCC recommendation for this dossier") from exc
+    return RedirectResponse(url=f"/applications/{application_id}/mcc", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/applications/{application_id}/mcc-finalize")
+async def finalize_mcc_amount(application_id: str, final_amount: float = Form(...), conn=Depends(db_conn), current_user=Depends(get_current_user)):
+    if current_user.role not in {'ed', 'md'}:
+        raise HTTPException(status_code=403, detail="Only ED or MD can set the final MCC amount")
+    result = await conn.execute("UPDATE loan_applications SET amount=$1, mcc_finalized_by=$2, mcc_finalized_at=NOW(), updated_at=NOW() WHERE id=$3 AND org_id=$4 AND stage IN ('ed_approval','md_approval')", final_amount, current_user.id, UUID(application_id), current_user.org_id)
+    if result != 'UPDATE 1':
+        raise HTTPException(status_code=409, detail="Final amount could not be set")
+    return RedirectResponse(url=f"/applications/{application_id}/mcc", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # =============================================================================
@@ -2551,7 +2632,7 @@ async def delete_interest_preset(
 async def generate_offer_letter(
     application_id: str,
     conn = Depends(db_conn),
-    current_user = Depends(get_current_user)
+    current_user = Depends(RoleChecker(["crm"]))
 ):
     repo = LoanRepository(conn)
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
@@ -2608,21 +2689,21 @@ async def generate_offer_letter(
         clauses=clause_keys
     )
     
-    # 5. Upload to Cloudinary or fallback to local storage
-    from app.services.cloud_storage_service import upload_to_cloudinary
-    from app.core.config import settings
-    import os
-    
-    pdf_url = None
-    if settings.cloudinary_enabled:
-        try:
-            folder = f"fieldcrm/{current_user.org_id}/{application_id}"
-            res = upload_to_cloudinary(pdf_bytes, "application/pdf", folder=folder, public_id=f"{folder}/offer_letter")
-            pdf_url = res.stored_path
-        except Exception as e:
-            logging.getLogger("OfferLetter").error(f"Failed to upload to Cloudinary: {e}")
-            
-    if not pdf_url:
+    # 5. Store the generated document through the same authenticated
+    # Cloudinary path used by borrower and CRM uploads.  Production never
+    # falls back to the instance filesystem.
+    from app.services.cloud_storage_service import upload_document as upload_offer_document
+    cloud_result = upload_offer_document(
+        file_bytes=pdf_bytes,
+        mime_type="application/pdf",
+        org_id=str(current_user.org_id),
+        loan_id=application_id,
+        doc_type="offer_letter",
+        filename_stem=UUID(application_id).hex,
+    )
+    if cloud_result:
+        pdf_url = f"cloudinary://{cloud_result.public_id}"
+    else:
         os.makedirs("frontend/static/uploads", exist_ok=True)
         local_path = f"frontend/static/uploads/offer_letter_{application_id}.pdf"
         with open(local_path, "wb") as f:
@@ -2651,14 +2732,20 @@ async def generate_offer_letter(
         reason=f"Offer letter compiled and issued. Rate snapshot: {rate}%."
     )
     
-    # 8. Add to documents table
-    await conn.execute(
-        """
-        INSERT INTO documents (loan_id, org_id, doc_type, category, filename, mime_type, cloud_preview_url, status, created_by)
-        VALUES ($1, $2, 'offer_letter', 'offer_letter', 'offer_letter.pdf', 'application/pdf', $3, 'verified', $4)
-        ON CONFLICT DO NOTHING;
-        """,
-        UUID(application_id), current_user.org_id, pdf_url, current_user.id
+    # 8. Add protected metadata to the canonical documents table.  Templates
+    # then route previews back through the authorised download endpoint.
+    await DocumentRepository(conn).create(
+        loan_id=UUID(application_id),
+        org_id=current_user.org_id,
+        doc_type="offer_letter",
+        form_code=None,
+        original_name="offer_letter.pdf",
+        stored_path=pdf_url,
+        mime_type="application/pdf",
+        size_bytes=len(pdf_bytes),
+        uploaded_by=current_user.id,
+        cloud_public_id=cloud_result.public_id if cloud_result else None,
+        cloud_preview_url=cloud_result.preview_url if cloud_result else None,
     )
     
     return RedirectResponse(

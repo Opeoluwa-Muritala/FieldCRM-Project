@@ -102,28 +102,26 @@
                 ] %}
                 
                 {% for cat_key, cat_name in doc_categories %}
-                    {% set doc_found = false %}
-                    {% set doc_status = 'missing' %}
-                    {% set doc_url = '' %}
+                    {% set doc_info = namespace(found=false, status='missing', url='') %}
                     {% for doc in documents %}
                         {% if doc.category == cat_key %}
-                            {% set doc_found = true %}
-                            {% set doc_status = doc.status %}
-                            {% set doc_url = doc.url %}
+                            {% set doc_info.found = true %}
+                            {% set doc_info.status = doc.status %}
+                            {% set doc_info.url = doc.url %}
                         {% endif %}
                     {% endfor %}
                     
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
-                        {% if doc_found and doc_url %}
-                            <a href="{{ doc_url }}" target="_blank" style="color: var(--color-brand-shield); text-decoration: none; font-weight: 500;">
+                        {% if doc_info.found and doc_info.url %}
+                            <a href="{{ doc_info.url }}" data-document-preview data-document-title="{{ cat_name }}" style="color: var(--color-brand-shield); text-decoration: none; font-weight: 500;">
                                 {{ cat_name }} &nearr;
                             </a>
                         {% else %}
                             <span>{{ cat_name }}</span>
                         {% endif %}
-                        {% if doc_status == 'verified' %}
+                        {% if doc_info.status == 'verified' %}
                             <span style="color: var(--accent-success); font-weight: bold;">✓</span>
-                        {% elif doc_status == 'needs_review' %}
+                        {% elif doc_info.status == 'needs_review' %}
                             <span style="color: var(--accent-warning); font-weight: bold;">⚠</span>
                         {% else %}
                             <span style="color: var(--accent-danger); font-weight: bold;">✗</span>
@@ -207,12 +205,14 @@
                     <div style="font-size: 13px; color: var(--accent-success); font-weight: 500;">
                         ✓ Offer letter has been issued.
                     </div>
-                {% else %}
+                {% elif user_role == 'crm' %}
                     <form action="/applications/{{ app_id }}/generate-offer" method="POST" style="margin: 0;">
                         <button type="submit" class="btn-primary-filled" style="width: 100%; font-size: 12px; min-height: 32px; height: 32px; background-color: var(--color-brand-shield);">
                             Generate &amp; Issue Offer Letter
                         </button>
                     </form>
+                {% else %}
+                    <div style="font-size: 13px; color: var(--text-muted);">Only CRM can generate an offer letter.</div>
                 {% endif %}
             </div>
         {% endif %}

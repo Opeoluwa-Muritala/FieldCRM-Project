@@ -9,7 +9,6 @@ document.addEventListener("DOMContentLoaded", () => {
     initDrawerBackdrop();
     initScrollReveals();
     initSidebarIcons();
-    initPageContextIcons();
     initRoleStatIcons();
     initSubmitFeedback();
 });
@@ -325,18 +324,6 @@ function initSidebarIcons() {
         const iconId = getFieldCrmIcon(link.getAttribute('href'));
         if (!iconId) return;
         link.insertBefore(createFieldCrmIcon(iconId), link.firstChild);
-    });
-}
-
-function initPageContextIcons() {
-    const screenPath = window.location.pathname;
-    document.querySelectorAll('.topbar-title, .responsive-content h1, .responsive-content .page-card-title, .responsive-content .role-section-head h2').forEach((heading) => {
-        if (heading.closest('.role-hero')) return;
-        if (heading.querySelector('.page-context-icon')) return;
-        const iconId = getFieldCrmIcon(heading.textContent) || getFieldCrmIcon(screenPath);
-        if (!iconId) return;
-        heading.classList.add('has-page-context-icon');
-        heading.insertBefore(createFieldCrmIcon(iconId, 'page-context-icon'), heading.firstChild);
     });
 }
 

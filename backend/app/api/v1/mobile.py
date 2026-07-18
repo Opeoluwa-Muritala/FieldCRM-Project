@@ -22,6 +22,7 @@ from app.domains.visitation.repository import VisitationRepository
 from app.domains.visitation.service import VisitationService
 from app.services.dashboard_service import DashboardService
 from app.services.email_service import EmailService
+from app.core.rate_limit import enforce_reset_limits
 
 
 router = APIRouter()
@@ -287,6 +288,16 @@ def _guarantor_service(conn) -> GuarantorService:
 
 def _document_service(conn) -> DocumentService:
     return DocumentService(DocumentRepository(conn), AuditService(conn))
+
+
+def _mobile_document(document: dict) -> dict:
+    """Never expose a Cloudinary delivery URL directly to mobile clients."""
+    payload = dict(document)
+    if payload.get("cloud_public_id"):
+        payload["download_url"] = f"/api/v1/documents/{payload['id']}/download"
+        payload.pop("stored_path", None)
+        payload.pop("cloud_preview_url", None)
+    return payload
 
 
 def _visitation_service(conn) -> VisitationService:
@@ -684,7 +695,7 @@ async def upload_mobile_document(
         uploaded_by=current_user.id,
         user_role=current_user.role,
     )
-    return {"document": document}
+    return {"document": _mobile_document(document)}
 
 
 @router.get("/applications/{application_id}/documents")
@@ -695,7 +706,7 @@ async def list_mobile_documents(
 ):
     await _get_application_or_404(conn, application_id, current_user)
     documents = await DocumentRepository(conn).get_by_loan(application_id, current_user.org_id)
-    return {"items": documents}
+    return {"items": [_mobile_document(document) for document in documents]}
 
 
 @router.get("/applications/{application_id}/ocr-fields")
@@ -1281,17 +1292,19 @@ class ResetPasswordRequest(BaseModel):
 
 
 @router.post("/auth/forgot-password")
-async def mobile_forgot_password(req: ForgotPasswordRequest, conn=Depends(db_conn)):
+async def mobile_forgot_password(request: Request, req: ForgotPasswordRequest, conn=Depends(db_conn)):
     from app.domains.auth.repository import AuthRepository
     from app.domains.auth.service import AuthService
+    await enforce_reset_limits(request, req.email)
     await AuthService(AuthRepository(conn)).request_password_reset(req.email)
     return {"message": "If that email is registered, a reset link has been sent."}
 
 
 @router.post("/auth/reset-password")
-async def mobile_reset_password(req: ResetPasswordRequest, conn=Depends(db_conn)):
+async def mobile_reset_password(request: Request, req: ResetPasswordRequest, conn=Depends(db_conn)):
     from app.domains.auth.repository import AuthRepository
     from app.domains.auth.service import AuthService
+    await enforce_reset_limits(request, req.token)
     ok = await AuthService(AuthRepository(conn)).reset_password(req.token, req.new_password)
     if not ok:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token.")

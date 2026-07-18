@@ -1,18 +1,18 @@
 """
 Cloud storage service — Cloudinary backend for PDF/image documents.
 
-When CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET are
-set in the environment, uploaded documents are stored on Cloudinary and the
-returned `secure_url` is persisted in `documents.stored_path` instead of a
-local file path.
-
-Falls back to local disk storage when credentials are absent.
+Production documents are private Cloudinary assets.  The database stores the
+Cloudinary public id and the application issues short-lived download URLs only
+after its own tenant and role checks have succeeded.
 """
 from __future__ import annotations
 
 import io
 import logging
+import time
 from typing import NamedTuple
+
+from fastapi import HTTPException, status
 
 log = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def upload_to_cloudinary(
     mime_type: str,
     folder: str = "fieldcrm/documents",
     public_id: str | None = None,
-) -> UploadResult:
+) -> UploadResult | None:
     """
     Upload file bytes to Cloudinary.
 
@@ -85,13 +85,19 @@ def upload_document(
     loan_id: str,
     doc_type: str,
     filename_stem: str,
-) -> UploadResult | None:
+) -> UploadResult:
     """
     High-level entry point called from DocumentService.
-    Returns UploadResult if Cloudinary is configured, None to fall through to local storage.
+    Local disk is permitted only outside production, where it remains useful
+    for development and tests.  Vercel's filesystem is ephemeral.
     """
     from app.core.config import settings
     if not settings.cloudinary_enabled:
+        if settings.is_production:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Document uploads are unavailable: Cloudinary is not configured.",
+            )
         return None
 
     folder = f"fieldcrm/{org_id}/{loan_id}"
@@ -104,6 +110,26 @@ def upload_document(
             folder=folder,
             public_id=public_id,
         )
-    except Exception as e:
-        log.error("Cloudinary upload failed, falling back to local storage: %s", e)
+    except Exception as exc:
+        log.exception("Cloudinary upload failed")
+        if settings.is_production:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Document upload failed; please retry.",
+            ) from exc
         return None
+
+
+def signed_download_url(public_id: str, mime_type: str, expires_in: int = 300) -> str:
+    """Return a five-minute API download URL for an authenticated Cloudinary asset."""
+    _configure_cloudinary()
+    import cloudinary.utils
+
+    options: dict[str, object] = {
+        "resource_type": "image",
+        "type": "authenticated",
+        "attachment": False,
+        "expires_at": int(time.time()) + expires_in,
+    }
+    file_format = "pdf" if mime_type == "application/pdf" else None
+    return cloudinary.utils.private_download_url(public_id, file_format, **options)

@@ -1,8 +1,7 @@
 import os
-import secrets
 import logging
-from typing import List
 from pathlib import Path
+from urllib.parse import urlparse
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -25,29 +24,11 @@ def default_database_url() -> str:
     return f"sqlite:///{db_path}"
 
 
-def resolve_jwt_secret() -> str:
-    """
-    Secure resolution of JWT Secret Key:
-    1. Resolve from environment variables (Production/Staging standard)
-    2. Query from local secrets file (jwt_secret.txt)
-    3. Generate dynamic secure fallback + raise severe warning (Dev environment fallback)
-    """
-    env_secret = os.getenv("JWT_SECRET_KEY")
-    if env_secret:
-        return env_secret
-        
-    secret_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../jwt_secret.txt")
-    if os.path.exists(secret_path):
-        try:
-            with open(secret_path, "r", encoding="utf-8") as f:
-                return f.read().strip()
-        except Exception as e:
-            logger.error("Failed to read JWT secret from file: %s", e)
-            
-    # Dev-only secure dynamic fallback
-    logger.warning("Generating dynamic ephemeral JWT secret. Session invalidation will occur on server restart!")
-    fallback_secret = secrets.token_hex(32)
-    return fallback_secret
+def default_email_service_url() -> str:
+    """Support the legacy EMAIL_BASE_URL name used by existing deployments."""
+    url = os.getenv("EMAIL_SERVICE_URL") or os.getenv("EMAIL_BASE_URL") or "https://emailope.vercel.app/"
+    return url if "://" in url else f"https://{url}"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -61,7 +42,8 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     
     # Secrets
-    JWT_SECRET_KEY: str = resolve_jwt_secret()
+    APP_ENV: str = os.getenv("APP_ENV", os.getenv("VERCEL_ENV", "development"))
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "")
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # 1 hour for web sessions; mobile uses 30-day tokens
     
@@ -74,8 +56,11 @@ class Settings(BaseSettings):
 
     
     # Security / CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:8000", "http://127.0.0.1:8000"]
+    # Keep this as a string for compatibility with older pydantic-settings
+    # releases; use ``cors_origins`` where FastAPI needs a list.
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "")
     COOKIE_SECURE: bool = os.getenv("COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
+    RATE_LIMIT_REDIS_URL: str = os.getenv("RATE_LIMIT_REDIS_URL", "")
 
     # Organisation registration guard — set this in production to a strong random string
     ORG_REGISTRATION_SECRET: str = os.getenv("ORG_REGISTRATION_SECRET", "")
@@ -93,15 +78,21 @@ class Settings(BaseSettings):
 
     # Transactional email delivery. Emailope accepts a JSON POST without SMTP
     # credentials; override this URL only when using a compatible mail gateway.
-    EMAIL_SERVICE_URL: str = os.getenv("EMAIL_SERVICE_URL", "https://emailope.vercel.app/")
+    EMAIL_SERVICE_URL: str = default_email_service_url()
 
     # Document uploads (local fallback)
     DOCUMENT_UPLOAD_DIR: str = os.getenv(
         "DOCUMENT_UPLOAD_DIR",
         str(ROOT_DIR / "frontend" / "static" / "uploads"),
     )
-    DOCUMENT_MAX_UPLOAD_BYTES: int = int(os.getenv("DOCUMENT_MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
-    DOCUMENT_ALLOWED_MIME_TYPES: List[str] = ["application/pdf", "image/jpeg", "image/png"]
+    # Upload limits are deliberately split by content type.  Images may be
+    # larger at capture time, but must compress below the final 3 MB limit.
+    DOCUMENT_MAX_PDF_BYTES: int = int(os.getenv("DOCUMENT_MAX_PDF_BYTES", str(3 * 1024 * 1024)))
+    DOCUMENT_MAX_IMAGE_BYTES: int = int(os.getenv("DOCUMENT_MAX_IMAGE_BYTES", str(5 * 1024 * 1024)))
+    DOCUMENT_MAX_IMAGE_COMPRESSED_BYTES: int = int(
+        os.getenv("DOCUMENT_MAX_IMAGE_COMPRESSED_BYTES", str(3 * 1024 * 1024))
+    )
+    DOCUMENT_ALLOWED_MIME_TYPES: list[str] = ["application/pdf", "image/jpeg", "image/png"]
 
     # Cloudinary (optional — set all three to enable cloud storage)
     CLOUDINARY_CLOUD_NAME: str = os.getenv("CLOUDINARY_CLOUD_NAME", "")
@@ -138,10 +129,37 @@ class Settings(BaseSettings):
     def cloudinary_enabled(self) -> bool:
         return bool(self.CLOUDINARY_CLOUD_NAME and self.CLOUDINARY_API_KEY and self.CLOUDINARY_API_SECRET)
 
+    @property
+    def is_production(self) -> bool:
+        return self.APP_ENV.lower() in {"production", "prod"}
+
+    @property
+    def cors_origins(self) -> list[str]:
+        value = self.CORS_ORIGINS.strip()
+        if not value:
+            return []
+        if value.startswith("["):
+            import json
+            parsed = json.loads(value)
+            if not isinstance(parsed, list) or not all(isinstance(item, str) for item in parsed):
+                raise ValueError("CORS_ORIGINS JSON value must be an array of origin strings.")
+            return [item.strip() for item in parsed if item.strip()]
+        return [origin.strip() for origin in value.split(",") if origin.strip()]
+
     @model_validator(mode="after")
     def normalize_database_url(self):
         if self.DATABASE_URL == "sqlite:///./fieldcrm.db":
             self.DATABASE_URL = f"sqlite:///{(ROOT_DIR / 'fieldcrm.db').as_posix()}"
+        if not self.JWT_SECRET_KEY.strip():
+            raise ValueError("JWT_SECRET_KEY is required; configure a fixed secret in the environment.")
+        if not self.cors_origins or "*" in self.cors_origins:
+            raise ValueError("CORS_ORIGINS must contain one or more explicit origins; wildcards are forbidden.")
+        if self.is_production:
+            host = urlparse(self.DATABASE_URL).hostname or ""
+            if not self.DATABASE_URL.startswith("postgresql") or "-pooler" not in host:
+                raise ValueError("Production DATABASE_URL must use Neon's pooled (-pooler) PostgreSQL host.")
+            if not self.RATE_LIMIT_REDIS_URL:
+                raise ValueError("RATE_LIMIT_REDIS_URL is required in production for distributed rate limiting.")
         return self
 
 settings = Settings()

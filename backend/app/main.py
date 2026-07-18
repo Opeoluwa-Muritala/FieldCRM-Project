@@ -12,10 +12,15 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
 from app.config import settings
 from app.core import security
-from app.core.database import db_conn, init_pool, close_pool, get_connection
+from app.core.database import db_conn, init_engine, dispose_engine, get_connection
 from app.core.exceptions import DomainException, domain_exception_handler
 from app.core.middleware import RequestIDMiddleware, SecurityHeadersMiddleware
 from app.core.dependencies import get_current_user, RoleChecker
+from app.domains.documents.repository import DocumentRepository
+from app.services.cloud_storage_service import signed_download_url
+from app.core.rate_limit import close_rate_limiter, init_rate_limiter, enforce_login_limits, enforce_reset_limits
+from uuid import UUID
+import httpx
 
 # Domain Routers
 from app.domains.auth.router import router as auth_router
@@ -25,7 +30,8 @@ from app.api.v1.mobile import router as mobile_api_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_pool()
+    init_engine()
+    await init_rate_limiter()
     try:
         async with get_connection() as conn:
             if "postgresql" in settings.DATABASE_URL:
@@ -43,7 +49,8 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.error(f"Failed to dynamically verify share_token column: {e}")
     yield
-    await close_pool()
+    await close_rate_limiter()
+    await dispose_engine()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -55,7 +62,7 @@ app = FastAPI(
 # CORS Policy
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["*"],
@@ -75,6 +82,48 @@ static_dir = os.path.abspath(os.path.join(base_dir, "../../frontend/static"))
 templates = Jinja2Templates(directory=templates_dir)
 
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+
+@app.get("/api/v1/documents/{document_id}/download")
+async def download_document(
+    document_id: UUID,
+    current_user=Depends(get_current_user),
+    conn=Depends(db_conn),
+):
+    """Authorise in FieldCRM before issuing a short-lived Cloudinary URL."""
+    document = await DocumentRepository(conn).get_by_id_for_org(document_id, current_user.org_id)
+    if not document or not document.get("cloud_public_id"):
+        raise HTTPException(status_code=404, detail="Document not found")
+    return RedirectResponse(signed_download_url(document["cloud_public_id"], document["mime_type"]))
+
+
+@app.get("/api/v1/documents/{document_id}/preview")
+async def preview_document(
+    document_id: UUID,
+    current_user=Depends(get_current_user),
+    conn=Depends(db_conn),
+):
+    """Stream an authorised document inline so it can be safely embedded in the UI."""
+    document = await DocumentRepository(conn).get_by_id_for_org(document_id, current_user.org_id)
+    if not document or not document.get("cloud_public_id"):
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                signed_download_url(document["cloud_public_id"], document["mime_type"])
+            )
+            response.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="Document preview is temporarily unavailable") from exc
+
+    mime_type = document.get("mime_type") or response.headers.get("content-type", "application/octet-stream")
+    filename = (document.get("original_name") or "document").replace('"', "")
+    return Response(
+        content=response.content,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
 
 
 def render_not_found_page(request: Request, message: str = "The page you requested could not be found."):
@@ -201,6 +250,7 @@ async def login_web(
     from app.domains.auth.repository import AuthRepository
     from app.domains.auth.service import AuthService
 
+    await enforce_login_limits(request, username)
     repo = AuthRepository(conn)
     service = AuthService(repo)
     try:
@@ -257,6 +307,7 @@ async def render_forgot_password(request: Request):
 async def process_forgot_password(request: Request, email: str = Form(...), conn=Depends(db_conn)):
     from app.domains.auth.repository import AuthRepository
     from app.domains.auth.service import AuthService
+    await enforce_reset_limits(request, email)
     await AuthService(AuthRepository(conn)).request_password_reset(email)
     return templates.TemplateResponse(request, "shared/forgot_password.html", {"submitted": True, "error": None})
 
@@ -280,6 +331,7 @@ async def process_reset_password(
     invitation: bool = Form(False),
     conn=Depends(db_conn),
 ):
+    await enforce_reset_limits(request, token)
     from app.domains.auth.repository import AuthRepository
     from app.domains.auth.service import AuthService
     if new_password != confirm_password:

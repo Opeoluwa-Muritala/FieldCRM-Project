@@ -2638,6 +2638,10 @@ body { background: #F2F2F2; }
         min-height: 100dvh;
         margin-top: 56px; /* Offset fixed header */
     }
+    .responsive-content {
+        min-height: calc(100dvh - 56px);
+        min-width: 0;
+    }
     .desktop-topbar {
         display: none !important;
     }
@@ -2680,6 +2684,10 @@ body { background: #F2F2F2; }
     }
     .content-wrapper {
         padding: 16px 16px 32px;
+        /* Let the document own vertical scrolling. A nested scroll area
+           caused notification/page content to slide beneath the fixed band. */
+        overflow: visible;
+        overscroll-behavior: auto;
     }
     .sidebar-backdrop {
         position: fixed;
@@ -2786,16 +2794,21 @@ body { background: #F2F2F2; }
         background: #89268B;
     }
     .responsive-main {
-        grid-template-rows: 80px minmax(0, 1fr);
-        display: grid;
+        display: block;
         margin-left: 264px;
+        padding-top: 80px;
     }
     .desktop-topbar {
+        position: fixed;
         min-height: 80px;
+        top: 0;
+        left: 264px;
+        right: 0;
         padding: 0 40px;
         border-bottom: 1px solid var(--color-divider);
         background: rgba(255, 255, 255, 0.94);
         display: flex !important;
+        z-index: 900;
     }
     .sidebar-toggle-btn {
         display: none !important;
@@ -2810,6 +2823,8 @@ body { background: #F2F2F2; }
     .topbar-title {
         color: #2E0052;
         font: 700 24px/1.15 "Playfair Display", serif;
+        /* Keep the page label visually close to the sidebar edge. */
+        margin-left: -24px !important;
     }
     .topbar-right {
         gap: 12px;
@@ -3435,3 +3450,8 @@ body { background: #F2F2F2; }
 }
 /* Use Montserrat consistently across all dashboard views and components. */
 body, body * { font-family: "Montserrat", sans-serif !important; }
+/* Client-side document preview feedback. */
+.document-preview-loading { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; min-height:260px; color:var(--text-muted); font-size:14px; width:100%; }
+.document-preview-shimmer { width:min(88%,520px); height:210px; border-radius:10px; background:linear-gradient(100deg,#e5e7eb 20%,#f8fafc 42%,#e5e7eb 64%); background-size:200% 100%; animation:document-shimmer 1.25s ease-in-out infinite; }
+@keyframes document-shimmer { to { background-position:-200% 0; } }
+@media (prefers-reduced-motion: reduce) { .document-preview-shimmer { animation:none; } }
