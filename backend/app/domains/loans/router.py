@@ -41,6 +41,10 @@ router = APIRouter()
 base_dir = os.path.dirname(os.path.abspath(__file__))
 templates_dir = os.path.abspath(os.path.join(base_dir, "../../../../frontend/templates"))
 templates = Jinja2Templates(directory=templates_dir)
+templates.env.globals.update(
+    brand_logo_black="https://res.cloudinary.com/ddezxlqjr/image/upload/v1784551475/MMFB_Logo_Black_lnma0l.png",
+    brand_logo_white="https://res.cloudinary.com/ddezxlqjr/image/upload/v1784551475/MMFB_logo_White_gzthxm.png",
+)
 
 PREVIOUS_PIPELINE_STAGE = {
     stage: WORKFLOW_STAGES[index - 1][0]
