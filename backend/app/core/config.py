@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "")
     COOKIE_SECURE: bool = os.getenv("COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
     RATE_LIMIT_REDIS_URL: str = os.getenv("RATE_LIMIT_REDIS_URL", "")
+    # May share the rate-limit Redis deployment. Caching remains optional and
+    # always falls back to the database if Redis is unavailable.
+    CACHE_REDIS_URL: str = os.getenv("CACHE_REDIS_URL", os.getenv("RATE_LIMIT_REDIS_URL", ""))
 
     # Organisation registration guard — set this in production to a strong random string
     ORG_REGISTRATION_SECRET: str = os.getenv("ORG_REGISTRATION_SECRET", "")
@@ -160,6 +163,8 @@ class Settings(BaseSettings):
                 raise ValueError("Production DATABASE_URL must use Neon's pooled (-pooler) PostgreSQL host.")
             if not self.RATE_LIMIT_REDIS_URL:
                 raise ValueError("RATE_LIMIT_REDIS_URL is required in production for distributed rate limiting.")
+            if self.CACHE_REDIS_URL and not self.CACHE_REDIS_URL.startswith("rediss://"):
+                raise ValueError("CACHE_REDIS_URL must use rediss:// in production.")
         return self
 
 settings = Settings()

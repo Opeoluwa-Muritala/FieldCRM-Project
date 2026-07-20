@@ -23,6 +23,7 @@ from app.domains.visitation.service import VisitationService
 from app.services.dashboard_service import DashboardService
 from app.services.email_service import EmailService
 from app.core.rate_limit import enforce_reset_limits
+from app.core.cache import cache_response, get_json, set_json
 
 
 router = APIRouter()
@@ -321,6 +322,7 @@ async def get_mobile_user(current_user=Depends(get_current_user)):
 
 
 @router.get("/dashboard")
+@cache_response(ttl_seconds=30)
 async def get_mobile_dashboard(conn=Depends(db_conn), current_user=Depends(get_current_user)):
     data = await DashboardService(conn).get_dashboard_data(current_user)
     metrics = _mobile_dashboard_metrics(data)
@@ -337,6 +339,7 @@ async def get_mobile_dashboard(conn=Depends(db_conn), current_user=Depends(get_c
 
 
 @router.get("/notifications")
+@cache_response(ttl_seconds=15, notification_scoped=True)
 async def list_mobile_notifications(conn=Depends(db_conn), current_user=Depends(get_current_user)):
     return await _notification_service(conn).list_for_user(
         user_id=current_user.id,
@@ -368,6 +371,7 @@ async def clear_mobile_notifications(conn=Depends(db_conn), current_user=Depends
 
 
 @router.get("/queues/{queue_name}")
+@cache_response(ttl_seconds=30)
 async def get_mobile_queue(
     queue_name: Literal[
         "loan-officer",
@@ -447,6 +451,7 @@ async def get_mobile_queue(
 
 
 @router.get("/borrowers")
+@cache_response(ttl_seconds=30)
 async def list_mobile_borrowers(
     page: int = Query(1, ge=1),
     size: int = Query(50, ge=1, le=100),
@@ -507,6 +512,7 @@ async def create_mobile_borrower(
 
 
 @router.get("/applications")
+@cache_response(ttl_seconds=30)
 async def list_mobile_applications(
     stage: str | None = None,
     page: int = Query(1, ge=1),
@@ -594,6 +600,7 @@ async def get_mobile_application(
 
 
 @router.get("/applications/{application_id}/intake")
+@cache_response(ttl_seconds=60, application_scoped=True)
 async def get_mobile_intake(
     application_id: UUID,
     conn=Depends(db_conn),
@@ -632,6 +639,7 @@ async def save_mobile_intake_step(
 
 
 @router.get("/applications/{application_id}/guarantors/{slot}")
+@cache_response(ttl_seconds=60, application_scoped=True)
 async def get_mobile_guarantor(
     application_id: UUID,
     slot: int = Path(..., ge=1, le=2),
@@ -750,6 +758,7 @@ async def submit_mobile_ocr_review(
 
 
 @router.get("/applications/{application_id}/visitation")
+@cache_response(ttl_seconds=60, application_scoped=True)
 async def get_mobile_visitation(
     application_id: UUID,
     conn=Depends(db_conn),
@@ -863,6 +872,7 @@ async def submit_mobile_credit_review(
 
 
 @router.get("/applications/{application_id}/approval-readiness")
+@cache_response(ttl_seconds=60, application_scoped=True)
 async def get_mobile_approval_readiness(
     application_id: UUID,
     conn=Depends(db_conn),
@@ -961,9 +971,13 @@ async def return_mobile_application(
 
 @router.get("/config")
 async def get_mobile_config(conn=Depends(db_conn), current_user=Depends(get_current_user)):
+    cache_key = f"fieldcrm:cache:mobile-config:v1:org:{current_user.org_id}"
+    cached = await get_json(cache_key)
+    if cached is not None:
+        return cached
     row = await conn.fetchrow("SELECT name FROM organisations WHERE id = $1", current_user.org_id)
     org_name = row["name"] if row else "FieldCRM MFB"
-    return {
+    config = {
         "org_name": org_name,
         "support_phone": "+234 1 234 5678",
         "support_email": "helpdesk@mainstreetmfb.com",
@@ -991,6 +1005,8 @@ async def get_mobile_config(conn=Depends(db_conn), current_user=Depends(get_curr
             ],
         },
     }
+    await set_json(cache_key, config, ttl_seconds=10 * 60, only_if_absent=True)
+    return config
 
 
 @router.get("/search")
@@ -1057,6 +1073,7 @@ async def search_mobile(
 
 
 @router.get("/applications/{application_id}/audit")
+@cache_response(ttl_seconds=60, application_scoped=True)
 async def get_mobile_audit_trail(
     application_id: UUID,
     conn=Depends(db_conn),
@@ -1112,6 +1129,7 @@ async def get_mobile_audit_trail(
 
 
 @router.get("/applications/{application_id}/bureau")
+@cache_response(ttl_seconds=60, application_scoped=True)
 async def get_mobile_bureau(
     application_id: UUID,
     conn=Depends(db_conn),
@@ -1136,6 +1154,7 @@ async def get_mobile_bureau(
 
 
 @router.get("/applications/{application_id}/committee-votes")
+@cache_response(ttl_seconds=60, application_scoped=True)
 async def get_mobile_committee_votes(
     application_id: UUID,
     conn=Depends(db_conn),
@@ -1155,6 +1174,7 @@ async def get_mobile_committee_votes(
 
 
 @router.get("/applications/{application_id}/audit-checklist")
+@cache_response(ttl_seconds=60, application_scoped=True)
 async def get_mobile_audit_checklist(
     application_id: UUID,
     conn=Depends(db_conn),
@@ -1200,7 +1220,11 @@ async def save_mobile_audit_checklist(
 
 @router.get("/faqs")
 async def get_mobile_faqs(current_user=Depends(get_current_user)):
-    return [
+    cache_key = "fieldcrm:cache:mobile-faqs:v1"
+    cached = await get_json(cache_key)
+    if cached is not None:
+        return cached
+    faqs = [
         {
             "question": "How does the camera OCR parser work?",
             "answer": "Align the NIN/BVN identity document inside the viewfinder scanner box. Click Scan & Extract; standard ML Kit extracts and matches text values locally without remote delays.",
@@ -1222,6 +1246,8 @@ async def get_mobile_faqs(current_user=Depends(get_current_user)):
             "answer": "Navigate to the application audit trail, review workflow events, and use the Report Problem option to escalate to the compliance officer via the platform.",
         },
     ]
+    await set_json(cache_key, faqs, ttl_seconds=24 * 60 * 60, only_if_absent=True)
+    return faqs
 
 
 _ONBOARDING_SLIDES: dict[str, list[dict]] = {
@@ -1272,13 +1298,29 @@ _ONBOARDING_SLIDES: dict[str, list[dict]] = {
 }
 
 
+async def warm_mobile_static_cache() -> None:
+    """Deployment warm-up: add shared onboarding data without replacing it."""
+    for role, slides in _ONBOARDING_SLIDES.items():
+        await set_json(
+            f"fieldcrm:cache:mobile-onboarding:v1:role:{role}",
+            slides,
+            ttl_seconds=24 * 60 * 60,
+            only_if_absent=True,
+        )
+
+
 @router.get("/onboarding")
 async def get_mobile_onboarding(
     role: str = Query("loan_officer"),
     current_user=Depends(get_current_user),
 ):
     mapped = _mobile_role(current_user) if not role else role
+    cache_key = f"fieldcrm:cache:mobile-onboarding:v1:role:{mapped}"
+    cached = await get_json(cache_key)
+    if cached is not None:
+        return cached
     slides = _ONBOARDING_SLIDES.get(mapped, _ONBOARDING_SLIDES["loan_officer"])
+    await set_json(cache_key, slides, ttl_seconds=24 * 60 * 60, only_if_absent=True)
     return slides
 
 
@@ -1445,6 +1487,7 @@ class CommitteeCompleteRequest(BaseModel):
 
 
 @router.get("/applications/{application_id}/committee-votes-full")
+@cache_response(ttl_seconds=60, application_scoped=True)
 async def get_mobile_committee_votes(
     application_id: UUID,
     conn=Depends(db_conn),
@@ -1732,6 +1775,7 @@ async def advance_review_workflow(
 # ---------------------------------------------------------------------------
 
 @router.get("/applications/{application_id}/repayment-schedule")
+@cache_response(ttl_seconds=60, application_scoped=True)
 async def get_mobile_repayment_schedule(
     application_id: UUID,
     conn=Depends(db_conn),
@@ -1795,6 +1839,7 @@ async def record_mobile_payment(
 # ---------------------------------------------------------------------------
 
 @router.get("/reports/par")
+@cache_response(ttl_seconds=30)
 async def get_mobile_par_dashboard(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
@@ -1847,6 +1892,7 @@ class MobileCreateUserRequest(BaseModel):
 
 
 @router.get("/users")
+@cache_response(ttl_seconds=5 * 60)
 async def list_mobile_users(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
