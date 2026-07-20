@@ -1,3 +1,4 @@
+@import url('/static/css/motion.css');
 :root { --navy:#2e0052; --navy-mid:#2e0052; --shield-purple:#2e0052; --purple:#89268b; --ink:#172033; --muted:#667085; --line:#d8dee8; }
 body, body * { font-family:"Montserrat",sans-serif !important; }
 * { box-sizing:border-box; }

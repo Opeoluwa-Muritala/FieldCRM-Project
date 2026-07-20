@@ -144,12 +144,13 @@
                 </div>
             </header>
 
-            <main class="content-wrapper">
+            <main class="content-wrapper" data-motion-page>
                 {% block content %}{% endblock %}
             </main>
         </div>
     </div>
     <script src="/static/js/document-preview.js?v=3"></script>
+    <script src="/static/js/motion.js"></script>
     <script>
         (() => {
             const sidebar = document.getElementById("sidebar");

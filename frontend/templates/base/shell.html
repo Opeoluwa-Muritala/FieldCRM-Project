@@ -24,6 +24,7 @@
     {% block shell %}{% endblock %}
 
     <script src="/static/js/dashboard.js"></script>
+    <script src="/static/js/motion.js"></script>
     <script src="/static/js/document-preview.js?v=3"></script>
     <script>
         window.showFieldMessage = function(message, tone = 'error') {
@@ -36,15 +37,20 @@
                 document.body.appendChild(region);
             }
             const messageElement = document.createElement('div');
+            messageElement.className = 'field-toast';
             messageElement.setAttribute('role', 'status');
             messageElement.style.cssText = `background:${tone === 'error' ? '#7f1d1d' : '#14532d'};color:#fff;border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.22);padding:14px 42px 14px 16px;line-height:1.45;position:relative;margin-top:8px;`;
             messageElement.textContent = message;
             const dismiss = document.createElement('button');
             dismiss.type = 'button'; dismiss.textContent = '×'; dismiss.setAttribute('aria-label', 'Dismiss message');
             dismiss.style.cssText = 'position:absolute;right:10px;top:7px;border:0;background:transparent;color:#fff;font-size:24px;cursor:pointer;';
-            dismiss.addEventListener('click', () => messageElement.remove());
+            const dismissToast = () => {
+                messageElement.classList.add('motion-dismiss');
+                window.setTimeout(() => messageElement.remove(), 160);
+            };
+            dismiss.addEventListener('click', dismissToast);
             messageElement.appendChild(dismiss); region.appendChild(messageElement);
-            window.setTimeout(() => messageElement.remove(), 6000);
+            window.setTimeout(dismissToast, 6000);
         };
 
         document.addEventListener('click', function(event) {
