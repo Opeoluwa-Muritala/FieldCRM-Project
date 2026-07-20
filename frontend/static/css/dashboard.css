@@ -1,4 +1,5 @@
 /* Mainstreet Microfinance Bank Design System CSS */
+@import url('/static/css/motion.css');
 
 :root {
     --color-brand-shield: #6B3FA0;

@@ -5,7 +5,6 @@ document.addEventListener("DOMContentLoaded", () => {
     bindTourStart();
     startGuideOnce();
     startBadgePolling();
-    initRipples();
     initDrawerBackdrop();
     initScrollReveals();
     initSidebarIcons();
@@ -760,7 +759,7 @@ function initScrollReveals() {
         '.lo-task-list, .queue-cards, .lo-activity-list'
     ).forEach(container => {
         container.querySelectorAll('.reveal-pending').forEach((child, index) => {
-            child.style.transitionDelay = `${index * 55}ms`;
+            child.style.transitionDelay = `${Math.min(index, 7) * 35}ms`;
         });
     });
 
