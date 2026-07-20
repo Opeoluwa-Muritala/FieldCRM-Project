@@ -24,6 +24,7 @@ from app.core.dependencies import get_current_user, RoleChecker
 from app.domains.documents.repository import DocumentRepository
 from app.services.cloud_storage_service import signed_download_url
 from app.core.rate_limit import close_rate_limiter, init_rate_limiter, enforce_login_limits, enforce_reset_limits
+from app.core.cache import ResponseCacheInvalidationMiddleware, close_cache, init_cache
 from uuid import UUID
 import httpx
 
@@ -31,12 +32,14 @@ import httpx
 from app.domains.auth.router import router as auth_router
 from app.domains.users.router import router as users_router
 from app.domains.loans.router import router as loans_router
-from app.api.v1.mobile import router as mobile_api_router
+from app.api.v1.mobile import router as mobile_api_router, warm_mobile_static_cache
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_engine()
     await init_rate_limiter()
+    await init_cache()
+    await warm_mobile_static_cache()
     try:
         async with get_connection() as conn:
             if "postgresql" in settings.DATABASE_URL:
@@ -55,6 +58,7 @@ async def lifespan(app: FastAPI):
         logging.error(f"Failed to dynamically verify share_token column: {e}")
     yield
     await close_rate_limiter()
+    await close_cache()
     await dispose_engine()
 
 app = FastAPI(
@@ -76,6 +80,7 @@ app.add_middleware(
 # Custom Middlewares
 app.add_middleware(SecurityHeadersMiddleware, cookie_secure=settings.COOKIE_SECURE)
 app.add_middleware(RequestIDMiddleware)
+app.add_middleware(ResponseCacheInvalidationMiddleware)
 
 # Exception handlers
 app.add_exception_handler(DomainException, domain_exception_handler)
@@ -85,6 +90,12 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 templates_dir = os.path.abspath(os.path.join(base_dir, "../../frontend/templates"))
 static_dir = os.path.abspath(os.path.join(base_dir, "../../frontend/static"))
 templates = Jinja2Templates(directory=templates_dir)
+# Versioned Cloudinary URLs let the CDN and browser cache each brand image once
+# while every template continues to use the same source of truth.
+templates.env.globals.update(
+    brand_logo_black="https://res.cloudinary.com/ddezxlqjr/image/upload/v1784551475/MMFB_Logo_Black_lnma0l.png",
+    brand_logo_white="https://res.cloudinary.com/ddezxlqjr/image/upload/v1784551475/MMFB_logo_White_gzthxm.png",
+)
 
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 

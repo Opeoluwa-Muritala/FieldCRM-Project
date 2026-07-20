@@ -1,14 +1,15 @@
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
-from app.core.database import db_conn
+from app.core.database import get_connection
 from app.core.security import decode_access_token
+from app.core.cache import cache_auth_user, get_cached_auth_user
 from app.domains.users.repository import UserRepository
 from app.domains.users.schemas import UserRow
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 
-async def get_current_user_from_token(token: str, conn) -> UserRow:
+async def get_current_user_from_token(token: str, conn=None) -> UserRow:
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -21,12 +22,22 @@ async def get_current_user_from_token(token: str, conn) -> UserRow:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
         )
-    repo = UserRepository(conn)
     try:
         from uuid import UUID
-        user = await repo.get_by_id(UUID(user_id))
+        parsed_user_id = UUID(user_id)
     except (ValueError, TypeError):
-        user = None
+        parsed_user_id = None
+
+    cached = await get_cached_auth_user(user_id) if parsed_user_id else None
+    user = UserRow(**cached) if cached else None
+    if user is None and parsed_user_id:
+        if conn is None:
+            async with get_connection() as direct_conn:
+                user = await UserRepository(direct_conn).get_by_id(parsed_user_id)
+        else:
+            user = await UserRepository(conn).get_by_id(parsed_user_id)
+        if user:
+            await cache_auth_user(user)
 
     if not user or not user.is_active:
         raise HTTPException(
@@ -39,11 +50,14 @@ async def get_current_user_from_token(token: str, conn) -> UserRow:
 async def get_current_user(
     request: Request,
     token: str = Depends(oauth2_scheme),
-    conn=Depends(db_conn),
 ) -> UserRow:
     # Resolve token from OAuth2 authorization header or session cookies
     token = token or request.cookies.get("session") or request.cookies.get("__Host-session")
-    return await get_current_user_from_token(token, conn)
+    user = await get_current_user_from_token(token)
+    # Response-cache invalidation uses this only after a successful write.
+    # It does not change the authentication or direct database read path.
+    request.state.cache_user = user
+    return user
 
 
 class RoleChecker:
