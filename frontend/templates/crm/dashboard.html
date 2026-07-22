@@ -30,11 +30,11 @@
   </div>
   <div class="queue-cards">
     {% for item in crm_queue[:5] %}
-    <a href="/applications/{{ item.id }}/crm-review" class="queue-card">
+    <a href="/applications/{{ item.id }}/{{ 'disburse' if item.stage == 'disbursement_ready' else 'crm-review' }}" class="queue-card">
       <span class="queue-card-name">{{ item.applicant_name }}</span>
       <span class="queue-card-meta">{{ item.ref_no }} — {{ item.officer_name or '—' }}</span>
       <span class="queue-card-amount">{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}No amount{% endif %}</span>
-      <span class="status-badge queue-card-badge needs-review">{{ item.days_waiting }}d</span>
+      <span class="status-badge queue-card-badge needs-review">{{ 'Generate offer letter' if item.stage == 'disbursement_ready' else (item.days_waiting|string + 'd') }}</span>
     </a>
     {% else %}<div class="lo-empty-state">No dossiers awaiting CRM review.</div>{% endfor %}
   </div>

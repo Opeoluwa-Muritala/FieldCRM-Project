@@ -3453,6 +3453,29 @@ body { background: #F2F2F2; }
 body, body * { font-family: "Montserrat", sans-serif !important; }
 /* Client-side document preview feedback. */
 .document-preview-loading { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; min-height:260px; color:var(--text-muted); font-size:14px; width:100%; }
+.custom-table tbody tr:has(a[data-document-preview]) { cursor:pointer; }
+.md-workflow-page { font-size:15px; line-height:1.55; }
+.md-workflow-page .custom-table { font-size:14px; }
+.md-workflow-page .btn { min-height:40px; padding:9px 16px; font-size:14px; line-height:1.25; white-space:nowrap; }
+.md-workflow-page textarea, .md-workflow-page input { font-size:15px; }
+.disbursement-page { max-width:1100px; margin:0 auto; font-size:15px; line-height:1.5; }
+.disbursement-page h2, .disbursement-page h3, .disbursement-page p { text-align:left; }
+.disbursement-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-top:16px; }
+.disbursement-summary > div { padding:12px 14px; border-radius:8px; background:var(--bg-secondary); }
+.disbursement-summary span { display:block; margin-bottom:4px; font-size:13px; }
+.disbursement-offer-actions { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.disbursement-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-bottom:16px; }
+.disbursement-form-grid > div { display:flex; flex-direction:column; min-width:0; }
+.disbursement-form-grid label { display:flex !important; align-items:flex-end; min-height:42px; line-height:1.35; }
+.disbursement-form-grid input, .disbursement-form-grid select { min-height:44px; box-sizing:border-box; }
+@media (max-width: 720px) {
+  .md-workflow-page { font-size:14px; }
+  .md-workflow-page .custom-table { min-width:680px; }
+  .disbursement-page { font-size:14px; }
+  .disbursement-summary, .disbursement-form-grid { grid-template-columns:1fr; }
+  .disbursement-form-grid label { min-height:0; }
+  .disbursement-offer-actions { align-items:flex-start; flex-direction:column; }
+}
 .document-preview-shimmer { width:min(88%,520px); height:210px; border-radius:10px; background:linear-gradient(100deg,#e5e7eb 20%,#f8fafc 42%,#e5e7eb 64%); background-size:200% 100%; animation:document-shimmer 1.25s ease-in-out infinite; }
 @keyframes document-shimmer { to { background-position:-200% 0; } }
 @media (prefers-reduced-motion: reduce) { .document-preview-shimmer { animation:none; } }

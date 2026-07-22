@@ -192,33 +192,6 @@
             </div>
         </div>
 
-        {# Offer Letter Generation Card #}
-        {% if app.status == 'Approved' or app.stage in ('crm_review', 'disbursement_ready') or app.current_stage >= 5 %}
-            <div class="page-card" style="margin-bottom: 0;">
-                <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Offer Letter</h3>
-                {% set offer_generated = false %}
-                {% for doc in documents %}
-                    {% if doc.category == 'offer_letter' %}
-                        {% set offer_generated = true %}
-                    {% endif %}
-                {% endfor %}
-                
-                {% if offer_generated %}
-                    <div style="font-size: 13px; color: var(--accent-success); font-weight: 500;">
-                        ✓ Offer letter has been issued.
-                    </div>
-                {% elif user_role == 'crm' %}
-                    <form action="/applications/{{ app_id }}/generate-offer" method="POST" style="margin: 0;">
-                        <button type="submit" class="btn-primary-filled" style="width: 100%; font-size: 12px; min-height: 32px; height: 32px; background-color: var(--color-brand-shield);">
-                            Generate &amp; Issue Offer Letter
-                        </button>
-                    </form>
-                {% else %}
-                    <div style="font-size: 13px; color: var(--text-muted);">Only CRM can generate an offer letter.</div>
-                {% endif %}
-            </div>
-        {% endif %}
-        
     </div>
     
     {# === RIGHT COLUMN: CREDIT RISK REVIEW WORKSTATION === #}

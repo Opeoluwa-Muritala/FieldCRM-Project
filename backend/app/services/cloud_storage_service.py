@@ -58,12 +58,17 @@ def upload_to_cloudinary(
 
     upload_opts: dict = {
         "folder": folder,
-        "resource_type": "auto",
+        # PDFs must be stored as image resources for Cloudinary's pg_N page
+        # transformations. `auto` classifies authenticated PDFs as raw files.
+        "resource_type": "image" if mime_type in {"application/pdf", "image/jpeg", "image/png"} else "auto",
         "type": "authenticated",
         "overwrite": True,
     }
     if public_id:
         upload_opts["public_id"] = public_id
+        # The high-level caller already supplies a fully-qualified public ID.
+        # Passing both folder and that ID duplicates the path in Cloudinary.
+        upload_opts.pop("folder", None)
 
     result = cloudinary.uploader.upload(
         upload_stream,
@@ -128,6 +133,46 @@ def signed_download_url(public_id: str, mime_type: str, expires_in: int = 300) -
     options: dict[str, object] = {
         "resource_type": "image",
         "type": "authenticated",
+        # This endpoint is used by explicit download actions, including offer
+        # letters, so Cloudinary must send an attachment response.
+        "attachment": True,
+        "expires_at": int(time.time()) + expires_in,
+    }
+    file_format = "pdf" if mime_type == "application/pdf" else None
+    return cloudinary.utils.private_download_url(public_id, file_format, **options)
+
+
+def signed_preview_url(
+    public_id: str,
+    mime_type: str,
+    *,
+    page: int = 1,
+    expires_in: int = 300,
+) -> str:
+    """Return an authenticated preview URL without delivering a PDF to the client."""
+    _configure_cloudinary()
+    import cloudinary.utils
+
+    if mime_type == "application/pdf":
+        # Cloudinary renders only the requested PDF page as PNG.  The original
+        # PDF is never proxied to, or downloaded by, the browser.
+        url, _ = cloudinary.utils.cloudinary_url(
+            public_id,
+            resource_type="image",
+            type="authenticated",
+            sign_url=True,
+            format="png",
+            transformation=[
+                {"page": page},
+                {"width": 1600, "crop": "limit", "quality": "auto"},
+            ],
+        )
+        return url
+
+    options: dict[str, object] = {
+        "resource_type": "image",
+        "type": "authenticated",
+        # Explicitly avoid Cloudinary's attachment transformation.
         "attachment": False,
         "expires_at": int(time.time()) + expires_in,
     }

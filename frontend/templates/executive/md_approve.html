@@ -4,6 +4,7 @@
 {% block page_title %}MD Approval{% endblock %}
 {% block breadcrumb %}Managing Director -> Approval -> {{ app.ref_no }}{% endblock %}
 {% block content %}
+<div class="md-workflow-page">
 
 <div class="page-card" style="margin-bottom:20px;">
   <h2 class="page-card-title">{{ app.applicant_name }}</h2>
@@ -64,11 +65,10 @@
 <div class="page-card" style="margin-bottom:20px;background:#e8f5e9;border:1px solid #a5d6a7;">
   {% if (app.amount or 0) <= 10000000 and app.ed_escalated_to_md %}
   <h3 style="margin-bottom:12px;">MD Input Requested</h3>
-  <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px;">Provide your input for ED. This is advisory only; submitting it returns the file to ED for final approval.</p>
-  <form method="post" action="/applications/{{ app_id }}/md-approve">
-    <div style="margin-bottom:14px;"><label for="md_notes_input" style="display:block;font-weight:600;margin-bottom:6px;">MD Input *</label><textarea id="md_notes_input" name="md_notes" rows="4" required style="width:100%;padding:10px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;" placeholder="Provide your advice to ED…"></textarea></div>
-    <button type="submit" name="action" value="comment" class="btn btn-primary" style="font-size:15px;padding:12px 28px;">Submit Input to ED</button>
-    <a href="/md-queue" class="btn btn-secondary" style="margin-left:12px;">Cancel</a>
+  <p style="color:var(--text-secondary);margin-bottom:16px;">Return this application to ED for the final decision.</p>
+  <form method="post" action="/applications/{{ app_id }}/md-approve" style="display:flex;gap:12px;flex-wrap:wrap;">
+    <button type="submit" name="action" value="return_ed" class="btn btn-secondary" data-confirm="Return this application to ED?">Return to ED</button>
+    <a href="/md-queue" class="btn btn-secondary">Cancel</a>
   </form>
   {% else %}
   <h3 style="margin-bottom:12px;">MD Final Approval</h3>
@@ -145,4 +145,5 @@
 </div>
 
 <a href="/md-queue" class="btn btn-secondary">&#8592; Back to MD Queue</a>
+</div>
 {% endblock %}

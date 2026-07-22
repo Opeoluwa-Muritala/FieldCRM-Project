@@ -1,21 +1,17 @@
 (() => {
-    const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs';
-    const PDFJS_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';
+    const MAX_PREVIEW_PAGES = 100;
     let modal;
     let preview;
     let title;
-    let pdfjsPromise;
+    let previewRequestId = 0;
 
-    async function getPdfJs() {
-        pdfjsPromise ||= import(PDFJS_URL).then((pdfjs) => {
-            pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
-            return pdfjs;
-        });
-        return pdfjsPromise;
+    function cancelPreview() {
+        previewRequestId += 1;
     }
 
     function closePreview() {
         if (!modal) return;
+        cancelPreview();
         preview.replaceChildren();
         modal.hidden = true;
         modal.style.display = 'none';
@@ -50,43 +46,65 @@
         document.body.appendChild(modal);
     }
 
+    function pageUrl(url, page) {
+        const parsed = new URL(url, window.location.origin);
+        parsed.searchParams.set('page', String(page));
+        return parsed.href;
+    }
+
+    function streamPreviewImage(image) {
+        return new Promise((resolve, reject) => {
+            image.addEventListener('load', resolve, { once: true });
+            image.addEventListener('error', reject, { once: true });
+        });
+    }
+
     document.addEventListener('click', (event) => {
-        const link = event.target.closest('[data-document-preview], a[href*="/api/v1/documents/"]');
+        let link = event.target.closest('[data-document-preview], a[href*="/api/v1/documents/"][href*="/preview"]');
+        if (!link) {
+            const row = event.target.closest('tr');
+            const clickedControl = event.target.closest('a, button, input, select, textarea, label, [role="button"]');
+            if (!row || clickedControl) return;
+            // A document category is a review target: clicking anywhere in
+            // its table row opens the same protected preview as its link.
+            link = row.querySelector('[data-document-preview], a[href*="/api/v1/documents/"][href*="/preview"]');
+        }
         if (!link || !link.href) return;
         event.preventDefault();
         event.stopPropagation();
         ensureModal();
+        cancelPreview();
+        const requestId = ++previewRequestId;
         title.textContent = link.dataset.documentTitle || link.textContent.trim() || 'Document preview';
         preview.innerHTML = '<div class="document-preview-loading" role="status" aria-live="polite"><span class="document-preview-shimmer"></span><span>Loading document preview…</span></div>';
         modal.hidden = false;
         modal.style.display = 'grid';
         document.body.style.overflow = 'hidden';
-        renderPdf(link.href).catch((error) => {
+        renderPreviewPages(link.href, requestId).catch((error) => {
+            if (requestId !== previewRequestId || modal.hidden) return;
             preview.textContent = 'Unable to render this document preview.';
-            console.error('PDF preview failed', error);
+            console.error('Document preview failed', error);
         });
     }, true);
 
-    async function renderPdf(url) {
-        const [pdfjs, response] = await Promise.all([
-            getPdfJs(),
-            fetch(url, { credentials: 'same-origin' }),
-        ]);
-        if (!response.ok) throw new Error(`Preview request failed: ${response.status}`);
-        const pdf = await pdfjs.getDocument({ data: await response.arrayBuffer() }).promise;
-        if (modal.hidden) return;
-        preview.replaceChildren();
-        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-            if (modal.hidden) return;
-            const page = await pdf.getPage(pageNumber);
-            const viewport = page.getViewport({ scale: 1.35 });
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.width = Math.ceil(viewport.width);
-            canvas.height = Math.ceil(viewport.height);
-            canvas.style.cssText = 'max-width:100%;height:auto;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18);';
-            preview.appendChild(canvas);
-            await page.render({ canvasContext: context, viewport }).promise;
+    async function renderPreviewPages(url, requestId) {
+        for (let page = 1; page <= MAX_PREVIEW_PAGES; page += 1) {
+            if (modal.hidden || requestId !== previewRequestId) return;
+            const image = document.createElement('img');
+            image.alt = `Document page ${page}`;
+            image.style.cssText = 'max-width:100%;height:auto;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18);';
+            image.src = pageUrl(url, page);
+            try {
+                // The browser progressively renders each image response. The
+                // endpoint returns a Cloudinary-rendered PNG, never PDF bytes.
+                await streamPreviewImage(image);
+                if (modal.hidden || requestId !== previewRequestId) return;
+                if (page === 1) preview.replaceChildren(image);
+                else preview.appendChild(image);
+            } catch (_) {
+                if (page === 1) throw new Error('Preview image request failed');
+                return; // No next page (or the document is a single image).
+            }
         }
     }
 })();
