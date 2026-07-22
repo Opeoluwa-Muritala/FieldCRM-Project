@@ -73,7 +73,7 @@ class DocumentRepository(BaseRepository):
     async def get_by_id_for_org(self, document_id: UUID, org_id: UUID) -> dict | None:
         row = await self.conn.fetchrow(
             """
-            SELECT id, org_id, mime_type, cloud_public_id
+            SELECT id, org_id, mime_type, original_name, upload_status, cloud_public_id
             FROM documents
             WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL
             """,

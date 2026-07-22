@@ -4,20 +4,42 @@
 {% block page_title %}Record Disbursement{% endblock %}
 {% block breadcrumb %}CRM -> Disburse -> {{ app.ref_no }}{% endblock %}
 {% block content %}
+<div class="disbursement-page">
 <div class="page-card" style="margin-bottom:20px;">
   <h2 class="page-card-title">{{ app.applicant_name }} — {{ app.ref_no }}</h2>
-  <div style="display:flex;gap:24px;flex-wrap:wrap;">
+  <div class="disbursement-summary">
     <div><span style="color:var(--text-muted)">Approved Amount</span><br><strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}—{% endif %}</strong></div>
     <div><span style="color:var(--text-muted)">Tenor</span><br><strong>{{ app.tenor_months or '—' }} months</strong></div>
     <div><span style="color:var(--text-muted)">BVN</span><br><strong>{{ app.bvn or '—' }}</strong></div>
   </div>
 </div>
 
+{% set offer_letters = documents | selectattr('category', 'equalto', 'offer_letter') | list %}
+<div class="page-card" style="margin-bottom:20px;">
+  <h3 style="margin-bottom:8px;">1. Generate Offer Letter</h3>
+  <p class="page-card-subtitle" style="margin-bottom:16px;">The application has been approved for disbursement. Generate and issue the offer letter before recording payment.</p>
+  {% if offer_letters %}
+    <div class="disbursement-offer-actions">
+      <span class="status-badge verified">Offer letter issued</span>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <a href="{{ offer_letters[0].url }}" data-document-preview data-document-title="Offer Letter" class="btn btn-secondary">Preview offer letter</a>
+        <a href="{{ offer_letters[0].download_url }}" class="btn btn-secondary" download>Download offer letter</a>
+      </div>
+    </div>
+  {% elif can_record_disbursement %}
+    <form action="/applications/{{ app_id }}/generate-offer" method="POST" style="margin:0;" data-offer-generation-form>
+      <button type="submit" class="btn btn-primary" data-offer-generation-button>Generate &amp; Issue Offer Letter</button>
+    </form>
+  {% else %}
+    <p class="page-card-subtitle">Only a CRM Officer can generate the offer letter.</p>
+  {% endif %}
+</div>
+
 <div class="page-card">
-  <h3 style="margin-bottom:20px;">Disbursement Details</h3>
-  {% if can_record_disbursement %}
+  <h3 style="margin-bottom:20px;">2. Disbursement Details</h3>
+  {% if can_record_disbursement and offer_letters %}
   <form method="post" action="/applications/{{ app_id }}/disburse">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <div class="disbursement-form-grid">
       <div>
         <label style="display:block;margin-bottom:6px;font-weight:600;">Actual Amount Disbursed (&#x20A6;) *</label>
         <input type="number" name="disbursed_amount" step="0.01" required
@@ -75,8 +97,23 @@
       Record Disbursement &amp; Generate Schedule
     </button>
   </form>
-  {% else %}
+  {% elif not can_record_disbursement %}
   <p class="page-card-subtitle">Read-only oversight. Only a CRM Officer can record this disbursement.</p>
+  {% else %}
+  <p class="page-card-subtitle">Generate the offer letter above to unlock disbursement recording.</p>
   {% endif %}
 </div>
+</div>
+<script>
+document.querySelector('[data-offer-generation-form]')?.addEventListener('submit', (event) => {
+  const button = event.currentTarget.querySelector('[data-offer-generation-button]');
+  if (!button || button.disabled) {
+    event.preventDefault();
+    return;
+  }
+  button.disabled = true;
+  button.setAttribute('aria-disabled', 'true');
+  button.textContent = 'Generating offer letter…';
+});
+</script>
 {% endblock %}

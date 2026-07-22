@@ -1,22 +1,32 @@
-"""
-PDF generation for disbursement documents, credit printouts, and CBN returns.
-Uses weasyprint if available, falls back to plain HTML bytes.
-"""
+"""PDF generation for disbursement documents, credit printouts, and CBN returns."""
 from __future__ import annotations
 
 import io
+import os
 import zipfile
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
+
+if os.name == "nt":
+    # WeasyPrint's Windows runtime is provided by MSYS2/Pango. Respect an
+    # explicit deployment setting while supporting the standard local path.
+    _dll_directory = os.environ.get(
+        "WEASYPRINT_DLL_DIRECTORIES",
+        r"C:\msys64\mingw64\bin",
+    )
+    if Path(_dll_directory).is_dir():
+        os.environ["WEASYPRINT_DLL_DIRECTORIES"] = _dll_directory
+
+from weasyprint import HTML
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _to_pdf(html: str) -> bytes:
-    """Convert HTML string to PDF bytes. Falls back to HTML if weasyprint absent."""
-    try:
-        from weasyprint import HTML
-        return HTML(string=html).write_pdf()
-    except ImportError:
-        return html.encode("utf-8")
+    """Render the supplied HTML and its CSS into real PDF bytes."""
+    return HTML(string=html, base_url=str(PROJECT_ROOT)).write_pdf()
 
 
 def _naira(amount) -> str:
@@ -207,4 +217,3 @@ def generate_offer_letter_pdf(loan: dict, org: dict, rate: float, clauses: list[
 </div>
 </body></html>"""
     return _to_pdf(html)
-

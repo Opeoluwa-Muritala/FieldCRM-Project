@@ -113,13 +113,16 @@ def build_template_context(request, user, **kwargs) -> dict:
                 
                 if doc_copy.get("cloud_public_id"):
                     url = f"/api/v1/documents/{doc_copy['id']}/preview"
+                    download_url = f"/api/v1/documents/{doc_copy['id']}/download"
                 else:
                     url = doc_copy.get("stored_path") or doc_copy.get("cloud_preview_url") or ""
+                    download_url = doc_copy.get("stored_path") or ""
                 if url:
                     # Clean up Cloudinary URLs to allow inline rendering
                     url = url.replace("fl_attachment,", "").replace(",fl_attachment", "").replace("fl_attachment", "")
                     url = url.replace("/raw/upload/", "/image/upload/").replace("/raw/authenticated/", "/image/authenticated/")
                 doc_copy["url"] = url
+                doc_copy["download_url"] = download_url
                 
                 # Prefer the MIME type stored at upload time. Protected document
                 # URLs do not expose their file extension, so URL inference alone

@@ -2104,7 +2104,7 @@ async def process_md_approve(
             actor_role=current_user.role,
             reason=md_notes,
         )
-    elif action == "comment":
+    elif action in {"comment", "return_ed"}:
         if not await repo.md_add_comment(UUID(application_id), current_user.org_id, md_notes):
             raise HTTPException(status_code=400, detail="Application not in md_approval stage")
         audit = AuditService(conn)
@@ -2116,7 +2116,7 @@ async def process_md_approve(
             to_stage="ed_approval",
             actor_id=str(current_user.id),
             actor_role=current_user.role,
-            reason=md_notes,
+            reason=md_notes or "Returned to ED for final decision",
         )
     else:
         raise HTTPException(status_code=400, detail="Invalid action")
@@ -2187,10 +2187,13 @@ async def render_disburse(
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
+    documents = await get_document_service(conn).repo.get_by_loan(UUID(application_id), current_user.org_id)
     ctx = build_template_context(
         request, current_user,
         app=app, app_id=application_id,
-        can_record_disbursement=current_user.role == "crm",
+        documents=documents,
+        can_record_disbursement=(current_user.role == "crm" and app.stage == "disbursement_ready"),
+        can_return_previous=False,
         active_tab="crm_queue", active_page="crm_queue",
     )
     return templates.TemplateResponse(request, "crm/disburse.html", ctx)
@@ -2215,6 +2218,22 @@ async def process_disburse(
 
     repo = LoanRepository(conn)
     loan_uuid = UUID(application_id)
+
+    offer_letter = await conn.fetchrow(
+        """
+        SELECT id FROM documents
+        WHERE loan_id = $1 AND org_id = $2 AND doc_type = 'offer_letter'
+          AND deleted_at IS NULL
+        LIMIT 1
+        """,
+        loan_uuid,
+        current_user.org_id,
+    )
+    if not offer_letter:
+        raise HTTPException(
+            status_code=400,
+            detail="Generate the offer letter before recording disbursement",
+        )
 
     # Generate unique disbursement ref
     disbursement_ref = f"DIS-{datetime.now().strftime('%Y%m%d')}-{secrets.token_hex(4).upper()}"
@@ -2359,7 +2378,6 @@ async def render_valuation_screen(
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
-        
     items = await conn.fetch(
         """
         SELECT id, item_number, item_name, serial_number, description, estimated_value, 
@@ -2642,6 +2660,11 @@ async def generate_offer_letter(
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
+    if app.stage != "disbursement_ready":
+        raise HTTPException(
+            status_code=400,
+            detail="Offer letters can only be generated after approval for disbursement",
+        )
         
     # 1. Fetch interest rate preset
     preset = await conn.fetchrow(
@@ -2662,7 +2685,14 @@ async def generate_offer_letter(
         app.loan_type
     )
     if clause_row:
-        clause_keys = json.loads(clause_row["clause_keys"])
+        raw_clause_keys = clause_row["clause_keys"]
+        if isinstance(raw_clause_keys, list):
+            clause_keys = raw_clause_keys
+        elif isinstance(raw_clause_keys, str):
+            decoded_clause_keys = json.loads(raw_clause_keys)
+            clause_keys = decoded_clause_keys if isinstance(decoded_clause_keys, list) else []
+        else:
+            clause_keys = []
     else:
         clause_keys = [
             "Interest is subject to market review.",
@@ -2705,14 +2735,12 @@ async def generate_offer_letter(
         doc_type="offer_letter",
         filename_stem=UUID(application_id).hex,
     )
-    if cloud_result:
-        pdf_url = f"cloudinary://{cloud_result.public_id}"
-    else:
-        os.makedirs("frontend/static/uploads", exist_ok=True)
-        local_path = f"frontend/static/uploads/offer_letter_{application_id}.pdf"
-        with open(local_path, "wb") as f:
-            f.write(pdf_bytes)
-        pdf_url = f"/static/uploads/offer_letter_{application_id}.pdf"
+    if not cloud_result or not cloud_result.public_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Offer letter storage is unavailable; Cloudinary is required",
+        )
+    pdf_url = f"cloudinary://{cloud_result.public_id}"
         
     # 6. Save to offer_letters table
     await conn.execute(
@@ -2748,12 +2776,12 @@ async def generate_offer_letter(
         mime_type="application/pdf",
         size_bytes=len(pdf_bytes),
         uploaded_by=current_user.id,
-        cloud_public_id=cloud_result.public_id if cloud_result else None,
-        cloud_preview_url=cloud_result.preview_url if cloud_result else None,
+        cloud_public_id=cloud_result.public_id,
+        cloud_preview_url=cloud_result.preview_url,
     )
     
     return RedirectResponse(
-        url=f"/applications/{application_id}",
+        url=f"/applications/{application_id}/disburse",
         status_code=status.HTTP_303_SEE_OTHER
     )
 

@@ -143,20 +143,6 @@
   </form>
 </div>
 
-{% if current_user.role == 'crm' and app.stage == 'disbursement_ready' %}
-<div class="page-card" style="margin-top:20px;">
-  <h3 style="margin-bottom:12px;">Offer Letter</h3>
-  {% set offer_letters = documents | selectattr('category', 'equalto', 'offer_letter') | list %}
-  {% if offer_letters %}
-    <div style="font-size:13px;color:var(--accent-success);font-weight:500;">Offer letter has been issued.</div>
-  {% else %}
-    <form action="/applications/{{ app_id }}/generate-offer" method="POST" style="margin:0;">
-      <button type="submit" class="btn btn-primary">Generate &amp; Issue Offer Letter</button>
-    </form>
-  {% endif %}
-</div>
-{% endif %}
-
 <script>
 (() => {
   const returnPanel = document.getElementById('crm-return-confirmation');

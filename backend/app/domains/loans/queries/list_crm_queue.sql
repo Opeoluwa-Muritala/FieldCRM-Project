@@ -1,4 +1,4 @@
--- Loans in crm_review for the org, ordered by oldest first.
+-- CRM dossier reviews and applications approved for offer-letter generation.
 -- Params: $1=org_id, $2=limit, $3=offset
 
 SELECT
@@ -17,7 +17,7 @@ FROM loan_applications la
 LEFT JOIN users u  ON u.id  = la.created_by
 LEFT JOIN users bm ON bm.id = la.branch_manager_id
 WHERE la.org_id     = $1
-  AND la.stage      = 'crm_review'
+  AND la.stage      IN ('crm_review', 'disbursement_ready')
   AND la.deleted_at IS NULL
 ORDER BY la.updated_at ASC
 LIMIT $2 OFFSET $3;

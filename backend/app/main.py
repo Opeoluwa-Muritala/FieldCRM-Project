@@ -1,15 +1,18 @@
 import os
+import re
 import sys
+import unicodedata
 
 # Add backend directory to sys.path to allow correct imports when running from the repository root (e.g. on Vercel)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import logging
 from datetime import timedelta
-from urllib.parse import urlparse
-from fastapi import FastAPI, Depends, Form, HTTPException, Request, Response, status
+from typing import Any
+from urllib.parse import quote, urlparse
+from fastapi import FastAPI, Depends, Form, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -22,11 +25,15 @@ from app.core.exceptions import DomainException, domain_exception_handler
 from app.core.middleware import RequestIDMiddleware, SecurityHeadersMiddleware
 from app.core.dependencies import get_current_user, RoleChecker
 from app.domains.documents.repository import DocumentRepository
-from app.services.cloud_storage_service import signed_download_url
+from app.services.cloud_storage_service import signed_download_url, signed_preview_url
 from app.core.rate_limit import close_rate_limiter, init_rate_limiter, enforce_login_limits, enforce_reset_limits
 from app.core.cache import ResponseCacheInvalidationMiddleware, close_cache, init_cache
 from uuid import UUID
 import httpx
+
+# HTTPX INFO logs include complete request URLs.  Preview URLs contain short-
+# lived credentials and must never be written to application logs.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # Domain Routers
 from app.domains.auth.router import router as auth_router
@@ -116,30 +123,150 @@ async def download_document(
 @app.get("/api/v1/documents/{document_id}/preview")
 async def preview_document(
     document_id: UUID,
+    request: Request,
+    page: int = Query(default=1, ge=1, le=100),
     current_user=Depends(get_current_user),
     conn=Depends(db_conn),
 ):
     """Stream an authorised document inline so it can be safely embedded in the UI."""
     document = await DocumentRepository(conn).get_by_id_for_org(document_id, current_user.org_id)
-    if not document or not document.get("cloud_public_id"):
+    if (
+        not document
+        or not document.get("cloud_public_id")
+        or document.get("upload_status") not in (None, "done")
+    ):
         raise HTTPException(status_code=404, detail="Document not found")
 
+    stored_mime_type = normalize_mime_type(document.get("mime_type"))
+    if stored_mime_type and stored_mime_type not in ALLOWED_PREVIEW_MIME_TYPES:
+        raise HTTPException(status_code=415, detail="This document type cannot be previewed")
+
+    # Images have a single page. PDFs are converted by Cloudinary into a PNG
+    # for this page number, so the original PDF never reaches the browser.
+    if stored_mime_type != "application/pdf" and page != 1:
+        raise HTTPException(status_code=404, detail="Document preview page not found")
+
+    client: httpx.AsyncClient | None = None
+    response: httpx.Response | None = None
+    stream_context: Any | None = None
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
-                signed_download_url(document["cloud_public_id"], document["mime_type"])
-            )
-            response.raise_for_status()
+        # The public id is taken only from the already-authorised DB record.
+        preview_url = signed_preview_url(document["cloud_public_id"], stored_mime_type or "", page=page)
+        client = httpx.AsyncClient(timeout=30.0)
+        stream_context = client.stream("GET", preview_url, headers={})
+        response = await stream_context.__aenter__()
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        # Cloudinary returns 400/404 when pg_N is beyond the final PDF page.
+        # That is the normal end-of-document signal used by the image viewer.
+        if page > 1 and exc.response.status_code in (400, 404):
+            await close_cloudinary_stream(client, response, stream_context)
+            raise HTTPException(status_code=404, detail="Document preview page not found") from exc
+        logger.warning("Cloudinary document preview request failed (%s)", type(exc).__name__)
+        await close_cloudinary_stream(client, response, stream_context)
+        raise HTTPException(status_code=502, detail="Document preview is temporarily unavailable") from exc
     except httpx.HTTPError as exc:
+        logger.warning("Cloudinary document preview request failed (%s)", type(exc).__name__)
+        await close_cloudinary_stream(client, response, stream_context)
+        raise HTTPException(status_code=502, detail="Document preview is temporarily unavailable") from exc
+    except Exception as exc:
+        # Do not include exception text: it can contain a signed URL or token.
+        logger.warning("Cloudinary document preview setup failed (%s)", type(exc).__name__)
+        await close_cloudinary_stream(client, response, stream_context)
         raise HTTPException(status_code=502, detail="Document preview is temporarily unavailable") from exc
 
-    mime_type = document.get("mime_type") or response.headers.get("content-type", "application/octet-stream")
-    filename = (document.get("original_name") or "document").replace('"', "")
-    return Response(
-        content=response.content,
+    mime_type = stored_mime_type or normalize_mime_type(response.headers.get("content-type"))
+    if stored_mime_type == "application/pdf":
+        mime_type = "image/png"
+    if mime_type not in ALLOWED_PREVIEW_MIME_TYPES:
+        await close_cloudinary_stream(client, response, stream_context)
+        raise HTTPException(status_code=415, detail="This document type cannot be previewed")
+
+    return StreamingResponse(
+        iter_cloudinary_content(client, response, stream_context),
         media_type=mime_type,
-        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+        status_code=response.status_code,
+        headers=preview_response_headers(document.get("original_name"), response),
     )
+
+
+ALLOWED_PREVIEW_MIME_TYPES = {"application/pdf", "image/jpeg", "image/png"}
+_FILENAME_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
+_FILENAME_ASCII_UNSAFE = re.compile(r"[^A-Za-z0-9._ -]")
+
+
+def normalize_mime_type(value: str | None) -> str:
+    """Return a lower-cased media type without parameters."""
+    return value.split(";", 1)[0].strip().lower() if value else ""
+
+
+def sanitize_preview_filename(value: str | None) -> str:
+    """Remove characters that are unsafe in Content-Disposition filenames."""
+    filename = str(value or "document")
+    filename = _FILENAME_CONTROL_CHARS.sub("_", filename)
+    filename = filename.replace("/", "_").replace("\\", "_").replace('"', "")
+    filename = filename.strip(" .")
+    return filename[:180] or "document"
+
+
+def preview_content_disposition(value: str | None) -> str:
+    filename = sanitize_preview_filename(value)
+    ascii_filename = unicodedata.normalize("NFKD", filename).encode("ascii", "ignore").decode("ascii")
+    ascii_filename = _FILENAME_ASCII_UNSAFE.sub("_", ascii_filename).strip(" .") or "document"
+    encoded_filename = quote(filename, safe="!#$&+-.^_`|~")
+    return f"inline; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
+
+
+def preview_response_headers(filename: str | None, response: httpx.Response) -> dict[str, str]:
+    headers = {
+        "Cache-Control": "private, no-store",
+        "Pragma": "no-cache",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Disposition": preview_content_disposition(filename),
+    }
+    # Deliberately do not proxy Cloudinary disposition, cookies, auth, or cache policy.
+    for header in ("Content-Length", "Accept-Ranges", "ETag", "Last-Modified"):
+        if value := get_upstream_header(response, header):
+            headers[header] = value
+    if response.status_code == status.HTTP_206_PARTIAL_CONTENT:
+        if value := get_upstream_header(response, "Content-Range"):
+            headers["Content-Range"] = value
+    return headers
+
+
+def get_upstream_header(response: httpx.Response, name: str) -> str | None:
+    """Read an HTTP header, including from simple mapping-based test doubles."""
+    return response.headers.get(name) or response.headers.get(name.lower())
+
+
+async def close_cloudinary_stream(
+    client: httpx.AsyncClient | None,
+    response: httpx.Response | None,
+    stream_context: Any | None,
+) -> None:
+    if stream_context is not None:
+        await stream_context.__aexit__(None, None, None)
+    elif response is not None:
+        await response.aclose()
+    if client is not None:
+        await client.aclose()
+
+
+async def iter_cloudinary_content(
+    client: httpx.AsyncClient,
+    response: httpx.Response,
+    stream_context: Any,
+):
+    """Yield upstream bytes and always release Cloudinary resources."""
+    try:
+        async for chunk in response.aiter_bytes():
+            yield chunk
+    except httpx.HTTPError as exc:
+        # The response has started, so it cannot be converted to a 502 here.
+        logger.warning("Cloudinary document preview stream interrupted (%s)", type(exc).__name__)
+        raise
+    finally:
+        await close_cloudinary_stream(client, response, stream_context)
 
 
 def render_not_found_page(request: Request, message: str = "The page you requested could not be found."):
