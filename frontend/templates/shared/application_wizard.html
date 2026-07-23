@@ -12,11 +12,11 @@
     <div class="wizard-steps">
         {% set is_single = (data.marital_status == 'Single') %}
         {% if is_single %}
-            {% set steps_list = [1, 3, 4, 5, 6, 7, 8] %}
-            {% set step_labels = ["Details", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge"] %}
+            {% set steps_list = [1, 3, 4, 5, 6, 7, 8, 9] %}
+            {% set step_labels = ["Details", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge", "Review & Sign"] %}
         {% else %}
-            {% set steps_list = [1, 2, 3, 4, 5, 6, 7, 8] %}
-            {% set step_labels = ["Details", "Spousal Consent", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge"] %}
+            {% set steps_list = [1, 2, 3, 4, 5, 6, 7, 8, 9] %}
+            {% set step_labels = ["Details", "Spousal Consent", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge", "Review & Sign"] %}
         {% endif %}
         {% for s_num in steps_list %}
             {% set is_active = (s_num == step) %}
@@ -33,6 +33,28 @@
 
     <!-- Main Card wrapper -->
     <div class="page-card no-shadow">
+        {% if request.query_params.get('signing_link') %}
+        <div class="flat-card brand" role="status" style="margin-bottom:16px;">
+            <strong>{{ request.query_params.get('success') or 'Client signing link generated.' }}</strong>
+            <div style="display:flex; gap:8px; margin-top:12px; align-items:center; flex-wrap:wrap;">
+                <input
+                    id="generatedClientSigningLink"
+                    class="field-input"
+                    type="text"
+                    value="{{ request.query_params.get('signing_link') }}"
+                    readonly
+                    style="flex:1; min-width:240px;"
+                >
+                <button
+                    type="button"
+                    class="btn-primary-filled"
+                    onclick="navigator.clipboard.writeText(document.getElementById('generatedClientSigningLink').value); this.textContent='Copied!'"
+                >
+                    Copy Client Signing Link
+                </button>
+            </div>
+        </div>
+        {% endif %}
         {% if request.query_params.get('error') %}
         <div class="flat-card warning" id="wizard-error" role="alert" tabindex="-1" style="margin-bottom:16px;">
             <strong>We could not save this section.</strong><br>{{ request.query_params.get('error') }}
@@ -48,6 +70,7 @@
                 {% elif step == 6 %}Loan Request Details
                 {% elif step == 7 %}Disbursement Account
                 {% elif step == 8 %}Pledge and Trust Receipt (MMFB/CRM/02)
+                {% elif step == 9 %}Review and Client Signature
                 {% endif %}
             </h2>
             <p class="page-card-subtitle">
@@ -59,6 +82,7 @@
                 {% elif step == 6 %}Specify the amount, tenor, purpose, and security.
                 {% elif step == 7 %}Where the approved facility will be paid.
                 {% elif step == 8 %}Collateral security terms and description.
+                {% elif step == 9 %}Read-only review of the details and the client's signing status.
                 {% endif %}
             </p>
         </div>
@@ -166,6 +190,34 @@
             </div>
             {% endif %}
 
+            {% if step == 9 %}
+            <div style="display:grid; gap:16px;">
+                <div class="flat-card">
+                    <h4 style="margin:0 0 12px; font-size:14px;">Completed Intake Summary</h4>
+                    <div class="form-grid-2">
+                        <p><strong>Applicant:</strong><br>{{ data.get('full_name') or data.get('applicant_name') or '—' }}</p>
+                        <p><strong>Phone:</strong><br>{{ data.get('phone') or '—' }}</p>
+                        <p><strong>Loan amount:</strong><br>{{ data.get('amount') or data.get('loan_amount') or '—' }}</p>
+                        <p><strong>Tenor:</strong><br>{{ data.get('tenor') or data.get('tenor_months') or '—' }}</p>
+                        <p><strong>Purpose:</strong><br>{{ data.get('purpose') or data.get('loan_purpose') or '—' }}</p>
+                        <p><strong>Payout account:</strong><br>{{ data.get('account_number') or '—' }}</p>
+                    </div>
+                </div>
+                <div class="flat-card {% if applicant_signed %}success{% else %}warning{% endif %}">
+                    {% if applicant_signed %}
+                    <strong>Client signature received</strong>
+                    <p style="margin:6px 0 0;">The signed intake is locked and ready for submission to the Branch Manager.</p>
+                    {% if signatures.primary %}
+                    <img src="{{ signatures.primary }}" alt="Applicant signature" style="display:block; max-height:90px; margin-top:12px; padding:6px; background:#fff; border:1px solid var(--border-color); border-radius:6px;">
+                    {% endif %}
+                    {% else %}
+                    <strong>Awaiting client signature</strong>
+                    <p style="margin:6px 0 0;">This page is read-only. Submit will become available after the client signs.</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
             <!-- STEP 2: SPOUSAL CONSENT -->
             {% if step == 2 %}
             <div class="flat-card warning">
@@ -193,15 +245,21 @@
                     <label class="field-label">Spouse Business Address</label>
                     <textarea name="spouse_business_address" class="field-textarea">{{ data.spouse_business_address or '' }}</textarea>
                 </div>
-                <div class="form-group-full" style="margin-top: 12px;">
-                    <label class="field-label">Spouse Signature <span class="required">*</span></label>
-                    <div class="signature-box" id="spouse_sig_box">
-                        <canvas id="spouse_sig_canvas"></canvas>
-                        <button type="button" class="signature-clear-btn" onclick="clearSignature('spouse_sig_canvas')">Clear</button>
+                {% if data.spouse_signature %}
+                <div class="form-group-full" style="margin-top:12px;">
+                    <label class="field-label">Spouse Signature</label>
+                    <div style="padding:12px; border:1px solid var(--border-color); border-radius:8px; background:#fff;">
+                        <img
+                            src="{{ data.spouse_signature }}"
+                            alt="Spouse signature"
+                            style="display:block; max-width:100%; max-height:100px;"
+                        >
                     </div>
-                    <input type="hidden" name="spouse_signature" id="spouse_signature_val" value="{{ data.spouse_signature or '' }}">
-                    <span style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 4px;">Click and drag to capture signature</span>
+                    <span style="display:block; margin-top:5px; font-size:12px; color:var(--text-muted);">
+                        Captured from the client form. Read-only.
+                    </span>
                 </div>
+                {% endif %}
             </div>
             {% endif %}
 
@@ -521,11 +579,11 @@
                     </div>
                     <div class="form-group">
                         <label class="field-label">Facility Amount in Figures (₦) <span class="required">*</span></label>
-                        <input type="number" name="pledge_amount_figs" id="pledge_amount_figs" class="field-input" value="{{ data.pledge_amount_figs or '' }}" oninput="checkPledgeAmountMismatch()">
+                        <input type="number" name="pledge_amount_figs" id="pledge_amount_figs" class="field-input" value="{{ data.pledge_amount_figs or '' }}" min="0" step="0.01" oninput="updatePledgeAmountWords()" required>
                     </div>
                     <div class="form-group">
                         <label class="field-label">Facility Amount in Words <span class="required">*</span></label>
-                        <input type="text" name="pledge_amount_words" id="pledge_amount_words" class="field-input" value="{{ data.pledge_amount_words or '' }}" oninput="checkPledgeAmountMismatch()">
+                        <input type="text" name="pledge_amount_words" id="pledge_amount_words" class="field-input" value="{{ data.pledge_amount_words or '' }}" readonly aria-live="polite" placeholder="Automatically generated from the facility amount">
                     </div>
                     <div class="form-group-full">
                         <span id="pledgeMismatchWarning" style="color:var(--accent-warning); font-size: 12px; display:none;">&#x26A0; Amount in words does not match figures — please correct.</span>
@@ -575,37 +633,10 @@
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                     <button type="button" class="btn-ghost-link" style="color: var(--color-brand-shield); font-weight: 500;" onclick="addPledgeRow()">+ Add Item</button>
-                    <div style="font-size: 14px; font-weight: bold; color: var(--text-main);" id="pledgeTotalText">Total Estimated Value: ₦350,000</div>
-                </div>
-
-                <div class="flat-card brand" style="margin-bottom: 20px;">
-                    <strong style="display:block; margin-bottom: 8px;">Legal Acknowledgement Summary</strong>
-                    <p style="font-size:12px; line-height: 1.5; color: var(--text-muted);">
-                        The borrower declares that the listed goods are their absolute property, free from any lien. The borrower holds the goods in trust for Mainstreet Microfinance Bank, and agrees that any proceeds from sales will be paid immediately to the bank to retire the outstanding loan amount.
-                    </p>
-                    <div style="margin-top: 12px;">
-                        <input type="checkbox" name="pledge_legal_ack" id="pledge_legal_ack" value="1" {% if data.pledge_legal_ack %}checked{% endif %} required>
-                        <label for="pledge_legal_ack" style="font-size: 12px; cursor: pointer; font-weight: 500; color: var(--text-main);">I confirm I have read and understood the terms of this Pledge and Trust Receipt.</label>
-                    </div>
+                    <div style="font-size: 14px; font-weight: bold; color: var(--text-main);" id="pledgeTotalText">Total Estimated Value: —</div>
                 </div>
 
                 <div class="form-grid-2" style="border-top: 0.5px solid var(--color-divider); padding-top: 20px;">
-                    <div class="form-group">
-                        <label class="field-label">Borrower Signature <span class="required">*</span></label>
-                        <div class="signature-box">
-                            <canvas id="borrower_pledge_canvas"></canvas>
-                            <button type="button" class="signature-clear-btn" onclick="clearSignature('borrower_pledge_canvas')">Clear</button>
-                        </div>
-                        <input type="hidden" name="borrower_pledge_signature" id="borrower_pledge_sig_val" value="{{ data.borrower_pledge_signature or '' }}">
-                    </div>
-                    <div class="form-group">
-                        <label class="field-label">Witness Signature <span class="required">*</span></label>
-                        <div class="signature-box">
-                            <canvas id="witness_pledge_canvas"></canvas>
-                            <button type="button" class="signature-clear-btn" onclick="clearSignature('witness_pledge_canvas')">Clear</button>
-                        </div>
-                        <input type="hidden" name="witness_pledge_signature" id="witness_pledge_sig_val" value="{{ data.witness_pledge_signature or '' }}">
-                    </div>
                     <div class="form-group">
                         <label class="field-label">Witness Name</label>
                         <input type="text" name="witness_name" class="field-input" value="{{ data.witness_name or '' }}">
@@ -615,6 +646,27 @@
                         <input type="text" name="witness_address" class="field-input" value="{{ data.witness_address or '' }}">
                     </div>
                 </div>
+                {% set borrower_signature = signatures.primary if signatures and signatures.primary else data.get('borrower_pledge_signature') %}
+                {% set pledge_witness_signature = signatures.witness if signatures and signatures.witness else data.get('witness_pledge_signature') %}
+                {% if borrower_signature or pledge_witness_signature %}
+                <div style="margin-top: 20px; border-top: 0.5px solid var(--color-divider); padding-top: 16px;">
+                    <h4 style="font-size:13px; font-weight:500; margin-bottom:12px;">Captured Electronic Evidence</h4>
+                    <div class="form-grid-2">
+                        {% if borrower_signature %}
+                        <div>
+                            <span style="font-size:12px; display:block; margin-bottom:6px; font-weight:500;">Borrower Signature</span>
+                            <img src="{{ borrower_signature }}" style="max-height:80px; border:0.5px solid var(--border-color); border-radius:6px; padding:6px; background-color: white;" alt="Borrower Signature">
+                        </div>
+                        {% endif %}
+                        {% if pledge_witness_signature %}
+                        <div>
+                            <span style="font-size:12px; display:block; margin-bottom:6px; font-weight:500;">Witness Signature</span>
+                            <img src="{{ pledge_witness_signature }}" style="max-height:80px; border:0.5px solid var(--border-color); border-radius:6px; padding:6px; background-color: white;" alt="Witness Signature">
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
             <!-- Tab content: Upload completed -->
@@ -636,67 +688,7 @@
             </div>
             {% endif %}
 
-            <!-- STEP 9: DECLARATIONS & CONSENTS -->
-            {% if step == 9 %}
-            <div style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 24px;">
-                <!-- Block 1 -->
-                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary);">
-                    <h4 style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Credit Bureau Disclosure</h4>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
-                        The bank is required by the Central Bank of Nigeria (CBN) to disclose the borrower's payment history, outstanding obligations, and general transaction behavior to licensed Credit Reference Bureaus.
-                    </p>
-                    <input type="checkbox" name="consent_credit_bureau" id="consent_cb" value="1" required>
-                    <label for="consent_cb" style="font-size: 12px; cursor: pointer;">I consent to the Bank disclosing my transaction information to Credit Bureaus as prescribed by the CBN.</label>
-                </div>
 
-                <!-- Block 2 -->
-                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary);">
-                    <h4 style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Credit Check Authorisation</h4>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
-                        The borrower authorises Mainstreet Microfinance Bank to request credit scores, repayment histories, and default records from any credit bureau or banking institution in Nigeria to verify creditworthiness.
-                    </p>
-                    <input type="checkbox" name="consent_credit_check" id="consent_cc" value="1" required>
-                    <label for="consent_cc" style="font-size: 12px; cursor: pointer;">I authorise the Bank to conduct credit information checks on me from other financial institutions.</label>
-                </div>
-
-                <!-- Block 3 -->
-                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary);">
-                    <h4 style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Cheque Recovery Authorisation</h4>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
-                        The borrower mandates the bank to fill and present any post-dated cheques deposited as collateral in the event of default on the agreed loan repayment dates.
-                    </p>
-                    <div class="flat-card warning" style="padding: 10px; margin-bottom: 8px; font-size: 12px;">
-                        This authorises the bank to fill and present your cheque as repayment if you default. Do not sign if you do not understand this clause.
-                    </div>
-                    <input type="checkbox" name="consent_cheque" id="consent_ch" value="1" required>
-                    <label for="consent_ch" style="font-size: 12px; cursor: pointer;">I authorise the Bank to fill and pay my cheque in repayment of this facility in the event of default.</label>
-                </div>
-
-                <!-- Block 4 -->
-                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary);">
-                    <h4 style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Global Standing Instruction (GSI) Mandate</h4>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
-                        The borrower mandates Mainstreet Microfinance Bank to trigger a GSI command through NIBSS to debit any bank account linked to their BVN across all licensed commercial and microfinance institutions in Nigeria to offset default debts.
-                    </p>
-                    <div class="flat-card warning" style="padding: 10px; margin-bottom: 8px; font-size: 12px;">
-                        GSI allows the bank to recover outstanding principal and interest from your accounts across all financial institutions in Nigeria.
-                    </div>
-                    <input type="checkbox" name="consent_gsi" id="consent_g" value="1" required>
-                    <label for="consent_g" style="font-size: 12px; cursor: pointer;">I execute a GSI Mandate authorising Mainstreet Microfinance Bank to recover any outstanding amount from my accounts across all financial institutions.</label>
-                </div>
-            </div>
-
-            <!-- Signature block -->
-            <div style="border-top: 0.5px solid var(--color-divider); padding-top: 20px; margin-bottom: 24px;">
-                <label class="field-label">Applicant Signature <span class="required">*</span></label>
-                <div class="signature-box" style="margin-bottom: 8px;">
-                    <canvas id="applicant_sig_canvas"></canvas>
-                    <button type="button" class="signature-clear-btn" onclick="clearSignature('applicant_sig_canvas')">Clear</button>
-                </div>
-                <input type="hidden" name="applicant_signature" id="applicant_sig_val">
-                <span style="font-size: 12px; color: var(--text-muted);">I declare that all information provided in this application is true and correct.</span>
-            </div>
-            {% endif %}
 
             <!-- Navigation Actions Footer -->
             <div class="wizard-footer">
@@ -708,12 +700,28 @@
                         <a href="/applications/{{ app_id }}/step/{{ step - 1 }}" class="btn-ghost-link">&larr; Back</a>
                         {% endif %}
                     {% endif %}
+                    {% if step < 9 %}
                     <span style="margin-left: 20px; font-size: 12px; color: var(--text-muted); cursor: pointer;" onclick="saveDraft()">Save Draft</span>
+                    {% endif %}
                 </div>
                 <div style="display:flex; flex-direction:column; align-items:flex-end;">
-                    <button type="submit" class="btn-primary-filled" id="continueBtn">
-                        {% if step == 8 %}Complete Intake &amp; Send to Branch Manager &rarr;{% else %}Save & Continue &rarr;{% endif %}
+                    {% if step == 9 and applicant_signed %}
+                    <button
+                        type="submit"
+                        class="btn-primary-filled"
+                        id="submitToBranchManagerBtn"
+                        formaction="/applications/{{ app_id }}/submit-to-branch-manager"
+                        formmethod="POST"
+                        formnovalidate
+                        onclick="this.form.onsubmit=null"
+                    >
+                        Submit to Branch Manager &rarr;
                     </button>
+                    {% elif not readonly %}
+                    <button type="submit" class="btn-primary-filled" id="continueBtn">
+                        {% if step == 8 %}Save Details &amp; Generate Client Signing Link &rarr;{% else %}Save & Continue &rarr;{% endif %}
+                    </button>
+                    {% endif %}
                     <span id="consent_remaining" style="font-size: 12px; color:var(--accent-danger); margin-top:4px; display:none;">Consents still required.</span>
                 </div>
             </div>
@@ -905,11 +913,19 @@
 
     function calculatePledgeTotal() {
         const valInputs = document.getElementsByName('pledge_item_val[]');
+        const totalText = document.getElementById('pledgeTotalText');
+        if (!totalText) return;
         let total = 0;
+        let hasValue = false;
         valInputs.forEach(input => {
-            if (input.value) total += parseFloat(input.value);
+            if (input.value) {
+                total += parseFloat(input.value);
+                hasValue = true;
+            }
         });
-        document.getElementById('pledgeTotalText').textContent = "Total Estimated Value: ₦" + total.toLocaleString();
+        totalText.textContent = hasValue
+            ? "Total Estimated Value: ₦" + total.toLocaleString()
+            : "Total Estimated Value: —";
     }
 
     function handlePledgeUpload(input) {
@@ -977,20 +993,34 @@
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        if (canvasId === 'spouse_sig_canvas') document.getElementById('spouse_signature_val').value = '';
         if (canvasId === 'borrower_pledge_canvas') document.getElementById('borrower_pledge_sig_val').value = '';
         if (canvasId === 'witness_pledge_canvas') document.getElementById('witness_pledge_sig_val').value = '';
         if (canvasId === 'applicant_sig_canvas') document.getElementById('applicant_sig_val').value = '';
     }
 
-    function saveDraft() {
+    async function saveDraft() {
         const status = document.getElementById('wizard_inline_status') || document.createElement('div');
         status.id = 'wizard_inline_status';
         status.className = 'flat-card brand';
-        status.textContent = 'Draft saved successfully.';
         const card = document.querySelector('.page-card');
         if (card && !status.parentElement) {
             card.appendChild(status);
+        }
+        status.textContent = 'Saving draft...';
+        try {
+            const form = document.getElementById('wizardForm');
+            const response = await fetch(`${form.action}?draft=1`, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!response.ok) throw new Error('Draft could not be saved');
+            status.textContent = 'Draft saved successfully.';
+            setTimeout(() => status.remove(), 5000);
+        } catch (error) {
+            status.className = 'flat-card warning';
+            status.textContent = error.message;
+            setTimeout(() => status.remove(), 5000);
         }
     }
 
@@ -1024,6 +1054,12 @@
         return true;
     }
 
+    function updatePledgeAmountWords() {
+        const amount = document.getElementById('pledge_amount_figs');
+        const words = document.getElementById('pledge_amount_words');
+        if (amount && words) words.value = nairaAmountToWords(amount.value);
+    }
+
     // Initialize triggers on page load
     window.addEventListener('load', () => {
         document.getElementById('wizard-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1036,11 +1072,10 @@
         updateAmountWords();
         document.getElementById('loan_amount')?.addEventListener('input', updateAmountWords);
         
-        // Init signatures
-        initSignature('spouse_sig_canvas', 'spouse_signature_val');
-        initSignature('borrower_pledge_canvas', 'borrower_pledge_sig_val');
-        initSignature('witness_pledge_canvas', 'witness_pledge_sig_val');
-        initSignature('applicant_sig_canvas', 'applicant_sig_val');
+        updatePledgeAmountWords();
+        document.getElementById('pledge_amount_figs')?.addEventListener('input', updatePledgeAmountWords);
+        calculatePledgeTotal();
+        
     });
 
     // Wizard step slide-direction tracking
@@ -1060,5 +1095,23 @@
             sessionStorage.setItem('wizardPrevStep', String(currentStep - 1));
         });
     })();
+
+    {% if readonly %}
+    window.addEventListener('load', () => {
+        const form = document.getElementById('wizardForm');
+        if (form) {
+            const elements = form.querySelectorAll('input, select, textarea, button');
+            elements.forEach(el => {
+                if (el.id !== 'backBtn' && el.id !== 'submitToBranchManagerBtn' && el.className !== 'btn-ghost-link') {
+                    el.disabled = true;
+                    el.style.opacity = '0.7';
+                }
+            });
+            form.querySelectorAll('.signature-clear-btn, button[onclick*="Row"]').forEach(el => {
+                el.style.display = 'none';
+            });
+        }
+    });
+    {% endif %}
 </script>
 {% endblock %}

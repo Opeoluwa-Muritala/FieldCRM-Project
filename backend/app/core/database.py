@@ -7,6 +7,7 @@ incrementally to SQLAlchemy statements.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import sqlite3
@@ -244,18 +245,32 @@ async def get_connection():
         async with _sqlite_pool.acquire() as conn:
             yield conn
         return
-    async with _engine.connect() as conn:
+
+    conn = None
+    for attempt in range(2):
         try:
-            yield SQLAlchemyConnection(conn)
-        except Exception:
-            if conn.in_transaction():
-                await conn.rollback()
-            raise
-        else:
-            # Existing repositories execute writes without an explicit
-            # transaction, matching asyncpg's per-statement commit behaviour.
-            if conn.in_transaction():
-                await conn.commit()
+            conn = await _engine.connect()
+            break
+        except (TimeoutError, OSError):
+            if attempt == 1:
+                raise
+            # A brief Neon/DNS interruption should not discard a submitted
+            # form. Retry acquisition once; endpoint work has not begun yet.
+            await asyncio.sleep(0.25)
+
+    try:
+        yield SQLAlchemyConnection(conn)
+    except Exception:
+        if conn.in_transaction():
+            await conn.rollback()
+        raise
+    else:
+        # Existing repositories execute writes without an explicit
+        # transaction, matching asyncpg's per-statement commit behaviour.
+        if conn.in_transaction():
+            await conn.commit()
+    finally:
+        await conn.close()
 
 
 @asynccontextmanager

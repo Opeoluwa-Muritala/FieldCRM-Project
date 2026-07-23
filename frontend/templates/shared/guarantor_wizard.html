@@ -217,36 +217,23 @@
                     <input type="text" name="account_number" class="field-input" value="{{ data.account_number or '' }}" maxlength="10" required>
                 </div>
             </div>
-            {% endif %}
-
-            <!-- STEP 8: SIGNATURES -->
-            {% if step == 8 %}
-            <div class="form-grid-2" style="margin-bottom: 24px;">
-                <div class="form-group">
-                    <label class="field-label">Guarantor Signature <span class="required">*</span></label>
-                    <div class="signature-box">
-                        <canvas id="guarantor_sig_canvas"></canvas>
-                        <button type="button" class="signature-clear-btn" onclick="clearSignature('guarantor_sig_canvas')">Clear</button>
+            {% if step == 7 and signatures and signatures.primary %}
+            <div style="margin-top: 20px; border-top: 0.5px solid var(--color-divider); padding-top: 16px;">
+                <h4 style="font-size:13px; font-weight:500; margin-bottom:12px;">Captured Electronic Evidence</h4>
+                <div class="form-grid-2">
+                    <div>
+                        <span style="font-size:12px; display:block; margin-bottom:6px; font-weight:500;">Guarantor Signature</span>
+                        <img src="{{ signatures.primary }}" style="max-height:80px; border:0.5px solid var(--border-color); border-radius:6px; padding:6px; background-color: white;" alt="Guarantor Signature">
                     </div>
-                    <input type="hidden" name="guarantor_signature" id="guarantor_sig_val">
-                </div>
-                <div class="form-group">
-                    <label class="field-label">Witness Signature <span class="required">*</span></label>
-                    <div class="signature-box">
-                        <canvas id="witness_sig_canvas"></canvas>
-                        <button type="button" class="signature-clear-btn" onclick="clearSignature('witness_sig_canvas')">Clear</button>
+                    {% if signatures.witness %}
+                    <div>
+                        <span style="font-size:12px; display:block; margin-bottom:6px; font-weight:500;">Witness Signature</span>
+                        <img src="{{ signatures.witness }}" style="max-height:80px; border:0.5px solid var(--border-color); border-radius:6px; padding:6px; background-color: white;" alt="Witness Signature">
                     </div>
-                    <input type="hidden" name="witness_signature" id="witness_sig_val">
-                </div>
-                <div class="form-group">
-                    <label class="field-label">Witness Name</label>
-                    <input type="text" name="witness_name" class="field-input" value="{{ data.witness_name or '' }}">
-                </div>
-                <div class="form-group">
-                    <label class="field-label">Witness Date <span class="required">*</span></label>
-                    <input type="date" name="witness_date" class="field-input" value="{{ data.witness_date or '' }}" required>
+                    {% endif %}
                 </div>
             </div>
+            {% endif %}
             {% endif %}
 
             <!-- Wizard Footer Action Buttons -->
@@ -257,7 +244,7 @@
                     {% endif %}
                 </div>
                 <button type="submit" class="btn-primary-filled">
-                    {% if step == 8 %}Complete & Return &rarr;{% else %}Save & Continue &rarr;{% endif %}
+                    {% if step == 7 %}Complete &amp; Generate Link &rarr;{% else %}Save &amp; Continue &rarr;{% endif %}
                 </button>
             </div>
 
@@ -323,8 +310,6 @@
     }
 
     window.addEventListener('load', () => {
-        initSignature('guarantor_sig_canvas', 'guarantor_sig_val');
-        initSignature('witness_sig_canvas', 'witness_sig_val');
     });
 
     // Wizard step slide-direction tracking
@@ -337,5 +322,23 @@
         document.documentElement.dataset.wizardDirection = direction;
         sessionStorage.setItem('guarantorWizardPrevStep', String(currentStep));
     })();
+
+    {% if readonly %}
+    window.addEventListener('load', () => {
+        const form = document.getElementById('guarantorForm');
+        if (form) {
+            const elements = form.querySelectorAll('input, select, textarea, button');
+            elements.forEach(el => {
+                if (el.id !== 'backBtn' && el.className !== 'btn-ghost-link') {
+                    el.disabled = true;
+                    el.style.opacity = '0.7';
+                }
+            });
+            form.querySelectorAll('.signature-clear-btn, button[onclick*="Row"]').forEach(el => {
+                el.style.display = 'none';
+            });
+        }
+    });
+    {% endif %}
 </script>
 {% endblock %}

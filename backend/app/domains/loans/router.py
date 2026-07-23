@@ -1,9 +1,11 @@
+import base64
 import json
+import hashlib
 import logging
 import os
 from html import escape
 from urllib.parse import urlencode
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
@@ -32,6 +34,8 @@ from app.domains.visitation.repository import VisitationRepository
 from app.domains.visitation.service import VisitationService
 from app.domains.notifications.repository import NotificationRepository
 from app.domains.notifications.service import NotificationService
+from app.domains.signing.repository import SigningRepository
+from app.domains.signing.service import SigningService
 
 from app.config import settings
 
@@ -692,8 +696,8 @@ async def render_wizard_step(
     conn = Depends(db_conn),
     current_user = Depends(get_current_user)
 ):
-    """GET handler for Borrower intake wizard steps 1 to 8."""
-    if step not in range(1, 9):
+    """GET handler for borrower intake steps and the officer's read-only review."""
+    if step not in range(1, 10):
         raise HTTPException(status_code=404, detail="Unknown intake step")
     try:
         app_uuid = UUID(application_id)
@@ -715,6 +719,28 @@ async def render_wizard_step(
     if step == 2 and data.get("marital_status") == "Single":
         return RedirectResponse(url=f"/applications/{application_id}/step/3", status_code=status.HTTP_303_SEE_OTHER)
 
+    from app.domains.signing.service import SigningService
+    from app.domains.signing.repository import SigningRepository
+    signing_svc = SigningService(SigningRepository(conn))
+    latest = await signing_svc.repo.latest_version(app_uuid, "applicant_stage", "intake")
+    readonly = step == 9
+    applicant_signed = False
+    signatures = {}
+    if latest:
+        if latest["status"] in ("sent", "signed"):
+            readonly = True
+        if latest["status"] == "signed":
+            applicant_signed = True
+            sigs = await conn.fetch(
+                "SELECT * FROM signature_events WHERE document_version_id = $1",
+                latest["id"],
+            )
+            for sig in sigs:
+                if sig.get("witness_for_event_id"):
+                    signatures["witness"] = sig["signature_image_ref"]
+                else:
+                    signatures["primary"] = sig["signature_image_ref"]
+
     ctx = build_template_context(
         request,
         current_user,
@@ -723,6 +749,9 @@ async def render_wizard_step(
         data=data,
         active_tab="queue",
         active_page="queue",
+        readonly=readonly,
+        applicant_signed=applicant_signed,
+        signatures=signatures,
     )
     return templates.TemplateResponse(request, "shared/application_wizard.html", ctx)
 
@@ -752,7 +781,13 @@ async def process_wizard_step(
         raise HTTPException(status_code=403, detail="You do not have permission to view/modify this application")
     form_data = await request.form()
     data_dict = form_data_to_jsonable_dict(form_data)
-    if step not in range(1, 9):
+    from app.domains.signing.service import SigningService
+    from app.domains.signing.repository import SigningRepository
+    signing_svc = SigningService(SigningRepository(conn))
+    latest = await signing_svc.repo.latest_version(app_uuid, "applicant_stage", "intake")
+    if latest and latest["status"] in ("sent", "signed"):
+        raise HTTPException(status_code=403, detail="This application is frozen or signed and cannot be modified.")
+    if step not in range(1, 10):
         raise HTTPException(status_code=404, detail="Unknown intake step")
     try:
         await service.save_wizard_step(UUID(application_id), step, data_dict, current_user.id, current_user.org_id)
@@ -765,15 +800,111 @@ async def process_wizard_step(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
+    if request.query_params.get("draft") == "1":
+        return {"saved": True, "step": step}
+
     if step < 8:
         next_step = step + 1
         if step == 1 and data_dict.get("marital_status") == "Single":
             next_step = 3
         return RedirectResponse(url=f"/applications/{application_id}/step/{next_step}", status_code=status.HTTP_303_SEE_OTHER)
     else:
-        # OCR extraction continues in the background. There is no manual OCR
-        # review stage; completed intake is handed to the Branch Manager.
-        return RedirectResponse(url=f"/applications/{application_id}", status_code=status.HTTP_303_SEE_OTHER)
+        signing_svc = SigningService(SigningRepository(conn))
+        intake_data = await repo.get_stage_data(app_uuid, "intake")
+        payload = (intake_data or {}).get("data_json") or {}
+        
+        latest_ver = await signing_svc.repo.latest_version(app_uuid, "applicant_stage", "intake")
+        if latest_ver and latest_ver["status"] == "signed":
+            await signing_svc.correct(app_uuid, "applicant_stage", "intake", current_user.id)
+            
+        version = await signing_svc.freeze_version(
+            app_uuid, "applicant_stage", "intake", payload, current_user.id
+        )
+        
+        await signing_svc.repo.invalidate_sessions(app_uuid, "applicant", "applicant")
+        
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        link_session = await signing_svc.issue_session(
+            app_uuid, "applicant", "applicant", [version["id"]], current_user.id,
+            lifetime=timedelta(days=3),
+            token_hash=token_hash
+        )
+        
+        base_url = str(request.base_url).rstrip("/")
+        share_url = f"{base_url}/client-access/{raw_token}"
+        
+        query = urlencode(
+            {
+                "success": "Intake details saved. Send this secure link to the client for signing.",
+                "signing_link": share_url,
+            }
+        )
+        return RedirectResponse(
+            url=f"/applications/{application_id}/step/9?{query}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+
+@router.post("/applications/{application_id}/submit-to-branch-manager")
+async def submit_signed_intake_to_branch_manager(
+    application_id: str,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    try:
+        app_id = UUID(application_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+
+    role = current_user.role.lower().replace(" ", "_")
+    if role not in {"account_officer", "loan_officer"}:
+        raise HTTPException(status_code=403, detail="Insufficient permissions for this action")
+
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(app_id, current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    if app.created_by != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have permission to submit this application",
+        )
+    if app.stage != "intake":
+        raise HTTPException(
+            status_code=409,
+            detail="Only an intake application can be submitted to the branch manager",
+        )
+
+    signed_version = await SigningRepository(conn).latest_version(
+        app_id, "applicant_stage", "intake"
+    )
+    if not signed_version or signed_version["status"] != "signed":
+        raise HTTPException(
+            status_code=409,
+            detail="The client must sign the intake before it can be submitted",
+        )
+
+    await repo.assign_default_branch_manager(app_id, current_user.org_id)
+    updated = await repo.advance_stage(
+        app_id, current_user.org_id, "branch_manager_review"
+    )
+    if not updated:
+        raise HTTPException(status_code=409, detail="Application could not be submitted")
+
+    await AuditService(conn).log(
+        application_id=application_id,
+        org_id=str(current_user.org_id),
+        action="Signed intake submitted to Branch Manager",
+        from_stage="intake",
+        to_stage="branch_manager_review",
+        actor_id=str(current_user.id),
+        actor_role=current_user.role,
+    )
+    return RedirectResponse(
+        url=f"/applications/{application_id}?success=Submitted+to+Branch+Manager",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 @router.get("/applications/{application_id}/guarantors/{guarantor_index}/step/{step}")
 async def render_guarantor_step(
@@ -782,10 +913,41 @@ async def render_guarantor_step(
     guarantor_index: int,
     step: int,
     service: GuarantorService = Depends(get_guarantor_service),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    conn = Depends(db_conn)
 ):
-    """GET handler for Guarantor intake flow steps 1 to 8."""
-    data = await service.get_wizard_data(UUID(application_id), guarantor_index)
+    """GET handler for Guarantor intake flow steps 1 to 7."""
+    if step not in range(1, 8):
+        raise HTTPException(status_code=404, detail="Unknown guarantor step")
+    try:
+        app_uuid = UUID(application_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+        
+    guarantor_row = await conn.fetchrow(
+        "SELECT id FROM guarantors WHERE loan_id = $1 AND slot = $2",
+        app_uuid, guarantor_index
+    )
+    
+    readonly = False
+    signatures = {}
+    if guarantor_row:
+        from app.domains.signing.service import SigningService
+        from app.domains.signing.repository import SigningRepository
+        signing_svc = SigningService(SigningRepository(conn))
+        latest = await signing_svc.repo.latest_version(app_uuid, "guarantor", str(guarantor_row["id"]))
+        if latest:
+            if latest["status"] in ("sent", "signed"):
+                readonly = True
+            if latest["status"] == "signed":
+                sigs = await conn.fetch("SELECT * FROM signature_events WHERE version_id = $1", latest["id"])
+                for sig in sigs:
+                    if sig.get("witness_for_event_id"):
+                        signatures["witness"] = sig["signature_image_ref"]
+                    else:
+                        signatures["primary"] = sig["signature_image_ref"]
+
+    data = await service.get_wizard_data(app_uuid, guarantor_index)
     ctx = build_template_context(
         request,
         current_user,
@@ -794,7 +956,9 @@ async def render_guarantor_step(
         step=step,
         data=data,
         hide_tabbar=True,
-        mobile_title_text=f"Guarantor: Step {step}"
+        mobile_title_text=f"Guarantor: Step {step}",
+        readonly=readonly,
+        signatures=signatures
     )
     return templates.TemplateResponse(request, "shared/guarantor_wizard.html", ctx)
 
@@ -805,24 +969,73 @@ async def process_guarantor_step(
     guarantor_index: int,
     step: int,
     service: GuarantorService = Depends(get_guarantor_service),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    conn = Depends(db_conn)
 ):
     """POST handler for Guarantor flow."""
+    if step not in range(1, 8):
+        raise HTTPException(status_code=404, detail="Unknown guarantor step")
+    try:
+        app_uuid = UUID(application_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+        
+    guarantor_row = await conn.fetchrow(
+        "SELECT id, full_name FROM guarantors WHERE loan_id = $1 AND slot = $2",
+        app_uuid, guarantor_index
+    )
+    if not guarantor_row:
+        raise HTTPException(status_code=404, detail="Guarantor not found")
+        
+    guarantor_id = guarantor_row["id"]
+    from app.domains.signing.service import SigningService
+    from app.domains.signing.repository import SigningRepository
+    signing_svc = SigningService(SigningRepository(conn))
+    latest = await signing_svc.repo.latest_version(app_uuid, "guarantor", str(guarantor_id))
+    if latest and latest["status"] in ("sent", "signed"):
+        raise HTTPException(status_code=403, detail="This guarantor is frozen or signed and cannot be modified.")
+
     form_data = await request.form()
     data_dict = form_data_to_jsonable_dict(form_data)
-    await service.save_wizard_step(UUID(application_id), guarantor_index, step, data_dict, current_user.id)
+    await service.save_wizard_step(app_uuid, guarantor_index, step, data_dict, current_user.id)
 
-    if step < 8:
+    if step < 7:
         return RedirectResponse(url=f"/applications/{application_id}/guarantors/{guarantor_index}/step/{step + 1}", status_code=status.HTTP_303_SEE_OTHER)
     else:
         await service.mark_slot_submitted(
-            loan_id=UUID(application_id),
+            loan_id=app_uuid,
             org_id=current_user.org_id,
             slot=guarantor_index,
             submitted_by=current_user.id,
             user_role=current_user.role,
         )
-        return RedirectResponse(url=f"/applications/{application_id}/step/3", status_code=status.HTTP_303_SEE_OTHER)
+        
+        loan_repo = LoanRepository(conn)
+        stage_data_row = await loan_repo.get_stage_data(app_uuid, f"guarantor_{guarantor_index}")
+        payload = (stage_data_row or {}).get("data_json") or {}
+        
+        latest_ver = await signing_svc.repo.latest_version(app_uuid, "guarantor", str(guarantor_id))
+        if latest_ver and latest_ver["status"] == "signed":
+            await signing_svc.correct(app_uuid, "guarantor", str(guarantor_id), current_user.id)
+        version = await signing_svc.freeze_version(
+            app_uuid, "guarantor", str(guarantor_id), payload, current_user.id
+        )
+        
+        await signing_svc.repo.invalidate_sessions(app_uuid, "guarantor", str(guarantor_id))
+        
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        link_session = await signing_svc.issue_session(
+            app_uuid, "guarantor", str(guarantor_id), [version["id"]], current_user.id,
+            lifetime=timedelta(minutes=1440),
+            token_hash=token_hash
+        )
+        
+        base_url = str(request.base_url).rstrip("/")
+        share_url = f"{base_url}/guarantor-access/{raw_token}"
+        
+        query = urlencode({"success": f"Guarantor slot {guarantor_index} completed. Guarantor link: {share_url}"})
+        return RedirectResponse(url=f"/applications/{application_id}?{query}", status_code=status.HTTP_303_SEE_OTHER)
 
 @router.get("/applications/{application_id}/documents/upload")
 async def render_document_upload(
@@ -3169,6 +3382,133 @@ async def process_share_intake_start(
     return redirect
 
 
+@router.post("/applications/{application_id}/client-link")
+async def generate_existing_client_link(
+    request: Request,
+    application_id: str,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    role = current_user.role.lower().replace(" ", "_")
+    if role not in {"account_officer", "loan_officer"}:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    try:
+        app_id = UUID(application_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+
+    app = await LoanRepository(conn).get_by_id(app_id, current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    if app.created_by != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have permission to share this application",
+        )
+    if app.stage != "intake":
+        raise HTTPException(
+            status_code=409,
+            detail="Only an intake application can be shared with the client",
+        )
+
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+    token = jwt.encode(
+        {
+            "type": "existing_client_signing",
+            "app_id": str(app_id),
+            "org_id": str(current_user.org_id),
+            "officer_id": str(current_user.id),
+            "exp": expires_at,
+            "nonce": secrets.token_hex(16),
+        },
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+    )
+    base_url = str(request.base_url).rstrip("/")
+    return {
+        "share_url": f"{base_url}/client-access/{token}",
+        "expires_at": expires_at,
+    }
+
+
+@router.get("/client-access/{token}")
+async def redeem_existing_client_link(
+    request: Request,
+    token: str,
+    conn=Depends(db_conn),
+):
+    link = decode_access_token(token)
+    if not link or link.get("type") != "existing_client_signing":
+        return templates.TemplateResponse(
+            request,
+            "shared/client_error.html",
+            {"error_message": "This client link is invalid or expired."},
+            status_code=403,
+        )
+
+    try:
+        app_id = UUID(link["app_id"])
+        org_id = UUID(link["org_id"])
+        officer_id = UUID(link["officer_id"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(status_code=403, detail="Invalid client link")
+
+    app = await LoanRepository(conn).get_by_id(app_id, org_id)
+    if not app or app.stage != "intake" or app.created_by != officer_id:
+        return templates.TemplateResponse(
+            request,
+            "shared/client_error.html",
+            {"error_message": "This application is no longer available for signing."},
+            status_code=403,
+        )
+
+    signing = SigningService(SigningRepository(conn))
+    latest = await signing.repo.latest_version(app_id, "applicant_stage", "intake")
+    if not latest:
+        data = await get_loan_service(conn).get_wizard_data(app_id)
+        latest = await signing.repo.create_draft(
+            app_id, "applicant_stage", "intake", data, officer_id
+        )
+    signing_session = await signing.issue_session(
+        app_id,
+        "applicant",
+        "applicant",
+        [latest["id"]],
+        officer_id,
+        lifetime=timedelta(hours=2),
+    )
+
+    session_expires = datetime.now(timezone.utc) + timedelta(hours=2)
+    session_token = jwt.encode(
+        {
+            "type": "client_session",
+            "app_id": str(app_id),
+            "org_id": str(org_id),
+            "officer_id": str(officer_id),
+            "signing_session_id": str(signing_session["id"]),
+            "exp": session_expires,
+        },
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+    )
+    secure = (
+        settings.COOKIE_SECURE
+        or request.url.scheme == "https"
+        or request.headers.get("x-forwarded-proto") == "https"
+    )
+    response = RedirectResponse("/client-form/apply/step/1", status_code=303)
+    response.set_cookie(
+        "client_session",
+        session_token,
+        httponly=True,
+        secure=secure,
+        samesite="lax",
+        max_age=2 * 60 * 60,
+        path="/",
+    )
+    return response
+
+
 def get_client_session_data(request: Request) -> dict:
     cookie_val = request.cookies.get("client_session")
     if not cookie_val:
@@ -3185,6 +3525,64 @@ def get_client_session_data(request: Request) -> dict:
     return payload
 
 
+@router.post("/client-form/signing/otp/start")
+async def start_client_signing_otp(
+    session=Depends(get_client_session_data),
+    conn=Depends(db_conn),
+):
+    signing_session_id = session.get("signing_session_id")
+    if not signing_session_id:
+        raise HTTPException(status_code=400, detail="No active signing session")
+    signing = SigningService(SigningRepository(conn))
+    auth_session, otp = await signing.begin_otp(UUID(signing_session_id))
+    result = {
+        "transaction_id": auth_session["transaction_id"],
+        "message": "OTP sent to the client's registered phone number.",
+    }
+    if not settings.is_production:
+        result["otp_preview_development_only"] = otp
+    return result
+
+
+@router.post("/client-form/signing/viewed")
+async def mark_client_signing_document_viewed(
+    session=Depends(get_client_session_data),
+    conn=Depends(db_conn),
+):
+    signing_session_id = session.get("signing_session_id")
+    if not signing_session_id:
+        raise HTTPException(status_code=400, detail="No active signing session")
+    token_jti = await conn.fetchval(
+        "SELECT token_jti FROM signing_sessions WHERE id=$1",
+        UUID(signing_session_id),
+    )
+    if not token_jti:
+        raise HTTPException(status_code=404, detail="Signing session not found")
+    viewed = await SigningRepository(conn).mark_viewed(token_jti)
+    if not viewed:
+        raise HTTPException(status_code=409, detail="Signing session is no longer active")
+    return {"viewed": True}
+
+
+@router.post("/client-form/signing/otp/verify")
+async def verify_client_signing_otp(
+    request: Request,
+    session=Depends(get_client_session_data),
+    conn=Depends(db_conn),
+):
+    if not session.get("signing_session_id"):
+        raise HTTPException(status_code=400, detail="No active signing session")
+    body = await request.json()
+    transaction_id = body.get("transaction_id")
+    otp = body.get("otp")
+    if not transaction_id or not otp:
+        raise HTTPException(
+            status_code=400, detail="transaction_id and otp are required"
+        )
+    await SigningService(SigningRepository(conn)).verify_otp(transaction_id, otp)
+    return {"verified": True}
+
+
 @router.get("/client-form/apply/step/{step}")
 async def render_client_wizard_step(
     request: Request,
@@ -3192,7 +3590,7 @@ async def render_client_wizard_step(
     session = Depends(get_client_session_data),
     conn = Depends(db_conn)
 ):
-    if step not in range(1, 9):
+    if step not in range(1, 10):
         raise HTTPException(status_code=404, detail="Unknown intake step")
     app_id = session.get("app_id")
     org_id = session.get("org_id")
@@ -3209,8 +3607,13 @@ async def render_client_wizard_step(
     service = get_loan_service(conn)
     data = await service.get_wizard_data(UUID(app_id))
 
+    if step == 3:
+        return RedirectResponse(
+            url="/client-form/apply/step/4",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     if step == 2 and data.get("marital_status") == "Single":
-        return RedirectResponse(url=f"/client-form/apply/step/3", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/client-form/apply/step/4", status_code=status.HTTP_303_SEE_OTHER)
     
     from app.domains.users.repository import UserRepository
     officer = await UserRepository(conn).get_by_id(UUID(officer_id))
@@ -3223,6 +3626,7 @@ async def render_client_wizard_step(
         step=step,
         data=data,
         officer_name=officer_name,
+        assistance_required=app.assistance_required,
         hide_tabbar=True,
     )
     return templates.TemplateResponse(request, "shared/client_wizard.html", ctx)
@@ -3235,8 +3639,13 @@ async def process_client_wizard_step(
     session = Depends(get_client_session_data),
     conn = Depends(db_conn)
 ):
-    if step not in range(1, 9):
+    if step not in range(1, 10):
         raise HTTPException(status_code=404, detail="Unknown intake step")
+    if step == 3:
+        return RedirectResponse(
+            url="/client-form/apply/step/4",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     app_id = session.get("app_id")
     org_id = session.get("org_id")
     officer_id = session.get("officer_id")
@@ -3255,13 +3664,97 @@ async def process_client_wizard_step(
     service = get_loan_service(conn)
     await service.save_wizard_step(UUID(app_id), step, data_dict, UUID(officer_id), UUID(org_id))
 
-    if step < 8:
+    if request.query_params.get("draft") == "1":
+        return {"saved": True, "step": step}
+
+    if step == 9:
+        required_consents = (
+            "review_confirmed",
+            "consent_credit_bureau",
+            "consent_credit_check",
+            "consent_cheque",
+            "consent_gsi",
+        )
+        missing = [key for key in required_consents if not data_dict.get(key)]
+        if missing:
+            raise HTTPException(
+                status_code=422,
+                detail="Review confirmation and all consent declarations are required",
+            )
+
+        signature_data = data_dict.get("applicant_signature", "")
+        if not signature_data.startswith("data:image/png;base64,"):
+            raise HTTPException(status_code=422, detail="Applicant signature is required")
+        try:
+            signature_bytes = base64.b64decode(
+                signature_data.split(",", 1)[1], validate=True
+            )
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=422, detail="Applicant signature is invalid")
+
+        signing_session_id = session.get("signing_session_id")
+        if not signing_session_id:
+            raise HTTPException(status_code=403, detail="Signing session is required")
+        auth_transaction_id = secrets.token_urlsafe(32)
+        auth_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+        auth_session = await SigningRepository(conn).authenticate_redeemed_link(
+            UUID(signing_session_id),
+            auth_transaction_id,
+            auth_expires_at,
+        )
+        if not auth_session:
+            raise HTTPException(status_code=403, detail="Signing session is no longer active")
+
+        saved = await repo.get_stage_data(UUID(app_id), "intake")
+        payload = (saved or {}).get("data_json") or {}
+        signing = SigningService(SigningRepository(conn))
+        version = await signing.freeze_version(
+            UUID(app_id), "applicant_stage", "intake", payload, UUID(officer_id)
+        )
+
+        async def store_applicant_signature(content: bytes, digest: str, version_row: dict) -> str:
+            from pathlib import Path
+
+            folder = (
+                Path(settings.DOCUMENT_UPLOAD_DIR)
+                / str(org_id)
+                / str(app_id)
+                / "signatures"
+                / "applicant"
+                / str(version_row["version_number"])
+            )
+            folder.mkdir(parents=True, exist_ok=True)
+            path = folder / f"{digest}.png"
+            path.write_bytes(content)
+            return path.as_uri()
+
+        await signing.sign(
+            version=version,
+            auth_transaction_id=auth_transaction_id,
+            signature_bytes=signature_bytes,
+            storage_upload=store_applicant_signature,
+            subject_type="applicant",
+            subject_id="applicant",
+            signer_identity_ref=app.applicant_name,
+            consent_text_version="v1",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            mark_type=data_dict.get("mark_type") or "drawn_signature",
+            assistance_type=data_dict.get("assistance_type") or "self_read",
+        )
+        return RedirectResponse(
+            url="/client-form/success",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    if step < 9:
         next_step = step + 1
         if step == 1 and data_dict.get("marital_status") == "Single":
-            next_step = 3
+            next_step = 4
+        elif step == 2:
+            next_step = 4
         return RedirectResponse(url=f"/client-form/apply/step/{next_step}", status_code=status.HTTP_303_SEE_OTHER)
-    else:
-        return RedirectResponse(url="/client-form/success", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/client-form/success", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/client-form/apply/documents/upload")

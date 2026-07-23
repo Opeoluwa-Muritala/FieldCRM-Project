@@ -490,7 +490,7 @@ async def create_mobile_borrower(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"loan_officer", "system_admin"})
+    _ensure_roles(current_user, {"account_officer", "loan_officer", "system_admin"})
     app = await _loan_service(conn).create_loan(
         org_id=current_user.org_id,
         customer_type="new",

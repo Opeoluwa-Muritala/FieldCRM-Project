@@ -217,3 +217,199 @@ def generate_offer_letter_pdf(loan: dict, org: dict, rate: float, clauses: list[
 </div>
 </body></html>"""
     return _to_pdf(html)
+
+
+def generate_application_form_pdf(
+    loan: dict,
+    org: dict,
+    wizard_data: dict,
+    signature_event: dict | None,
+    witness_event: dict | None = None,
+    evidential_text: str | None = None
+) -> bytes:
+    # Build signature HTML
+    sig_html = ""
+    if signature_event and signature_event.get("signature_image_ref"):
+        sig_ref = signature_event["signature_image_ref"]
+        sig_html = f'<img src="{sig_ref}" style="max-height:80px; display:block;" alt="Signature">'
+    else:
+        sig_html = '<div style="height:80px; border-bottom:1px solid #000;"></div>'
+
+    # Build witness signature HTML if assisted
+    witness_html = ""
+    if witness_event and witness_event.get("signature_image_ref"):
+        wit_ref = witness_event["signature_image_ref"]
+        witness_html = f"""
+        <div style="margin-top: 20px; width: 250px;">
+          <img src="{wit_ref}" style="max-height:80px; display:block;" alt="Witness Signature">
+          <p><strong>Witness Attestation</strong></p>
+          <p style="font-size:10px; color:#555;">{witness_event.get('reader_witness_attestation_text', '')}</p>
+          <p>Witness: {witness_event.get('signer_identity_ref', '')}</p>
+        </div>
+        """
+
+    # Evidential wording block
+    evidence_block = ""
+    if evidential_text:
+        evidence_block = f"""
+        <div style="margin-top:40px; padding:15px; border:1px solid #333; background-color:#f9f9f9; font-size:10px; line-height:1.4;">
+          {evidential_text}
+        </div>
+        """
+
+    html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Loan Application Form</title>
+<style>
+  body {{ font-family: Arial, sans-serif; font-size: 11px; margin: 40px; line-height: 1.5; }}
+  h1 {{ font-size: 16px; text-align: center; text-transform: uppercase; margin-bottom: 5px; }}
+  h2 {{ font-size: 13px; text-align: center; text-transform: uppercase; margin-bottom: 20px; color: #333; }}
+  .section {{ margin-top: 15px; font-weight: bold; font-size: 12px; border-bottom: 1.5px solid #333; padding-bottom: 3px; }}
+  table {{ width: 100%; border-collapse: collapse; margin: 10px 0; }}
+  td {{ padding: 5px 8px; border: 1px solid #ccc; }}
+  .label {{ font-weight: bold; width: 30%; background-color: #fcfcfc; }}
+  .value {{ width: 70%; }}
+</style></head><body>
+<div style="text-align: center; margin-bottom: 25px;">
+  <h1>{org.get('name', 'Mainstreet Microfinance Bank')}</h1>
+  <h2>Loan Application Form (MMFB/CRM/01)</h2>
+  <p>Reference: <strong>{loan.get('ref_no', '—')}</strong></p>
+</div>
+
+<div class="section">Personal & Contact Details</div>
+<table>
+  <tr><td class="label">Full Name</td><td class="value">{wizard_data.get('full_name', '—')}</td></tr>
+  <tr><td class="label">Gender / Marital Status</td><td class="value">{wizard_data.get('gender', '—')} / {wizard_data.get('marital_status', '—')}</td></tr>
+  <tr><td class="label">Phone / Email</td><td class="value">{wizard_data.get('phone', '—')} / {wizard_data.get('email', '—')}</td></tr>
+  <tr><td class="label">BVN</td><td class="value">{wizard_data.get('bvn', '—')}</td></tr>
+  <tr><td class="label">Residential Address</td><td class="value">{wizard_data.get('residential_address', '—')}</td></tr>
+</table>
+
+<div class="section">Employment / Business Details</div>
+<table>
+  <tr><td class="label">Employment Type</td><td class="value">{wizard_data.get('employment_type', '—')}</td></tr>
+  <tr><td class="label">Employer Name / Business Name</td><td class="value">{wizard_data.get('employer_name', '') or wizard_data.get('business_name', '—')}</td></tr>
+  <tr><td class="label">Monthly Income / Sales</td><td class="value">{_naira(wizard_data.get('monthly_salary') or wizard_data.get('monthly_sales'))}</td></tr>
+</table>
+
+<div class="section">Loan Details Requested</div>
+<table>
+  <tr><td class="label">Requested Amount</td><td class="value">{_naira(wizard_data.get('loan_amount'))}</td></tr>
+  <tr><td class="label">Loan Purpose</td><td class="value">{wizard_data.get('loan_purpose', '—')}</td></tr>
+  <tr><td class="label">Tenor</td><td class="value">{wizard_data.get('loan_tenor', '—')} months</td></tr>
+  <tr><td class="label">Payout Bank Details</td><td class="value">{wizard_data.get('payout_bank_name', '—')} - {wizard_data.get('payout_account_number', '—')}</td></tr>
+</table>
+
+<div class="section">Declarations & Consents</div>
+<table>
+  <tr><td class="label">Credit Bureau Disclosure</td><td class="value">{"CONSENTED" if wizard_data.get('consent_credit_bureau') else "NOT SPECIFIED"}</td></tr>
+  <tr><td class="label">Credit Check Authorisation</td><td class="value">{"CONSENTED" if wizard_data.get('consent_credit_check') else "NOT SPECIFIED"}</td></tr>
+  <tr><td class="label">Cheque Recovery Authorisation</td><td class="value">{"CONSENTED" if wizard_data.get('consent_cheque') else "NOT SPECIFIED"}</td></tr>
+  <tr><td class="label">GSI Mandate</td><td class="value">{"CONSENTED" if wizard_data.get('consent_gsi') else "NOT SPECIFIED"}</td></tr>
+</table>
+
+<div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
+  <div style="width: 250px;">
+    {sig_html}
+    <p><strong>Applicant Signature</strong></p>
+    <p>Date: {datetime.now().strftime('%d %B %Y')}</p>
+  </div>
+  {witness_html}
+</div>
+
+{evidence_block}
+</body></html>"""
+    return _to_pdf(html)
+
+
+def generate_guarantor_pledge_pdf(
+    loan: dict,
+    org: dict,
+    guarantor_data: dict,
+    signature_event: dict | None,
+    witness_event: dict | None = None,
+    evidential_text: str | None = None
+) -> bytes:
+    # Build signature HTML
+    sig_html = ""
+    if signature_event and signature_event.get("signature_image_ref"):
+        sig_ref = signature_event["signature_image_ref"]
+        sig_html = f'<img src="{sig_ref}" style="max-height:80px; display:block;" alt="Signature">'
+    else:
+        sig_html = '<div style="height:80px; border-bottom:1px solid #000;"></div>'
+
+    # Build witness signature HTML if assisted
+    witness_html = ""
+    if witness_event and witness_event.get("signature_image_ref"):
+        wit_ref = witness_event["signature_image_ref"]
+        witness_html = f"""
+        <div style="margin-top: 20px; width: 250px;">
+          <img src="{wit_ref}" style="max-height:80px; display:block;" alt="Witness Signature">
+          <p><strong>Witness Attestation</strong></p>
+          <p style="font-size:10px; color:#555;">{witness_event.get('reader_witness_attestation_text', '')}</p>
+          <p>Witness: {witness_event.get('signer_identity_ref', '')}</p>
+        </div>
+        """
+
+    # Evidential wording block
+    evidence_block = ""
+    if evidential_text:
+        evidence_block = f"""
+        <div style="margin-top:40px; padding:15px; border:1px solid #333; background-color:#f9f9f9; font-size:10px; line-height:1.4;">
+          {evidential_text}
+        </div>
+        """
+
+    html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Guarantor Pledge Form</title>
+<style>
+  body {{ font-family: Arial, sans-serif; font-size: 11px; margin: 40px; line-height: 1.5; }}
+  h1 {{ font-size: 16px; text-align: center; text-transform: uppercase; margin-bottom: 5px; }}
+  h2 {{ font-size: 13px; text-align: center; text-transform: uppercase; margin-bottom: 20px; color: #333; }}
+  .section {{ margin-top: 15px; font-weight: bold; font-size: 12px; border-bottom: 1.5px solid #333; padding-bottom: 3px; }}
+  table {{ width: 100%; border-collapse: collapse; margin: 10px 0; }}
+  td {{ padding: 5px 8px; border: 1px solid #ccc; }}
+  .label {{ font-weight: bold; width: 30%; background-color: #fcfcfc; }}
+  .value {{ width: 70%; }}
+</style></head><body>
+<div style="text-align: center; margin-bottom: 25px;">
+  <h1>{org.get('name', 'Mainstreet Microfinance Bank')}</h1>
+  <h2>Guarantor Verification & Pledge Form (MMFB/CRM/04)</h2>
+  <p>Reference: <strong>{loan.get('ref_no', '—')}</strong></p>
+</div>
+
+<div class="section">Guarantor Personal Details</div>
+<table>
+  <tr><td class="label">Full Name</td><td class="value">{guarantor_data.get('name', '—')}</td></tr>
+  <tr><td class="label">Relationship to Client</td><td class="value">{guarantor_data.get('relationship', '—')}</td></tr>
+  <tr><td class="label">Phone / BVN</td><td class="value">{guarantor_data.get('phone', '—')} / {guarantor_data.get('bvn', '—')}</td></tr>
+  <tr><td class="label">Residential Address</td><td class="value">{guarantor_data.get('home_address', '—')}</td></tr>
+</table>
+
+<div class="section">Guarantor Employment / Income Details</div>
+<table>
+  <tr><td class="label">Employment Type</td><td class="value">{guarantor_data.get('employment_type', '—')}</td></tr>
+  <tr><td class="label">Employer Name / Position</td><td class="value">{guarantor_data.get('employer_name', '—')} / {guarantor_data.get('position', '—')}</td></tr>
+  <tr><td class="label">Monthly Income</td><td class="value">{_naira(guarantor_data.get('monthly_salary'))}</td></tr>
+</table>
+
+<div class="section">Guarantee Pledge Terms</div>
+<p style="font-size:12px; line-height:1.6; margin: 15px 0;">
+  I, <strong>{guarantor_data.get('name', '[Guarantor Name]')}</strong>, hereby guarantee the repayment of the loan facility of up to 
+  <strong>{_naira(guarantor_data.get('max_guarantee'))}</strong> granted to the borrower <strong>{loan.get('applicant_name', '—')}</strong>. 
+  In the event of default by the borrower, I authorise Mainstreet Microfinance Bank to recover any outstanding balance from my 
+  bank account <strong>{guarantor_data.get('account_number', '—')}</strong> at <strong>{guarantor_data.get('bank_name', '—')}</strong> using my cheque number 
+  <strong>{guarantor_data.get('cheque_number', '—')}</strong> or any other legal means.
+</p>
+
+<div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
+  <div style="width: 250px;">
+    {sig_html}
+    <p><strong>Guarantor Signature</strong></p>
+    <p>Date: {datetime.now().strftime('%d %B %Y')}</p>
+  </div>
+  {witness_html}
+</div>
+
+{evidence_block}
+</body></html>"""
+    return _to_pdf(html)

@@ -1,0 +1,309 @@
+{% extends "base/shell.html" %}
+{% set hide_tabbar = true %}
+{% set mobile_title_text = "Guarantor Signing" %}
+
+{% block title %}Guarantor Pledge Form | FieldCRM{% endblock %}
+
+{% block breadcrumb %}Loans &rarr; Guarantor Signing{% endblock %}
+{% block page_title %}Guarantor Verification & Pledge{% endblock %}
+
+{% block shell %}
+<div style="min-height: 100vh; background-color: var(--bg-secondary); padding: 32px 16px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; width: 100%;">
+    <div class="brand-logo-wrapper" style="text-align: center; margin-bottom: 24px;">
+        <img src="{{ brand_logo_black }}" alt="Mainstreet Microfinance Bank Logo" style="max-height: 48px;">
+        <h2 style="font-family: 'Montserrat', sans-serif; font-size: 20px; color: #111827; margin: 8px 0 2px;">Mainstreet Microfinance Bank</h2>
+        <p style="font-size: 12px; color: var(--text-muted); margin: 0;">Guarantor Verification & Pledge Form (MMFB/CRM/04)</p>
+    </div>
+    
+    <div style="max-width: 760px; width: 100%;">
+        <div class="page-card" style="background-color: var(--bg-primary); padding: 32px; border-radius: 16px; border: 1.5px solid var(--border-color); box-shadow: var(--shadow-sm);">
+            
+            <h3 style="margin-top: 0; margin-bottom: 24px; font-family: 'Montserrat', sans-serif; font-size: 18px; text-align: center; text-transform: uppercase;">
+                GUARANTOR VERIFICATION & PLEDGE
+            </h3>
+
+            <!-- DOCUMENT PREVIEW FOR GUARANTOR -->
+            <div class="final-document-container" style="max-height: 350px; overflow-y: auto; padding: 20px; border: 1.5px solid var(--border-color); border-radius: 12px; margin-bottom: 24px; background-color: var(--bg-secondary);">
+                <h4 style="margin: 0 0 12px 0; font-weight: 600; font-size: 14px; text-transform: uppercase;">Guarantor Personal Details</h4>
+                <div style="font-size: 12px; margin-bottom: 20px; line-height: 1.6;">
+                    <p style="margin: 4px 0;"><strong>Full Name:</strong> {{ guarantor_data.get('name', '—') }}</p>
+                    <p style="margin: 4px 0;"><strong>Relationship to Borrower:</strong> {{ guarantor_data.get('relationship', '—') }}</p>
+                    <p style="margin: 4px 0;"><strong>Phone:</strong> {{ guarantor_data.get('phone', '—') }} &nbsp;|&nbsp; <strong>BVN:</strong> {{ guarantor_data.get('bvn', '—') }}</p>
+                    <p style="margin: 4px 0;"><strong>Residential Address:</strong> {{ guarantor_data.get('home_address', '—') }}</p>
+                </div>
+
+                <h4 style="margin: 0 0 12px 0; font-weight: 600; font-size: 14px; text-transform: uppercase;">Employment & Income</h4>
+                <div style="font-size: 12px; margin-bottom: 20px; line-height: 1.6;">
+                    <p style="margin: 4px 0;"><strong>Employer / Business Name:</strong> {{ guarantor_data.get('employer_name', '—') }}</p>
+                    <p style="margin: 4px 0;"><strong>Position:</strong> {{ guarantor_data.get('position', '—') }}</p>
+                    <p style="margin: 4px 0;"><strong>Monthly Salary/Income:</strong> ₦{{ guarantor_data.get('monthly_salary', '—') }}</p>
+                </div>
+
+                <h4 style="margin: 0 0 12px 0; font-weight: 600; font-size: 14px; text-transform: uppercase;">Guarantee Pledge Terms</h4>
+                <p style="font-size: 12px; line-height: 1.6; margin: 0;">
+                    I, <strong>{{ guarantor_data.get('name', '[Guarantor Name]') }}</strong>, hereby guarantee the repayment of the loan facility of up to 
+                    <strong>₦{{ guarantor_data.get('max_guarantee', '—') }}</strong> granted to the borrower <strong>{{ app.applicant_name }}</strong>. 
+                    In the event of default by the borrower, I authorise Mainstreet Microfinance Bank to recover any outstanding balance from my 
+                    bank account <strong>{{ guarantor_data.get('account_number', '—') }}</strong> at <strong>{{ guarantor_data.get('bank_name', '—') }}</strong> using my cheque number 
+                    <strong>{{ guarantor_data.get('cheque_number', '—') }}</strong> or any other legal means.
+                </p>
+            </div>
+
+            <form method="POST" action="/client-form/apply/guarantors/sign" onsubmit="return validateForm()">
+                <!-- REVIEW CONFIRMATION CHECKBOX -->
+                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary); margin-bottom: 24px;">
+                    <label style="display:flex; align-items:center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 500; margin: 0;">
+                        <input type="checkbox" id="review_confirmed" name="review_confirmed" value="1" onchange="onReviewConfirmedChanged(this)">
+                        I have reviewed the details and guarantee terms and confirm they are accurate.
+                    </label>
+                </div>
+
+                <!-- OTP SMS VERIFICATION -->
+                <div id="otpSection" style="margin-bottom: 24px; border: 1px dashed var(--border-color); padding: 16px; border-radius: 12px; background-color: var(--bg-secondary); display: none;">
+                    <h4 style="margin: 0 0 6px 0; font-size: 13px; font-weight: 600;">Guarantor Identity Verification (OTP)</h4>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">Verify your identity to unlock the signature canvas.</p>
+                    
+                    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+                        <button type="button" id="btnRequestOtp" class="btn-ghost-link" style="color: var(--accent-brand);" onclick="requestOtp()">Request Verification Code</button>
+                        <span id="otpStatus" style="font-size: 12px; font-weight:500;"></span>
+                    </div>
+                    
+                    <div id="otpInputDiv" style="display: none; align-items: center; gap: 12px;">
+                        <input type="text" id="otpCode" placeholder="Enter OTP Code" class="field-input" style="max-width: 180px; margin-bottom: 0; padding: 6px 12px;">
+                        <button type="button" class="btn-ghost-link" style="color: var(--accent-success);" onclick="verifyOtp()">Verify Code</button>
+                        <input type="hidden" name="auth_transaction_id" id="auth_transaction_id">
+                    </div>
+                </div>
+
+                <!-- SIGNING BLOCK -->
+                <div id="signingBlock" style="opacity: 0.3; pointer-events: none; transition: opacity 0.3s ease;">
+                    
+                    <!-- ASSISTED SIGNING ATTENTION & WITNESS FIELDS -->
+                    {% if assistance_required %}
+                    <div style="border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary); margin-bottom: 24px;">
+                        <h4 style="font-size: 14px; color: var(--accent-brand); font-weight: 600; margin-bottom: 8px;">Assisted Signing Attestation</h4>
+                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">The guarantor requires assistance to sign. A witness must read the pledge aloud and sign below.</p>
+                        
+                        <div class="form-group">
+                            <label class="field-label">Assistance Type <span class="required">*</span></label>
+                            <select name="assistance_type" class="field-input" required>
+                                <option value="read_aloud_by_staff">Read aloud by staff member</option>
+                                <option value="read_aloud_by_family_witness">Read aloud by family / third-party witness</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="field-label">Mark Type <span class="required">*</span></label>
+                            <select name="mark_type" class="field-input" required>
+                                <option value="thumbprint">Thumbprint</option>
+                                <option value="drawn_signature">Drawn Signature / Mark</option>
+                                <option value="other_mark">Other Mark</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="field-label">Witness Name <span class="required">*</span></label>
+                            <input type="text" name="witness_name" class="field-input" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="field-label">Witness Attestation Statement <span class="required">*</span></label>
+                            <textarea name="witness_attestation" class="field-input" required style="height: 80px; font-size:12px;">I certify that I have read and explained the guarantor pledge aloud to the guarantor in a language they understand, and they appeared to fully comprehend and consent to all terms.</textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="field-label">Witness Signature Canvas <span class="required">*</span></label>
+                            <div class="signature-box" style="margin-bottom: 8px; border: 1.5px solid var(--border-color); height: 150px; position: relative;">
+                                <canvas id="witness_sig_canvas" style="width: 100%; height: 100%;"></canvas>
+                                <button type="button" class="signature-clear-btn" onclick="clearSignature('witness_sig_canvas')" style="position: absolute; right: 10px; bottom: 10px;">Clear</button>
+                            </div>
+                            <input type="hidden" name="witness_signature" id="witness_sig_val" required>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Main Signature block -->
+                    <div style="border-top: 0.5px solid var(--color-divider); padding-top: 20px; margin-bottom: 24px;">
+                        <label class="field-label">Guarantor Signature / Mark <span class="required">*</span></label>
+                        <div class="signature-box" style="margin-bottom: 8px; border: 1.5px solid var(--border-color); height: 150px; position: relative;">
+                            <canvas id="guarantor_sig_canvas" style="width: 100%; height: 100%;"></canvas>
+                            <button type="button" class="signature-clear-btn" onclick="clearSignature('guarantor_sig_canvas')" style="position: absolute; right: 10px; bottom: 10px;">Clear</button>
+                        </div>
+                        <input type="hidden" name="guarantor_signature" id="guarantor_sig_val" required>
+                        <span style="font-size: 12px; color: var(--text-muted);">I declare that all information provided in this form is true and correct.</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 16px; margin-top: 32px;">
+                    <button type="submit" class="btn-primary" style="background-color: var(--accent-brand); border: none; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        Verify & Complete Pledge
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    function onReviewConfirmedChanged(chk) {
+        if (chk.checked) {
+            fetch('/client-form/signing/viewed', { method: 'POST' })
+                .then(r => r.json())
+                .then(d => {
+                    document.getElementById('otpSection').style.display = 'block';
+                })
+                .catch(e => console.error("Error logging viewed status", e));
+        } else {
+            document.getElementById('otpSection').style.display = 'none';
+            document.getElementById('signingBlock').style.opacity = '0.3';
+            document.getElementById('signingBlock').style.pointerEvents = 'none';
+        }
+    }
+
+    let currentTransactionId = null;
+    function requestOtp() {
+        const statusSpan = document.getElementById('otpStatus');
+        statusSpan.style.color = 'var(--text-muted)';
+        statusSpan.textContent = 'Requesting OTP...';
+        
+        fetch('/client-form/signing/otp/start', { method: 'POST' })
+            .then(r => r.json())
+            .then(d => {
+                currentTransactionId = d.transaction_id;
+                document.getElementById('otpInputDiv').style.display = 'flex';
+                statusSpan.style.color = 'var(--accent-success)';
+                statusSpan.textContent = d.message;
+                
+                if (d.otp_preview_development_only) {
+                    statusSpan.textContent += ` [Dev Sandbox OTP: ${d.otp_preview_development_only}]`;
+                }
+            })
+            .catch(e => {
+                statusSpan.style.color = 'var(--accent-danger)';
+                statusSpan.textContent = 'Failed to generate OTP. Please retry.';
+            });
+    }
+
+    function verifyOtp() {
+        const otpCode = document.getElementById('otpCode').value;
+        const statusSpan = document.getElementById('otpStatus');
+        if (!otpCode) {
+            alert("Please enter the verification code");
+            return;
+        }
+        
+        fetch('/client-form/signing/otp/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ transaction_id: currentTransactionId, otp: otpCode })
+        })
+        .then(r => {
+            if (!r.ok) throw new Error("Incorrect code");
+            return r.json();
+        })
+        .then(d => {
+            statusSpan.style.color = 'var(--accent-success)';
+            statusSpan.textContent = 'Identity Verified Successfully!';
+            document.getElementById('auth_transaction_id').value = currentTransactionId;
+            document.getElementById('signingBlock').style.opacity = '1';
+            document.getElementById('signingBlock').style.pointerEvents = 'auto';
+            document.getElementById('otpInputDiv').style.display = 'none';
+            document.getElementById('btnRequestOtp').style.display = 'none';
+        })
+        .catch(e => {
+            statusSpan.style.color = 'var(--accent-danger)';
+            statusSpan.textContent = 'Incorrect verification code; please try again.';
+        });
+    }
+
+    function initSignature(canvasId, valInputId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        // Make canvas responsive
+        const rect = canvas.parentNode.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+
+        function startDrawing(e) {
+            drawing = true;
+            draw(e);
+        }
+
+        function endDrawing() {
+            drawing = false;
+            ctx.beginPath();
+            document.getElementById(valInputId).value = canvas.toDataURL();
+        }
+
+        function draw(e) {
+            if (!drawing) return;
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#1C1A2E';
+
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            ctx.lineTo(clientX - rect.left, clientY - rect.top);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(clientX - rect.left, clientY - rect.top);
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDrawing);
+
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', endDrawing);
+    }
+
+    function clearSignature(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        if (canvasId === 'guarantor_sig_canvas') document.getElementById('guarantor_sig_val').value = '';
+        if (canvasId === 'witness_sig_canvas') document.getElementById('witness_sig_val').value = '';
+    }
+
+    window.addEventListener('load', () => {
+        initSignature('guarantor_sig_canvas', 'guarantor_sig_val');
+        initSignature('witness_sig_canvas', 'witness_sig_val');
+    });
+
+    function validateForm() {
+        const reviewChk = document.getElementById('review_confirmed');
+        if (!reviewChk || !reviewChk.checked) {
+            alert("You must check the confirmation checkbox first.");
+            return false;
+        }
+        const authId = document.getElementById('auth_transaction_id').value;
+        if (!authId) {
+            alert("Please request and verify the OTP code before submitting.");
+            return false;
+        }
+        const sigVal = document.getElementById('guarantor_sig_val').value;
+        if (!sigVal) {
+            alert("Please draw your signature / mark on the canvas.");
+            return false;
+        }
+        {% if assistance_required %}
+        const witVal = document.getElementById('witness_sig_val').value;
+        if (!witVal) {
+            alert("Please draw the witness signature on the canvas.");
+            return false;
+        }
+        {% endif %}
+        return true;
+    }
+</script>
+{% endblock %}

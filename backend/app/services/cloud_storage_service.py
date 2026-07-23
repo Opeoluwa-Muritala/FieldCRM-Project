@@ -40,6 +40,7 @@ def upload_to_cloudinary(
     mime_type: str,
     folder: str = "fieldcrm/documents",
     public_id: str | None = None,
+    overwrite: bool = True,
 ) -> UploadResult | None:
     """
     Upload file bytes to Cloudinary.
@@ -62,7 +63,7 @@ def upload_to_cloudinary(
         # transformations. `auto` classifies authenticated PDFs as raw files.
         "resource_type": "image" if mime_type in {"application/pdf", "image/jpeg", "image/png"} else "auto",
         "type": "authenticated",
-        "overwrite": True,
+        "overwrite": overwrite,
     }
     if public_id:
         upload_opts["public_id"] = public_id
@@ -81,6 +82,19 @@ def upload_to_cloudinary(
     preview_url = secure_url.replace(".pdf", ".jpg") if mime_type == "application/pdf" else secure_url
 
     return UploadResult(stored_path=secure_url, public_id=pid, preview_url=preview_url)
+
+
+def upload_immutable_evidence(file_bytes: bytes, mime_type: str, *, org_id: str,
+                              loan_id: str, doc_type: str, version: int,
+                              content_sha256: str) -> UploadResult:
+    """Store evidence under its content hash; existing objects are never replaced."""
+    public_id = f"fieldcrm/{org_id}/{loan_id}/{doc_type}/{version}/{content_sha256}"
+    result = upload_to_cloudinary(
+        file_bytes, mime_type, public_id=public_id, overwrite=False
+    )
+    if result is None:
+        raise HTTPException(status_code=503, detail="Immutable evidence storage is unavailable")
+    return result
 
 
 def upload_document(
