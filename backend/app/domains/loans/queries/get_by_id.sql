@@ -17,6 +17,7 @@ SELECT
     la.tenor_months,
     la.purpose,
     la.repayment_mode,
+    la.assistance_required,
     la.created_by,
     la.current_owner_id,
     la.credit_officer_id,

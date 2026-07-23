@@ -51,6 +51,7 @@ class LoanRow(BaseModel):
     tenor_months: Optional[int] = None
     purpose: Optional[str] = None
     repayment_mode: Optional[str] = None
+    assistance_required: bool = False
     created_by: UUID
     current_owner_id: Optional[UUID] = None
     credit_officer_id: Optional[UUID] = None

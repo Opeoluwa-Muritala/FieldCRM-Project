@@ -153,18 +153,3 @@ class LoanService:
                         logger.error(f"Failed to run BVN verification hook: {e}")
                 
             await tx_repo.save_stage_data(app_id, "intake", existing_data, user_id)
-
-            if step == 8:
-                # Account Officers complete field intake but do not formally
-                # submit loan applications. The Branch Manager owns the first
-                # review and submission decision.
-                await tx_repo.advance_stage(app_id, org_id, "branch_manager_review")
-                await tx_repo.assign_default_branch_manager(app_id, org_id)
-                await tx_audit.log(
-                    application_id=str(app_id),
-                    org_id=str(org_id),
-                    action="Complete Intake Form",
-                    from_stage="intake",
-                    to_stage="branch_manager_review",
-                    actor_id=str(user_id)
-                )

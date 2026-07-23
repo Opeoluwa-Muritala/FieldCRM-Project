@@ -13,6 +13,12 @@
     </div>
     <span class="status-badge needs-review">{{ app.status }}</span>
   </div>
+  {% if current_user.role|lower|replace(' ', '_') in ['account_officer', 'loan_officer'] and app.created_by == current_user.id %}
+  <div style="margin:0 0 20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+    <button type="button" class="btn btn-primary" id="generate-client-link">Send new link to client</button>
+    <span id="client-link-status" style="font-size:13px;color:var(--text-muted);"></span>
+  </div>
+  {% endif %}
   <div class="form-grid">
     <div class="form-group"><label class="field-label">Loan Amount</label><input class="field-input" value="NGN {{ '{:,.2f}'.format(app.amount or 0) }}" readonly></div>
     <div class="form-group"><label class="field-label">Loan Type</label><input class="field-input" value="{{ app.loan_type|replace('_', ' ')|title }}" readonly></div>
@@ -30,4 +36,27 @@
   {% else %}<tr><td colspan="2">No documents uploaded.</td></tr>{% endfor %}
   </tbody></table></div>
 </section>
+{% if current_user.role|lower|replace(' ', '_') in ['account_officer', 'loan_officer'] and app.created_by == current_user.id %}
+<script>
+document.getElementById('generate-client-link')?.addEventListener('click', async event => {
+  const button = event.currentTarget;
+  const status = document.getElementById('client-link-status');
+  button.disabled = true;
+  status.textContent = 'Generating secure link…';
+  try {
+    const response = await fetch('/applications/{{ app.id }}/client-link', {
+      method: 'POST', headers: {'Accept': 'application/json'}
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || 'Unable to generate link');
+    await navigator.clipboard.writeText(result.share_url);
+    status.textContent = 'New one-time link copied. It expires in 10 minutes.';
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
+</script>
+{% endif %}
 {% endblock %}

@@ -31,6 +31,43 @@
             <span class="status-badge {{ stage_class.get(app.stage, '') }}">{{ app.status }}</span>
         </div>
         
+        {# Secure Signing Links (Nigerian Evidence Act s.84) #}
+        <div class="page-card" style="margin-bottom: 0;">
+            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Secure Signing Links</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                {# Applicant Link #}
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 13px; font-weight: 500;">Applicant Link</span>
+                        <span id="applicant-link-status" style="font-size: 11px; color: var(--text-muted);"></span>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="btn-generate-applicant-link" style="width: 100%; font-size: 12px; padding: 6px 12px; height: auto;">
+                        Generate Applicant Link
+                    </button>
+                </div>
+                {# Guarantor Slot 1 Link #}
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 13px; font-weight: 500;">Guarantor Slot 1 Link</span>
+                        <span id="guarantor-1-link-status" style="font-size: 11px; color: var(--text-muted);"></span>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="btn-generate-guarantor-1-link" style="width: 100%; font-size: 12px; padding: 6px 12px; height: auto;">
+                        Generate Guarantor 1 Link
+                    </button>
+                </div>
+                {# Guarantor Slot 2 Link #}
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 13px; font-weight: 500;">Guarantor Slot 2 Link</span>
+                        <span id="guarantor-2-link-status" style="font-size: 11px; color: var(--text-muted);"></span>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="btn-generate-guarantor-2-link" style="width: 100%; font-size: 12px; padding: 6px 12px; height: auto;">
+                        Generate Guarantor 2 Link
+                    </button>
+                </div>
+            </div>
+        </div>
+        
         {# Vertical Stage Timeline #}
         <div class="page-card" style="margin-bottom: 0;">
             <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 16px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Application Timeline</h3>
@@ -302,4 +339,70 @@
         
     </div>
 </div>
+
+<script>
+async function showAndCopySigningLink(button, status, shareUrl) {
+  button.dataset.shareUrl = shareUrl;
+  button.textContent = shareUrl;
+  button.title = 'Click to copy this signing link';
+  button.style.overflow = 'hidden';
+  button.style.textOverflow = 'ellipsis';
+  button.style.whiteSpace = 'nowrap';
+  button.onclick = async () => {
+    await navigator.clipboard.writeText(button.dataset.shareUrl);
+    status.textContent = 'Copied!';
+    status.style.color = 'var(--accent-success)';
+  };
+  await navigator.clipboard.writeText(shareUrl);
+  status.textContent = 'Copied! Open within 10 minutes.';
+  status.style.color = 'var(--accent-success)';
+}
+
+document.getElementById('btn-generate-applicant-link')?.addEventListener('click', async event => {
+  const button = event.currentTarget;
+  const status = document.getElementById('applicant-link-status');
+  button.disabled = true;
+  status.textContent = 'Generating...';
+  try {
+    const response = await fetch('/applications/{{ app.id }}/client-link', {
+      method: 'POST', headers: {'Accept': 'application/json'}
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || 'Failed');
+    await showAndCopySigningLink(button, status, result.share_url);
+  } catch (error) {
+    status.textContent = error.message;
+    status.style.color = 'var(--accent-danger)';
+  } finally {
+    button.disabled = false;
+  }
+});
+
+async function generateGuarantorLink(slot, statusId, buttonId) {
+  const button = document.getElementById(buttonId);
+  const status = document.getElementById(statusId);
+  button.disabled = true;
+  status.textContent = 'Generating...';
+  try {
+    const response = await fetch(`/applications/{{ app.id }}/guarantor-link/${slot}`, {
+      method: 'POST', headers: {'Accept': 'application/json'}
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || 'Failed');
+    await showAndCopySigningLink(button, status, result.share_url);
+  } catch (error) {
+    status.textContent = error.message;
+    status.style.color = 'var(--accent-danger)';
+  } finally {
+    button.disabled = false;
+  }
+}
+
+document.getElementById('btn-generate-guarantor-1-link')?.addEventListener('click', () => {
+  generateGuarantorLink(1, 'guarantor-1-link-status', 'btn-generate-guarantor-1-link');
+});
+document.getElementById('btn-generate-guarantor-2-link')?.addEventListener('click', () => {
+  generateGuarantorLink(2, 'guarantor-2-link-status', 'btn-generate-guarantor-2-link');
+});
+</script>
 {% endblock %}
