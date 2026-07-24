@@ -17,9 +17,9 @@ NEXT_STAGE = {stage: WORKFLOW_STAGES[index + 1][0] for index, (stage, _) in enum
 STAGE_ROLE = dict(WORKFLOW_STAGES)
 
 ROLE_LABELS = {
-    "account_officer": "Account Officer",
-    "branch_manager": "Branch Manager",
-    "branch_supervisor": "Branch Supervisor",
+    "account_officer": "Relationship Officer",
+    "branch_manager": "Team Lead",
+    "branch_supervisor": "Supervisor",
     "credit_analyst": "Credit Analyst",
     "crm": "CRM Officer",
     "head_crm": "Head CRM",

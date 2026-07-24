@@ -819,7 +819,7 @@ async def submit_mobile_visitation_signoff(
                 org_id=current_user.org_id,
                 application_id=application_id,
                 title="Visitation Sign-Off",
-                message=f"Branch manager {verb} your visitation report.",
+                message=f"Team Lead {verb} your visitation report.",
                 notification_type="visitation_signoff",
             )
     except Exception:
@@ -1257,13 +1257,13 @@ _ONBOARDING_SLIDES: dict[str, list[dict]] = {
         {"title": "Create Applications", "subtitle": "Start a New Loan Dossier",
          "body": "Tap the + button on your Work Queue to begin a new loan application. Fill in borrower details step by step and capture documents with OCR scanning."},
         {"title": "Schedule Visits", "subtitle": "Track Your Field Visits",
-         "body": "View visits due today on your dashboard. Complete visitation reports in the field and submit them for branch manager sign-off."},
+         "body": "View visits due today on your dashboard. Complete visitation reports in the field and submit them for Team Lead sign-off."},
         {"title": "Offline Mode", "subtitle": "Work Without Internet",
          "body": "All your changes are saved locally when offline. When you reconnect, the sync queue automatically uploads completed records to the server."},
     ],
     "branch_manager": [
-        {"title": "Manager Dashboard", "subtitle": "Branch Oversight Console",
-         "body": "Monitor all applications awaiting your sign-off, review concurrence requests from field officers, and track branch disbursement targets."},
+        {"title": "Team Lead Dashboard", "subtitle": "Branch Oversight Console",
+         "body": "Monitor all applications awaiting your sign-off, review concurrence requests from Relationship Officers, and track branch disbursement targets."},
         {"title": "Approval Workflow", "subtitle": "Final Branch Decision",
          "body": "Review credit officer recommendations and complete the final approval attestation. Applications you approve move directly to disbursement ready status."},
         {"title": "Visitation Sign-Off", "subtitle": "Concur or Return Reports",
@@ -1283,7 +1283,7 @@ _ONBOARDING_SLIDES: dict[str, list[dict]] = {
     ],
     "crm": [
         {"title": "CRM Review Console", "subtitle": "Pre-Disbursement Review",
-         "body": "Review loan files approved by the branch manager. Verify credit file completeness — bureau evidence, CRMS search, NCR registration — before advancing to the Executive."},
+         "body": "Review loan files approved by the Team Lead. Verify credit file completeness — bureau evidence, CRMS search, NCR registration — before advancing to the Executive."},
         {"title": "Disbursement Processing", "subtitle": "Record & Schedule",
          "body": "Once executive instruction is issued, record the disbursement details, generate the repayment schedule, and track collections."},
         {"title": "Portfolio Tracking", "subtitle": "PAR & Loan Classification",
@@ -1728,7 +1728,7 @@ async def advance_review_workflow(
     if app.stage == "intake":
         raise HTTPException(
             status_code=409,
-            detail="Account Officers complete intake only; the Branch Manager submits the application for review.",
+            detail="Relationship Officers complete intake only; the Team Lead submits the application for review.",
         )
     if role not in {required_role, "system_admin"}:
         raise HTTPException(status_code=403, detail=f"This stage is assigned to {ROLE_LABELS[required_role]}")
@@ -1914,8 +1914,8 @@ async def list_mobile_users(
             "email": r["email"],
             "role": r["role"],
             "display_role": {
-                "loan_officer": "Loan Officer",
-                "branch_manager": "Branch Manager",
+                "loan_officer": "Relationship Officer",
+                "branch_manager": "Team Lead",
                 "auditor": "Auditor",
                 "system_admin": "System Admin",
                 "crm": "CRM Officer",

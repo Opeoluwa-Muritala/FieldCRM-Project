@@ -12,6 +12,7 @@ class UserService:
     ALLOWED_ROLES = {
         "account_officer", "branch_manager", "branch_supervisor", "credit_analyst",
         "crm", "head_crm", "auditor", "ed", "md", "legal", "system_admin",
+        "team_lead", "relationship_officer", "supervisor",
     }
     def __init__(self, repo: UserRepository):
         self.repo = repo
@@ -56,6 +57,15 @@ class UserService:
         db_role = user_in.role.lower().replace(" ", "_")
         if db_role not in self.ALLOWED_ROLES:
             raise DomainException("Select a valid role.", 400)
+        
+        # Equate Team Lead -> branch_manager, Relationship Officer -> account_officer, Supervisor -> branch_supervisor
+        role_map = {
+            "team_lead": "branch_manager",
+            "relationship_officer": "account_officer",
+            "supervisor": "branch_supervisor",
+        }
+        db_role = role_map.get(db_role, db_role)
+
         user = await self.repo.create_user(
             org_id=user_in.org_id,
             full_name=user_in.full_name,
@@ -73,6 +83,14 @@ class UserService:
         role = invite_in.role.strip().lower().replace(" ", "_")
         if role not in self.ALLOWED_ROLES:
             raise DomainException("Select a valid role.", 400)
+
+        # Equate Team Lead -> branch_manager, Relationship Officer -> account_officer, Supervisor -> branch_supervisor
+        role_map = {
+            "team_lead": "branch_manager",
+            "relationship_officer": "account_officer",
+            "supervisor": "branch_supervisor",
+        }
+        role = role_map.get(role, role)
 
         user = await self.repo.create_user(
             org_id=current_admin.org_id,
@@ -99,6 +117,14 @@ class UserService:
         normalized_role = role.strip().lower().replace(" ", "_")
         if normalized_role not in self.ALLOWED_ROLES:
             raise DomainException("Select a valid role.", 400)
+
+        # Equate Team Lead -> branch_manager, Relationship Officer -> account_officer, Supervisor -> branch_supervisor
+        role_map = {
+            "team_lead": "branch_manager",
+            "relationship_officer": "account_officer",
+            "supervisor": "branch_supervisor",
+        }
+        normalized_role = role_map.get(normalized_role, normalized_role)
 
         await self.repo.update_role(user.id, normalized_role)
         return await self.repo.get_by_id(user.id)

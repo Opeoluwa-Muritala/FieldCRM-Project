@@ -206,7 +206,7 @@
                 <div class="flat-card {% if applicant_signed %}success{% else %}warning{% endif %}">
                     {% if applicant_signed %}
                     <strong>Client signature received</strong>
-                    <p style="margin:6px 0 0;">The signed intake is locked and ready for submission to the Branch Manager.</p>
+                    <p style="margin:6px 0 0;">The signed intake is locked and ready for submission to the Team Lead.</p>
                     {% if signatures.primary %}
                     <img src="{{ signatures.primary }}" alt="Applicant signature" style="display:block; max-height:90px; margin-top:12px; padding:6px; background:#fff; border:1px solid var(--border-color); border-radius:6px;">
                     {% endif %}
@@ -715,7 +715,7 @@
                         formnovalidate
                         onclick="this.form.onsubmit=null"
                     >
-                        Submit to Branch Manager &rarr;
+                        Submit to Team Lead &rarr;
                     </button>
                     {% elif not readonly %}
                     <button type="submit" class="btn-primary-filled" id="continueBtn">

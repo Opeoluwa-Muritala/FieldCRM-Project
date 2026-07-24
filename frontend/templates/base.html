@@ -14,8 +14,9 @@
 <body>
     {% set db_role = current_user.role if current_user else "loan_officer" %}
     {% set role_labels = {
-        "loan_officer": "Loan Officer",
-        "branch_manager": "Branch Manager",
+        "loan_officer": "Relationship Officer",
+        "branch_manager": "Team Lead",
+        "branch_supervisor": "Supervisor",
         "auditor": "Auditor",
         "system_admin": "System Admin",
         "crm": "CRM Officer",
@@ -110,11 +111,11 @@
                         {% set initials = parts[0][0] %}
                     {% endif %}
                 {% else %}
-                    {% set initials = "BM" %}
+                    {% set initials = "TL" %}
                 {% endif %}
                 <div class="sidebar-user-avatar">{{ initials|upper }}</div>
                 <div class="sidebar-user-info">
-                    <div class="sidebar-user-name">{{ current_user.name if current_user else "Branch Manager" }}</div>
+                    <div class="sidebar-user-name">{{ current_user.name if current_user else "Team Lead" }}</div>
                     <div class="sidebar-user-role">{{ role }}</div>
                 </div>
                 <a href="/logout" style="margin-left: auto; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 18px;" title="Logout">

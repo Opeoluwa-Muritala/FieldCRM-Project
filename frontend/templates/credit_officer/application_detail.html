@@ -308,7 +308,7 @@
                                         {{ doc.category|replace('_', ' ')|title }}
                                     {% endif %}
                                 </td>
-                                <td>Loan Officer Upload</td>
+                                <td>Relationship Officer Upload</td>
                                 <td>{{ doc.created_at.strftime('%d %b %Y') if doc.created_at else '03 Jun 2026' }}</td>
                                 <td>
                                     <span class="status-badge {{ 'verified' if doc.status == 'verified' else 'needs-review' }}">
