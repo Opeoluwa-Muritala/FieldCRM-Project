@@ -48,7 +48,16 @@ class EmailService:
         if not self.is_configured():
             logger.warning("Email delivery is not configured; invitation link for %s: %s", recipient, invitation_url)
             return False
-        role_label = role.replace("_", " ").title()
+        role_map = {
+            "account_officer": "Relationship Officer",
+            "loan_officer": "Relationship Officer",
+            "relationship_officer": "Relationship Officer",
+            "branch_manager": "Team Lead",
+            "team_lead": "Team Lead",
+            "branch_supervisor": "Supervisor",
+            "supervisor": "Supervisor",
+        }
+        role_label = role_map.get(role.lower().replace(" ", "_"), role.replace("_", " ").title())
         text = (
             f"Hello {full_name},\n\nYou have been invited to FieldCRM as a {role_label}. "
             "Use this secure link to set your password and activate your account. It expires in 72 hours and can only be used once.\n\n"

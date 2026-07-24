@@ -3,10 +3,10 @@
 {% block shell %}
 {% set user_role = user.role|lower|replace(' ', '_') if user else 'loan_officer' %}
 {% set role_labels = {
-    'loan_officer': 'Loan Officer',
-    'account_officer': 'Account Officer',
-    'branch_manager': 'Branch Manager',
-    'branch_supervisor': 'Branch Supervisor',
+    'loan_officer': 'Relationship Officer',
+    'account_officer': 'Relationship Officer',
+    'branch_manager': 'Team Lead',
+    'branch_supervisor': 'Supervisor',
     'credit_analyst': 'Credit Analyst',
     'auditor': 'Auditor',
     'system_admin': 'System Admin',

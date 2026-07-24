@@ -112,8 +112,8 @@ class DashboardService:
     def _with_stage_display(row: dict) -> dict:
         labels = {
             "intake": "Draft",
-            "branch_manager_review": "Branch Manager Review",
-            "branch_supervisor_review": "Branch Supervisor Review",
+            "branch_manager_review": "Team Lead Review",
+            "branch_supervisor_review": "Supervisor Review",
             "credit_analyst_review": "Credit Analyst Review",
             "crm_review": "CRM Review",
             "ed_approval": "ED Approval",

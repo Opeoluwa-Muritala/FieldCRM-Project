@@ -77,10 +77,13 @@ class UserRow(BaseModel):
     def display_role(self) -> str:
         """Human-readable role for UI display."""
         mapping = {
-            "account_officer": "Account Officer",
-            "loan_officer": "Account Officer",
-            "branch_manager": "Branch Manager",
-            "branch_supervisor": "Branch Supervisor",
+            "account_officer": "Relationship Officer",
+            "loan_officer": "Relationship Officer",
+            "relationship_officer": "Relationship Officer",
+            "branch_manager": "Team Lead",
+            "team_lead": "Team Lead",
+            "branch_supervisor": "Supervisor",
+            "supervisor": "Supervisor",
             "credit_analyst": "Credit Analyst",
             "auditor": "Auditor",
             "system_admin": "System Admin",

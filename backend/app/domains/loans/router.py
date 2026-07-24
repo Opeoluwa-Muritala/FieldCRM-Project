@@ -1492,8 +1492,8 @@ async def process_approval_readiness(
 
     role = current_user.role.lower().replace(" ", "_")
     expected_stage, next_stage, audit_action = {
-        "branch_manager": ("branch_manager_review", "branch_supervisor_review", "Branch Manager Concurrence — Forwarded to Branch Supervisor"),
-        "branch_supervisor": ("branch_supervisor_review", "credit_analyst_review", "Branch Supervisor Concurrence — Forwarded to Credit Analyst"),
+        "branch_manager": ("branch_manager_review", "branch_supervisor_review", "Team Lead Concurrence — Forwarded to Supervisor"),
+        "branch_supervisor": ("branch_supervisor_review", "credit_analyst_review", "Supervisor Concurrence — Forwarded to Credit Analyst"),
     }[role]
     repo = LoanRepository(conn)
     app = await repo.approve(
@@ -1507,7 +1507,7 @@ async def process_approval_readiness(
     await audit.log(
         application_id=application_id,
         org_id=str(current_user.org_id),
-        action="Branch Manager Concurrence — Forwarded for Further Review",
+        action="Team Lead Concurrence — Forwarded for Further Review" if role == "branch_manager" else "Supervisor Concurrence — Forwarded for Further Review",
         from_stage=expected_stage,
         to_stage=next_stage,
         actor_id=str(current_user.id),

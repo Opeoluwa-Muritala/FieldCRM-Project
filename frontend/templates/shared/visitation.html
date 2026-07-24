@@ -51,7 +51,7 @@
                     <input type="text" name="visiting_officer" class="field-input" value="{{ data.visiting_officer or current_user.name }}" readonly>
                 </div>
                 <div class="form-group">
-                    <label class="field-label">Account Officer <span class="required">*</span></label>
+                    <label class="field-label">Relationship Officer <span class="required">*</span></label>
                     <input type="text" name="account_officer" class="field-input" value="{{ data.account_officer or '' }}" required>
                 </div>
 
@@ -65,7 +65,7 @@
                 </div>
 
                 <div class="form-group" style="margin-top: 16px;">
-                    <label class="field-label">Account Officer Signature</label>
+                    <label class="field-label">Relationship Officer Signature</label>
                     <div class="signature-box">
                         <canvas id="ao_sig_canvas"></canvas>
                         <button type="button" class="signature-clear-btn" onclick="clearSignature('ao_sig_canvas')">Clear</button>
@@ -92,9 +92,9 @@
             </div>
         </div>
 
-        <!-- Section 2: Branch Manager Concurrence -->
+        <!-- Section 2: Team Lead Concurrence -->
         <div style="border-top: 0.5px solid var(--color-divider); padding-top: 24px; margin-bottom: 24px;">
-            <div style="font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 16px; letter-spacing:0.05em; font-weight: 500;">Branch Manager Concurrence</div>
+            <div style="font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 16px; letter-spacing:0.05em; font-weight: 500;">Team Lead Concurrence</div>
             
             {% set is_bm = (current_user.role == "branch_manager") %}
             
@@ -103,15 +103,15 @@
             <div class="flat-card warning" style="background-color: var(--bg-secondary); border-color: var(--border-color); display:flex; align-items:center; gap:12px;">
                 <span style="font-size:20px;">&#x1F512;</span>
                 <div>
-                    <span class="status-badge needs-review">Awaiting Branch Manager Concurrence</span>
-                    <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Concurrence signoff remains locked until a Branch Manager logs in to review this application.</p>
+                    <span class="status-badge needs-review">Awaiting Team Lead Concurrence</span>
+                    <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Concurrence signoff remains locked until a Team Lead logs in to review this application.</p>
                 </div>
             </div>
             {% else %}
-            <!-- Active State for Branch Manager -->
+            <!-- Active State for Team Lead -->
             <div class="form-grid-2">
                 <div class="form-group">
-                    <label class="field-label">Branch Manager Name</label>
+                    <label class="field-label">Team Lead Name</label>
                     <input type="text" name="bm_name" class="field-input" value="{{ current_user.name }}" readonly>
                 </div>
                 <div class="form-group">
@@ -135,11 +135,11 @@
 
                 <div class="form-group-full">
                     <label class="field-label">Concurrence Notes / Observations</label>
-                    <textarea name="bm_notes" class="field-textarea" placeholder="Manager feedback notes...">{{ data.bm_notes or '' }}</textarea>
+                    <textarea name="bm_notes" class="field-textarea" placeholder="Team Lead feedback notes...">{{ data.bm_notes or '' }}</textarea>
                 </div>
 
                 <div class="form-group" style="margin-top: 16px;">
-                    <label class="field-label">Manager Signature <span class="required">*</span></label>
+                    <label class="field-label">Team Lead Signature <span class="required">*</span></label>
                     <div class="signature-box">
                         <canvas id="bm_sig_canvas"></canvas>
                         <button type="button" class="signature-clear-btn" onclick="clearSignature('bm_sig_canvas')">Clear</button>
