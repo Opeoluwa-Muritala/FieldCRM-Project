@@ -4,27 +4,27 @@
 {% block page_title %}Repayment Schedule{% endblock %}
 {% block breadcrumb %}{{ app.ref_no }} -> Repayment Schedule{% endblock %}
 {% block content %}
-<div class="page-card" style="margin-bottom:20px;">
+<div class="page-card csp-s-3c4a3d440074">
   <h2 class="page-card-title">{{ app.applicant_name }} — {{ app.ref_no }}</h2>
-  <div style="display:flex;gap:24px;flex-wrap:wrap;">
-    <div><span style="color:var(--text-muted)">Total Due</span><br><strong>&#x20A6;{{ "{:,.2f}".format(total_due) }}</strong></div>
-    <div><span style="color:var(--text-muted)">Total Paid</span><br><strong style="color:#2e7d32">&#x20A6;{{ "{:,.2f}".format(total_paid) }}</strong></div>
-    <div><span style="color:var(--text-muted)">Outstanding</span><br><strong style="color:{% if outstanding > 0 %}#c62828{% else %}#2e7d32{% endif %}">&#x20A6;{{ "{:,.2f}".format(outstanding) }}</strong></div>
-    <div><span style="color:var(--text-muted)">Classification</span><br><span class="status-badge {% if app.classification == 'current' %}approved{% else %}needs-review{% endif %}">{{ (app.classification or 'current')|upper }}</span></div>
-    {% if app.days_past_due %}<div><span style="color:var(--text-muted)">Days Past Due</span><br><strong style="color:#c62828">{{ app.days_past_due }}</strong></div>{% endif %}
+  <div class="csp-s-0e63b0d79e95">
+    <div><span class="csp-s-500708668cdd">Total Due</span><br><strong>&#x20A6;{{ "{:,.2f}".format(total_due) }}</strong></div>
+    <div><span class="csp-s-500708668cdd">Total Paid</span><br><strong class="csp-s-c571d44c8112">&#x20A6;{{ "{:,.2f}".format(total_paid) }}</strong></div>
+    <div><span class="csp-s-500708668cdd">Outstanding</span><br><strong data-csp-style="color:{% if outstanding > 0 %}#c62828{% else %}#2e7d32{% endif %}">&#x20A6;{{ "{:,.2f}".format(outstanding) }}</strong></div>
+    <div><span class="csp-s-500708668cdd">Classification</span><br><span class="status-badge {% if app.classification == 'current' %}approved{% else %}needs-review{% endif %}">{{ (app.classification or 'current')|upper }}</span></div>
+    {% if app.days_past_due %}<div><span class="csp-s-500708668cdd">Days Past Due</span><br><strong class="csp-s-d23e3c89c60a">{{ app.days_past_due }}</strong></div>{% endif %}
   </div>
   {% if user_role in ('crm', 'system_admin') %}
-  <div style="margin-top:16px;">
-    <a href="/applications/{{ app_id }}/payments" class="btn btn-primary" style="font-size:13px;padding:8px 16px;">Record Payment</a>
-    <a href="/applications/{{ app_id }}/disburse" class="btn btn-secondary" style="margin-left:10px;font-size:13px;padding:8px 16px;">Disbursement Details</a>
+  <div class="csp-s-76977cc9f242">
+    <a href="/applications/{{ app_id }}/payments" class="btn btn-primary csp-s-cb49ee527736">Record Payment</a>
+    <a href="/applications/{{ app_id }}/disburse" class="btn btn-secondary csp-s-f2441b6651b5">Disbursement Details</a>
   </div>
   {% endif %}
 </div>
 
-<div class="page-card" style="margin-bottom:20px;">
-  <h3 style="margin-bottom:12px;">Repayment Schedule</h3>
+<div class="page-card csp-s-3c4a3d440074">
+  <h3 class="csp-s-4636770b4968">Repayment Schedule</h3>
   {% if schedule %}
-  <div style="overflow-x:auto;">
+  <div class="csp-s-fbff25e9fc50">
     <table class="custom-table">
       <thead><tr><th>#</th><th>Due Date</th><th>Principal</th><th>Interest</th><th>Total Due</th><th>Status</th></tr></thead>
       <tbody>
@@ -38,7 +38,7 @@
         {% else %}
           {% set row_status = "due" %}
         {% endif %}
-      <tr style="{% if row_status == 'paid' %}background:#f1f8e9;{% elif row_status == 'partial' %}background:#fff8e1;{% endif %}">
+      <tr data-csp-style="{% if row_status == 'paid' %}background:#f1f8e9;{% elif row_status == 'partial' %}background:#fff8e1;{% endif %}">
         <td>{{ row.installment_no }}</td>
         <td>{{ row.due_date }}</td>
         <td>&#x20A6;{{ "{:,.2f}".format(row.principal_due) }}</td>
@@ -61,7 +61,7 @@
 
 {% if payments %}
 <div class="page-card">
-  <h3 style="margin-bottom:12px;">Payment History</h3>
+  <h3 class="csp-s-4636770b4968">Payment History</h3>
   <table class="custom-table">
     <thead><tr><th>Date</th><th>Amount Paid</th><th>Channel</th><th>Reference</th></tr></thead>
     <tbody>

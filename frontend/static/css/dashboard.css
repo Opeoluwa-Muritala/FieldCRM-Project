@@ -3479,3 +3479,72 @@ body, body * { font-family: "Montserrat", sans-serif !important; }
 .document-preview-shimmer { width:min(88%,520px); height:210px; border-radius:10px; background:linear-gradient(100deg,#e5e7eb 20%,#f8fafc 42%,#e5e7eb 64%); background-size:200% 100%; animation:document-shimmer 1.25s ease-in-out infinite; }
 @keyframes document-shimmer { to { background-position:-200% 0; } }
 @media (prefers-reduced-motion: reduce) { .document-preview-shimmer { animation:none; } }
+
+/* Document Preview Modal & OCR Viewer styling to satisfy Content Security Policy (no inline styles) */
+.preview-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    background: rgba(17, 24, 39, 0.68);
+    padding: 24px;
+    display: grid;
+    place-items: center;
+}
+.preview-modal-container {
+    width: min(100%, 1000px);
+    height: min(92vh, 850px);
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+}
+.preview-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+.preview-modal-title {
+    margin: 0;
+    font-size: 16px;
+}
+.preview-modal-close {
+    border: 0;
+    background: transparent;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+}
+.preview-modal-body {
+    flex: 1;
+    overflow: auto;
+    background: #f3f4f6;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+}
+.preview-modal-image {
+    max-width: 100%;
+    height: auto;
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+.ocr-image-wrapper {
+    position: relative;
+    display: inline-block;
+    margin: auto;
+}
+.ocr-image-element {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+.offline-banner {
+    display: none;
+}

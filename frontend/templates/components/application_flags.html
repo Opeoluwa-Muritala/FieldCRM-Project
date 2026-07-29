@@ -1,16 +1,16 @@
 {% if flags %}
-<div class="page-card" style="margin-bottom: 16px; background-color: rgba(220, 38, 38, 0.05); border: 1px solid var(--accent-danger);">
-    <h3 style="font-size: 14px; font-weight: 600; color: var(--accent-danger); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-        <span style="font-size: 16px;">⚠</span> Open Compliance Flags
+<div class="page-card csp-s-1f443539bb77">
+    <h3 class="csp-s-0be327428ad4">
+        <span class="csp-s-79741bc81f18">⚠</span> Open Compliance Flags
     </h3>
-    <ul style="font-size: 13px; color: var(--text-main); padding-left: 0; list-style: none; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+    <ul class="csp-s-840d40c5235e">
         {% for flag in flags %}
-            <li style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 8px; border-bottom: 1px solid rgba(220,38,38,0.1);">
+            <li class="csp-s-7e8fbd42dfdd">
                 <div>
-                    <span style="font-weight: 600; color: var(--accent-danger);">{{ flag.flag_type|title }}:</span> 
+                    <span class="csp-s-23d5150a2306">{{ flag.flag_type|title }}:</span> 
                     {{ flag.flag_label }}
                 </div>
-                <span class="status-badge" style="background-color: var(--accent-danger); color: white;">
+                <span class="status-badge csp-s-0a5b48ed21a7">
                     {{ flag.flag_status|replace('_', ' ')|title }}
                 </span>
             </li>

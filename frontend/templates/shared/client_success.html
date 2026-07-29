@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Application Submitted | FieldCRM</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/dashboard.css">
-    <style>
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=20260729">
+    <link rel="stylesheet" href="/static/css/csp-utilities.css?v=20260729">
+    <script defer src="/static/js/csp-styles.js?v=20260729"></script>
+    <style nonce="{{ csp_nonce }}">
         body {
             background-color: var(--bg-secondary, #f3f4f6);
             font-family: 'Montserrat', sans-serif;
@@ -47,13 +49,13 @@
         <div class="success-icon">
             ✓
         </div>
-        <a href="/dashboard" class="brand-home-link" aria-label="Go to dashboard"><img class="brand-logo" src="{{ brand_logo_black }}" alt="Mainstreet Microfinance Bank Logo" style="max-height: 40px; margin-bottom: 16px;"></a>
-        <h1 style="font-family: 'Montserrat', sans-serif; font-size: 22px; color: #111827; margin: 0 0 12px;">Submission Complete</h1>
-        <p style="font-size: 14px; color: var(--text-main, #374151); line-height: 1.6; margin-bottom: 24px;">
+        <a href="/dashboard" class="brand-home-link" aria-label="Go to dashboard"><img class="brand-logo csp-s-24e77223e70f" src="{{ brand_logo_black }}" alt="Mainstreet Microfinance Bank Logo"></a>
+        <h1 class="csp-s-a0ea3eaf53af">Submission Complete</h1>
+        <p class="csp-s-9934d2086285">
             Thank you! Your loan application has been successfully submitted to <strong>{{ officer_name }}</strong>. 
             We have begun processing your details and will contact you shortly.
         </p>
-        <div style="border-top: 0.5px solid var(--border-color); padding-top: 16px; font-size: 12px; color: var(--text-muted);">
+        <div class="csp-s-3cd1e9b91cc3">
             You can safely close this browser window.
         </div>
     </div>

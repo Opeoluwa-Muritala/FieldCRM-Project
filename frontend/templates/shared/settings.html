@@ -7,7 +7,7 @@
 {% block page_title %}Settings{% endblock %}
 
 {% block content %}
-<section class="page-card" style="max-width:640px;">
+<section class="page-card csp-s-6bb239c675c1">
     <div class="page-card-header">
         <div>
             <h2 class="page-card-title">Profile &amp; Security</h2>
@@ -16,7 +16,7 @@
     </div>
 
     <!-- Profile Info -->
-    <div class="form-grid" style="margin-bottom:32px;">
+    <div class="form-grid csp-s-293242ee3e22">
         <div class="form-group">
             <label class="field-label">Full Name</label>
             <input class="field-input" type="text" value="{{ current_user.full_name }}" readonly>
@@ -35,16 +35,16 @@
         </div>
     </div>
 
-    <hr style="border:none; border-top:1px solid var(--border-color,#e5e7eb); margin-bottom:24px;">
+    <hr class="csp-s-a00e02a12bec">
 
     <!-- Change Password -->
-    <h3 style="font-size:15px; font-weight:600; margin-bottom:16px;">Change Password</h3>
+    <h3 class="csp-s-2d7cf312954d">Change Password</h3>
 
     {% if success %}
-    <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:12px; color:#166534; font-size:13px; margin-bottom:16px;">{{ success }}</div>
+    <div class="csp-s-ba1d45bede25">{{ success }}</div>
     {% endif %}
     {% if error %}
-    <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; padding:12px; color:#991b1b; font-size:13px; margin-bottom:16px;">{{ error }}</div>
+    <div class="csp-s-d8190cee8853">{{ error }}</div>
     {% endif %}
 
     <form method="POST" action="/settings/change-password">
@@ -62,7 +62,7 @@
                 <input class="field-input" id="confirm_password" name="confirm_password" type="password" required minlength="8" autocomplete="new-password">
             </div>
         </div>
-        <div style="margin-top:20px;">
+        <div class="csp-s-910f53fb7a81">
             <button type="submit" class="btn-primary">Update Password</button>
         </div>
     </form>

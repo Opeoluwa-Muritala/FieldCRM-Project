@@ -28,7 +28,7 @@
     {% set initials = "U" %}
 {% endif %}
 
-<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebarDrawer()" aria-hidden="true"></div>
+<div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 <div class="responsive-shell">
     {# === DESKTOP SIDEBAR / MOBILE NAV DRAWER — visible as sidebar on desktop, off-canvas drawer on mobile === #}
     <aside class="desktop-sidebar" id="desktopSidebar" aria-label="Primary navigation">
@@ -53,14 +53,14 @@
     <div class="responsive-main">
         {# === MOBILE COMPACT TOPBAR === #}
         <header class="mobile-top-header" id="mobileHeader">
-            <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="desktopSidebar" onclick="toggleSidebarDrawer()">
+            <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="desktopSidebar">
                 ☰
             </button>
             <div class="mobile-header-title">
                 {% block mobile_page_title %}{% block page_title_mobile %}{{ self.page_title() if self.page_title is defined else 'FieldCRM' }}{% endblock %}{% endblock %}
             </div>
             <div class="mobile-header-actions">
-                <a href="/notifications" class="mobile-bell" title="Notifications" aria-label="Notifications" style="text-decoration:none;">
+                <a href="/notifications" class="mobile-bell csp-s-a85c61577336" title="Notifications" aria-label="Notifications">
                     &#x1F514;
                 </a>
             </div>
@@ -68,25 +68,25 @@
 
         {# === DESKTOP TOPBAR — visible on desktop, hidden on mobile === #}
         <header class="desktop-topbar">
-            <div class="topbar-left" style="display:flex; align-items:center; gap:12px;">
-                <button type="button" class="sidebar-toggle-btn" aria-label="Toggle Sidebar" onclick="toggleSidebarDrawer()">
+            <div class="topbar-left csp-s-a527d0379582">
+                <button type="button" class="sidebar-toggle-btn" data-sidebar-toggle aria-label="Toggle Sidebar">
                     ☰
                 </button>
                 <div>
-                    <h2 class="topbar-title" style="margin:0;">{% block page_title %}Dashboard{% endblock %}</h2>
+                    <h2 class="topbar-title csp-s-38965f9b18ca">{% block page_title %}Dashboard{% endblock %}</h2>
                 </div>
             </div>
             <div class="topbar-right">
                 {% block topbar_actions %}{% endblock %}
                 {% if can_return_previous and app_id %}
-                <a href="/applications/{{ app_id }}/return" class="btn-ghost-link" style="color: var(--accent-danger); white-space: nowrap;">Return to {{ return_target_label }}</a>
+                <a href="/applications/{{ app_id }}/return" class="btn-ghost-link csp-s-21b672b45dc0">Return to {{ return_target_label }}</a>
                 {% endif %}
                 <form action="/search" method="GET" class="topbar-search">
                     <input type="text" name="q" placeholder="Search..." value="{{ request.query_params.get('q', '') }}"
                            aria-label="Search applications, borrowers, and references">
                     <button type="submit" title="Search" aria-label="Search">Search</button>
                 </form>
-                <a href="/notifications" class="topbar-bell" title="Notifications" aria-label="Notifications" style="text-decoration:none;">
+                <a href="/notifications" class="topbar-bell csp-s-a85c61577336" title="Notifications" aria-label="Notifications">
                     &#x1F514;
                 </a>
                 <a href="/settings" class="topbar-profile" title="Open settings" aria-label="Open settings">
@@ -115,7 +115,7 @@
     {% block detail_drawer %}{% endblock %}
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     function toggleSidebarDrawer() {
         const sidebar = document.getElementById('desktopSidebar');
         const backdrop = document.getElementById('sidebarBackdrop');
@@ -155,5 +155,8 @@
             closeSidebarDrawer();
         }
     });
+    document.getElementById('sidebarBackdrop')?.addEventListener('click', closeSidebarDrawer);
+    document.getElementById('mobileMenuToggle')?.addEventListener('click', toggleSidebarDrawer);
+    document.querySelector('[data-sidebar-toggle]')?.addEventListener('click', toggleSidebarDrawer);
 </script>
 {% endblock %}

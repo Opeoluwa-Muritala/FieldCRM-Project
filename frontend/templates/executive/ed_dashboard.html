@@ -8,21 +8,21 @@
   <div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">ED Dashboard</h1></div>
 </div>
 
-<div class="metrics-row" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px;">
-  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
+<div class="metrics-row csp-s-bfc6d2a12719">
+  <div class="metric-card page-card csp-s-c49a1a9d5864">
     <div class="metric-value">{{ metrics.ed_queue or 0 }}</div>
     <div class="metric-label">Awaiting ED Approval</div>
   </div>
-  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
-    <div class="metric-value" style="color:{% if (metrics.par30_pct or 0) > 5 %}#c62828{% else %}#2e7d32{% endif %}">{{ metrics.par30_pct or 0 }}%</div>
+  <div class="metric-card page-card csp-s-c49a1a9d5864">
+    <div class="metric-value" data-csp-style="color:{% if (metrics.par30_pct or 0) > 5 %}#c62828{% else %}#2e7d32{% endif %}">{{ metrics.par30_pct or 0 }}%</div>
     <div class="metric-label">PAR-30</div>
   </div>
 </div>
 
 <div class="page-card">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-    <h2 class="page-card-title" style="margin:0;">Loans Awaiting ED Approval <small style="font-weight:400;color:var(--text-muted);">(below &#x20A6;10M)</small></h2>
-    <a href="/ed-queue" class="btn btn-primary" style="font-size:13px;padding:6px 14px;">View All</a>
+  <div class="csp-s-4b7c31606537">
+    <h2 class="page-card-title csp-s-38965f9b18ca">Loans Awaiting ED Approval <small class="csp-s-aca0be8055e3">(below &#x20A6;10M)</small></h2>
+    <a href="/ed-queue" class="btn btn-primary csp-s-1673b3d186d9">View All</a>
   </div>
   <div class="queue-cards">
     {% for item in ed_queue[:5] %}

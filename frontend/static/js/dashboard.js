@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initSidebarIcons();
     initRoleStatIcons();
     initSubmitFeedback();
+    initDataHrefNavigation();
 });
 
 let currentTourStep = 0;
@@ -17,6 +18,24 @@ let activeTourTarget = null;
 let activeTourSteps = [];
 let activeFormType = "loan_application";
 let activeFormMode = "manual";
+
+function initDataHrefNavigation() {
+    document.addEventListener("click", (event) => {
+        const target = event.target.closest("[data-href]");
+        if (!target || event.defaultPrevented || event.button !== 0) return;
+        const interactive = event.target.closest("a, button, input, select, textarea, label");
+        if (interactive && interactive !== target) return;
+        window.location.href = target.dataset.href;
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        const target = event.target.closest("[data-href]");
+        if (!target) return;
+        event.preventDefault();
+        window.location.href = target.dataset.href;
+    });
+}
 
 const formDefinitions = {
     loan_application: {

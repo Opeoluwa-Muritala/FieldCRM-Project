@@ -41,6 +41,8 @@ class AuthService:
         hashed = get_password_hash(new_password)
         await self.repo.update_password(user_id, hashed)
         await self.repo.mark_token_used(token)
+        from app.core.cache import invalidate_auth_user
+        await invalidate_auth_user(user_id)
         return True
 
     async def change_password(self, user_id: str, current_password: str, new_password: str) -> bool:

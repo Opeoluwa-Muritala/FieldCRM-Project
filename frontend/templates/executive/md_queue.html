@@ -18,7 +18,7 @@
     <span class="queue-card-meta">
       {{ item.ref_no }}
       {% if item.ed_escalated_to_md %}
-        <span class="status-badge needs-review" style="font-size:13px;margin-left:6px;">Forwarded by ED</span>
+        <span class="status-badge needs-review csp-s-3b95941b7a28">Forwarded by ED</span>
       {% endif %}
     </span>
     <span class="queue-card-amount">{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}No amount{% endif %}</span>
@@ -33,13 +33,13 @@
     <td>{{ item.applicant_name }}</td>
     <td>{{ item.ref_no }}</td>
     <td>{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}—{% endif %}</td>
-    <td>{% if item.ed_escalated_to_md %}<span class="status-badge needs-review" style="font-size:13px;">Forwarded by ED</span>{% else %}—{% endif %}</td>
+    <td>{% if item.ed_escalated_to_md %}<span class="status-badge needs-review csp-s-cdcef186c815">Forwarded by ED</span>{% else %}—{% endif %}</td>
     <td>{{ item.days_waiting }}d</td>
     <td>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <div class="csp-s-9d48bcd56906">
         <a href="/applications/{{ item.id }}/md-approve" class="btn btn-primary">Review</a>
         {% if item.ed_escalated_to_md %}
-        <form method="post" action="/applications/{{ item.id }}/md-approve" style="margin:0;">
+        <form method="post" action="/applications/{{ item.id }}/md-approve" class="csp-s-38965f9b18ca">
           <input type="hidden" name="action" value="return_ed">
           <button type="submit" class="btn btn-secondary" data-confirm="Return this application to ED?">Return to ED</button>
         </form>
@@ -47,7 +47,7 @@
       </div>
     </td>
   </tr>
-  {% else %}<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Queue is empty.</td></tr>{% endfor %}
+  {% else %}<tr><td colspan="6" class="csp-s-542b2a1bdac0">Queue is empty.</td></tr>{% endfor %}
   </tbody></table>
 </div>
 </div>

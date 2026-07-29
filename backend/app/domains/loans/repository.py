@@ -55,6 +55,36 @@ class LoanRepository(BaseRepository):
         row = await self.conn.fetchrow(self.sql("readiness_summary"), loan_id, org_id)
         return ReadinessSummary(**row)
 
+    async def get_application_detail_snapshot(
+        self,
+        loan_id: UUID,
+        org_id: UUID,
+    ) -> dict:
+        row = await self.conn.fetchrow(
+            self.sql("application_detail_snapshot"),
+            loan_id,
+            org_id,
+        )
+        return dict(row) if row else {}
+
+    async def get_wizard_page_snapshot(
+        self,
+        loan_id: UUID,
+        org_id: UUID,
+    ) -> tuple[LoanRow, dict, dict | None, list[dict]] | None:
+        row = await self.conn.fetchrow(
+            self.sql("wizard_page_snapshot"),
+            loan_id,
+            org_id,
+        )
+        if not row:
+            return None
+        data = dict(row)
+        wizard_data = data.pop("wizard_data", {}) or {}
+        latest_version = data.pop("latest_version", None)
+        signature_events = data.pop("signature_events", []) or []
+        return LoanRow(**data), wizard_data, latest_version, signature_events
+
     async def approve(
         self,
         loan_id: UUID,
@@ -137,6 +167,19 @@ class LoanRepository(BaseRepository):
 
     async def list_workflow_events(self, org_id: UUID):
         return await self.conn.fetch(self.sql("list_workflow_events"), org_id)
+
+    async def list_workflow_events_for_application(
+        self,
+        org_id: UUID,
+        loan_id: UUID,
+        limit: int = 200,
+    ):
+        return await self.conn.fetch(
+            self.sql("list_workflow_events_for_application"),
+            org_id,
+            loan_id,
+            limit,
+        )
 
     async def soft_delete(self, loan_id: UUID, org_id: UUID) -> UUID | None:
         row = await self.conn.fetchrow(self.sql("soft_delete"), loan_id, org_id)

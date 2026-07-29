@@ -21,31 +21,31 @@
     <div class="queue-filter-panel">
         <form id="filterForm" action="/applications" method="GET">
             <!-- Stage Selector Pill Group -->
-            <div style="margin-bottom: 16px;">
-                <span class="field-label" style="margin-bottom: 8px;">Filter by Stage</span>
+            <div class="csp-s-4933c08820a9">
+                <span class="field-label csp-s-93e5d15d24f6">Filter by Stage</span>
                 <div class="pill-radio-group">
                     <div class="pill-radio-btn">
-                        <input type="radio" name="stage" value="all" id="stage_all" {% if not current_stage or current_stage == 'all' %}checked{% endif %} onchange="submitFilters()">
+                        <input type="radio" name="stage" value="all" id="stage_all" {% if not current_stage or current_stage == 'all' %}checked{% endif %}>
                         <label for="stage_all">All Stages</label>
                     </div>
                     <div class="pill-radio-btn">
-                        <input type="radio" name="stage" value="intake" id="stage_1" {% if current_stage == 'intake' %}checked{% endif %} onchange="submitFilters()">
+                        <input type="radio" name="stage" value="intake" id="stage_1" {% if current_stage == 'intake' %}checked{% endif %}>
                         <label for="stage_1">Intake</label>
                     </div>
                     <div class="pill-radio-btn">
-                        <input type="radio" name="stage" value="ocr_review" id="stage_2" {% if current_stage == 'ocr_review' %}checked{% endif %} onchange="submitFilters()">
+                        <input type="radio" name="stage" value="ocr_review" id="stage_2" {% if current_stage == 'ocr_review' %}checked{% endif %}>
                         <label for="stage_2">OCR Review</label>
                     </div>
                     <div class="pill-radio-btn">
-                        <input type="radio" name="stage" value="credit_review" id="stage_3" {% if current_stage == 'credit_review' %}checked{% endif %} onchange="submitFilters()">
+                        <input type="radio" name="stage" value="credit_review" id="stage_3" {% if current_stage == 'credit_review' %}checked{% endif %}>
                         <label for="stage_3">Credit Review</label>
                     </div>
                     <div class="pill-radio-btn">
-                        <input type="radio" name="stage" value="branch_approval" id="stage_4" {% if current_stage == 'branch_approval' %}checked{% endif %} onchange="submitFilters()">
+                        <input type="radio" name="stage" value="branch_approval" id="stage_4" {% if current_stage == 'branch_approval' %}checked{% endif %}>
                         <label for="stage_4">Branch Approval</label>
                     </div>
                     <div class="pill-radio-btn">
-                        <input type="radio" name="stage" value="disbursement_ready" id="stage_5" {% if current_stage == 'disbursement_ready' %}checked{% endif %} onchange="submitFilters()">
+                        <input type="radio" name="stage" value="disbursement_ready" id="stage_5" {% if current_stage == 'disbursement_ready' %}checked{% endif %}>
                         <label for="stage_5">Disbursement</label>
                     </div>
                 </div>
@@ -55,7 +55,7 @@
             <div class="queue-filter-grid">
                 <div class="form-group">
                     <label class="field-label" for="loanTypeFilter">Loan Category</label>
-                    <select name="loan_type" id="loanTypeFilter" class="field-select" onchange="submitFilters()">
+                    <select name="loan_type" id="loanTypeFilter" class="field-select">
                         <option value="all" {% if not current_loan_type or current_loan_type == 'all' %}selected{% endif %}>All Categories</option>
                         <option value="enterprise" {% if current_loan_type == 'enterprise' %}selected{% endif %}>Enterprise Loan</option>
                         <option value="msef" {% if current_loan_type == 'msef' %}selected{% endif %}>MSEF</option>
@@ -69,11 +69,11 @@
                 </div>
 
                 <div class="form-group queue-date-range">
-                    <div style="flex:1;">
+                    <div class="csp-s-6253876a649a">
                         <label class="field-label" for="dateFrom">From Date</label>
                         <input type="date" name="from_date" id="dateFrom" class="field-input" value="{{ from_date or '' }}">
                     </div>
-                    <div style="flex:1;">
+                    <div class="csp-s-6253876a649a">
                         <label class="field-label" for="dateTo">To Date</label>
                         <input type="date" name="to_date" id="dateTo" class="field-input" value="{{ to_date or '' }}">
                     </div>
@@ -81,9 +81,9 @@
             </div>
 
             <!-- Buttons below fields -->
-            <div style="margin-top: 12px; display: flex; justify-content: flex-end; align-items: center; gap: 16px;">
-                <a href="/applications" class="btn-ghost-link" style="color: var(--text-muted); font-size:12px;">Clear Filters</a>
-                <button type="submit" class="btn-primary-filled" style="height: 34px; padding: 0 20px;">Apply Filters</button>
+            <div class="csp-s-86012d734cb9">
+                <a href="/applications" class="btn-ghost-link csp-s-0cc9dc49c6f4">Clear Filters</a>
+                <button type="submit" class="btn-primary-filled csp-s-d9155dc13965">Apply Filters</button>
             </div>
         </form>
     </div>
@@ -134,9 +134,9 @@
                 {% if applications %}
                     {% for app in applications %}
                     {% set app_id = app.id|string %}
-                    <tr onclick="window.location.href='/applications/{{ app_id }}'">
+                    <tr data-href="/applications/{{ app_id }}" tabindex="0">
                         <td>{{ app.ref_no }}</td>
-                        <td style="font-weight: 500;">{{ app.applicant_name }}</td>
+                        <td class="csp-s-7ba9bad628ec">{{ app.applicant_name }}</td>
                         <td>{{ app.loan_type|replace('_', ' ')|title }}</td>
                         <td>₦{{ "{:,}".format(app.amount|int) }}</td>
                         <td>{{ app.stage|replace('_', ' ')|title }}</td>
@@ -154,7 +154,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="/applications/{{ app_id }}" class="btn-ghost-link" style="color: var(--color-brand-shield); font-weight: 500;">Open &rarr;</a>
+                            <a href="/applications/{{ app_id }}" class="btn-ghost-link csp-s-e448a1ff7229">Open &rarr;</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -169,16 +169,17 @@
 
     <div class="simple-pagination">
         <span>Showing {{ applications|length }} of {{ total }} application{{ '' if total == 1 else 's' }}</span>
-        <div style="display:flex; gap: 8px;">
+        <div class="csp-s-3fa98aa5a792">
             <a href="#">&larr; Prev</a>
             <a href="#">Next &rarr;</a>
         </div>
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     function submitFilters() {
         document.getElementById('filterForm').submit();
     }
+    document.getElementById('filterForm')?.addEventListener('change', submitFilters);
 </script>
 {% endblock %}

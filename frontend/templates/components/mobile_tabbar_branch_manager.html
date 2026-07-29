@@ -11,31 +11,31 @@
 {% endmacro %}
 
 <button class="tab-item {% if active_tab == 'home' %}active{% endif %}"
-        type="button" onclick="window.location.href='/dashboard'" aria-label="Home">
+        type="button" data-href="/dashboard" aria-label="Home">
     <span class="tab-icon">{{ tab_icon('home') }}</span>
     <span class="tab-label">Home</span>
 </button>
 
 <button class="tab-item {% if active_tab == 'awaiting' %}active{% endif %}"
-        type="button" onclick="window.location.href='/awaiting-me'" aria-label="Awaiting">
+        type="button" data-href="/awaiting-me" aria-label="Awaiting">
     <span class="tab-icon">{{ tab_icon('awaiting') }}</span>
     <span class="tab-label">Awaiting</span>
 </button>
 
 <button class="tab-item {% if active_tab == 'signoffs' %}active{% endif %}"
-        type="button" onclick="window.location.href='/pending-signoffs'" aria-label="Signoffs">
+        type="button" data-href="/pending-signoffs" aria-label="Signoffs">
     <span class="tab-icon">{{ tab_icon('signoffs') }}</span>
     <span class="tab-label">Signoffs</span>
 </button>
 
 <button class="tab-item {% if active_tab == 'pipeline' %}active{% endif %}"
-        type="button" onclick="window.location.href='/pipeline'" aria-label="Pipeline">
+        type="button" data-href="/pipeline" aria-label="Pipeline">
     <span class="tab-icon">{{ tab_icon('pipeline') }}</span>
     <span class="tab-label">Pipeline</span>
 </button>
 
 <button class="tab-item"
-        type="button" onclick="window.location.href='/logout'" aria-label="Logout">
+        type="button" data-href="/logout" aria-label="Logout">
     <span class="tab-icon">{{ tab_icon('logout') }}</span>
     <span class="tab-label">Logout</span>
 </button>

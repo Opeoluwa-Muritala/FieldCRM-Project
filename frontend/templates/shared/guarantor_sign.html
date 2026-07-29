@@ -8,39 +8,39 @@
 {% block page_title %}Guarantor Verification & Pledge{% endblock %}
 
 {% block shell %}
-<div style="min-height: 100vh; background-color: var(--bg-secondary); padding: 32px 16px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; width: 100%;">
-    <div class="brand-logo-wrapper" style="text-align: center; margin-bottom: 24px;">
-        <img src="{{ brand_logo_black }}" alt="Mainstreet Microfinance Bank Logo" style="max-height: 48px;">
-        <h2 style="font-family: 'Montserrat', sans-serif; font-size: 20px; color: #111827; margin: 8px 0 2px;">Mainstreet Microfinance Bank</h2>
-        <p style="font-size: 12px; color: var(--text-muted); margin: 0;">Guarantor Verification & Pledge Form (MMFB/CRM/04)</p>
+<div class="csp-s-82cbc6d504b7">
+    <div class="brand-logo-wrapper csp-s-2d1904699d40">
+        <img src="{{ brand_logo_black }}" alt="Mainstreet Microfinance Bank Logo" class="csp-s-004ced7ea65f">
+        <h2 class="csp-s-cb850c9162d1">Mainstreet Microfinance Bank</h2>
+        <p class="csp-s-88d18f359fb5">Guarantor Verification & Pledge Form (MMFB/CRM/04)</p>
     </div>
     
-    <div style="max-width: 760px; width: 100%;">
-        <div class="page-card" style="background-color: var(--bg-primary); padding: 32px; border-radius: 16px; border: 1.5px solid var(--border-color); box-shadow: var(--shadow-sm);">
+    <div class="csp-s-8e9fc9e85a4e">
+        <div class="page-card csp-s-a77ba01a9503">
             
-            <h3 style="margin-top: 0; margin-bottom: 24px; font-family: 'Montserrat', sans-serif; font-size: 18px; text-align: center; text-transform: uppercase;">
+            <h3 class="csp-s-4083d946369b">
                 GUARANTOR VERIFICATION & PLEDGE
             </h3>
 
             <!-- DOCUMENT PREVIEW FOR GUARANTOR -->
-            <div class="final-document-container" style="max-height: 350px; overflow-y: auto; padding: 20px; border: 1.5px solid var(--border-color); border-radius: 12px; margin-bottom: 24px; background-color: var(--bg-secondary);">
-                <h4 style="margin: 0 0 12px 0; font-weight: 600; font-size: 14px; text-transform: uppercase;">Guarantor Personal Details</h4>
-                <div style="font-size: 12px; margin-bottom: 20px; line-height: 1.6;">
-                    <p style="margin: 4px 0;"><strong>Full Name:</strong> {{ guarantor_data.get('name', '—') }}</p>
-                    <p style="margin: 4px 0;"><strong>Relationship to Borrower:</strong> {{ guarantor_data.get('relationship', '—') }}</p>
-                    <p style="margin: 4px 0;"><strong>Phone:</strong> {{ guarantor_data.get('phone', '—') }} &nbsp;|&nbsp; <strong>BVN:</strong> {{ guarantor_data.get('bvn', '—') }}</p>
-                    <p style="margin: 4px 0;"><strong>Residential Address:</strong> {{ guarantor_data.get('home_address', '—') }}</p>
+            <div class="final-document-container csp-s-15107b60f4ef">
+                <h4 class="csp-s-e4ef17f05745">Guarantor Personal Details</h4>
+                <div class="csp-s-6626fbe59858">
+                    <p class="csp-s-9dcfa15ce670"><strong>Full Name:</strong> {{ guarantor_data.get('name', '—') }}</p>
+                    <p class="csp-s-9dcfa15ce670"><strong>Relationship to Borrower:</strong> {{ guarantor_data.get('relationship', '—') }}</p>
+                    <p class="csp-s-9dcfa15ce670"><strong>Phone:</strong> {{ guarantor_data.get('phone', '—') }} &nbsp;|&nbsp; <strong>BVN:</strong> {{ guarantor_data.get('bvn', '—') }}</p>
+                    <p class="csp-s-9dcfa15ce670"><strong>Residential Address:</strong> {{ guarantor_data.get('home_address', '—') }}</p>
                 </div>
 
-                <h4 style="margin: 0 0 12px 0; font-weight: 600; font-size: 14px; text-transform: uppercase;">Employment & Income</h4>
-                <div style="font-size: 12px; margin-bottom: 20px; line-height: 1.6;">
-                    <p style="margin: 4px 0;"><strong>Employer / Business Name:</strong> {{ guarantor_data.get('employer_name', '—') }}</p>
-                    <p style="margin: 4px 0;"><strong>Position:</strong> {{ guarantor_data.get('position', '—') }}</p>
-                    <p style="margin: 4px 0;"><strong>Monthly Salary/Income:</strong> ₦{{ guarantor_data.get('monthly_salary', '—') }}</p>
+                <h4 class="csp-s-e4ef17f05745">Employment & Income</h4>
+                <div class="csp-s-6626fbe59858">
+                    <p class="csp-s-9dcfa15ce670"><strong>Employer / Business Name:</strong> {{ guarantor_data.get('employer_name', '—') }}</p>
+                    <p class="csp-s-9dcfa15ce670"><strong>Position:</strong> {{ guarantor_data.get('position', '—') }}</p>
+                    <p class="csp-s-9dcfa15ce670"><strong>Monthly Salary/Income:</strong> ₦{{ guarantor_data.get('monthly_salary', '—') }}</p>
                 </div>
 
-                <h4 style="margin: 0 0 12px 0; font-weight: 600; font-size: 14px; text-transform: uppercase;">Guarantee Pledge Terms</h4>
-                <p style="font-size: 12px; line-height: 1.6; margin: 0;">
+                <h4 class="csp-s-e4ef17f05745">Guarantee Pledge Terms</h4>
+                <p class="csp-s-6dbb7d1680f3">
                     I, <strong>{{ guarantor_data.get('name', '[Guarantor Name]') }}</strong>, hereby guarantee the repayment of the loan facility of up to 
                     <strong>₦{{ guarantor_data.get('max_guarantee', '—') }}</strong> granted to the borrower <strong>{{ app.applicant_name }}</strong>. 
                     In the event of default by the borrower, I authorise Mainstreet Microfinance Bank to recover any outstanding balance from my 
@@ -49,40 +49,40 @@
                 </p>
             </div>
 
-            <form method="POST" action="/client-form/apply/guarantors/sign" onsubmit="return validateForm()">
+            <form id="guarantorSignForm" method="POST" action="/client-form/apply/guarantors/sign">
                 <!-- REVIEW CONFIRMATION CHECKBOX -->
-                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary); margin-bottom: 24px;">
-                    <label style="display:flex; align-items:center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 500; margin: 0;">
-                        <input type="checkbox" id="review_confirmed" name="review_confirmed" value="1" onchange="onReviewConfirmedChanged(this)">
+                <div class="csp-s-c79627cabbff">
+                    <label class="csp-s-34557bcd9884">
+                        <input type="checkbox" id="review_confirmed" name="review_confirmed" value="1">
                         I have reviewed the details and guarantee terms and confirm they are accurate.
                     </label>
                 </div>
 
                 <!-- OTP SMS VERIFICATION -->
-                <div id="otpSection" style="margin-bottom: 24px; border: 1px dashed var(--border-color); padding: 16px; border-radius: 12px; background-color: var(--bg-secondary); display: none;">
-                    <h4 style="margin: 0 0 6px 0; font-size: 13px; font-weight: 600;">Guarantor Identity Verification (OTP)</h4>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">Verify your identity to unlock the signature canvas.</p>
+                <div id="otpSection" class="csp-s-74c3cf97e65f">
+                    <h4 class="csp-s-60c647ee17c9">Guarantor Identity Verification (OTP)</h4>
+                    <p class="csp-s-887e67b6b210">Verify your identity to unlock the signature canvas.</p>
                     
-                    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
-                        <button type="button" id="btnRequestOtp" class="btn-ghost-link" style="color: var(--accent-brand);" onclick="requestOtp()">Request Verification Code</button>
-                        <span id="otpStatus" style="font-size: 12px; font-weight:500;"></span>
+                    <div class="csp-s-d05d9c6eec33">
+                        <button type="button" id="btnRequestOtp" class="btn-ghost-link csp-s-283c6c6187d5">Request Verification Code</button>
+                        <span id="otpStatus" class="csp-s-32c7073cc128"></span>
                     </div>
                     
-                    <div id="otpInputDiv" style="display: none; align-items: center; gap: 12px;">
-                        <input type="text" id="otpCode" placeholder="Enter OTP Code" class="field-input" style="max-width: 180px; margin-bottom: 0; padding: 6px 12px;">
-                        <button type="button" class="btn-ghost-link" style="color: var(--accent-success);" onclick="verifyOtp()">Verify Code</button>
+                    <div id="otpInputDiv" class="csp-s-5adff5c60637">
+                        <input type="text" id="otpCode" placeholder="Enter OTP Code" class="field-input csp-s-7eb81ed60689">
+                        <button type="button" id="btnVerifyOtp" class="btn-ghost-link csp-s-f87b1072b66b">Verify Code</button>
                         <input type="hidden" name="auth_transaction_id" id="auth_transaction_id">
                     </div>
                 </div>
 
                 <!-- SIGNING BLOCK -->
-                <div id="signingBlock" style="opacity: 0.3; pointer-events: none; transition: opacity 0.3s ease;">
+                <div id="signingBlock" class="csp-s-f0bc3caadf9f">
                     
                     <!-- ASSISTED SIGNING ATTENTION & WITNESS FIELDS -->
                     {% if assistance_required %}
-                    <div style="border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary); margin-bottom: 24px;">
-                        <h4 style="font-size: 14px; color: var(--accent-brand); font-weight: 600; margin-bottom: 8px;">Assisted Signing Attestation</h4>
-                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">The guarantor requires assistance to sign. A witness must read the pledge aloud and sign below.</p>
+                    <div class="csp-s-26a88058e771">
+                        <h4 class="csp-s-aed5b676a9a2">Assisted Signing Attestation</h4>
+                        <p class="csp-s-f144ecff48fd">The guarantor requires assistance to sign. A witness must read the pledge aloud and sign below.</p>
                         
                         <div class="form-group">
                             <label class="field-label">Assistance Type <span class="required">*</span></label>
@@ -108,14 +108,14 @@
                         
                         <div class="form-group">
                             <label class="field-label">Witness Attestation Statement <span class="required">*</span></label>
-                            <textarea name="witness_attestation" class="field-input" required style="height: 80px; font-size:12px;">I certify that I have read and explained the guarantor pledge aloud to the guarantor in a language they understand, and they appeared to fully comprehend and consent to all terms.</textarea>
+                            <textarea name="witness_attestation" class="field-input csp-s-8a053dd9db79" required>I certify that I have read and explained the guarantor pledge aloud to the guarantor in a language they understand, and they appeared to fully comprehend and consent to all terms.</textarea>
                         </div>
                         
                         <div class="form-group">
                             <label class="field-label">Witness Signature Canvas <span class="required">*</span></label>
-                            <div class="signature-box" style="margin-bottom: 8px; border: 1.5px solid var(--border-color); height: 150px; position: relative;">
-                                <canvas id="witness_sig_canvas" style="width: 100%; height: 100%;"></canvas>
-                                <button type="button" class="signature-clear-btn" onclick="clearSignature('witness_sig_canvas')" style="position: absolute; right: 10px; bottom: 10px;">Clear</button>
+                            <div class="signature-box csp-s-3151641cc4a4">
+                                <canvas id="witness_sig_canvas" class="csp-s-ed08e28b319a"></canvas>
+                                <button type="button" class="signature-clear-btn csp-s-c507ca1dc8fd" data-clear-signature="witness_sig_canvas">Clear</button>
                             </div>
                             <input type="hidden" name="witness_signature" id="witness_sig_val" required>
                         </div>
@@ -123,19 +123,19 @@
                     {% endif %}
 
                     <!-- Main Signature block -->
-                    <div style="border-top: 0.5px solid var(--color-divider); padding-top: 20px; margin-bottom: 24px;">
+                    <div class="csp-s-c89f73ce6ad2">
                         <label class="field-label">Guarantor Signature / Mark <span class="required">*</span></label>
-                        <div class="signature-box" style="margin-bottom: 8px; border: 1.5px solid var(--border-color); height: 150px; position: relative;">
-                            <canvas id="guarantor_sig_canvas" style="width: 100%; height: 100%;"></canvas>
-                            <button type="button" class="signature-clear-btn" onclick="clearSignature('guarantor_sig_canvas')" style="position: absolute; right: 10px; bottom: 10px;">Clear</button>
+                        <div class="signature-box csp-s-3151641cc4a4">
+                            <canvas id="guarantor_sig_canvas" class="csp-s-ed08e28b319a"></canvas>
+                            <button type="button" class="signature-clear-btn csp-s-c507ca1dc8fd" data-clear-signature="guarantor_sig_canvas">Clear</button>
                         </div>
                         <input type="hidden" name="guarantor_signature" id="guarantor_sig_val" required>
-                        <span style="font-size: 12px; color: var(--text-muted);">I declare that all information provided in this form is true and correct.</span>
+                        <span class="csp-s-f779da42d59e">I declare that all information provided in this form is true and correct.</span>
                     </div>
                 </div>
 
-                <div style="display: flex; justify-content: flex-end; gap: 16px; margin-top: 32px;">
-                    <button type="submit" class="btn-primary" style="background-color: var(--accent-brand); border: none; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                <div class="csp-s-d45f0a898674">
+                    <button type="submit" class="btn-primary csp-s-4b1218d5ee9d">
                         Verify & Complete Pledge
                     </button>
                 </div>
@@ -145,7 +145,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     function onReviewConfirmedChanged(chk) {
         if (chk.checked) {
             fetch('/client-form/signing/viewed', { method: 'POST' })
@@ -305,5 +305,16 @@
         {% endif %}
         return true;
     }
+    document.getElementById('review_confirmed')?.addEventListener('change', (event) => {
+        onReviewConfirmedChanged(event.currentTarget);
+    });
+    document.getElementById('btnRequestOtp')?.addEventListener('click', requestOtp);
+    document.getElementById('btnVerifyOtp')?.addEventListener('click', verifyOtp);
+    document.querySelectorAll('[data-clear-signature]').forEach((button) => {
+        button.addEventListener('click', () => clearSignature(button.dataset.clearSignature));
+    });
+    document.getElementById('guarantorSignForm')?.addEventListener('submit', (event) => {
+        if (!validateForm()) event.preventDefault();
+    });
 </script>
 {% endblock %}

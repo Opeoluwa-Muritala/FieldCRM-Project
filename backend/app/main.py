@@ -14,7 +14,6 @@ from fastapi import FastAPI, Depends, Form, HTTPException, Query, Request, Respo
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from contextlib import asynccontextmanager
@@ -22,7 +21,9 @@ from app.config import settings
 from app.core import security
 from app.core.database import db_conn, init_engine, dispose_engine, get_connection
 from app.core.exceptions import DomainException, domain_exception_handler
-from app.core.middleware import RequestIDMiddleware, SecurityHeadersMiddleware
+from app.core.middleware import PerformanceTimingMiddleware, RequestIDMiddleware, SecurityHeadersMiddleware
+from app.core.template_utils import csp_nonce_context
+from app.core.templates import create_templates
 from app.core.dependencies import get_current_user, RoleChecker
 from app.domains.documents.repository import DocumentRepository
 from app.services.cloud_storage_service import signed_download_url, signed_preview_url
@@ -39,11 +40,19 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 from app.domains.auth.router import router as auth_router
 from app.domains.users.router import router as users_router
 from app.domains.loans.router import router as loans_router
+from app.domains.ocr.router import router as ocr_router
 from app.api.v1.mobile import router as mobile_api_router, warm_mobile_static_cache
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_engine()
+    if settings.is_production:
+        db_url = settings.DATABASE_URL
+        if "neon.tech" in db_url and "-pooler" not in db_url:
+            logging.warning(
+                "CRITICAL WARNING: The application is running in production but does NOT appear to use Neon's pooled connection string. "
+                "This can lead to connection exhaustion under serverless scaling."
+            )
     await init_rate_limiter()
     await init_cache()
     await warm_mobile_static_cache()
@@ -61,8 +70,35 @@ async def lifespan(app: FastAPI):
             if not column_exists:
                 logging.info("Adding share_token column to loan_applications table...")
                 await conn.execute("ALTER TABLE loan_applications ADD COLUMN share_token TEXT")
+
+            # Verify or create ocr_jobs table
+            if "postgresql" in settings.DATABASE_URL:
+                row = await conn.fetchrow(
+                    "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'ocr_jobs'"
+                )
+                table_exists = bool(row)
+            else:
+                row = await conn.fetchrow(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ocr_jobs'"
+                )
+                table_exists = bool(row)
+
+            if not table_exists:
+                logging.info("Creating ocr_jobs table...")
+                await conn.execute(
+                    """
+                    CREATE TABLE ocr_jobs (
+                        id UUID PRIMARY KEY,
+                        document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+                        status TEXT NOT NULL DEFAULT 'pending',
+                        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                        error TEXT
+                    )
+                    """
+                )
     except Exception as e:
-        logging.error(f"Failed to dynamically verify share_token column: {e}")
+        logging.error(f"Failed to dynamically verify or create columns/tables: {e}")
     yield
     await close_rate_limiter()
     await close_cache()
@@ -85,9 +121,17 @@ app.add_middleware(
 )
 
 # Custom Middlewares
-app.add_middleware(SecurityHeadersMiddleware, cookie_secure=settings.COOKIE_SECURE)
+app.add_middleware(
+    SecurityHeadersMiddleware,
+    cookie_secure=settings.COOKIE_SECURE,
+    csp_nonce_enforced=settings.CSP_NONCE_ENFORCED,
+)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(ResponseCacheInvalidationMiddleware)
+app.add_middleware(
+    PerformanceTimingMiddleware,
+    expose_server_timing=not settings.is_production,
+)
 
 # Exception handlers
 app.add_exception_handler(DomainException, domain_exception_handler)
@@ -96,7 +140,7 @@ app.add_exception_handler(DomainException, domain_exception_handler)
 base_dir = os.path.dirname(os.path.abspath(__file__))
 templates_dir = os.path.abspath(os.path.join(base_dir, "../../frontend/templates"))
 static_dir = os.path.abspath(os.path.join(base_dir, "../../frontend/static"))
-templates = Jinja2Templates(directory=templates_dir)
+templates = create_templates(templates_dir)
 # Versioned Cloudinary URLs let the CDN and browser cache each brand image once
 # while every template continues to use the same source of truth.
 templates.env.globals.update(
@@ -311,6 +355,7 @@ app.add_exception_handler(DomainException, browser_domain_exception_handler)
 app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"])
 app.include_router(users_router, prefix=f"{settings.API_V1_STR}/users", tags=["Users"])
 app.include_router(mobile_api_router, prefix=f"{settings.API_V1_STR}/mobile", tags=["Mobile API"])
+app.include_router(ocr_router)
 
 # Mount Loan pages at root
 app.include_router(loans_router)
@@ -363,12 +408,12 @@ async def root_view(request: Request):
     return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/login")
-async def render_login(request: Request, conn=Depends(db_conn)):
+async def render_login(request: Request):
     token = request.cookies.get("session") or request.cookies.get("__Host-session")
     if token:
         try:
             from app.core.dependencies import get_current_user_from_token
-            await get_current_user_from_token(token, conn)
+            await get_current_user_from_token(token)
             # Avoid re-sending an already authenticated user to a route that
             # may be forbidden for their role. The POST login flow still
             # honours a validated `next` value after fresh authentication.

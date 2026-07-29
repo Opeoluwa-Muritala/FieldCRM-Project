@@ -8,25 +8,25 @@
   <div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">{{ 'Head CRM Dashboard' if current_user.role == 'head_crm' else 'CRM Officer Dashboard' }}</h1></div>
 </div>
 
-<div class="metrics-row" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px;">
-  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
+<div class="metrics-row csp-s-bfc6d2a12719">
+  <div class="metric-card page-card csp-s-c49a1a9d5864">
     <div class="metric-value">{{ metrics.crm_queue or 0 }}</div>
     <div class="metric-label">{{ 'Dossiers Awaiting Approval' if current_user.role == 'head_crm' else 'Dossiers to Review' }}</div>
   </div>
-  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
+  <div class="metric-card page-card csp-s-c49a1a9d5864">
     <div class="metric-value">{{ metrics.disbursed_total or 0 }}</div>
     <div class="metric-label">Active Loans</div>
   </div>
-  <div class="metric-card page-card" style="flex:1;min-width:140px;text-align:center;">
-    <div class="metric-value" style="color:{% if (metrics.par30_pct or 0) > 5 %}#c62828{% else %}#2e7d32{% endif %}">{{ metrics.par30_pct or 0 }}%</div>
+  <div class="metric-card page-card csp-s-c49a1a9d5864">
+    <div class="metric-value" data-csp-style="color:{% if (metrics.par30_pct or 0) > 5 %}#c62828{% else %}#2e7d32{% endif %}">{{ metrics.par30_pct or 0 }}%</div>
     <div class="metric-label">PAR-30</div>
   </div>
 </div>
 
-<div class="page-card" style="margin-bottom:20px;">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-    <h2 class="page-card-title" style="margin:0;">Dossier Review Queue</h2>
-    <a href="/crm-review-queue" class="btn btn-primary" style="font-size:13px;padding:6px 14px;">View All</a>
+<div class="page-card csp-s-3c4a3d440074">
+  <div class="csp-s-4b7c31606537">
+    <h2 class="page-card-title csp-s-38965f9b18ca">Dossier Review Queue</h2>
+    <a href="/crm-review-queue" class="btn btn-primary csp-s-1673b3d186d9">View All</a>
   </div>
   <div class="queue-cards">
     {% for item in crm_queue[:5] %}
@@ -41,25 +41,25 @@
 </div>
 
 <div class="page-card">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-    <h2 class="page-card-title" style="margin:0;">Recent Disbursements</h2>
-    <a href="/reports/par" class="btn btn-secondary" style="font-size:13px;padding:6px 14px;">PAR Report</a>
+  <div class="csp-s-4b7c31606537">
+    <h2 class="page-card-title csp-s-38965f9b18ca">Recent Disbursements</h2>
+    <a href="/reports/par" class="btn btn-secondary csp-s-1673b3d186d9">PAR Report</a>
   </div>
   <table class="custom-table">
     <thead><tr><th>Borrower</th><th>Ref</th><th>Amount</th><th>Classification</th><th>Action</th></tr></thead>
     <tbody>
     {% for loan in recent_disbursements %}
-    <tr style="cursor:pointer;" onclick="window.location='/applications/{{ loan.id }}/repayment-schedule';">
+    <tr data-href="/applications/{{ loan.id }}/repayment-schedule" tabindex="0" class="csp-s-83ac1ceef76e">
       <td>{{ loan.applicant_name }}</td>
       <td>{{ loan.ref_no }}</td>
       <td>{% if loan.disbursed_amount %}&#x20A6;{{ "{:,.0f}".format(loan.disbursed_amount) }}{% else %}—{% endif %}</td>
       <td><span class="status-badge {% if loan.classification == 'current' %}approved{% else %}needs-review{% endif %}">{{ loan.classification|upper }}</span></td>
       <td>
-        <a href="/applications/{{ loan.id }}/repayment-schedule" onclick="event.stopPropagation();">Schedule</a> | 
-        <a href="/applications/{{ loan.id }}/payments" onclick="event.stopPropagation();">Payment</a>
+        <a href="/applications/{{ loan.id }}/repayment-schedule">Schedule</a> | 
+        <a href="/applications/{{ loan.id }}/payments">Payment</a>
       </td>
     </tr>
-    {% else %}<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No disbursed loans yet.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="5" class="csp-s-542b2a1bdac0">No disbursed loans yet.</td></tr>{% endfor %}
     </tbody>
   </table>
 </div>

@@ -13,45 +13,45 @@
     </div>
 
     <!-- Summary progress strip -->
-    <div style="background-color: var(--bg-secondary); border-radius: 8px; padding: 16px; margin-bottom: 24px; border: 0.5px solid var(--border-color);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; font-weight:500;">
+    <div class="csp-s-ab760b0b3350">
+        <div class="csp-s-776e362a0624">
             <span>Checklist Status: 18 of 22 items ready</span>
-            <span style="color: var(--color-brand-shield);">81% Complete</span>
+            <span class="csp-s-b166ee10dc46">81% Complete</span>
         </div>
-        <div style="height: 6px; background-color: var(--border-color); border-radius: 3px; overflow: hidden; margin-bottom: 8px;">
-            <div style="width: 81%; height: 100%; background-color: var(--color-brand-shield);"></div>
+        <div class="csp-s-6afb4593a038">
+            <div class="csp-s-9544a1a53030"></div>
         </div>
-        <div style="font-size:12px; color: var(--accent-danger); font-weight:500;">
+        <div class="csp-s-03b73410ceae">
             &#x26A0; 4 critical checklist items still require attention.
         </div>
     </div>
 
     <!-- Group 1: Forms Completed -->
-    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px; background-color: #FFFFFF;">
-        <h3 style="font-size:15px; font-weight:500; margin-bottom:12px; border-bottom:0.5px solid var(--color-divider); padding-bottom:8px;">1. Forms Completed</h3>
-        <div style="display:flex; flex-direction:column; gap:8px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+    <div class="csp-s-37b7b9f4a807">
+        <h3 class="csp-s-01c3f30f7542">1. Forms Completed</h3>
+        <div class="csp-s-6e146183a3a3">
+            <div class="csp-s-c6db9aa46ddd">
                 <span>Loan Application Form (MMFB/CRM/01)</span>
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div class="csp-s-7b6ef42c3f03">
                     <span class="status-badge verified">Verified</span>
                 </div>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+            <div class="csp-s-c6db9aa46ddd">
                 <span>Guarantor Form 1</span>
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div class="csp-s-7b6ef42c3f03">
                     <span class="status-badge verified">Verified</span>
                 </div>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+            <div class="csp-s-c6db9aa46ddd">
                 <span>Guarantor Form 2</span>
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div class="csp-s-7b6ef42c3f03">
                     <span class="status-badge returned">Missing</span>
-                    <a href="/applications/{{ app_id }}/step/3" style="color:var(--color-brand-shield); text-decoration:none; font-weight:500;">Fix &rarr;</a>
+                    <a href="/applications/{{ app_id }}/step/3" class="csp-s-bc021cb91705">Fix &rarr;</a>
                 </div>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+            <div class="csp-s-c6db9aa46ddd">
                 <span>Pledge and Trust Receipt (MMFB/CRM/02)</span>
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div class="csp-s-7b6ef42c3f03">
                     <span class="status-badge verified">Verified</span>
                 </div>
             </div>
@@ -59,13 +59,13 @@
     </div>
 
     <!-- Group 2: Supporting Documents -->
-    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px; background-color: #FFFFFF;">
-        <h3 style="font-size:15px; font-weight:500; margin-bottom:12px; border-bottom:0.5px solid var(--color-divider); padding-bottom:8px;">2. Supporting Documents</h3>
-        <div style="display:flex; flex-direction:column; gap:8px;">
+    <div class="csp-s-37b7b9f4a807">
+        <h3 class="csp-s-01c3f30f7542">2. Supporting Documents</h3>
+        <div class="csp-s-6e146183a3a3">
             {% for doc in documents %}
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+            <div class="csp-s-c6db9aa46ddd">
                 {% if doc.url %}
-                    <a href="{{ doc.url }}" target="_blank" style="color:var(--color-brand-shield); text-decoration:none; font-weight:500;">
+                    <a href="{{ doc.url }}" target="_blank" class="csp-s-bc021cb91705">
                         {{ doc.category|replace('_', ' ')|title }} &nearr;
                     </a>
                 {% else %}
@@ -74,42 +74,42 @@
                 <span class="status-badge {{ 'verified' if doc.status == 'verified' else 'needs-review' }}">{{ doc.status|replace('_', ' ')|title }}</span>
             </div>
             {% else %}
-            <div style="font-size:13px; color:var(--text-muted); text-align:center;">No documents uploaded.</div>
+            <div class="csp-s-3fea3c9056c6">No documents uploaded.</div>
             {% endfor %}
         </div>
     </div>
 
     <!-- Group 3: Data Quality -->
-    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px; background-color: #FFFFFF;">
-        <h3 style="font-size:15px; font-weight:500; margin-bottom:12px; border-bottom:0.5px solid var(--color-divider); padding-bottom:8px;">3. Data Quality & Checks</h3>
-        <div style="display:flex; flex-direction:column; gap:8px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+    <div class="csp-s-37b7b9f4a807">
+        <h3 class="csp-s-01c3f30f7542">3. Data Quality & Checks</h3>
+        <div class="csp-s-6e146183a3a3">
+            <div class="csp-s-c6db9aa46ddd">
                 <span>BVN Matching Verification</span>
                 <span class="status-badge verified">Verified</span>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+            <div class="csp-s-c6db9aa46ddd">
                 <span>OCR Low-Confidence Exceptions</span>
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div class="csp-s-7b6ef42c3f03">
                     <span class="status-badge needs-review">Needs Review</span>
-                    <a href="/applications/{{ app_id }}/ocr-review" style="color:var(--color-brand-shield); text-decoration:none; font-weight:500;">Fix &rarr;</a>
+                    <a href="/applications/{{ app_id }}/ocr-review" class="csp-s-bc021cb91705">Fix &rarr;</a>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Group 4: Declarations and Consents -->
-    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px; background-color: #FFFFFF;">
-        <h3 style="font-size:15px; font-weight:500; margin-bottom:12px; border-bottom:0.5px solid var(--color-divider); padding-bottom:8px;">4. Declarations & Consents</h3>
-        <div style="display:flex; flex-direction:column; gap:8px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+    <div class="csp-s-37b7b9f4a807">
+        <h3 class="csp-s-01c3f30f7542">4. Declarations & Consents</h3>
+        <div class="csp-s-6e146183a3a3">
+            <div class="csp-s-c6db9aa46ddd">
                 <span>Credit Bureau Consent Checked</span>
                 <span class="status-badge verified">Verified</span>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+            <div class="csp-s-c6db9aa46ddd">
                 <span>Cheque Authority Received</span>
                 <span class="status-badge verified">Verified</span>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+            <div class="csp-s-c6db9aa46ddd">
                 <span>GSI Mandate Signed</span>
                 <span class="status-badge verified">Verified</span>
             </div>
@@ -117,28 +117,28 @@
     </div>
 
     <!-- Group 5: Field Verification -->
-    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px; background-color: #FFFFFF;">
-        <h3 style="font-size:15px; font-weight:500; margin-bottom:12px; border-bottom:0.5px solid var(--color-divider); padding-bottom:8px;">5. Field Verification</h3>
-        <div style="display:flex; flex-direction:column; gap:8px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+    <div class="csp-s-37b7b9f4a807">
+        <h3 class="csp-s-01c3f30f7542">5. Field Verification</h3>
+        <div class="csp-s-6e146183a3a3">
+            <div class="csp-s-c6db9aa46ddd">
                 <span>Visitation Report Uploaded</span>
                 <span class="status-badge verified">Verified</span>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+            <div class="csp-s-c6db9aa46ddd">
                 <span>Team Lead Visitation Concurrence</span>
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div class="csp-s-7b6ef42c3f03">
                     <span class="status-badge needs-review">Needs Review</span>
-                    <a href="/applications/{{ app_id }}/visitation" style="color:var(--color-brand-shield); text-decoration:none; font-weight:500;">Fix &rarr;</a>
+                    <a href="/applications/{{ app_id }}/visitation" class="csp-s-bc021cb91705">Fix &rarr;</a>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Group 6: Approval Chain -->
-    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 32px; background-color: #FFFFFF;">
-        <h3 style="font-size:15px; font-weight:500; margin-bottom:12px; border-bottom:0.5px solid var(--color-divider); padding-bottom:8px;">6. Approval Chain</h3>
-        <div style="display:flex; flex-direction:column; gap:8px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+    <div class="csp-s-73ce9fd8dcff">
+        <h3 class="csp-s-01c3f30f7542">6. Approval Chain</h3>
+        <div class="csp-s-6e146183a3a3">
+            <div class="csp-s-c6db9aa46ddd">
                 <span>Credit Underwriter Recommendation</span>
                 <span class="status-badge verified">Verified</span>
             </div>
@@ -146,40 +146,40 @@
     </div>
 
     <!-- Review status tracker -->
-    <div style="margin-bottom:24px; padding:16px; background:var(--bg-surface,#fff); border:1px solid var(--border-color,#e5e7eb); border-radius:8px;">
-        <h3 style="font-size:14px; font-weight:600; margin-bottom:12px; color:var(--color-text,#111827);">Review Status</h3>
-        <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+    <div class="csp-s-c1ce43c03782">
+        <h3 class="csp-s-6a01b1369443">Review Status</h3>
+        <div class="csp-s-69abfdc81da3">
             {% for i in range(total_votes|default(5)) %}
-            <div style="width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; {% if i < (yes_votes|default(0)) %}background:#22c55e; color:#fff;{% else %}background:var(--bg-muted,#f3f4f6); color:var(--color-text-muted,#6b7280); border:1px solid var(--border-color,#e5e7eb);{% endif %}">
+            <div data-csp-style="width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; {% if i < (yes_votes|default(0)) %}background:#22c55e; color:#fff;{% else %}background:var(--bg-muted,#f3f4f6); color:var(--color-text-muted,#6b7280); border:1px solid var(--border-color,#e5e7eb);{% endif %}">
                 {% if i < (yes_votes|default(0)) %}✓{% else %}–{% endif %}
             </div>
             {% endfor %}
         </div>
-        <p style="font-size:13px; color:var(--color-text-muted,#6b7280);">{{ yes_votes|default(0) }} completed review checks.</p>
+        <p class="csp-s-bcdd41c305f0">{{ yes_votes|default(0) }} completed review checks.</p>
     </div>
 
     <!-- Manager Attestations -->
-    <div style="margin-bottom:24px; padding:16px; background:var(--bg-surface,#fff); border:1px solid var(--border-color,#e5e7eb); border-radius:8px;">
-        <h3 style="font-size:14px; font-weight:600; margin-bottom:12px; color:var(--color-text,#111827);">Manager Attestations</h3>
-        <label style="display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; cursor:pointer;">
-            <input type="checkbox" name="kyc_attested" required style="margin-top:2px; flex-shrink:0;">
-            <span style="font-size:13px; color:var(--color-text,#111827);">I confirm that KYC documents have been physically sighted and verified for this applicant.</span>
+    <div class="csp-s-c1ce43c03782">
+        <h3 class="csp-s-6a01b1369443">Manager Attestations</h3>
+        <label class="csp-s-898ea1b6ca99">
+            <input type="checkbox" name="kyc_attested" required class="csp-s-868b2e079f55">
+            <span class="csp-s-7a59f00301eb">I confirm that KYC documents have been physically sighted and verified for this applicant.</span>
         </label>
-        <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
-            <input type="checkbox" name="collateral_attested" required style="margin-top:2px; flex-shrink:0;">
-            <span style="font-size:13px; color:var(--color-text,#111827);">I confirm that collateral value has been registered in the branch collateral registry.</span>
+        <label class="csp-s-1032ef5b90f4">
+            <input type="checkbox" name="collateral_attested" required class="csp-s-868b2e079f55">
+            <span class="csp-s-7a59f00301eb">I confirm that collateral value has been registered in the branch collateral registry.</span>
         </label>
     </div>
 
     <!-- Bottom Actions bar -->
-    <div style="display:flex; justify-content:space-between; align-items:center; border-top:0.5px solid var(--color-divider); padding-top:16px;">
-        <div style="display:flex; gap:16px;">
-            <a href="/applications/{{ app_id }}/return?type=officer" style="color: var(--accent-danger); font-size:12px; font-weight:500; text-decoration:none;">Return to Relationship Officer</a>
+    <div class="csp-s-2412d21f7a90">
+        <div class="csp-s-4dd169649d12">
+            <a href="/applications/{{ app_id }}/return?type=officer" class="csp-s-39338490c131">Return to Relationship Officer</a>
         </div>
 
-        <form action="/applications/{{ app_id }}/approve" method="POST" style="display:flex; flex-direction:column; align-items:flex-end; gap: 12px; width: 100%; max-width: 320px;">
-            <div class="form-group" style="width: 100%; text-align: left;">
-                <label class="field-label" style="font-weight: 600;">Approved/Recommended Amount (₦)</label>
+        <form action="/applications/{{ app_id }}/approve" method="POST" class="csp-s-2d7bdee59cdd">
+            <div class="form-group csp-s-84132fd4e4a0">
+                <label class="field-label csp-s-3d9df89ef84d">Approved/Recommended Amount (₦)</label>
                 <input type="number" name="amount" class="field-input" value="{{ app.amount or 0 }}" required>
             </div>
             <button type="submit" class="btn-primary-filled" id="approveBtn">
@@ -189,8 +189,8 @@
     </div>
 
     {% if app and app.stage == 'disbursed' %}
-    <div style="margin-top:24px; padding:16px; background:#f0fdf4; border:1px solid #86efac; border-radius:8px;">
-        <h3 style="font-size:14px; font-weight:600; margin-bottom:12px; color:#166534;">Disbursement Confirmed</h3>
+    <div class="csp-s-b6ee57193685">
+        <h3 class="csp-s-cafbaf7de149">Disbursement Confirmed</h3>
         <div class="form-grid">
             <div class="form-group">
                 <label class="field-label">Disbursed At</label>

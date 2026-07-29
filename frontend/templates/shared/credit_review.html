@@ -7,7 +7,7 @@
 
 {% block content %}
 <div class="page-card no-shadow">
-    <div class="page-card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+    <div class="page-card-header csp-s-1b723f5e1c0e">
         <div>
             <h2 class="page-card-title">Credit Risk Review</h2>
             <p class="page-card-subtitle">Review by: {{ current_user.name }} · Date: 4 June 2026</p>
@@ -26,11 +26,11 @@
 
     <!-- Inside page tabbed navigation -->
     <div class="tab-row">
-        <button type="button" class="tab-btn active" id="tabSummaryBtn" onclick="switchReviewTab('summary')">Summary</button>
-        <button type="button" class="tab-btn" id="tabAffordabilityBtn" onclick="switchReviewTab('affordability')">Affordability</button>
-        <button type="button" class="tab-btn" id="tabDocsBtn" onclick="switchReviewTab('docs')">Documents</button>
-        <button type="button" class="tab-btn" id="tabOcrBtn" onclick="switchReviewTab('ocr')">OCR Exceptions</button>
-        <button type="button" class="tab-btn" id="tabRecBtn" onclick="switchReviewTab('recommendation')">Recommendation</button>
+        <button type="button" class="tab-btn active" id="tabSummaryBtn" data-review-tab="summary">Summary</button>
+        <button type="button" class="tab-btn" id="tabAffordabilityBtn" data-review-tab="affordability">Affordability</button>
+        <button type="button" class="tab-btn" id="tabDocsBtn" data-review-tab="docs">Documents</button>
+        <button type="button" class="tab-btn" id="tabOcrBtn" data-review-tab="ocr">OCR Exceptions</button>
+        <button type="button" class="tab-btn" id="tabRecBtn" data-review-tab="recommendation">Recommendation</button>
     </div>
 
     <form id="creditBureauPullForm" action="/applications/{{ app_id }}/credit-bureau-pull" method="POST"></form>
@@ -61,13 +61,13 @@
                 </div>
             </div>
 
-            <div style="margin-top: 24px; border-top: 1px solid var(--color-divider); padding-top: 16px;">
-                <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 16px;">External Verification & Screening Results</h3>
+            <div class="csp-s-2c59a77da560">
+                <h3 class="csp-s-dac47f424aac">External Verification & Screening Results</h3>
                 
-                <div style="display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+                <div class="csp-s-d1e014023572">
                     <!-- AML Check -->
-                    <div style="flex: 1; min-width: 250px; border: 1px solid var(--color-divider); border-radius: 6px; padding: 12px; background: var(--bg-secondary);">
-                        <div style="font-weight: 500; font-size: 13px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div class="csp-s-f1a4833becda">
+                        <div class="csp-s-914eb88118e6">
                             <span>Youverify AML Check</span>
                             {% if aml_check %}
                                 <span class="status-badge {% if aml_check.status == 'clear' %}verified{% elif aml_check.status in ('pep_hit', 'sanctions_hit', 'review_required') %}returned{% else %}needs-review{% endif %}">
@@ -77,19 +77,19 @@
                                 <span class="status-badge needs-review">Awaiting Check</span>
                             {% endif %}
                         </div>
-                        <p style="font-size: 11px; color: var(--text-muted); margin: 0;">
+                        <p class="csp-s-7e9bd5759567">
                             Automatic screening of borrower name against PEP lists, sanctions lists, and crime databases.
                         </p>
                     </div>
 
                     <!-- Credit Bureau Provider Card -->
-                    <div style="flex: 1; min-width: 250px; border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; background: var(--bg-secondary);">
-                        <div style="font-weight: 500; font-size: 13px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div class="csp-s-7e5878a68eb0">
+                        <div class="csp-s-914eb88118e6">
                             <span>{% if bureau_multiple_configured %}{% if bureau_sub %}{{ 'CRC' if bureau_sub.provider == 'crc' else 'Credit Registry' }}{% else %}Credit Bureau{% endif %}{% else %}{{ active_bureau_provider or 'Credit Bureau' }}{% endif %} Pull</span>
                             {% if bureau_sub %}
-                                <div style="display: flex; gap: 6px; align-items: center;">
+                                <div class="csp-s-f8df590e4541">
                                     {% if bureau_multiple_configured %}
-                                        <span style="font-size: 11px; color: var(--text-muted);">({{ 'CRC' if bureau_sub.provider == 'crc' else 'CreditRegistry' }})</span>
+                                        <span class="csp-s-c029905cd705">({{ 'CRC' if bureau_sub.provider == 'crc' else 'CreditRegistry' }})</span>
                                     {% endif %}
                                     <span class="status-badge {% if bureau_sub.status == 'success' %}verified{% else %}returned{% endif %}">
                                         {{ bureau_sub.status|replace('_', ' ')|title }}
@@ -100,8 +100,8 @@
                             {% endif %}
                         </div>
                         
-                        <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
-                            <button form="creditBureauPullForm" type="submit" class="btn-primary-filled" style="min-height: 32px; height: 32px; padding: 0 12px; font-size: 12px; background-color: var(--color-brand-shield);">
+                        <div class="csp-s-3aab6f18fbd3">
+                            <button form="creditBureauPullForm" type="submit" class="btn-primary-filled csp-s-0c23ed10a9b7">
                                 {% if bureau_sub %}Re-Run Bureau Check{% else %}Run Bureau Check{% endif %}
                             </button>
                         </div>
@@ -110,36 +110,36 @@
 
                 <!-- Credit Bureau Report Summary Inline -->
                 {% if bureau_sub and bureau_sub.status == 'success' %}
-                    <div style="border: 1px solid var(--border-color); border-radius: 6px; padding: 16px; background: #fff; margin-bottom: 16px;">
-                        <h4 style="font-size: 13px; font-weight: 500; margin-top: 0; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">Credit Report Summary ({% if bureau_sub.provider == 'crc' %}CRC Summary{% else %}AutoCred v8{% endif %})</h4>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+                    <div class="csp-s-b2ef03b49560">
+                        <h4 class="csp-s-471d2b39b27f">Credit Report Summary ({% if bureau_sub.provider == 'crc' %}CRC Summary{% else %}AutoCred v8{% endif %})</h4>
+                        <div class="csp-s-d4792311ff43">
                             <div>
-                                <span style="font-size: 11px; color: var(--text-muted); display: block;">Credit Score</span>
-                                <strong style="font-size: 16px; color: var(--color-brand-shield);">
+                                <span class="csp-s-e46a6c2264cc">Credit Score</span>
+                                <strong class="csp-s-6bde13058803">
                                     {{ bureau_report.score }}
                                 </strong>
                             </div>
                             <div>
-                                <span style="font-size: 11px; color: var(--text-muted); display: block;">Active Loans Count</span>
-                                <strong style="font-size: 14px; color: var(--text-main);">
+                                <span class="csp-s-e46a6c2264cc">Active Loans Count</span>
+                                <strong class="csp-s-9ca850777f4e">
                                     {{ bureau_report.active_loans_count }}
                                 </strong>
                             </div>
                             <div>
-                                <span style="font-size: 11px; color: var(--text-muted); display: block;">Total Outstanding</span>
-                                <strong style="font-size: 14px; color: var(--text-main);">
+                                <span class="csp-s-e46a6c2264cc">Total Outstanding</span>
+                                <strong class="csp-s-9ca850777f4e">
                                     ₦{{ "{:,}".format(bureau_report.total_outstanding_balance|int) }}
                                 </strong>
                             </div>
                             <div>
-                                <span style="font-size: 11px; color: var(--text-muted); display: block;">Monthly Repayments</span>
-                                <strong style="font-size: 14px; color: var(--text-main);">
+                                <span class="csp-s-e46a6c2264cc">Monthly Repayments</span>
+                                <strong class="csp-s-9ca850777f4e">
                                     ₦{{ "{:,}".format(bureau_report.total_monthly_repayments|int) }}
                                 </strong>
                             </div>
                             <div>
-                                <span style="font-size: 11px; color: var(--text-muted); display: block;">Delinquent Accounts</span>
-                                <strong style="font-size: 14px; color: {% if bureau_report.total_delinquent_accounts|int > 0 %}var(--accent-danger){% else %}var(--accent-success){% endif %};">
+                                <span class="csp-s-e46a6c2264cc">Delinquent Accounts</span>
+                                <strong data-csp-style="font-size: 14px; color: {% if bureau_report.total_delinquent_accounts|int > 0 %}var(--accent-danger){% else %}var(--accent-success){% endif %};">
                                     {{ bureau_report.total_delinquent_accounts }}
                                 </strong>
                             </div>
@@ -150,10 +150,10 @@
         </div>
 
         <!-- Tab 2: Affordability -->
-        <div id="tabAffordability" class="tab-pane" style="display: none;">
-            <div style="font-size: 14px; font-weight: 500; margin-bottom: 12px;">Debt Service Ratio (DSR) & Affordability Table</div>
+        <div id="tabAffordability" class="tab-pane csp-s-6e22c58a7a6a">
+            <div class="csp-s-82e27e565ab7">Debt Service Ratio (DSR) & Affordability Table</div>
             
-            <div class="custom-table-container" style="margin-bottom: 16px;">
+            <div class="custom-table-container csp-s-4933c08820a9">
                 <table class="custom-table">
                     <thead>
                         <tr>
@@ -168,7 +168,7 @@
                             <td>Monthly Income / Business Sales</td>
                             <td>₦650,000</td>
                             <td>₦610,000</td>
-                            <td style="color: var(--accent-warning);">-6.1%</td>
+                            <td class="csp-s-d7af454a534c">-6.1%</td>
                         </tr>
                         <tr>
                             <td>Proposed Monthly Repayment</td>
@@ -193,10 +193,10 @@
         </div>
 
         <!-- Tab 3: Documents Checklist -->
-        <div id="tabDocs" class="tab-pane" style="display: none;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <div style="font-size: 14px; font-weight: 500;">Document Verification Log</div>
-                <a href="/applications/{{ app_id }}/documents/upload" class="btn-ghost-link" style="color:var(--color-brand-shield);">+ Request Missing Document</a>
+        <div id="tabDocs" class="tab-pane csp-s-6e22c58a7a6a">
+            <div class="csp-s-8e7137fcc774">
+                <div class="csp-s-419fbd51b92c">Document Verification Log</div>
+                <a href="/applications/{{ app_id }}/documents/upload" class="btn-ghost-link csp-s-287d78d965d1">+ Request Missing Document</a>
             </div>
 
             <div class="custom-table-container">
@@ -214,7 +214,7 @@
                         <tr>
                             <td>
                                 {% if doc.url %}
-                                    <a href="{{ doc.url }}" data-document-preview data-document-title="{{ doc.category|replace('_', ' ')|title }}" style="color: var(--color-brand-shield); text-decoration: none; font-weight: 500;">
+                                    <a href="{{ doc.url }}" data-document-preview data-document-title="{{ doc.category|replace('_', ' ')|title }}" class="csp-s-24755a6a9e78">
                                         {{ doc.category|replace('_', ' ')|title }} &nearr;
                                     </a>
                                 {% else %}
@@ -231,7 +231,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="4" style="text-align: center; color: var(--text-muted);">No documents uploaded yet.</td>
+                            <td colspan="4" class="csp-s-56d23a4ca666">No documents uploaded yet.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -241,8 +241,8 @@
         </div>
 
         <!-- Tab 4: OCR Exceptions -->
-        <div id="tabOcr" class="tab-pane" style="display: none;">
-            <div style="font-size: 14px; font-weight: 500; margin-bottom: 12px;">Low-Confidence and Critical Field Exceptions</div>
+        <div id="tabOcr" class="tab-pane csp-s-6e22c58a7a6a">
+            <div class="csp-s-82e27e565ab7">Low-Confidence and Critical Field Exceptions</div>
             
             <div class="custom-table-container">
                 <table class="custom-table">
@@ -257,27 +257,27 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr style="background-color:rgba(160,90,0,0.05);">
+                        <tr class="csp-s-6e06ef6e9aac">
                             <td>Pledge Form</td>
                             <td>Facility Amount figures</td>
                             <td>₦500,000?</td>
-                            <td style="color: var(--accent-warning);">61%</td>
+                            <td class="csp-s-d7af454a534c">61%</td>
                             <td><span class="source-pill corrected">Corrected</span></td>
                             <td>
-                                <select name="ocr_override_1" class="field-select" style="min-height:30px; padding:2px 8px;">
+                                <select name="ocr_override_1" class="field-select csp-s-c3c6a4d9f90b">
                                     <option>Accept Correction</option>
                                     <option>Return for Correction</option>
                                 </select>
                             </td>
                         </tr>
-                        <tr style="background-color:rgba(160,26,26,0.05);">
+                        <tr class="csp-s-64fb3103cb7b">
                             <td>Guarantors Form 1</td>
                             <td>Guarantor Phone</td>
                             <td>Unreadable</td>
-                            <td style="color: var(--accent-danger);">22%</td>
-                            <td><span class="source-pill" style="background-color:rgba(160,26,26,0.1); color:var(--accent-danger);">Missing</span></td>
+                            <td class="csp-s-cdee27c94461">22%</td>
+                            <td><span class="source-pill csp-s-043429fff63f">Missing</span></td>
                             <td>
-                                <select name="ocr_override_2" class="field-select" style="min-height:30px; padding:2px 8px;">
+                                <select name="ocr_override_2" class="field-select csp-s-c3c6a4d9f90b">
                                     <option>Return for Correction</option>
                                     <option>Accept Correction</option>
                                 </select>
@@ -289,22 +289,22 @@
         </div>
 
         <!-- Tab 5: Recommendation -->
-        <div id="tabRecommendation" class="tab-pane audit-action-panel" style="display: none;">
+        <div id="tabRecommendation" class="tab-pane audit-action-panel csp-s-6e22c58a7a6a">
             <p class="action-note">This recommendation is recorded in the loan audit trail and routes the file to the next approval decision.</p>
             <div class="form-grid-2">
                 <div class="form-group-full">
                     <label class="field-label">Risk Verdict Decision <span class="required">*</span></label>
                     <div class="pill-radio-group">
                         <div class="pill-radio-btn">
-                            <input type="radio" name="recommendation_decision" value="Recommend Approval" id="rec_approve" checked onchange="toggleRecommendationNotes()">
+                            <input type="radio" name="recommendation_decision" value="Recommend Approval" id="rec_approve" checked>
                             <label for="rec_approve">Recommend Approval</label>
                         </div>
                         <div class="pill-radio-btn">
-                            <input type="radio" name="recommendation_decision" value="Recommend Rejection" id="rec_reject" onchange="toggleRecommendationNotes()">
+                            <input type="radio" name="recommendation_decision" value="Recommend Rejection" id="rec_reject">
                             <label for="rec_reject">Recommend Rejection</label>
                         </div>
                         <div class="pill-radio-btn">
-                            <input type="radio" name="recommendation_decision" value="Return for Correction" id="rec_return" onchange="toggleRecommendationNotes()">
+                            <input type="radio" name="recommendation_decision" value="Return for Correction" id="rec_return">
                             <label for="rec_return">Return for Correction</label>
                         </div>
                     </div>
@@ -318,7 +318,7 @@
         </div>
 
         <!-- Sticky Bottom actions bar -->
-        <div class="audit-action-panel" style="display:flex; justify-content:space-between; align-items:center; margin-top:24px;">
+        <div class="audit-action-panel csp-s-de404aec8115">
             <a href="/applications/{{ app_id }}" class="btn-ghost-link">&larr; Back to Profile</a>
             <button type="submit" class="btn-primary-filled">Record underwriting recommendation</button>
         </div>
@@ -326,7 +326,7 @@
     </form>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     function switchReviewTab(tab) {
         // Toggle Buttons active classes
         document.getElementById('tabSummaryBtn').classList.toggle('active', tab === 'summary');
@@ -357,5 +357,11 @@
             label.innerHTML = 'Return Checklist Omissions <span class="required">*</span>';
         }
     }
+    document.querySelectorAll('[data-review-tab]').forEach((button) => {
+        button.addEventListener('click', () => switchReviewTab(button.dataset.reviewTab));
+    });
+    document.querySelectorAll('[name="recommendation_decision"]').forEach((radio) => {
+        radio.addEventListener('change', toggleRecommendationNotes);
+    });
 </script>
 {% endblock %}

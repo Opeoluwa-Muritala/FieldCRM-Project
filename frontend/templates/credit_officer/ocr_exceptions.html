@@ -21,7 +21,7 @@
 </div>
 <div class="custom-table-container queue-table-wrap page-card"><table class="custom-table"><thead><tr><th>Applicant</th><th>Field</th><th>Value</th><th>Confidence</th><th>Critical</th></tr></thead><tbody>
 {% for item in exceptions %}
-<tr onclick="window.location.href='/applications/{{ item.loan_id }}/ocr-review'"><td>{{ item.applicant_name }}</td><td>{{ item.field_name }}</td><td>{{ item.final_value or item.ocr_value or '-' }}</td><td>{{ item.confidence or 0 }}%</td><td>{{ 'Yes' if item.is_critical else 'No' }}</td></tr>
-{% else %}<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No OCR exceptions assigned.</td></tr>{% endfor %}
+<tr data-href="/applications/{{ item.loan_id }}/ocr-review" tabindex="0"><td>{{ item.applicant_name }}</td><td>{{ item.field_name }}</td><td>{{ item.final_value or item.ocr_value or '-' }}</td><td>{{ item.confidence or 0 }}%</td><td>{{ 'Yes' if item.is_critical else 'No' }}</td></tr>
+{% else %}<tr><td colspan="5" class="csp-s-542b2a1bdac0">No OCR exceptions assigned.</td></tr>{% endfor %}
 </tbody></table></div>
 {% endblock %}

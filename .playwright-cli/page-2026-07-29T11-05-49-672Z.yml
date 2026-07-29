@@ -1,0 +1,46 @@
+- main [ref=e2]:
+  - region [ref=e3]:
+    - generic [ref=e7]:
+      - img "Mainstreet Microfinance Bank"
+      - paragraph [ref=e8]: Enterprise Core
+      - heading "Mainstreet Microfinance Bank" [level=1] [ref=e9]
+      - paragraph [ref=e10]: A secure workspace for credit intake, documentation, review, approvals, and audit traceability.
+      - region "Platform capabilities" [ref=e11]:
+        - generic [ref=e12]:
+          - generic [ref=e13]: Platform capabilities
+          - generic [ref=e14]: Secure staff workspace
+        - generic [ref=e16]:
+          - article [ref=e17]:
+            - generic [ref=e18]: Access control
+            - strong [ref=e19]: Role-based
+            - generic [ref=e20]: Assigned workspaces by role
+          - article [ref=e21]:
+            - generic [ref=e22]: Workflow visibility
+            - strong [ref=e23]: End to end
+            - generic [ref=e24]: From intake through approval
+          - article [ref=e25]:
+            - generic [ref=e26]: Audit readiness
+            - strong [ref=e27]: Traceable
+            - generic [ref=e28]: Actions recorded for review
+    - paragraph [ref=e29]: © 2026 Mainstreet Microfinance Bank Limited
+  - region "Staff Sign In" [ref=e30]:
+    - generic:
+      - img "Mainstreet Microfinance Bank"
+      - generic:
+        - paragraph: Secure staff access
+        - heading "Staff Sign In" [level=2]
+        - paragraph: Use your Mainstreet work account to continue.
+      - generic:
+        - generic:
+          - generic: Email address
+          - textbox "Email address":
+            - /placeholder: you@mainstreetmfb.com
+        - generic:
+          - generic: Password
+          - textbox "Password":
+            - /placeholder: Enter your password
+        - link "Forgot password?":
+          - /url: /forgot-password
+        - button "Sign In":
+          - generic: →
+        - paragraph: Protected by Mainstreet Microfinance Bank security controls.

@@ -7,65 +7,55 @@
 {% block page_title %}Upload Supporting Document{% endblock %}
 
 {% block shell %}
-<div style="min-height: 100vh; background-color: var(--bg-secondary); padding: 32px 16px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; width: 100%;">
-    <div class="brand-logo-wrapper" style="text-align: center; margin-bottom: 24px;">
-        <a href="/dashboard" class="brand-home-link" aria-label="Go to dashboard"><img src="{{ brand_logo_black }}" alt="Mainstreet Microfinance Bank Logo" style="max-height: 48px;"></a>
-        <h2 style="font-family: 'Montserrat', sans-serif; font-size: 20px; color: #111827; margin: 8px 0 2px;">Mainstreet Microfinance Bank</h2>
-        <p style="font-size: 12px; color: var(--text-muted); margin: 0;">Upload Document Slot</p>
+<div class="csp-s-82cbc6d504b7">
+    <div class="brand-logo-wrapper csp-s-2d1904699d40">
+        <a href="/dashboard" class="brand-home-link" aria-label="Go to dashboard"><img src="{{ brand_logo_black }}" alt="Mainstreet Microfinance Bank Logo" class="csp-s-004ced7ea65f"></a>
+        <h2 class="csp-s-cb850c9162d1">Mainstreet Microfinance Bank</h2>
+        <p class="csp-s-88d18f359fb5">Upload Document Slot</p>
     </div>
-    <div style="max-width: 600px; width: 100%;">
-<div style="display:flex; justify-content:center; padding:20px 0;">
-    <div class="page-card no-shadow" style="max-width: 640px; width: 100%;">
+    <div class="csp-s-c18995f17d73">
+<div class="csp-s-54958b70f9a6">
+    <div class="page-card no-shadow csp-s-efb39d9cfbf0">
         <div class="page-card-header">
             <h2 class="page-card-title">Upload Document</h2>
             <p class="page-card-subtitle">
                 Attach a supporting document for <strong>{{ borrower_name }}</strong>.
-                Category: <strong style="color:var(--color-brand-shield);">{{ doc_type|upper }}</strong>
+                Category: <strong class="csp-s-287d78d965d1">{{ doc_type|upper }}</strong>
             </p>
         </div>
 
         <form id="uploadForm" action="/client-form/apply/documents/upload?type={{ doc_type }}"
-              method="POST" enctype="multipart/form-data" onsubmit="handleFormSubmit(event)">
+              method="POST" enctype="multipart/form-data">
 
             <!-- Drop zone -->
-            <div class="upload-dragzone" id="dropzone"
-                 onclick="document.getElementById('fileInput').click()"
-                 ondragover="event.preventDefault(); this.classList.add('drag-over')"
-                 ondragleave="this.classList.remove('drag-over')"
-                 ondrop="handleDrop(event)">
-                <svg viewBox="0 0 24 24" width="36" height="36"
-                     style="color:var(--color-brand-shield);" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <div class="upload-dragzone" id="dropzone">
+                <svg viewBox="0 0 24 24" width="36" height="36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="csp-s-287d78d965d1">
                     <use href="/static/img/icons.svg#icon-doc-upload-o"/>
                 </svg>
-                <span style="font-weight:500; margin-top:8px;">Drag and drop file here, or tap to browse</span>
-                <span style="font-size:12px; color:var(--text-muted); margin-top:4px;">PDF, JPG, JPEG, PNG - max 10 MB</span>
-                <input type="file" name="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png"
-                       style="display:none;" onchange="handleFileSelected(this)">
+                <span class="csp-s-d580059d8607">Drag and drop file here, or tap to browse</span>
+                <span class="csp-s-eb584e08e3e1">PDF, JPG, JPEG, PNG - max 10 MB</span>
+                <input type="file" name="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" class="csp-s-d0466aa33fa8">
             </div>
 
             <!-- File preview row (hidden until a file is chosen) -->
-            <div id="uploadFeedbackSlot" style="display:none; margin-top:16px;
-                 border:0.5px solid var(--border-color); border-radius:8px; padding:14px;
-                 background-color:var(--bg-secondary);">
-                <div style="display:flex; align-items:center; gap:14px;">
+            <div id="uploadFeedbackSlot" class="csp-s-6d84ac10fb9e">
+                <div class="csp-s-0ab6d48f1793">
                     <svg id="fileIcon" viewBox="0 0 24 24" width="28" height="28"
-                         style="color:var(--color-brand-shield); flex-shrink:0;"
-                         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                         xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="csp-s-315983a401af">
                         <use href="/static/img/icons.svg#icon-doc-upload-o"/>
                     </svg>
-                    <div style="flex:1; min-width:0;">
-                        <div style="font-size:13px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
-                             id="fileNameVal"></div>
-                        <div style="font-size:12px; color:var(--text-muted);" id="fileSizeVal"></div>
+                    <div class="csp-s-8999557ee281">
+                        <div
+                             id="fileNameVal" class="csp-s-3cfa81ca8006"></div>
+                        <div id="fileSizeVal" class="csp-s-4406c63346cc"></div>
                     </div>
-                    <button type="button" class="btn-ghost-link" style="font-size:12px; flex-shrink:0;"
-                            onclick="clearFileSelection()">Remove</button>
+                    <button type="button" class="btn-ghost-link csp-s-1fe6f650f6aa" id="clearFileBtn">Remove</button>
                 </div>
 
                 <!-- Category override -->
-                <div style="margin-top:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                    <label class="field-label" style="margin-bottom:0; white-space:nowrap;" for="catSelect">Category</label>
-                    <select name="category" id="catSelect" class="field-select" style="flex:1; min-width:160px;">
+                <div class="csp-s-d6c9a5d3e0ed">
+                    <label class="field-label csp-s-17ed3069a0c7" for="catSelect">Category</label>
+                    <select name="category" id="catSelect" class="field-select csp-s-34e3ba0e9be3">
                         <option value="id"        {% if doc_type == 'id' %}selected{% endif %}>Identity Document</option>
                         <option value="payslip"   {% if doc_type == 'payslip' %}selected{% endif %}>Pay Slip</option>
                         <option value="statement" {% if doc_type in ('bank_statement','statement') %}selected{% endif %}>Bank Statement</option>
@@ -77,25 +67,22 @@
             </div>
 
             <!-- Upload progress bar (hidden until submit) -->
-            <div id="uploadProgress" style="display:none; margin-top:16px;">
-                <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-                    <svg viewBox="0 0 24 24" width="18" height="18" style="color:var(--color-brand-shield);"
-                         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <div id="uploadProgress" class="csp-s-4c29559a6791">
+                <div class="csp-s-bb95362fa50b">
+                    <svg viewBox="0 0 24 24" width="18" height="18"
+                         xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="csp-s-287d78d965d1">
                         <use href="/static/img/icons.svg#icon-sync-o"/>
                     </svg>
-                    <span style="font-size:13px; color:var(--text-muted);" id="progressLabel">Uploading…</span>
+                    <span id="progressLabel" class="csp-s-f6e423206bd6">Uploading…</span>
                 </div>
-                <div style="height:4px; border-radius:2px; background:var(--bg-tertiary); overflow:hidden;">
-                    <div id="progressBar"
-                         style="height:100%; width:0%; background:var(--color-brand-shield);
-                                border-radius:2px; transition:width 0.3s ease;"></div>
+                <div class="csp-s-9145429a6f3d">
+                    <div id="progressBar" class="csp-s-0ca9e1b85987"></div>
                 </div>
             </div>
 
             <!-- Form actions -->
-            <div style="display:flex; justify-content:space-between; align-items:center;
-                        margin-top:28px; border-top:0.5px solid var(--color-divider); padding-top:16px;">
-                <button type="button" class="btn-ghost-link" onclick="window.location.href='/client-form/apply/step/4'">&larr; Cancel</button>
+            <div class="csp-s-960c4a2579fc">
+                <button type="button" class="btn-ghost-link" id="cancelUploadBtn">&larr; Cancel</button>
                 <button type="submit" class="btn-primary-filled" id="saveDocBtn" disabled>
                     Save Document &rarr;
                 </button>
@@ -104,7 +91,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     function handleFileSelected(input) {
         if (!input.files || !input.files[0]) return;
         applyFile(input.files[0]);
@@ -194,6 +181,21 @@
         xhr.open('POST', form.action);
         xhr.send(formData);
     }
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    document.getElementById('uploadForm')?.addEventListener('submit', handleFormSubmit);
+    fileInput?.addEventListener('change', () => handleFileSelected(fileInput));
+    dropzone?.addEventListener('click', () => fileInput?.click());
+    dropzone?.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        dropzone.classList.add('drag-over');
+    });
+    dropzone?.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+    dropzone?.addEventListener('drop', handleDrop);
+    document.getElementById('clearFileBtn')?.addEventListener('click', clearFileSelection);
+    document.getElementById('cancelUploadBtn')?.addEventListener('click', () => {
+        window.location.href = '/client-form/apply/step/4';
+    });
 </script>
     </div>
 </div>

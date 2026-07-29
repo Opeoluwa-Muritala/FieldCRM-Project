@@ -60,10 +60,15 @@ class Settings(BaseSettings):
     # releases; use ``cors_origins`` where FastAPI needs a list.
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "")
     COOKIE_SECURE: bool = os.getenv("COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
+    # Strict script enforcement is the default now that inline scripts are
+    # nonced and HTML event-handler attributes have been removed.
+    CSP_NONCE_ENFORCED: bool = os.getenv("CSP_NONCE_ENFORCED", "true").lower() in ("true", "1", "yes")
     RATE_LIMIT_REDIS_URL: str = os.getenv("RATE_LIMIT_REDIS_URL", "")
     # May share the rate-limit Redis deployment. Caching remains optional and
     # always falls back to the database if Redis is unavailable.
     CACHE_REDIS_URL: str = os.getenv("CACHE_REDIS_URL", os.getenv("RATE_LIMIT_REDIS_URL", ""))
+    AUTH_CACHE_TTL_SECONDS: int = int(os.getenv("AUTH_CACHE_TTL_SECONDS", "600"))
+    DASHBOARD_CACHE_TTL_SECONDS: int = int(os.getenv("DASHBOARD_CACHE_TTL_SECONDS", "30"))
 
     # Organisation registration guard — set this in production to a strong random string
     ORG_REGISTRATION_SECRET: str = os.getenv("ORG_REGISTRATION_SECRET", "")

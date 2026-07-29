@@ -22,11 +22,11 @@
     <td>{{ item.applicant_name }}</td>
     <td>{{ item.ref_no }}</td>
     <td>{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}—{% endif %}</td>
-    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ item.crm_notes or '' }}">{{ item.crm_notes or '—' }}</td>
+    <td title="{{ item.crm_notes or '' }}" class="csp-s-73b707ff61fc">{{ item.crm_notes or '—' }}</td>
     <td>{{ item.days_waiting }}d</td>
-    <td><a href="/applications/{{ item.id }}/executive-approve" class="btn btn-primary" style="font-size:12px;padding:4px 10px;">Review &amp; Approve</a></td>
+    <td><a href="/applications/{{ item.id }}/executive-approve" class="btn btn-primary csp-s-a8d41863dffd">Review &amp; Approve</a></td>
   </tr>
-  {% else %}<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Queue is empty.</td></tr>{% endfor %}
+  {% else %}<tr><td colspan="6" class="csp-s-542b2a1bdac0">Queue is empty.</td></tr>{% endfor %}
   </tbody></table>
 </div>
 {% endblock %}

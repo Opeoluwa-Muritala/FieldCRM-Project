@@ -18,15 +18,11 @@ if os.name == "nt":
     if Path(_dll_directory).is_dir():
         os.environ["WEASYPRINT_DLL_DIRECTORIES"] = _dll_directory
 
-from weasyprint import HTML
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-
-
 def _to_pdf(html: str) -> bytes:
     """Render the supplied HTML and its CSS into real PDF bytes."""
-    return HTML(string=html, base_url=str(PROJECT_ROOT)).write_pdf()
+    from weasyprint import HTML
+    project_root = Path(__file__).resolve().parents[3]
+    return HTML(string=html, base_url=str(project_root)).write_pdf()
 
 
 def _naira(amount) -> str:

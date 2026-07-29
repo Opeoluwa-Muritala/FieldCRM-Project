@@ -7,7 +7,7 @@
 <div class="queue-page-header">
   <div>
     <div class="dashboard-date">{{ today_label }}</div>
-    <h1 class="page-card-title">Loans Awaiting ED Approval <span style="font-size:14px;color:var(--text-muted);font-weight:400;">(below &#x20A6;10,000,000)</span></h1>
+    <h1 class="page-card-title">Loans Awaiting ED Approval <span class="csp-s-6f0d9c3bb724">(below &#x20A6;10,000,000)</span></h1>
   </div>
 </div>
 <div class="queue-cards">
@@ -28,9 +28,9 @@
     <td>{{ item.ref_no }}</td>
     <td>{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}—{% endif %}</td>
     <td>{{ item.days_waiting }}d</td>
-    <td><a href="/applications/{{ item.id }}/ed-approve" class="btn btn-primary" style="font-size:12px;padding:4px 10px;">Review</a></td>
+    <td><a href="/applications/{{ item.id }}/ed-approve" class="btn btn-primary csp-s-a8d41863dffd">Review</a></td>
   </tr>
-  {% else %}<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Queue is empty.</td></tr>{% endfor %}
+  {% else %}<tr><td colspan="5" class="csp-s-542b2a1bdac0">Queue is empty.</td></tr>{% endfor %}
   </tbody></table>
 </div>
 {% endblock %}

@@ -11,19 +11,19 @@
 {% endmacro %}
 
 <button class="tab-item {% if active_tab == 'home' %}active{% endif %}"
-        type="button" onclick="window.location.href='/dashboard'" aria-label="Home">
+        type="button" data-href="/dashboard" aria-label="Home">
     <span class="tab-icon">{{ tab_icon('home') }}</span>
     <span class="tab-label">Home</span>
 </button>
 
 <button class="tab-item {% if active_tab == 'legal_queue' %}active{% endif %}"
-        type="button" onclick="window.location.href='/legal-queue'" aria-label="Legal Queue">
+        type="button" data-href="/legal-queue" aria-label="Legal Queue">
     <span class="tab-icon">{{ tab_icon('audit') }}</span>
     <span class="tab-label">Queue</span>
 </button>
 
 <button class="tab-item"
-        type="button" onclick="window.location.href='/logout'" aria-label="Logout">
+        type="button" data-href="/logout" aria-label="Logout">
     <span class="tab-icon">{{ tab_icon('logout') }}</span>
     <span class="tab-label">Logout</span>
 </button>

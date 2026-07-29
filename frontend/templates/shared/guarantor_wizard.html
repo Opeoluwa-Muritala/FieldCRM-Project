@@ -141,7 +141,7 @@
 
             <!-- STEP 5: BUSINESS & DOCS -->
             {% if step == 5 %}
-            <div class="form-grid-2" style="margin-bottom: 24px;">
+            <div class="form-grid-2 csp-s-fec3619ed0de">
                 <div class="form-group">
                     <label class="field-label">Guarantor Business Sector</label>
                     <input type="text" name="business_sector" class="field-input" value="{{ data.business_sector or '' }}">
@@ -153,29 +153,29 @@
             </div>
 
             <!-- Supporting Documents Checklist -->
-            <div style="border-top: 0.5px solid var(--color-divider); padding-top: 16px;">
-                <div class="field-label" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; margin-bottom: 12px;">Required Supporting Documents</div>
+            <div class="csp-s-66836c804dc3">
+                <div class="field-label csp-s-451009175f33">Required Supporting Documents</div>
                 
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 0.5px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary);">
+                <div class="csp-s-baf2fda59eac">
+                    <div class="csp-s-d7168c1b83a1">
                         <div>
-                            <span style="font-weight: 500;">Guarantor Passport Photograph</span>
-                            <div style="font-size: 12px; color: var(--text-muted);">Clear, color photograph of face</div>
+                            <span class="csp-s-7ba9bad628ec">Guarantor Passport Photograph</span>
+                            <div class="csp-s-f779da42d59e">Clear, color photograph of face</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="csp-s-b5e6692c7caf">
                             <span class="status-badge verified">Verified</span>
-                            <a href="/applications/{{ app_id }}/documents/upload?type=guarantor_{{ guarantor_index }}_photo" class="btn-ghost-link" style="color: var(--color-brand-shield);">Upload</a>
+                            <a href="/applications/{{ app_id }}/documents/upload?type=guarantor_{{ guarantor_index }}_photo" class="btn-ghost-link csp-s-b166ee10dc46">Upload</a>
                         </div>
                     </div>
 
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 0.5px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary);">
+                    <div class="csp-s-d7168c1b83a1">
                         <div>
-                            <span style="font-weight: 500;">Valid ID Card</span>
-                            <div style="font-size: 12px; color: var(--text-muted);">National ID, Driver's Licence or Voters Card</div>
+                            <span class="csp-s-7ba9bad628ec">Valid ID Card</span>
+                            <div class="csp-s-f779da42d59e">National ID, Driver's Licence or Voters Card</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="csp-s-b5e6692c7caf">
                             <span class="status-badge missing">Missing</span>
-                            <a href="/applications/{{ app_id }}/documents/upload?type=guarantor_{{ guarantor_index }}_id" class="btn-ghost-link" style="color: var(--color-brand-shield);">Upload</a>
+                            <a href="/applications/{{ app_id }}/documents/upload?type=guarantor_{{ guarantor_index }}_id" class="btn-ghost-link csp-s-b166ee10dc46">Upload</a>
                         </div>
                     </div>
                 </div>
@@ -184,15 +184,15 @@
 
             <!-- STEP 6: DECLARATION -->
             {% if step == 6 %}
-            <div class="flat-card brand" style="margin-bottom: 24px;">
-                <h4 style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Guarantor Declaration Clause</h4>
-                <p style="font-size: 13px; line-height: 1.6; color: var(--text-main);">
+            <div class="flat-card brand csp-s-fec3619ed0de">
+                <h4 class="csp-s-e49833deaf2c">Guarantor Declaration Clause</h4>
+                <p class="csp-s-c2a96f9ce231">
                     I hereby declare that the applicant is well known to me and is of good character. In consideration of the Bank granting this loan facility to the applicant, I unconditionally guarantee the repayment of all outstanding interest and principal in the event of default. I authorise the Bank to verify all declarations made in this form.
                 </p>
             </div>
-            <div style="margin-top: 12px;">
+            <div class="csp-s-f2fecb34dcad">
                 <input type="checkbox" name="declaration_accept" id="decl_accept" value="1" required>
-                <label for="decl_accept" style="font-size: 12px; cursor: pointer; font-weight: 500;">I accept the terms of this Guarantor Declaration.</label>
+                <label for="decl_accept" class="csp-s-c1c0a8c20b29">I accept the terms of this Guarantor Declaration.</label>
             </div>
             {% endif %}
 
@@ -206,7 +206,7 @@
                 <div class="form-group">
                     <label class="field-label">Cheque Number <span class="required">*</span></label>
                     <input type="text" name="cheque_number" class="field-input" value="{{ data.cheque_number or '' }}" required>
-                    <span style="font-size: 12px; color:var(--text-muted);">Submitted as repayment guarantee</span>
+                    <span class="csp-s-33063be9ab73">Submitted as repayment guarantee</span>
                 </div>
                 <div class="form-group">
                     <label class="field-label">Bank Name <span class="required">*</span></label>
@@ -218,17 +218,17 @@
                 </div>
             </div>
             {% if step == 7 and signatures and signatures.primary %}
-            <div style="margin-top: 20px; border-top: 0.5px solid var(--color-divider); padding-top: 16px;">
-                <h4 style="font-size:13px; font-weight:500; margin-bottom:12px;">Captured Electronic Evidence</h4>
+            <div class="csp-s-831c7ab7ba1b">
+                <h4 class="csp-s-bd256d0a30d3">Captured Electronic Evidence</h4>
                 <div class="form-grid-2">
                     <div>
-                        <span style="font-size:12px; display:block; margin-bottom:6px; font-weight:500;">Guarantor Signature</span>
-                        <img src="{{ signatures.primary }}" style="max-height:80px; border:0.5px solid var(--border-color); border-radius:6px; padding:6px; background-color: white;" alt="Guarantor Signature">
+                        <span class="csp-s-bffd32daa889">Guarantor Signature</span>
+                        <img src="{{ signatures.primary }}" alt="Guarantor Signature" class="csp-s-0a77b6cf03f2">
                     </div>
                     {% if signatures.witness %}
                     <div>
-                        <span style="font-size:12px; display:block; margin-bottom:6px; font-weight:500;">Witness Signature</span>
-                        <img src="{{ signatures.witness }}" style="max-height:80px; border:0.5px solid var(--border-color); border-radius:6px; padding:6px; background-color: white;" alt="Witness Signature">
+                        <span class="csp-s-bffd32daa889">Witness Signature</span>
+                        <img src="{{ signatures.witness }}" alt="Witness Signature" class="csp-s-0a77b6cf03f2">
                     </div>
                     {% endif %}
                 </div>
@@ -251,7 +251,7 @@
         </form>
     </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     const sigCanvases = {};
     function initSignature(canvasId, valInputId) {
         const canvas = document.getElementById(canvasId);
