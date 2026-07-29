@@ -34,21 +34,20 @@
     <!-- Main Card wrapper -->
     <div class="page-card no-shadow">
         {% if request.query_params.get('signing_link') %}
-        <div class="flat-card brand" role="status" style="margin-bottom:16px;">
+        <div class="flat-card brand csp-s-7564ec607ed8" role="status">
             <strong>{{ request.query_params.get('success') or 'Client signing link generated.' }}</strong>
-            <div style="display:flex; gap:8px; margin-top:12px; align-items:center; flex-wrap:wrap;">
+            <div class="csp-s-d61d144f3117">
                 <input
                     id="generatedClientSigningLink"
-                    class="field-input"
+                    class="field-input csp-s-276576a40b1c"
                     type="text"
                     value="{{ request.query_params.get('signing_link') }}"
                     readonly
-                    style="flex:1; min-width:240px;"
                 >
                 <button
                     type="button"
                     class="btn-primary-filled"
-                    onclick="navigator.clipboard.writeText(document.getElementById('generatedClientSigningLink').value); this.textContent='Copied!'"
+                    data-copy-signing-link
                 >
                     Copy Client Signing Link
                 </button>
@@ -56,7 +55,7 @@
         </div>
         {% endif %}
         {% if request.query_params.get('error') %}
-        <div class="flat-card warning" id="wizard-error" role="alert" tabindex="-1" style="margin-bottom:16px;">
+        <div class="flat-card warning csp-s-7564ec607ed8" id="wizard-error" role="alert" tabindex="-1">
             <strong>We could not save this section.</strong><br>{{ request.query_params.get('error') }}
         </div>
         {% endif %}
@@ -87,16 +86,16 @@
             </p>
         </div>
 
-        <form id="wizardForm" action="/applications/{{ app_id }}/step/{{ step }}" method="POST" onsubmit="return validateWizardForm();">
+        <form id="wizardForm" action="/applications/{{ app_id }}/step/{{ step }}" method="POST">
             
             <!-- STEP 1: APPLICANT DETAILS -->
             {% if step == 1 %}
-            <div style="display: flex; gap: 24px; margin-bottom: 20px; align-items: flex-start; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 280px;" class="form-grid-2">
+            <div class="csp-s-83b9537ab8aa">
+                <div class="form-grid-2 csp-s-44817dc3d743">
                     <div class="form-group">
                         <label class="field-label">Full Name <span class="required">*</span></label>
                         <input type="text" name="full_name" class="field-input" value="{{ data.full_name or '' }}" required>
-                        <span class="error-msg" id="err_full_name" style="color:var(--accent-danger); font-size: 12px; display:none;">Full name is required.</span>
+                        <span class="error-msg csp-s-ee202e2f2e7b" id="err_full_name">Full name is required.</span>
                     </div>
 
                     <div class="form-group">
@@ -118,8 +117,8 @@
 
                     <div class="form-group">
                         <label class="field-label">Expiry Date <span class="required">*</span></label>
-                        <input type="date" name="id_expiry" id="id_expiry" class="field-input" value="{{ data.id_expiry or '' }}" onchange="checkIdExpiry()" required>
-                        <span class="error-msg" id="err_expiry" style="color:var(--accent-danger); font-size: 12px; display:none;">This ID has expired. Please upload a valid ID.</span>
+                        <input type="date" name="id_expiry" id="id_expiry" class="field-input" value="{{ data.id_expiry or '' }}" required>
+                        <span class="error-msg csp-s-ee202e2f2e7b" id="err_expiry">This ID has expired. Please upload a valid ID.</span>
                     </div>
 
                     <div class="form-group">
@@ -130,7 +129,7 @@
                     <div class="form-group">
                         <label class="field-label">Bank Verification Number (BVN) <span class="required">*</span></label>
                         <input type="text" name="bvn" id="bvn_input" class="field-input" value="{{ data.bvn or '' }}" maxlength="11" required>
-                        <span style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 4px;">11-digit Bank Verification Number. Treated as a critical security field.</span>
+                        <span class="csp-s-0ea6544cd7c3">11-digit Bank Verification Number. Treated as a critical security field.</span>
                     </div>
 
                     <div class="form-group">
@@ -170,30 +169,30 @@
                     <div class="form-group-full">
                         <label class="field-label">Nearest Landmark / Bus Stop</label>
                         <input type="text" name="landmark" class="field-input" value="{{ data.landmark or '' }}">
-                        <span style="font-size: 12px; color: var(--text-muted);">Helps visiting officers locate the premises.</span>
+                        <span class="csp-s-f779da42d59e">Helps visiting officers locate the premises.</span>
                     </div>
                 </div>
 
                 <!-- Passport Photograph Box -->
-                <div style="width: 150px; text-align: center; border: 0.5px solid var(--border-color); padding: 12px; border-radius: 8px; background-color: var(--bg-secondary);">
-                    <div style="width: 120px; height: 120px; border: 1px dashed var(--border-color); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; background-color: #FFF; position: relative; overflow: hidden;" id="photo_slot">
+                <div class="csp-s-1332043776d6">
+                    <div id="photo_slot" class="csp-s-b5a9a2083bbe">
                         {% if data.photo_url %}
-                            <img src="{{ data.photo_url }}" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover;">
+                            <img src="{{ data.photo_url }}" loading="lazy" decoding="async" class="csp-s-059ba7fa4870">
                         {% else %}
-                            <span style="font-size: 12px; color: var(--text-muted);">Upload Photo</span>
+                            <span class="csp-s-f779da42d59e">Upload Photo</span>
                         {% endif %}
                     </div>
-                    <input type="file" id="photo_file" style="display: none;" onchange="previewPhoto(this)">
-                    <button type="button" class="btn-ghost-link" onclick="document.getElementById('photo_file').click()" style="font-size: 12px; font-weight: 500;">Choose Image</button>
+                    <input type="file" id="photo_file" class="csp-s-6e22c58a7a6a">
+                    <button type="button" class="btn-ghost-link csp-s-9c9f3d773f33" data-choose-photo>Choose Image</button>
                     <input type="hidden" name="photo_url" id="photo_url_val" value="{{ data.photo_url or '' }}">
                 </div>
             </div>
             {% endif %}
 
             {% if step == 9 %}
-            <div style="display:grid; gap:16px;">
+            <div class="csp-s-e6f70f9bfcdc">
                 <div class="flat-card">
-                    <h4 style="margin:0 0 12px; font-size:14px;">Completed Intake Summary</h4>
+                    <h4 class="csp-s-8a9eb0cb50de">Completed Intake Summary</h4>
                     <div class="form-grid-2">
                         <p><strong>Applicant:</strong><br>{{ data.get('full_name') or data.get('applicant_name') or '—' }}</p>
                         <p><strong>Phone:</strong><br>{{ data.get('phone') or '—' }}</p>
@@ -206,13 +205,13 @@
                 <div class="flat-card {% if applicant_signed %}success{% else %}warning{% endif %}">
                     {% if applicant_signed %}
                     <strong>Client signature received</strong>
-                    <p style="margin:6px 0 0;">The signed intake is locked and ready for submission to the Team Lead.</p>
+                    <p class="csp-s-5ff1c1361cc4">The signed intake is locked and ready for submission to the Team Lead.</p>
                     {% if signatures.primary %}
-                    <img src="{{ signatures.primary }}" alt="Applicant signature" style="display:block; max-height:90px; margin-top:12px; padding:6px; background:#fff; border:1px solid var(--border-color); border-radius:6px;">
+                    <img src="{{ signatures.primary }}" alt="Applicant signature" class="csp-s-0552dff39726">
                     {% endif %}
                     {% else %}
                     <strong>Awaiting client signature</strong>
-                    <p style="margin:6px 0 0;">This page is read-only. Submit will become available after the client signs.</p>
+                    <p class="csp-s-5ff1c1361cc4">This page is read-only. Submit will become available after the client signs.</p>
                     {% endif %}
                 </div>
             </div>
@@ -246,16 +245,15 @@
                     <textarea name="spouse_business_address" class="field-textarea">{{ data.spouse_business_address or '' }}</textarea>
                 </div>
                 {% if data.spouse_signature %}
-                <div class="form-group-full" style="margin-top:12px;">
+                <div class="form-group-full csp-s-b6d781cbbc10">
                     <label class="field-label">Spouse Signature</label>
-                    <div style="padding:12px; border:1px solid var(--border-color); border-radius:8px; background:#fff;">
+                    <div class="csp-s-4c22b487d59a">
                         <img
                             src="{{ data.spouse_signature }}"
                             alt="Spouse signature"
-                            style="display:block; max-width:100%; max-height:100px;"
-                        >
+                         class="csp-s-a8dcf8b390fd">
                     </div>
-                    <span style="display:block; margin-top:5px; font-size:12px; color:var(--text-muted);">
+                    <span class="csp-s-485c66855570">
                         Captured from the client form. Read-only.
                     </span>
                 </div>
@@ -265,11 +263,11 @@
 
             <!-- STEP 3: GUARANTORS -->
             {% if step == 3 %}
-            <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="csp-s-e3d940229f43">
                 <!-- Guarantor Slot 1 -->
-                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 20px; background-color: var(--bg-secondary);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <h4 style="font-size: 16px; font-weight: 500;">Guarantor 1</h4>
+                <div class="csp-s-d0919400b602">
+                    <div class="csp-s-ab4de765f5e2">
+                        <h4 class="csp-s-0aab37d7ee15">Guarantor 1</h4>
                         <span class="status-badge {% if data.guarantor_1_status == 'Verified' %}verified{% elif data.guarantor_1_status == 'Submitted' %}signed{% else %}missing{% endif %}">
                             {{ data.guarantor_1_status or 'Guarantor Form Pending' }}
                         </span>
@@ -288,15 +286,15 @@
                             <input type="tel" name="guarantor_1_phone" class="field-input" value="{{ data.guarantor_1_phone or '' }}" required>
                         </div>
                     </div>
-                    <div style="margin-top: 16px;">
-                        <a href="/applications/{{ app_id }}/guarantors/1/step/1" class="btn-primary-filled" style="text-decoration: none; font-size: 12px; height: 32px;">Complete Guarantor Form &rarr;</a>
+                    <div class="csp-s-b034d5553764">
+                        <a href="/applications/{{ app_id }}/guarantors/1/step/1" class="btn-primary-filled csp-s-619cfa472455">Complete Guarantor Form &rarr;</a>
                     </div>
                 </div>
 
                 <!-- Guarantor Slot 2 -->
-                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 20px; background-color: var(--bg-secondary);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <h4 style="font-size: 16px; font-weight: 500;">Guarantor 2</h4>
+                <div class="csp-s-d0919400b602">
+                    <div class="csp-s-ab4de765f5e2">
+                        <h4 class="csp-s-0aab37d7ee15">Guarantor 2</h4>
                         <span class="status-badge {% if data.guarantor_2_status == 'Verified' %}verified{% elif data.guarantor_2_status == 'Submitted' %}signed{% else %}missing{% endif %}">
                             {{ data.guarantor_2_status or 'Guarantor Form Pending' }}
                         </span>
@@ -315,8 +313,8 @@
                             <input type="tel" name="guarantor_2_phone" class="field-input" value="{{ data.guarantor_2_phone or '' }}" required>
                         </div>
                     </div>
-                    <div style="margin-top: 16px;">
-                        <a href="/applications/{{ app_id }}/guarantors/2/step/1" class="btn-primary-filled" style="text-decoration: none; font-size: 12px; height: 32px;">Complete Guarantor Form &rarr;</a>
+                    <div class="csp-s-b034d5553764">
+                        <a href="/applications/{{ app_id }}/guarantors/2/step/1" class="btn-primary-filled csp-s-619cfa472455">Complete Guarantor Form &rarr;</a>
                     </div>
                 </div>
             </div>
@@ -324,12 +322,12 @@
 
             <!-- STEP 4: EMPLOYMENT & BUSINESS -->
             {% if step == 4 %}
-            <div style="margin-bottom: 20px;">
+            <div class="csp-s-f6279acc7326">
                 <label class="field-label">Employment Type</label>
                 <div class="pill-radio-group" id="empTypeGroup">
                     {% for opt in ["Full-time", "Part-time", "Contract Staff", "Public Servant", "Self-employed"] %}
                     <div class="pill-radio-btn">
-                        <input type="radio" name="employment_type" value="{{ opt }}" id="emp_{{ opt }}" {% if data.employment_type == opt or (loop.first and not data.employment_type) %}checked{% endif %} onchange="toggleEmploymentFields()">
+                        <input type="radio" name="employment_type" value="{{ opt }}" id="emp_{{ opt }}" {% if data.employment_type == opt or (loop.first and not data.employment_type) %}checked{% endif %}>
                         <label for="emp_{{ opt }}">{{ opt }}</label>
                     </div>
                     {% endfor %}
@@ -337,7 +335,7 @@
             </div>
 
             <!-- Fieldset for Salary Earners -->
-            <div id="salaryFields" style="display: none;" class="form-grid-2">
+            <div id="salaryFields" class="form-grid-2 csp-s-6e22c58a7a6a">
                 <div class="form-group">
                     <label class="field-label">Industry/Sector</label>
                     <input type="text" name="industry" class="field-input" value="{{ data.industry or '' }}">
@@ -361,7 +359,7 @@
             </div>
 
             <!-- Fieldset for Self Employed -->
-            <div id="businessFields" style="display: none;" class="form-grid-2">
+            <div id="businessFields" class="form-grid-2 csp-s-6e22c58a7a6a">
                 <div class="form-group">
                     <label class="field-label">Type of Business</label>
                     <input type="text" name="business_type" class="field-input" value="{{ data.business_type or '' }}">
@@ -383,38 +381,38 @@
                     <textarea name="business_address" class="field-textarea">{{ data.business_address or '' }}</textarea>
                 </div>
                 <div class="form-group-full">
-                    <div style="font-size: 12px; color: var(--accent-warning); margin-bottom: 12px;">
+                    <div class="csp-s-8b79e6edbbe0">
                         &#x26A0; The bank may compare declared sales figures against bank statement inflows.
                     </div>
                 </div>
             </div>
 
             <!-- Required Documents slots -->
-            <div style="margin-top: 24px; border-top: 0.5px solid var(--color-divider); padding-top: 16px;">
-                <div class="field-label" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px;">Required Documents</div>
+            <div class="csp-s-ccacfa62cb3a">
+                <div class="field-label csp-s-b7000850f53c">Required Documents</div>
                 
-                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                <div class="csp-s-5dec27a09be9">
                     <!-- Payslip / Business Statement -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 0.5px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary);">
+                    <div class="csp-s-d7168c1b83a1">
                         <div>
-                            <span id="docLabelPrimary" style="font-weight: 500;">Payslip / Business Statement</span>
-                            <div style="font-size: 12px; color: var(--text-muted);">PDF, JPG, JPEG, or PNG formats accepted</div>
+                            <span id="docLabelPrimary" class="csp-s-7ba9bad628ec">Payslip / Business Statement</span>
+                            <div class="csp-s-f779da42d59e">PDF, JPG, JPEG, or PNG formats accepted</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="csp-s-b5e6692c7caf">
                             <span class="status-badge verified">Verified</span>
-                            <a href="/applications/{{ app_id }}/documents/upload?type=primary_statement" class="btn-ghost-link" style="color: var(--color-brand-shield);">Upload</a>
+                            <a href="/applications/{{ app_id }}/documents/upload?type=primary_statement" class="btn-ghost-link csp-s-b166ee10dc46">Upload</a>
                         </div>
                     </div>
 
                     <!-- Bank Statement -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 0.5px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary);">
+                    <div class="csp-s-d7168c1b83a1">
                         <div>
-                            <span style="font-weight: 500;">Salary / Business Account Bank Statement</span>
-                            <div style="font-size: 12px; color: var(--text-muted);">Most recent 3 months history</div>
+                            <span class="csp-s-7ba9bad628ec">Salary / Business Account Bank Statement</span>
+                            <div class="csp-s-f779da42d59e">Most recent 3 months history</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="csp-s-b5e6692c7caf">
                             <span class="status-badge missing">Missing</span>
-                            <a href="/applications/{{ app_id }}/documents/upload?type=bank_statement" class="btn-ghost-link" style="color: var(--color-brand-shield);">Upload</a>
+                            <a href="/applications/{{ app_id }}/documents/upload?type=bank_statement" class="btn-ghost-link csp-s-b166ee10dc46">Upload</a>
                         </div>
                     </div>
                 </div>
@@ -427,12 +425,12 @@
                 Failure to disclose existing facilities may be treated as misrepresentation. The bank will verify through credit checks.
             </div>
 
-            <div id="facilitiesContainer" style="display: flex; flex-direction: column; gap: 12px;">
+            <div id="facilitiesContainer" class="csp-s-18809276c4d1">
                 {% set facility_banks = data.facility_bank if data.facility_bank is iterable and data.facility_bank is not string else [data.facility_bank or ''] %}
                 {% set facility_amounts = data.facility_amount if data.facility_amount is iterable and data.facility_amount is not string else [data.facility_amount or ''] %}
                 {% set facility_tenors = data.facility_tenor if data.facility_tenor is iterable and data.facility_tenor is not string else [data.facility_tenor or ''] %}
                 {% for bank in facility_banks %}
-                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: end;">
+                <div class="csp-s-351648caf81a">
                     <div class="form-group">
                         <label class="field-label">Bank Name</label>
                         <input type="text" name="facility_bank[]" class="field-input" value="{{ bank }}" placeholder="e.g. Access Bank">
@@ -445,19 +443,19 @@
                         <label class="field-label">Tenor (Months)</label>
                         <input type="number" name="facility_tenor[]" class="field-input" value="{{ facility_tenors[loop.index0] if facility_tenors|length > loop.index0 else '' }}" placeholder="e.g. 12">
                     </div>
-                    <div style="padding-bottom: 8px;">
-                        <button type="button" class="btn-ghost-link" style="color: var(--accent-danger);" onclick="this.parentElement.parentElement.remove()">Remove</button>
+                    <div class="csp-s-af04a756ec2b">
+                        <button type="button" class="btn-ghost-link csp-s-cdee27c94461" data-remove-row>Remove</button>
                     </div>
                 </div>
                 {% endfor %}
             </div>
 
-            <div style="margin-top: 12px; margin-bottom: 32px;">
-                <button type="button" class="btn-ghost-link" style="color: var(--color-brand-shield); font-weight: 500;" onclick="addFacilityRow()">+ Add Another Facility</button>
+            <div class="csp-s-58df280da3d6">
+                <button type="button" class="btn-ghost-link csp-s-e448a1ff7229" data-add-facility>+ Add Another Facility</button>
             </div>
 
-            <div style="border-top: 0.5px solid var(--color-divider); padding-top: 20px;">
-                <label class="field-label" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; margin-bottom: 12px;">Educational Background</label>
+            <div class="csp-s-98713d35975c">
+                <label class="field-label csp-s-451009175f33">Educational Background</label>
                 <div class="pill-radio-group">
                     {% for opt in ["Primary", "Secondary", "Graduate", "Postgraduate"] %}
                     <div class="pill-radio-btn">
@@ -474,7 +472,7 @@
             <div class="form-grid-2">
                 <div class="form-group-full">
                     <label class="field-label">Loan Purpose <span class="required">*</span></label>
-                    <select name="loan_purpose" id="loan_purpose" class="field-select" onchange="toggleOtherPurpose()">
+                    <select name="loan_purpose" id="loan_purpose" class="field-select">
                         <option value="Working Capital" {% if data.loan_purpose == 'Working Capital' %}selected{% endif %}>Working Capital</option>
                         <option value="Business Asset Acquisition" {% if data.loan_purpose == 'Business Asset Acquisition' %}selected{% endif %}>Business Asset Acquisition</option>
                         <option value="Emergency Personal Expense" {% if data.loan_purpose == 'Emergency Personal Expense' %}selected{% endif %}>Emergency Personal Expense</option>
@@ -482,7 +480,7 @@
                     </select>
                 </div>
 
-                <div class="form-group-full" id="otherPurposeSlot" style="display: none;">
+                <div class="form-group-full csp-s-6e22c58a7a6a" id="otherPurposeSlot">
                     <label class="field-label">Specify Purpose <span class="required">*</span></label>
                     <input type="text" name="loan_purpose_other" id="loan_purpose_other" class="field-input" value="{{ data.loan_purpose_other or '' }}">
                 </div>
@@ -503,18 +501,18 @@
 
                 <div class="form-group-full">
                     <label class="field-label">Type of Security/Collateral <span class="required">*</span></label>
-                    <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px;">
+                    <div class="csp-s-611b62724d4f">
                         {% for sec in ["Shop Stock", "Household Appliances", "Business Proceeds", "Property Documents", "Vehicles"] %}
-                        <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 0.5px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary);">
-                            <input type="checkbox" name="collateral_security[]" value="{{ sec }}" id="sec_{{ sec }}" onchange="checkCollateralSelection()" {% if sec in data.collateral_security %}checked{% endif %}>
-                            <label for="sec_{{ sec }}" style="font-size: 12px; cursor: pointer;">{{ sec }}</label>
+                        <div class="csp-s-e26cf91d9185">
+                            <input type="checkbox" name="collateral_security[]" value="{{ sec }}" id="sec_{{ sec }}" {% if sec in data.collateral_security %}checked{% endif %}>
+                            <label for="sec_{{ sec }}" class="csp-s-f46c7862068d">{{ sec }}</label>
                         </div>
                         {% endfor %}
                     </div>
                 </div>
 
                 <div class="form-group-full">
-                    <div id="pledgeNotice" class="flat-card warning" style="display: none;">
+                    <div id="pledgeNotice" class="flat-card warning csp-s-6e22c58a7a6a">
                         &#x26A0; A Pledge and Trust Receipt (MMFB/CRM/02) is required for the selected collateral. You will complete this in Step 8.
                     </div>
                 </div>
@@ -553,7 +551,7 @@
                     <input type="text" name="sort_code" class="field-input" value="{{ data.sort_code or '' }}">
                 </div>
             </div>
-            <div class="flat-card warning" style="margin-top: 20px;">
+            <div class="flat-card warning csp-s-936d6bbab286">
                 The account name must match the applicant's registered name. Third-party accounts require additional supporting documentation.
             </div>
             {% endif %}
@@ -561,14 +559,14 @@
             <!-- STEP 8: PLEDGE AND TRUST RECEIPT -->
             {% if step == 8 %}
             <div class="tab-row">
-                <button type="button" class="tab-btn active" id="tabFill" onclick="switchPledgeTab('fill')">Fill Form</button>
-                <button type="button" class="tab-btn" id="tabUpload" onclick="switchPledgeTab('upload')">Upload Completed Form</button>
+                <button type="button" class="tab-btn active" id="tabFill" data-pledge-tab="fill">Fill Form</button>
+                <button type="button" class="tab-btn" id="tabUpload" data-pledge-tab="upload">Upload Completed Form</button>
             </div>
 
             <!-- Tab content: Fill Form -->
             <div id="pledgeFillSection">
-                <div style="font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; font-weight: 500;">Receipt Details</div>
-                <div class="form-grid-2" style="margin-bottom: 24px;">
+                <div class="csp-s-a0f6f167f740">Receipt Details</div>
+                <div class="form-grid-2 csp-s-fec3619ed0de">
                     <div class="form-group">
                         <label class="field-label">Date <span class="required">*</span></label>
                         <input type="date" name="pledge_date" class="field-input" value="{{ data.pledge_date or '' }}">
@@ -579,14 +577,14 @@
                     </div>
                     <div class="form-group">
                         <label class="field-label">Facility Amount in Figures (₦) <span class="required">*</span></label>
-                        <input type="number" name="pledge_amount_figs" id="pledge_amount_figs" class="field-input" value="{{ data.pledge_amount_figs or '' }}" min="0" step="0.01" oninput="updatePledgeAmountWords()" required>
+                        <input type="number" name="pledge_amount_figs" id="pledge_amount_figs" class="field-input" value="{{ data.pledge_amount_figs or '' }}" min="0" step="0.01" required>
                     </div>
                     <div class="form-group">
                         <label class="field-label">Facility Amount in Words <span class="required">*</span></label>
                         <input type="text" name="pledge_amount_words" id="pledge_amount_words" class="field-input" value="{{ data.pledge_amount_words or '' }}" readonly aria-live="polite" placeholder="Automatically generated from the facility amount">
                     </div>
                     <div class="form-group-full">
-                        <span id="pledgeMismatchWarning" style="color:var(--accent-warning); font-size: 12px; display:none;">&#x26A0; Amount in words does not match figures — please correct.</span>
+                        <span id="pledgeMismatchWarning" class="csp-s-b2e7358a49c7">&#x26A0; Amount in words does not match figures — please correct.</span>
                     </div>
                     <div class="form-group-full">
                         <label class="field-label">Shop/House Address where goods are located <span class="required">*</span></label>
@@ -598,7 +596,7 @@
                     </div>
                 </div>
 
-                <div style="font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; font-weight: 500;">Pledged Items Schedule</div>
+                <div class="csp-s-a0f6f167f740">Pledged Items Schedule</div>
                 
                 <div class="custom-table-container">
                     <table class="custom-table" id="pledgeItemsTable">
@@ -623,20 +621,20 @@
                                 <td><input type="text" name="pledge_item_name[]" class="field-input" value="{{ name }}" placeholder="e.g. Sharp Refrigerator" required></td>
                                 <td><input type="number" name="pledge_item_qty[]" class="field-input" value="{{ pledge_qtys[loop.index0] if pledge_qtys|length > loop.index0 else '' }}" placeholder="1" required></td>
                                 <td><input type="text" name="pledge_item_desc[]" class="field-input" value="{{ pledge_descs[loop.index0] if pledge_descs|length > loop.index0 else '' }}" placeholder="Model SJ-X380"></td>
-                                <td><input type="number" name="pledge_item_val[]" class="field-input" value="{{ pledge_values[loop.index0] if pledge_values|length > loop.index0 else '' }}" placeholder="350000" oninput="calculatePledgeTotal()" required></td>
-                                <td><button type="button" class="btn-ghost-link" style="color: var(--accent-danger);" onclick="removePledgeRow(this)">Remove</button></td>
+                                <td><input type="number" name="pledge_item_val[]" class="field-input" value="{{ pledge_values[loop.index0] if pledge_values|length > loop.index0 else '' }}" placeholder="350000" data-pledge-value required></td>
+                                <td><button type="button" class="btn-ghost-link csp-s-cdee27c94461" data-remove-pledge-row>Remove</button></td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                    <button type="button" class="btn-ghost-link" style="color: var(--color-brand-shield); font-weight: 500;" onclick="addPledgeRow()">+ Add Item</button>
-                    <div style="font-size: 14px; font-weight: bold; color: var(--text-main);" id="pledgeTotalText">Total Estimated Value: —</div>
+                <div class="csp-s-dfe66a1810c4">
+                    <button type="button" class="btn-ghost-link csp-s-e448a1ff7229" data-add-pledge-row>+ Add Item</button>
+                    <div id="pledgeTotalText" class="csp-s-cd9f3dd1365c">Total Estimated Value: —</div>
                 </div>
 
-                <div class="form-grid-2" style="border-top: 0.5px solid var(--color-divider); padding-top: 20px;">
+                <div class="form-grid-2 csp-s-98713d35975c">
                     <div class="form-group">
                         <label class="field-label">Witness Name</label>
                         <input type="text" name="witness_name" class="field-input" value="{{ data.witness_name or '' }}">
@@ -649,19 +647,19 @@
                 {% set borrower_signature = signatures.primary if signatures and signatures.primary else data.get('borrower_pledge_signature') %}
                 {% set pledge_witness_signature = signatures.witness if signatures and signatures.witness else data.get('witness_pledge_signature') %}
                 {% if borrower_signature or pledge_witness_signature %}
-                <div style="margin-top: 20px; border-top: 0.5px solid var(--color-divider); padding-top: 16px;">
-                    <h4 style="font-size:13px; font-weight:500; margin-bottom:12px;">Captured Electronic Evidence</h4>
+                <div class="csp-s-831c7ab7ba1b">
+                    <h4 class="csp-s-bd256d0a30d3">Captured Electronic Evidence</h4>
                     <div class="form-grid-2">
                         {% if borrower_signature %}
                         <div>
-                            <span style="font-size:12px; display:block; margin-bottom:6px; font-weight:500;">Borrower Signature</span>
-                            <img src="{{ borrower_signature }}" style="max-height:80px; border:0.5px solid var(--border-color); border-radius:6px; padding:6px; background-color: white;" alt="Borrower Signature">
+                            <span class="csp-s-bffd32daa889">Borrower Signature</span>
+                            <img src="{{ borrower_signature }}" alt="Borrower Signature" class="csp-s-0a77b6cf03f2">
                         </div>
                         {% endif %}
                         {% if pledge_witness_signature %}
                         <div>
-                            <span style="font-size:12px; display:block; margin-bottom:6px; font-weight:500;">Witness Signature</span>
-                            <img src="{{ pledge_witness_signature }}" style="max-height:80px; border:0.5px solid var(--border-color); border-radius:6px; padding:6px; background-color: white;" alt="Witness Signature">
+                            <span class="csp-s-bffd32daa889">Witness Signature</span>
+                            <img src="{{ pledge_witness_signature }}" alt="Witness Signature" class="csp-s-0a77b6cf03f2">
                         </div>
                         {% endif %}
                     </div>
@@ -670,17 +668,17 @@
             </div>
 
             <!-- Tab content: Upload completed -->
-            <div id="pledgeUploadSection" style="display: none;">
-                <div class="upload-dragzone" onclick="document.getElementById('pledge_file').click()">
+            <div id="pledgeUploadSection" class="csp-s-6e22c58a7a6a">
+                <div class="upload-dragzone" data-choose-pledge-file>
                     <span>Drag and drop signed Pledge Form here</span>
-                    <span style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Supports PDF, PNG, JPG (Max 5MB)</span>
-                    <input type="file" id="pledge_file" style="display: none;" onchange="handlePledgeUpload(this)">
+                    <span class="csp-s-83f4e781efc8">Supports PDF, PNG, JPG (Max 5MB)</span>
+                    <input type="file" id="pledge_file" class="csp-s-6e22c58a7a6a">
                 </div>
-                <div id="pledgeUploadFeedback" style="margin-top:12px; display:none; padding:12px; border:0.5px solid var(--border-color); border-radius:8px; background-color: var(--bg-secondary);">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div id="pledgeUploadFeedback" class="csp-s-3a737e15be5f">
+                    <div class="csp-s-5ffb91a26b04">
                         <div>
                             <strong id="pledge_fn">pledge_form_completed.pdf</strong>
-                            <div style="font-size: 12px; color: var(--text-muted);">Size: 1.4 MB · Status: OCR Processed</div>
+                            <div class="csp-s-f779da42d59e">Size: 1.4 MB · Status: OCR Processed</div>
                         </div>
                         <span class="status-badge verified">Extraction queued automatically</span>
                     </div>
@@ -701,10 +699,10 @@
                         {% endif %}
                     {% endif %}
                     {% if step < 9 %}
-                    <span style="margin-left: 20px; font-size: 12px; color: var(--text-muted); cursor: pointer;" onclick="saveDraft()">Save Draft</span>
+                    <span data-save-draft class="csp-s-a904dbafb705">Save Draft</span>
                     {% endif %}
                 </div>
-                <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                <div class="csp-s-f6cda3b21d28">
                     {% if step == 9 and applicant_signed %}
                     <button
                         type="submit"
@@ -713,7 +711,7 @@
                         formaction="/applications/{{ app_id }}/submit-to-branch-manager"
                         formmethod="POST"
                         formnovalidate
-                        onclick="this.form.onsubmit=null"
+                        data-skip-wizard-validation
                     >
                         Submit to Team Lead &rarr;
                     </button>
@@ -722,13 +720,13 @@
                         {% if step == 8 %}Save Details &amp; Generate Client Signing Link &rarr;{% else %}Save & Continue &rarr;{% endif %}
                     </button>
                     {% endif %}
-                    <span id="consent_remaining" style="font-size: 12px; color:var(--accent-danger); margin-top:4px; display:none;">Consents still required.</span>
+                    <span id="consent_remaining" class="csp-s-5f2c6d32591d">Consents still required.</span>
                 </div>
             </div>
         </form>
     </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     // Toggle fields based on employment type selection
     function toggleEmploymentFields() {
         const empType = document.querySelector('input[name="employment_type"]:checked').value;
@@ -813,8 +811,8 @@
                 <label class="field-label">Tenor (Months)</label>
                 <input type="number" name="facility_tenor[]" class="field-input">
             </div>
-            <div style="padding-bottom: 8px;">
-                <button type="button" class="btn-ghost-link" style="color: var(--accent-danger);" onclick="this.parentElement.parentElement.remove()">Remove</button>
+            <div class="csp-s-af04a756ec2b">
+                <button type="button" class="btn-ghost-link csp-s-cdee27c94461" data-remove-row>Remove</button>
             </div>
         `;
         container.appendChild(newRow);
@@ -900,8 +898,8 @@
             <td><input type="text" name="pledge_item_name[]" class="field-input" required></td>
             <td><input type="number" name="pledge_item_qty[]" class="field-input" required></td>
             <td><input type="text" name="pledge_item_desc[]" class="field-input"></td>
-            <td><input type="number" name="pledge_item_val[]" class="field-input" oninput="calculatePledgeTotal()" required></td>
-            <td><button type="button" class="btn-ghost-link" style="color: var(--accent-danger);" onclick="removePledgeRow(this)">Remove</button></td>
+            <td><input type="number" name="pledge_item_val[]" class="field-input" data-pledge-value required></td>
+            <td><button type="button" class="btn-ghost-link csp-s-cdee27c94461" data-remove-pledge-row>Remove</button></td>
         `;
     }
 
@@ -1028,7 +1026,7 @@
         if (input.files && input.files[0]) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                document.getElementById('photo_slot').innerHTML = `<img src="${e.target.result}" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover;">`;
+                document.getElementById('photo_slot').innerHTML = `<img src="${e.target.result}" loading="lazy" decoding="async" class="csp-s-059ba7fa4870">`;
                 document.getElementById('photo_url_val').value = e.target.result;
             }
             reader.readAsDataURL(input.files[0]);
@@ -1096,6 +1094,38 @@
         });
     })();
 
+    document.getElementById('wizardForm')?.addEventListener('submit', (event) => {
+        if (!event.submitter?.matches('[data-skip-wizard-validation]') && !validateWizardForm()) {
+            event.preventDefault();
+        }
+    });
+    document.getElementById('id_expiry')?.addEventListener('change', checkIdExpiry);
+    document.getElementById('photo_file')?.addEventListener('change', (event) => previewPhoto(event.currentTarget));
+    document.querySelector('[data-choose-photo]')?.addEventListener('click', () => document.getElementById('photo_file')?.click());
+    document.querySelectorAll('[name="employment_type"]').forEach((input) => input.addEventListener('change', toggleEmploymentFields));
+    document.getElementById('loan_purpose')?.addEventListener('change', () => window.toggleOtherPurpose?.());
+    document.querySelectorAll('[name="collateral_security[]"]').forEach((input) => input.addEventListener('change', checkCollateralSelection));
+    document.querySelectorAll('[data-pledge-tab]').forEach((button) => button.addEventListener('click', () => switchPledgeTab(button.dataset.pledgeTab)));
+    document.getElementById('pledge_amount_figs')?.addEventListener('input', updatePledgeAmountWords);
+    document.getElementById('pledge_file')?.addEventListener('change', (event) => handlePledgeUpload(event.currentTarget));
+    document.querySelector('[data-choose-pledge-file]')?.addEventListener('click', () => document.getElementById('pledge_file')?.click());
+    document.querySelector('[data-save-draft]')?.addEventListener('click', saveDraft);
+    document.querySelector('[data-copy-signing-link]')?.addEventListener('click', async (event) => {
+        await navigator.clipboard.writeText(document.getElementById('generatedClientSigningLink').value);
+        event.currentTarget.textContent = 'Copied!';
+    });
+    document.addEventListener('input', (event) => {
+        if (event.target.matches('[data-pledge-value]')) calculatePledgeTotal();
+    });
+    document.addEventListener('click', (event) => {
+        const removeRow = event.target.closest('[data-remove-row]');
+        if (removeRow) removeRow.parentElement.parentElement.remove();
+        const removePledge = event.target.closest('[data-remove-pledge-row]');
+        if (removePledge) removePledgeRow(removePledge);
+        if (event.target.closest('[data-add-facility]')) addFacilityRow();
+        if (event.target.closest('[data-add-pledge-row]')) addPledgeRow();
+    });
+
     {% if readonly %}
     window.addEventListener('load', () => {
         const form = document.getElementById('wizardForm');
@@ -1107,7 +1137,7 @@
                     el.style.opacity = '0.7';
                 }
             });
-            form.querySelectorAll('.signature-clear-btn, button[onclick*="Row"]').forEach(el => {
+            form.querySelectorAll('.signature-clear-btn, [data-remove-row], [data-remove-pledge-row], [data-add-facility], [data-add-pledge-row]').forEach(el => {
                 el.style.display = 'none';
             });
         }

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+from time import perf_counter
 from functools import wraps
 from hashlib import sha256
 from inspect import signature
@@ -16,6 +17,7 @@ from fastapi.encoders import jsonable_encoder
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.config import settings
+from app.core.performance import record_counter, record_duration
 
 log = logging.getLogger(__name__)
 _redis = None
@@ -57,18 +59,23 @@ async def close_cache() -> None:
 async def get_json(key: str) -> Any | None:
     if _redis is None:
         return None
+    started_at = perf_counter()
     try:
         value = await _redis.get(key)
         return json.loads(value) if value is not None else None
     except Exception:
+        record_counter("redis_failure")
         log.warning("Redis cache read failed", exc_info=True)
         return None
+    finally:
+        record_duration("redis", started_at)
 
 
 async def set_json(key: str, value: Any, ttl_seconds: int, *, only_if_absent: bool = False) -> None:
     """Store JSON with a TTL; deployment warm-up uses ``only_if_absent``."""
     if _redis is None:
         return
+    started_at = perf_counter()
     try:
         await _redis.set(
             key,
@@ -77,7 +84,10 @@ async def set_json(key: str, value: Any, ttl_seconds: int, *, only_if_absent: bo
             nx=only_if_absent,
         )
     except Exception:
+        record_counter("redis_failure")
         log.warning("Redis cache write failed", exc_info=True)
+    finally:
+        record_duration("redis", started_at)
 
 
 def _scope_key(scope: str, identifier: object) -> str:
@@ -88,12 +98,16 @@ async def _scope_versions(scopes: list[tuple[str, object]]) -> list[str]:
     if _redis is None:
         return ["0"] * len(scopes)
     keys = [_scope_key(scope, identifier) for scope, identifier in scopes]
+    started_at = perf_counter()
     try:
         values = await _redis.mget(keys)
         return [value or "0" for value in values]
     except Exception:
+        record_counter("redis_failure")
         log.warning("Redis cache-version read failed", exc_info=True)
         return ["0"] * len(scopes)
+    finally:
+        record_duration("redis", started_at)
 
 
 async def invalidate_scopes(*scopes: tuple[str, object]) -> None:
@@ -132,7 +146,27 @@ async def cache_auth_user(user: Any) -> None:
             "last_login_at": user.last_login_at,
             "created_at": user.created_at,
         },
-        ttl_seconds=30,
+        ttl_seconds=settings.AUTH_CACHE_TTL_SECONDS,
+    )
+
+
+async def get_cached_dashboard_data(org_id: object, user_id: object, role: str):
+    scopes = [("org", org_id), ("user", user_id)]
+    versions = await _scope_versions(scopes)
+    scope_token = ":".join(
+        _digest(identifier) + "-" + version
+        for (_, identifier), version in zip(scopes, versions)
+    )
+    key = f"{_PREFIX}:dashboard:v2:{scope_token}:{role}"
+    return key, await get_json(key)
+
+
+async def cache_dashboard_data(key: str, value: Any) -> None:
+    await set_json(
+        key,
+        value,
+        ttl_seconds=settings.DASHBOARD_CACHE_TTL_SECONDS,
+        only_if_absent=True,
     )
 
 

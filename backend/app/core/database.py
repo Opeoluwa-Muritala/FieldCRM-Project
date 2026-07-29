@@ -13,12 +13,14 @@ import re
 import sqlite3
 import ssl
 from contextlib import asynccontextmanager
+from time import perf_counter
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 from app.config import settings
+from app.core.performance import record_duration, record_query
 
 _engine: AsyncEngine | None = None
 _sqlite_pool = None
@@ -131,27 +133,43 @@ class SQLAlchemyConnection:
         self._conn = conn
 
     async def fetch(self, query: str, *args):
-        statement, params = _bind(query, args)
-        result = await self._conn.execute(text(statement), params)
-        return [dict(row) for row in result.mappings().all()]
+        started_at = perf_counter()
+        try:
+            statement, params = _bind(query, args)
+            result = await self._conn.execute(text(statement), params)
+            return [dict(row) for row in result.mappings().all()]
+        finally:
+            record_query(started_at)
 
     async def fetchrow(self, query: str, *args):
-        statement, params = _bind(query, args)
-        result = await self._conn.execute(text(statement), params)
-        row = result.mappings().first()
-        return dict(row) if row else None
+        started_at = perf_counter()
+        try:
+            statement, params = _bind(query, args)
+            result = await self._conn.execute(text(statement), params)
+            row = result.mappings().first()
+            return dict(row) if row else None
+        finally:
+            record_query(started_at)
 
     async def fetchval(self, query: str, *args):
-        statement, params = _bind(query, args)
-        result = await self._conn.execute(text(statement), params)
-        row = result.first()
-        return row[0] if row else None
+        started_at = perf_counter()
+        try:
+            statement, params = _bind(query, args)
+            result = await self._conn.execute(text(statement), params)
+            row = result.first()
+            return row[0] if row else None
+        finally:
+            record_query(started_at)
 
     async def execute(self, query: str, *args):
-        statement, params = _bind(query, args)
-        result = await self._conn.execute(text(statement), params)
-        command = statement.lstrip().split(None, 1)[0].upper()
-        return f"{command} {max(result.rowcount or 0, 0)}"
+        started_at = perf_counter()
+        try:
+            statement, params = _bind(query, args)
+            result = await self._conn.execute(text(statement), params)
+            command = statement.lstrip().split(None, 1)[0].upper()
+            return f"{command} {max(result.rowcount or 0, 0)}"
+        finally:
+            record_query(started_at)
 
     def transaction(self):
         return SQLAlchemyTransactionContext(self)
@@ -247,6 +265,7 @@ async def get_connection():
         return
 
     conn = None
+    acquisition_started_at = perf_counter()
     for attempt in range(2):
         try:
             conn = await _engine.connect()
@@ -257,6 +276,7 @@ async def get_connection():
             # A brief Neon/DNS interruption should not discard a submitted
             # form. Retry acquisition once; endpoint work has not begun yet.
             await asyncio.sleep(0.25)
+    record_duration("db_acquire", acquisition_started_at)
 
     try:
         yield SQLAlchemyConnection(conn)

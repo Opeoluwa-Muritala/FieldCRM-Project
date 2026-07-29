@@ -15,14 +15,14 @@
         </div>
     </div>
 
-    <form method="GET" action="/search" style="margin-bottom:24px; display:flex; gap:8px;">
-        <input class="field-input" name="q" type="text" placeholder="Search applications and borrowers..." value="{{ query or '' }}" style="flex:1;" autofocus>
+    <form method="GET" action="/search" class="csp-s-a9bb3777a030">
+        <input class="field-input csp-s-6253876a649a" name="q" type="text" placeholder="Search applications and borrowers..." value="{{ query or '' }}" autofocus>
         <button type="submit" class="btn-primary">Search</button>
     </form>
 
     {% if query %}
-    <h3 style="font-size:14px; font-weight:600; color:var(--color-text-muted,#6b7280); margin-bottom:12px; text-transform:uppercase; letter-spacing:.05em;">Applications ({{ applications|length }})</h3>
-    <div class="queue-cards" style="margin-bottom:32px;">
+    <h3 class="csp-s-8a3504ac885a">Applications ({{ applications|length }})</h3>
+    <div class="queue-cards csp-s-293242ee3e22">
         {% for app in applications %}
         <a class="queue-card" href="/applications/{{ app.id }}">
             <div class="queue-card-name">{{ app.applicant_name }}</div>
@@ -33,7 +33,7 @@
             <div class="queue-card-amount">{% if app.amount %}₦{{ "{:,.0f}".format(app.amount) }}{% endif %}</div>
         </a>
         {% else %}
-        <div class="flat-card" style="color:var(--color-text-muted,#6b7280);">No applications found for "{{ query }}".</div>
+        <div class="flat-card csp-s-c5ff1755f353">No applications found for "{{ query }}".</div>
         {% endfor %}
     </div>
     {% endif %}

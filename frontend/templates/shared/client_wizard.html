@@ -8,13 +8,13 @@
 {% block page_title %}Application Wizard{% endblock %}
 
 {% block shell %}
-<div style="min-height: 100vh; background-color: var(--bg-secondary); padding: 32px 16px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; width: 100%;">
-    <div class="brand-logo-wrapper" style="text-align: center; margin-bottom: 24px;">
-        <a href="/dashboard" class="brand-home-link" aria-label="Go to dashboard"><img src="{{ brand_logo_black }}" alt="Mainstreet Microfinance Bank Logo" style="max-height: 48px;"></a>
-        <h2 style="font-family: 'Montserrat', sans-serif; font-size: 20px; color: #111827; margin: 8px 0 2px;">Mainstreet Microfinance Bank</h2>
-        <p style="font-size: 12px; color: var(--text-muted); margin: 0;">Loan Application Intake Form · Sending Officer: <strong>{{ officer_name }}</strong></p>
+<div class="csp-s-82cbc6d504b7">
+    <div class="brand-logo-wrapper csp-s-2d1904699d40">
+        <a href="/dashboard" class="brand-home-link" aria-label="Go to dashboard"><img src="{{ brand_logo_black }}" alt="Mainstreet Microfinance Bank Logo" class="csp-s-004ced7ea65f"></a>
+        <h2 class="csp-s-cb850c9162d1">Mainstreet Microfinance Bank</h2>
+        <p class="csp-s-88d18f359fb5">Loan Application Intake Form · Sending Officer: <strong>{{ officer_name }}</strong></p>
     </div>
-    <div style="max-width: 760px; width: 100%;">
+    <div class="csp-s-8e9fc9e85a4e">
     <!-- Horizontal Step Indicator -->
     <div class="wizard-steps">
         {% set is_single = (data.marital_status == 'Single') %}
@@ -67,16 +67,16 @@
             </p>
         </div>
 
-        <form id="wizardForm" action="/client-form/apply/step/{{ step }}" method="POST" onsubmit="return validateWizardForm();">
+        <form id="wizardForm" action="/client-form/apply/step/{{ step }}" method="POST">
             
             <!-- STEP 1: APPLICANT DETAILS -->
             {% if step == 1 %}
-            <div style="display: flex; gap: 24px; margin-bottom: 20px; align-items: flex-start; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 280px;" class="form-grid-2">
+            <div class="csp-s-83b9537ab8aa">
+                <div class="form-grid-2 csp-s-44817dc3d743">
                     <div class="form-group">
                         <label class="field-label">Full Name <span class="required">*</span></label>
                         <input type="text" name="full_name" class="field-input" value="{{ data.full_name or '' }}" required>
-                        <span class="error-msg" id="err_full_name" style="color:var(--accent-danger); font-size: 12px; display:none;">Full name is required.</span>
+                        <span class="error-msg csp-s-ee202e2f2e7b" id="err_full_name">Full name is required.</span>
                     </div>
 
                     <div class="form-group">
@@ -98,8 +98,8 @@
 
                     <div class="form-group">
                         <label class="field-label">Expiry Date <span class="required">*</span></label>
-                        <input type="date" name="id_expiry" id="id_expiry" class="field-input" value="{{ data.id_expiry or '' }}" onchange="checkIdExpiry()" required>
-                        <span class="error-msg" id="err_expiry" style="color:var(--accent-danger); font-size: 12px; display:none;">This ID has expired. Please upload a valid ID.</span>
+                        <input type="date" name="id_expiry" id="id_expiry" class="field-input" value="{{ data.id_expiry or '' }}" required>
+                        <span class="error-msg csp-s-ee202e2f2e7b" id="err_expiry">This ID has expired. Please upload a valid ID.</span>
                     </div>
 
                     <div class="form-group">
@@ -110,7 +110,7 @@
                     <div class="form-group">
                         <label class="field-label">Bank Verification Number (BVN) <span class="required">*</span></label>
                         <input type="text" name="bvn" id="bvn_input" class="field-input" value="{{ data.bvn or '' }}" maxlength="11" required>
-                        <span style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 4px;">11-digit Bank Verification Number. Treated as a critical security field.</span>
+                        <span class="csp-s-0ea6544cd7c3">11-digit Bank Verification Number. Treated as a critical security field.</span>
                     </div>
 
                     <div class="form-group">
@@ -150,21 +150,21 @@
                     <div class="form-group-full">
                         <label class="field-label">Nearest Landmark / Bus Stop</label>
                         <input type="text" name="landmark" class="field-input" value="{{ data.landmark or '' }}">
-                        <span style="font-size: 12px; color: var(--text-muted);">Helps visiting officers locate the premises.</span>
+                        <span class="csp-s-f779da42d59e">Helps visiting officers locate the premises.</span>
                     </div>
                 </div>
 
                 <!-- Passport Photograph Box -->
-                <div style="width: 150px; text-align: center; border: 0.5px solid var(--border-color); padding: 12px; border-radius: 8px; background-color: var(--bg-secondary);">
-                    <div style="width: 120px; height: 120px; border: 1px dashed var(--border-color); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; background-color: #FFF; position: relative; overflow: hidden;" id="photo_slot">
+                <div class="csp-s-1332043776d6">
+                    <div id="photo_slot" class="csp-s-b5a9a2083bbe">
                         {% if data.photo_url %}
-                            <img src="{{ data.photo_url }}" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover;">
+                            <img src="{{ data.photo_url }}" loading="lazy" decoding="async" class="csp-s-059ba7fa4870">
                         {% else %}
-                            <span style="font-size: 12px; color: var(--text-muted);">Upload Photo</span>
+                            <span class="csp-s-f779da42d59e">Upload Photo</span>
                         {% endif %}
                     </div>
-                    <input type="file" id="photo_file" style="display: none;" onchange="previewPhoto(this)">
-                    <button type="button" class="btn-ghost-link" onclick="document.getElementById('photo_file').click()" style="font-size: 12px; font-weight: 500;">Choose Image</button>
+                    <input type="file" id="photo_file" class="csp-s-6e22c58a7a6a">
+                    <button type="button" class="btn-ghost-link csp-s-9c9f3d773f33" data-choose-photo>Choose Image</button>
                     <input type="hidden" name="photo_url" id="photo_url_val" value="{{ data.photo_url or '' }}">
                 </div>
             </div>
@@ -197,45 +197,45 @@
                     <label class="field-label">Spouse Business Address</label>
                     <textarea name="spouse_business_address" class="field-textarea">{{ data.spouse_business_address or '' }}</textarea>
                 </div>
-                <div class="form-group-full" style="margin-top: 12px;">
+                <div class="form-group-full csp-s-f2fecb34dcad">
                     <label class="field-label">Spouse Signature <span class="required">*</span></label>
-                    <div class="pill-radio-group" style="margin-bottom:12px;">
+                    <div class="pill-radio-group csp-s-4636770b4968">
                         <div class="pill-radio-btn">
-                            <input type="radio" name="spouse_signature_method" id="spouse_sig_draw" value="draw" checked onchange="setSpouseSignatureMode('draw')">
+                            <input type="radio" name="spouse_signature_method" id="spouse_sig_draw" value="draw" checked>
                             <label for="spouse_sig_draw">Draw signature</label>
                         </div>
                         <div class="pill-radio-btn">
-                            <input type="radio" name="spouse_signature_method" id="spouse_sig_type" value="type" onchange="setSpouseSignatureMode('type')">
+                            <input type="radio" name="spouse_signature_method" id="spouse_sig_type" value="type">
                             <label for="spouse_sig_type">Type full name</label>
                         </div>
                     </div>
-                    <div class="signature-box" id="spouse_sig_box" style="touch-action:none;">
+                    <div class="signature-box csp-s-3c8ff1ee7b6e" id="spouse_sig_box">
                         <canvas id="spouse_sig_canvas"></canvas>
-                        <button type="button" class="signature-clear-btn" onclick="clearSignature('spouse_sig_canvas')">Clear</button>
+                        <button type="button" class="signature-clear-btn" data-clear-signature="spouse_sig_canvas">Clear</button>
                     </div>
-                    <div id="spouse_typed_signature_box" style="display:none;">
+                    <div id="spouse_typed_signature_box" class="csp-s-d0466aa33fa8">
                         <input
                             type="text"
                             id="spouse_typed_signature"
                             class="field-input"
                             placeholder="Enter spouse's full legal name"
-                            oninput="renderTypedSpouseSignature(this.value)"
+                            data-typed-spouse-signature
                         >
-                        <div id="spouse_typed_signature_preview" style="min-height:70px; margin-top:8px; padding:16px; border:1px solid var(--border-color); border-radius:8px; background:#fff; font-family:cursive; font-size:28px;"></div>
+                        <div id="spouse_typed_signature_preview" class="csp-s-c12c6678027c"></div>
                     </div>
                     <input type="hidden" name="spouse_signature" id="spouse_signature_val" value="{{ data.spouse_signature or '' }}">
-                    <span id="spouse_signature_help" style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 4px;">Draw with a mouse, pen, or finger.</span>
+                    <span id="spouse_signature_help" class="csp-s-0ea6544cd7c3">Draw with a mouse, pen, or finger.</span>
                 </div>
             </div>
             {% endif %}
 
             <!-- STEP 3: GUARANTORS -->
             {% if step == 3 %}
-            <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="csp-s-e3d940229f43">
                 <!-- Guarantor Slot 1 -->
-                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 20px; background-color: var(--bg-secondary);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <h4 style="font-size: 16px; font-weight: 500;">Guarantor 1</h4>
+                <div class="csp-s-d0919400b602">
+                    <div class="csp-s-ab4de765f5e2">
+                        <h4 class="csp-s-0aab37d7ee15">Guarantor 1</h4>
                         <span class="status-badge {% if data.guarantor_1_status == 'Verified' %}verified{% elif data.guarantor_1_status == 'Submitted' %}signed{% else %}missing{% endif %}">
                             {{ data.guarantor_1_status or 'Guarantor Form Pending' }}
                         </span>
@@ -254,15 +254,15 @@
                             <input type="tel" name="guarantor_1_phone" class="field-input" value="{{ data.guarantor_1_phone or '' }}" required>
                         </div>
                     </div>
-                    <div style="margin-top: 16px;">
-                        <a href="/client-form/apply/guarantors/1/step/1" class="btn-primary-filled" style="text-decoration: none; font-size: 12px; height: 32px;">Complete Guarantor Form &rarr;</a>
+                    <div class="csp-s-b034d5553764">
+                        <a href="/client-form/apply/guarantors/1/step/1" class="btn-primary-filled csp-s-619cfa472455">Complete Guarantor Form &rarr;</a>
                     </div>
                 </div>
 
                 <!-- Guarantor Slot 2 -->
-                <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 20px; background-color: var(--bg-secondary);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <h4 style="font-size: 16px; font-weight: 500;">Guarantor 2</h4>
+                <div class="csp-s-d0919400b602">
+                    <div class="csp-s-ab4de765f5e2">
+                        <h4 class="csp-s-0aab37d7ee15">Guarantor 2</h4>
                         <span class="status-badge {% if data.guarantor_2_status == 'Verified' %}verified{% elif data.guarantor_2_status == 'Submitted' %}signed{% else %}missing{% endif %}">
                             {{ data.guarantor_2_status or 'Guarantor Form Pending' }}
                         </span>
@@ -281,8 +281,8 @@
                             <input type="tel" name="guarantor_2_phone" class="field-input" value="{{ data.guarantor_2_phone or '' }}" required>
                         </div>
                     </div>
-                    <div style="margin-top: 16px;">
-                        <a href="/client-form/apply/guarantors/2/step/1" class="btn-primary-filled" style="text-decoration: none; font-size: 12px; height: 32px;">Complete Guarantor Form &rarr;</a>
+                    <div class="csp-s-b034d5553764">
+                        <a href="/client-form/apply/guarantors/2/step/1" class="btn-primary-filled csp-s-619cfa472455">Complete Guarantor Form &rarr;</a>
                     </div>
                 </div>
             </div>
@@ -290,12 +290,12 @@
 
             <!-- STEP 4: EMPLOYMENT & BUSINESS -->
             {% if step == 4 %}
-            <div style="margin-bottom: 20px;">
+            <div class="csp-s-f6279acc7326">
                 <label class="field-label">Employment Type</label>
                 <div class="pill-radio-group" id="empTypeGroup">
                     {% for opt in ["Full-time", "Part-time", "Contract Staff", "Public Servant", "Self-employed"] %}
                     <div class="pill-radio-btn">
-                        <input type="radio" name="employment_type" value="{{ opt }}" id="emp_{{ opt }}" {% if data.employment_type == opt or (loop.first and not data.employment_type) %}checked{% endif %} onchange="toggleEmploymentFields()">
+                        <input type="radio" name="employment_type" value="{{ opt }}" id="emp_{{ opt }}" {% if data.employment_type == opt or (loop.first and not data.employment_type) %}checked{% endif %}>
                         <label for="emp_{{ opt }}">{{ opt }}</label>
                     </div>
                     {% endfor %}
@@ -303,7 +303,7 @@
             </div>
 
             <!-- Fieldset for Salary Earners -->
-            <div id="salaryFields" style="display: none;" class="form-grid-2">
+            <div id="salaryFields" class="form-grid-2 csp-s-6e22c58a7a6a">
                 <div class="form-group">
                     <label class="field-label">Industry/Sector</label>
                     <input type="text" name="industry" class="field-input" value="{{ data.industry or '' }}">
@@ -327,7 +327,7 @@
             </div>
 
             <!-- Fieldset for Self Employed -->
-            <div id="businessFields" style="display: none;" class="form-grid-2">
+            <div id="businessFields" class="form-grid-2 csp-s-6e22c58a7a6a">
                 <div class="form-group">
                     <label class="field-label">Type of Business</label>
                     <input type="text" name="business_type" class="field-input" value="{{ data.business_type or '' }}">
@@ -349,38 +349,38 @@
                     <textarea name="business_address" class="field-textarea">{{ data.business_address or '' }}</textarea>
                 </div>
                 <div class="form-group-full">
-                    <div style="font-size: 12px; color: var(--accent-warning); margin-bottom: 12px;">
+                    <div class="csp-s-8b79e6edbbe0">
                         &#x26A0; The bank may compare declared sales figures against bank statement inflows.
                     </div>
                 </div>
             </div>
 
             <!-- Required Documents slots -->
-            <div style="margin-top: 24px; border-top: 0.5px solid var(--color-divider); padding-top: 16px;">
-                <div class="field-label" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px;">Required Documents</div>
+            <div class="csp-s-ccacfa62cb3a">
+                <div class="field-label csp-s-b7000850f53c">Required Documents</div>
                 
-                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                <div class="csp-s-5dec27a09be9">
                     <!-- Payslip / Business Statement -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 0.5px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary);">
+                    <div class="csp-s-d7168c1b83a1">
                         <div>
-                            <span id="docLabelPrimary" style="font-weight: 500;">Payslip / Business Statement</span>
-                            <div style="font-size: 12px; color: var(--text-muted);">PDF, JPG, JPEG, or PNG formats accepted</div>
+                            <span id="docLabelPrimary" class="csp-s-7ba9bad628ec">Payslip / Business Statement</span>
+                            <div class="csp-s-f779da42d59e">PDF, JPG, JPEG, or PNG formats accepted</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="csp-s-b5e6692c7caf">
                             <span class="status-badge verified">Verified</span>
-                            <a href="/client-form/apply/documents/upload?type=primary_statement" class="btn-ghost-link" style="color: var(--color-brand-shield);">Upload</a>
+                            <a href="/client-form/apply/documents/upload?type=primary_statement" class="btn-ghost-link csp-s-b166ee10dc46">Upload</a>
                         </div>
                     </div>
 
                     <!-- Bank Statement -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 0.5px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary);">
+                    <div class="csp-s-d7168c1b83a1">
                         <div>
-                            <span style="font-weight: 500;">Salary / Business Account Bank Statement</span>
-                            <div style="font-size: 12px; color: var(--text-muted);">Most recent 3 months history</div>
+                            <span class="csp-s-7ba9bad628ec">Salary / Business Account Bank Statement</span>
+                            <div class="csp-s-f779da42d59e">Most recent 3 months history</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="csp-s-b5e6692c7caf">
                             <span class="status-badge missing">Missing</span>
-                            <a href="/client-form/apply/documents/upload?type=bank_statement" class="btn-ghost-link" style="color: var(--color-brand-shield);">Upload</a>
+                            <a href="/client-form/apply/documents/upload?type=bank_statement" class="btn-ghost-link csp-s-b166ee10dc46">Upload</a>
                         </div>
                     </div>
                 </div>
@@ -393,13 +393,13 @@
                 Failure to disclose existing facilities may be treated as misrepresentation. The bank will verify through credit checks.
             </div>
 
-            <div id="facilitiesContainer" style="display: flex; flex-direction: column; gap: 12px;">
+            <div id="facilitiesContainer" class="csp-s-18809276c4d1">
                 {% set facility_banks = data.get('facility_bank', []) %}
                 {% set facility_amounts = data.get('facility_amount', []) %}
                 {% set facility_tenors = data.get('facility_tenor', []) %}
                 {% set facility_count = [facility_banks|length, facility_amounts|length, facility_tenors|length, 1]|max %}
                 {% for i in range(facility_count) %}
-                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: end;">
+                <div class="csp-s-351648caf81a">
                     <div class="form-group">
                         <label class="field-label">Bank Name</label>
                         <input type="text" name="facility_bank[]" class="field-input" placeholder="e.g. Access Bank" value="{{ facility_banks[i] if i < facility_banks|length else '' }}">
@@ -412,19 +412,19 @@
                         <label class="field-label">Tenor (Months)</label>
                         <input type="number" name="facility_tenor[]" class="field-input" placeholder="e.g. 12" value="{{ facility_tenors[i] if i < facility_tenors|length else '' }}">
                     </div>
-                    <div style="padding-bottom: 8px;">
-                        <button type="button" class="btn-ghost-link" style="color: var(--accent-danger);" onclick="this.parentElement.parentElement.remove()">Remove</button>
+                    <div class="csp-s-af04a756ec2b">
+                        <button type="button" class="btn-ghost-link csp-s-cdee27c94461" data-remove-row>Remove</button>
                     </div>
                 </div>
                 {% endfor %}
             </div>
 
-            <div style="margin-top: 12px; margin-bottom: 32px;">
-                <button type="button" class="btn-ghost-link" style="color: var(--color-brand-shield); font-weight: 500;" onclick="addFacilityRow()">+ Add Another Facility</button>
+            <div class="csp-s-58df280da3d6">
+                <button type="button" class="btn-ghost-link csp-s-e448a1ff7229" data-add-facility>+ Add Another Facility</button>
             </div>
 
-            <div style="border-top: 0.5px solid var(--color-divider); padding-top: 20px;">
-                <label class="field-label" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; margin-bottom: 12px;">Educational Background</label>
+            <div class="csp-s-98713d35975c">
+                <label class="field-label csp-s-451009175f33">Educational Background</label>
                 <div class="pill-radio-group">
                     {% for opt in ["Primary", "Secondary", "Graduate", "Postgraduate"] %}
                     <div class="pill-radio-btn">
@@ -441,7 +441,7 @@
             <div class="form-grid-2">
                 <div class="form-group-full">
                     <label class="field-label">Loan Purpose <span class="required">*</span></label>
-                    <select name="loan_purpose" id="loan_purpose" class="field-select" onchange="toggleOtherPurpose()">
+                    <select name="loan_purpose" id="loan_purpose" class="field-select">
                         <option value="Working Capital" {% if data.loan_purpose == 'Working Capital' %}selected{% endif %}>Working Capital</option>
                         <option value="Business Asset Acquisition" {% if data.loan_purpose == 'Business Asset Acquisition' %}selected{% endif %}>Business Asset Acquisition</option>
                         <option value="Emergency Personal Expense" {% if data.loan_purpose == 'Emergency Personal Expense' %}selected{% endif %}>Emergency Personal Expense</option>
@@ -449,7 +449,7 @@
                     </select>
                 </div>
 
-                <div class="form-group-full" id="otherPurposeSlot" style="display: none;">
+                <div class="form-group-full csp-s-6e22c58a7a6a" id="otherPurposeSlot">
                     <label class="field-label">Specify Purpose <span class="required">*</span></label>
                     <input type="text" name="loan_purpose_other" id="loan_purpose_other" class="field-input" value="{{ data.loan_purpose_other or '' }}">
                 </div>
@@ -470,18 +470,18 @@
 
                 <div class="form-group-full">
                     <label class="field-label">Type of Security/Collateral <span class="required">*</span></label>
-                    <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px;">
+                    <div class="csp-s-611b62724d4f">
                         {% for sec in ["Shop Stock", "Household Appliances", "Business Proceeds", "Property Documents", "Vehicles"] %}
-                        <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 0.5px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary);">
-                            <input type="checkbox" name="collateral_security[]" value="{{ sec }}" id="sec_{{ sec }}" onchange="checkCollateralSelection()" {% if sec in data.collateral_security %}checked{% endif %}>
-                            <label for="sec_{{ sec }}" style="font-size: 12px; cursor: pointer;">{{ sec }}</label>
+                        <div class="csp-s-e26cf91d9185">
+                            <input type="checkbox" name="collateral_security[]" value="{{ sec }}" id="sec_{{ sec }}" {% if sec in data.collateral_security %}checked{% endif %}>
+                            <label for="sec_{{ sec }}" class="csp-s-f46c7862068d">{{ sec }}</label>
                         </div>
                         {% endfor %}
                     </div>
                 </div>
 
                 <div class="form-group-full">
-                    <div id="pledgeNotice" class="flat-card warning" style="display: none;">
+                    <div id="pledgeNotice" class="flat-card warning csp-s-6e22c58a7a6a">
                         &#x26A0; A Pledge and Trust Receipt (MMFB/CRM/02) is required for the selected collateral. You will complete this in Step 8.
                     </div>
                 </div>
@@ -520,7 +520,7 @@
                     <input type="text" name="sort_code" class="field-input" value="{{ data.sort_code or '' }}">
                 </div>
             </div>
-            <div class="flat-card warning" style="margin-top: 20px;">
+            <div class="flat-card warning csp-s-936d6bbab286">
                 The account name must match the applicant's registered name. Third-party accounts require additional supporting documentation.
             </div>
             {% endif %}
@@ -528,14 +528,14 @@
             <!-- STEP 8: PLEDGE AND TRUST RECEIPT -->
             {% if step == 8 %}
             <div class="tab-row">
-                <button type="button" class="tab-btn active" id="tabFill" onclick="switchPledgeTab('fill')">Fill Form</button>
-                <button type="button" class="tab-btn" id="tabUpload" onclick="switchPledgeTab('upload')">Upload Completed Form</button>
+                <button type="button" class="tab-btn active" id="tabFill" data-pledge-tab="fill">Fill Form</button>
+                <button type="button" class="tab-btn" id="tabUpload" data-pledge-tab="upload">Upload Completed Form</button>
             </div>
 
             <!-- Tab content: Fill Form -->
             <div id="pledgeFillSection">
-                <div style="font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; font-weight: 500;">Receipt Details</div>
-                <div class="form-grid-2" style="margin-bottom: 24px;">
+                <div class="csp-s-a0f6f167f740">Receipt Details</div>
+                <div class="form-grid-2 csp-s-fec3619ed0de">
                     <div class="form-group">
                         <label class="field-label">Date <span class="required">*</span></label>
                         <input type="date" name="pledge_date" class="field-input" value="{{ data.pledge_date or '' }}">
@@ -546,14 +546,14 @@
                     </div>
                     <div class="form-group">
                         <label class="field-label">Facility Amount in Figures (₦) <span class="required">*</span></label>
-                        <input type="number" name="pledge_amount_figs" id="pledge_amount_figs" class="field-input" value="{{ data.pledge_amount_figs or '' }}" min="0" step="0.01" oninput="updatePledgeAmountWords()" required>
+                        <input type="number" name="pledge_amount_figs" id="pledge_amount_figs" class="field-input" value="{{ data.pledge_amount_figs or '' }}" min="0" step="0.01" required>
                     </div>
                     <div class="form-group">
                         <label class="field-label">Facility Amount in Words <span class="required">*</span></label>
                         <input type="text" name="pledge_amount_words" id="pledge_amount_words" class="field-input" value="{{ data.pledge_amount_words or '' }}" readonly aria-live="polite" placeholder="Automatically generated from the facility amount">
                     </div>
                     <div class="form-group-full">
-                        <span id="pledgeMismatchWarning" style="color:var(--accent-warning); font-size: 12px; display:none;">&#x26A0; Amount in words does not match figures — please correct.</span>
+                        <span id="pledgeMismatchWarning" class="csp-s-b2e7358a49c7">&#x26A0; Amount in words does not match figures — please correct.</span>
                     </div>
                     <div class="form-group-full">
                         <label class="field-label">Shop/House Address where goods are located <span class="required">*</span></label>
@@ -565,7 +565,7 @@
                     </div>
                 </div>
 
-                <div style="font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; font-weight: 500;">Pledged Items Schedule</div>
+                <div class="csp-s-a0f6f167f740">Pledged Items Schedule</div>
                 
                 <div class="custom-table-container">
                     <table class="custom-table" id="pledgeItemsTable">
@@ -591,72 +591,72 @@
                                 <td><input type="text" name="pledge_item_name[]" class="field-input" placeholder="e.g. Sharp Refrigerator" value="{{ pledge_names[i] if i < pledge_names|length else '' }}" required></td>
                                 <td><input type="number" name="pledge_item_qty[]" class="field-input" placeholder="1" value="{{ pledge_qtys[i] if i < pledge_qtys|length else '' }}" required></td>
                                 <td><input type="text" name="pledge_item_desc[]" class="field-input" placeholder="Model SJ-X380" value="{{ pledge_descs[i] if i < pledge_descs|length else '' }}"></td>
-                                <td><input type="number" name="pledge_item_val[]" class="field-input" placeholder="350000" value="{{ pledge_vals[i] if i < pledge_vals|length else '' }}" oninput="calculatePledgeTotal()" required></td>
-                                <td><button type="button" class="btn-ghost-link" style="color: var(--accent-danger);" onclick="removePledgeRow(this)">Remove</button></td>
+                                <td><input type="number" name="pledge_item_val[]" class="field-input" placeholder="350000" value="{{ pledge_vals[i] if i < pledge_vals|length else '' }}" data-pledge-value required></td>
+                                <td><button type="button" class="btn-ghost-link csp-s-cdee27c94461" data-remove-pledge-row>Remove</button></td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                    <button type="button" class="btn-ghost-link" style="color: var(--color-brand-shield); font-weight: 500;" onclick="addPledgeRow()">+ Add Item</button>
-                    <div style="font-size: 14px; font-weight: bold; color: var(--text-main);" id="pledgeTotalText">Total Estimated Value: —</div>
+                <div class="csp-s-dfe66a1810c4">
+                    <button type="button" class="btn-ghost-link csp-s-e448a1ff7229" data-add-pledge-row>+ Add Item</button>
+                    <div id="pledgeTotalText" class="csp-s-cd9f3dd1365c">Total Estimated Value: —</div>
                 </div>
 
-                <div class="flat-card brand" style="margin-bottom: 20px;">
-                    <strong style="display:block; margin-bottom: 8px;">Legal Acknowledgement Summary</strong>
-                    <p style="font-size:12px; line-height: 1.5; color: var(--text-muted);">
+                <div class="flat-card brand csp-s-f6279acc7326">
+                    <strong class="csp-s-1fea668f9174">Legal Acknowledgement Summary</strong>
+                    <p class="csp-s-f86ac058d010">
                         The borrower declares that the listed goods are their absolute property, free from any lien. The borrower holds the goods in trust for Mainstreet Microfinance Bank, and agrees that any proceeds from sales will be paid immediately to the bank to retire the outstanding loan amount.
                     </p>
-                    <div style="margin-top: 12px;">
+                    <div class="csp-s-f2fecb34dcad">
                         <input type="checkbox" name="pledge_legal_ack" id="pledge_legal_ack" value="1" {% if data.get('pledge_legal_ack') %}checked{% endif %} required>
-                        <label for="pledge_legal_ack" style="font-size: 12px; cursor: pointer; font-weight: 500; color: var(--text-main);">I confirm I have read and understood the terms of this Pledge and Trust Receipt.</label>
+                        <label for="pledge_legal_ack" class="csp-s-1c254d5627cc">I confirm I have read and understood the terms of this Pledge and Trust Receipt.</label>
                     </div>
                 </div>
 
-                <div class="form-grid-2" style="border-top: 0.5px solid var(--color-divider); padding-top: 20px;">
+                <div class="form-grid-2 csp-s-98713d35975c">
                     <div class="form-group">
                         <label class="field-label">Borrower Signature <span class="required">*</span></label>
-                        <div class="pill-radio-group" style="margin-bottom:10px;">
+                        <div class="pill-radio-group csp-s-fffdd52c0865">
                             <div class="pill-radio-btn">
-                                <input type="radio" name="borrower_pledge_signature_method" id="borrower_pledge_draw" value="draw" checked onchange="setPledgeSignatureMode('borrower_pledge', 'draw')">
+                                <input type="radio" name="borrower_pledge_signature_method" id="borrower_pledge_draw" value="draw" checked data-pledge-signature-prefix="borrower_pledge">
                                 <label for="borrower_pledge_draw">Draw signature</label>
                             </div>
                             <div class="pill-radio-btn">
-                                <input type="radio" name="borrower_pledge_signature_method" id="borrower_pledge_type" value="type" onchange="setPledgeSignatureMode('borrower_pledge', 'type')">
+                                <input type="radio" name="borrower_pledge_signature_method" id="borrower_pledge_type" value="type" data-pledge-signature-prefix="borrower_pledge">
                                 <label for="borrower_pledge_type">Type full name</label>
                             </div>
                         </div>
-                        <div class="signature-box" id="borrower_pledge_draw_box" style="touch-action:none;">
+                        <div class="signature-box csp-s-3c8ff1ee7b6e" id="borrower_pledge_draw_box">
                             <canvas id="borrower_pledge_canvas"></canvas>
-                            <button type="button" class="signature-clear-btn" onclick="clearSignature('borrower_pledge_canvas')">Clear</button>
+                            <button type="button" class="signature-clear-btn" data-clear-signature="borrower_pledge_canvas">Clear</button>
                         </div>
-                        <div id="borrower_pledge_type_box" style="display:none;">
-                            <input type="text" id="borrower_pledge_typed_name" class="field-input" placeholder="Enter borrower's full legal name" oninput="renderTypedPledgeSignature('borrower_pledge', this.value)">
-                            <div id="borrower_pledge_typed_preview" style="min-height:70px; margin-top:8px; padding:16px; border:1px solid var(--border-color); border-radius:8px; background:#fff; font-family:cursive; font-size:28px;"></div>
+                        <div id="borrower_pledge_type_box" class="csp-s-d0466aa33fa8">
+                            <input type="text" id="borrower_pledge_typed_name" class="field-input" placeholder="Enter borrower's full legal name" data-typed-pledge-prefix="borrower_pledge">
+                            <div id="borrower_pledge_typed_preview" class="csp-s-c12c6678027c"></div>
                         </div>
                         <input type="hidden" name="borrower_pledge_signature" id="borrower_pledge_sig_val" value="{{ data.get('borrower_pledge_signature', '') }}">
                     </div>
                     <div class="form-group">
                         <label class="field-label">Witness Signature <span class="required">*</span></label>
-                        <div class="pill-radio-group" style="margin-bottom:10px;">
+                        <div class="pill-radio-group csp-s-fffdd52c0865">
                             <div class="pill-radio-btn">
-                                <input type="radio" name="witness_pledge_signature_method" id="witness_pledge_draw" value="draw" checked onchange="setPledgeSignatureMode('witness_pledge', 'draw')">
+                                <input type="radio" name="witness_pledge_signature_method" id="witness_pledge_draw" value="draw" checked data-pledge-signature-prefix="witness_pledge">
                                 <label for="witness_pledge_draw">Draw signature</label>
                             </div>
                             <div class="pill-radio-btn">
-                                <input type="radio" name="witness_pledge_signature_method" id="witness_pledge_type" value="type" onchange="setPledgeSignatureMode('witness_pledge', 'type')">
+                                <input type="radio" name="witness_pledge_signature_method" id="witness_pledge_type" value="type" data-pledge-signature-prefix="witness_pledge">
                                 <label for="witness_pledge_type">Type full name</label>
                             </div>
                         </div>
-                        <div class="signature-box" id="witness_pledge_draw_box" style="touch-action:none;">
+                        <div class="signature-box csp-s-3c8ff1ee7b6e" id="witness_pledge_draw_box">
                             <canvas id="witness_pledge_canvas"></canvas>
-                            <button type="button" class="signature-clear-btn" onclick="clearSignature('witness_pledge_canvas')">Clear</button>
+                            <button type="button" class="signature-clear-btn" data-clear-signature="witness_pledge_canvas">Clear</button>
                         </div>
-                        <div id="witness_pledge_type_box" style="display:none;">
-                            <input type="text" id="witness_pledge_typed_name" class="field-input" placeholder="Enter witness's full legal name" oninput="renderTypedPledgeSignature('witness_pledge', this.value)">
-                            <div id="witness_pledge_typed_preview" style="min-height:70px; margin-top:8px; padding:16px; border:1px solid var(--border-color); border-radius:8px; background:#fff; font-family:cursive; font-size:28px;"></div>
+                        <div id="witness_pledge_type_box" class="csp-s-d0466aa33fa8">
+                            <input type="text" id="witness_pledge_typed_name" class="field-input" placeholder="Enter witness's full legal name" data-typed-pledge-prefix="witness_pledge">
+                            <div id="witness_pledge_typed_preview" class="csp-s-c12c6678027c"></div>
                         </div>
                         <input type="hidden" name="witness_pledge_signature" id="witness_pledge_sig_val" value="{{ data.get('witness_pledge_signature', '') }}">
                     </div>
@@ -672,17 +672,17 @@
             </div>
 
             <!-- Tab content: Upload completed -->
-            <div id="pledgeUploadSection" style="display: none;">
-                <div class="upload-dragzone" onclick="document.getElementById('pledge_file').click()">
+            <div id="pledgeUploadSection" class="csp-s-6e22c58a7a6a">
+                <div class="upload-dragzone" data-choose-pledge-file>
                     <span>Drag and drop signed Pledge Form here</span>
-                    <span style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Supports PDF, PNG, JPG (Max 5MB)</span>
-                    <input type="file" id="pledge_file" style="display: none;" onchange="handlePledgeUpload(this)">
+                    <span class="csp-s-83f4e781efc8">Supports PDF, PNG, JPG (Max 5MB)</span>
+                    <input type="file" id="pledge_file" class="csp-s-6e22c58a7a6a">
                 </div>
-                <div id="pledgeUploadFeedback" style="margin-top:12px; display:none; padding:12px; border:0.5px solid var(--border-color); border-radius:8px; background-color: var(--bg-secondary);">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div id="pledgeUploadFeedback" class="csp-s-3a737e15be5f">
+                    <div class="csp-s-5ffb91a26b04">
                         <div>
                             <strong id="pledge_fn">pledge_form_completed.pdf</strong>
-                            <div style="font-size: 12px; color: var(--text-muted);">Size: 1.4 MB · Status: OCR Processed</div>
+                            <div class="csp-s-f779da42d59e">Size: 1.4 MB · Status: OCR Processed</div>
                         </div>
                         <span class="status-badge verified">Extraction queued automatically</span>
                     </div>
@@ -692,103 +692,103 @@
 
             <!-- STEP 9: DECLARATIONS & CONSENTS -->
             {% if step == 9 %}
-            <div class="flat-card brand" style="margin-bottom:20px;">
-                <strong style="display:block; margin-bottom:6px;">Client Review, Consent and Signature</strong>
-                <span style="font-size:12px; line-height:1.5;">
+            <div class="flat-card brand csp-s-3c4a3d440074">
+                <strong class="csp-s-03c5a74540e7">Client Review, Consent and Signature</strong>
+                <span class="csp-s-4eae9290f59f">
                     Review the completed application below. Confirm it is accurate, verify your identity,
                     accept each consent, and sign before submitting.
                 </span>
             </div>
             <!-- DOCUMENT PREVIEW BLOCK FOR REVIEW -->
-            <div class="final-document-container" style="max-height: 350px; overflow-y: auto; padding: 20px; border: 1.5px solid var(--border-color); border-radius: 12px; margin-bottom: 24px; background-color: var(--bg-secondary);">
-                <h3 style="text-align: center; margin-top: 0; color: var(--text-primary); border-bottom: 1.5px solid var(--border-color); padding-bottom: 12px; font-weight: 600; font-size: 15px;">YOUR LOAN APPLICATION — REVIEW BEFORE CONSENTING</h3>
+            <div class="final-document-container csp-s-15107b60f4ef">
+                <h3 class="csp-s-53f01e651d9d">YOUR LOAN APPLICATION — REVIEW BEFORE CONSENTING</h3>
                 
-                <div style="margin-bottom: 16px; font-size: 12px;">
-                    <h4 style="margin: 0 0 6px 0; border-bottom: 0.5px solid var(--border-color); padding-bottom: 4px; font-weight: 600; font-size: 12px;">1. Personal Details</h4>
-                    <p style="margin: 4px 0;"><strong>Full Name:</strong> {{ data.get('full_name', '—') }}</p>
-                    <p style="margin: 4px 0;"><strong>Phone:</strong> {{ data.get('phone', '—') }} &nbsp;|&nbsp; <strong>Email:</strong> {{ data.get('email', '—') }}</p>
-                    <p style="margin: 4px 0;"><strong>BVN:</strong> {{ data.get('bvn', '—') }} &nbsp;|&nbsp; <strong>Marital Status:</strong> {{ data.get('marital_status', '—') }}</p>
-                    <p style="margin: 4px 0;"><strong>Residential Address:</strong> {{ data.get('residential_address', '—') }}</p>
+                <div class="csp-s-b13f719ae832">
+                    <h4 class="csp-s-a54cb541a556">1. Personal Details</h4>
+                    <p class="csp-s-9dcfa15ce670"><strong>Full Name:</strong> {{ data.get('full_name', '—') }}</p>
+                    <p class="csp-s-9dcfa15ce670"><strong>Phone:</strong> {{ data.get('phone', '—') }} &nbsp;|&nbsp; <strong>Email:</strong> {{ data.get('email', '—') }}</p>
+                    <p class="csp-s-9dcfa15ce670"><strong>BVN:</strong> {{ data.get('bvn', '—') }} &nbsp;|&nbsp; <strong>Marital Status:</strong> {{ data.get('marital_status', '—') }}</p>
+                    <p class="csp-s-9dcfa15ce670"><strong>Residential Address:</strong> {{ data.get('residential_address', '—') }}</p>
                 </div>
                 
-                <div style="margin-bottom: 16px; font-size: 12px;">
-                    <h4 style="margin: 0 0 6px 0; border-bottom: 0.5px solid var(--border-color); padding-bottom: 4px; font-weight: 600; font-size: 12px;">2. Employment & Income</h4>
-                    <p style="margin: 4px 0;"><strong>Employment Type:</strong> {{ data.get('employment_type', '—') }}</p>
-                    <p style="margin: 4px 0;"><strong>Employer / Business Name:</strong> {{ data.get('employer_name') or data.get('business_name') or '—' }}</p>
-                    <p style="margin: 4px 0;"><strong>Monthly Income:</strong> ₦{{ data.get('monthly_salary') or data.get('monthly_sales') or '—' }}</p>
+                <div class="csp-s-b13f719ae832">
+                    <h4 class="csp-s-a54cb541a556">2. Employment & Income</h4>
+                    <p class="csp-s-9dcfa15ce670"><strong>Employment Type:</strong> {{ data.get('employment_type', '—') }}</p>
+                    <p class="csp-s-9dcfa15ce670"><strong>Employer / Business Name:</strong> {{ data.get('employer_name') or data.get('business_name') or '—' }}</p>
+                    <p class="csp-s-9dcfa15ce670"><strong>Monthly Income:</strong> ₦{{ data.get('monthly_salary') or data.get('monthly_sales') or '—' }}</p>
                 </div>
                 
-                <div style="margin-bottom: 16px; font-size: 12px;">
-                    <h4 style="margin: 0 0 6px 0; border-bottom: 0.5px solid var(--border-color); padding-bottom: 4px; font-weight: 600; font-size: 12px;">3. Loan Details Requested</h4>
-                    <p style="margin: 4px 0;"><strong>Requested Amount:</strong> ₦{{ data.get('loan_amount', '—') }}</p>
-                    <p style="margin: 4px 0;"><strong>Loan Purpose:</strong> {{ data.get('loan_purpose', '—') }}</p>
-                    <p style="margin: 4px 0;"><strong>Payout Account:</strong> {{ data.get('payout_bank_name', '—') }} - {{ data.get('payout_account_number', '—') }}</p>
+                <div class="csp-s-b13f719ae832">
+                    <h4 class="csp-s-a54cb541a556">3. Loan Details Requested</h4>
+                    <p class="csp-s-9dcfa15ce670"><strong>Requested Amount:</strong> ₦{{ data.get('loan_amount', '—') }}</p>
+                    <p class="csp-s-9dcfa15ce670"><strong>Loan Purpose:</strong> {{ data.get('loan_purpose', '—') }}</p>
+                    <p class="csp-s-9dcfa15ce670"><strong>Payout Account:</strong> {{ data.get('payout_bank_name', '—') }} - {{ data.get('payout_account_number', '—') }}</p>
                 </div>
             </div>
 
             <!-- REVIEW CONFIRMATION CHECKBOX -->
-            <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary); margin-bottom: 24px;">
-                <label style="display:flex; align-items:center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 500; margin: 0;">
-                    <input type="checkbox" id="review_confirmed" name="review_confirmed" value="1" {% if data.get('review_confirmed') %}checked{% endif %} onchange="onReviewConfirmedChanged(this)" required>
+            <div class="csp-s-c79627cabbff">
+                <label class="csp-s-34557bcd9884">
+                    <input type="checkbox" id="review_confirmed" name="review_confirmed" value="1" {% if data.get('review_confirmed') %}checked{% endif %} required>
                     I have reviewed this document and confirm the details are accurate.
                 </label>
             </div>
 
             <!-- SIGNATURE AND CONSENTS BLOCK -->
             <div id="signingBlock">
-                <div style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 24px;">
+                <div class="csp-s-9d0e7e769c21">
                     <!-- Block 1 -->
-                    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary);">
-                        <h4 style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Credit Bureau Disclosure</h4>
-                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+                    <div class="csp-s-a0a6e3867809">
+                        <h4 class="csp-s-e49833deaf2c">Credit Bureau Disclosure</h4>
+                        <p class="csp-s-0c463ec678b2">
                             The bank is required by the Central Bank of Nigeria (CBN) to disclose the borrower's payment history, outstanding obligations, and general transaction behavior to licensed Credit Reference Bureaus.
                         </p>
                         <input type="checkbox" name="consent_credit_bureau" id="consent_cb" value="1" {% if data.get('consent_credit_bureau') %}checked{% endif %} required>
-                        <label for="consent_cb" style="font-size: 12px; cursor: pointer;">I consent to the Bank disclosing my transaction information to Credit Bureaus as prescribed by the CBN.</label>
+                        <label for="consent_cb" class="csp-s-f46c7862068d">I consent to the Bank disclosing my transaction information to Credit Bureaus as prescribed by the CBN.</label>
                     </div>
 
                     <!-- Block 2 -->
-                    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary);">
-                        <h4 style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Credit Check Authorisation</h4>
-                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+                    <div class="csp-s-a0a6e3867809">
+                        <h4 class="csp-s-e49833deaf2c">Credit Check Authorisation</h4>
+                        <p class="csp-s-0c463ec678b2">
                             The borrower authorises Mainstreet Microfinance Bank to request credit scores, repayment histories, and default records from any credit bureau or banking institution in Nigeria to verify creditworthiness.
                         </p>
                         <input type="checkbox" name="consent_credit_check" id="consent_cc" value="1" {% if data.get('consent_credit_check') %}checked{% endif %} required>
-                        <label for="consent_cc" style="font-size: 12px; cursor: pointer;">I authorise the Bank to conduct credit information checks on me from other financial institutions.</label>
+                        <label for="consent_cc" class="csp-s-f46c7862068d">I authorise the Bank to conduct credit information checks on me from other financial institutions.</label>
                     </div>
 
                     <!-- Block 3 -->
-                    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary);">
-                        <h4 style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Cheque Recovery Authorisation</h4>
-                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+                    <div class="csp-s-a0a6e3867809">
+                        <h4 class="csp-s-e49833deaf2c">Cheque Recovery Authorisation</h4>
+                        <p class="csp-s-0c463ec678b2">
                             The borrower mandates the bank to fill and present any post-dated cheques deposited as collateral in the event of default on the agreed loan repayment dates.
                         </p>
-                        <div class="flat-card warning" style="padding: 10px; margin-bottom: 8px; font-size: 12px;">
+                        <div class="flat-card warning csp-s-179e88d9b15b">
                             This authorises the bank to fill and present your cheque as repayment if you default. Do not sign if you do not understand this clause.
                         </div>
                         <input type="checkbox" name="consent_cheque" id="consent_ch" value="1" {% if data.get('consent_cheque') %}checked{% endif %} required>
-                        <label for="consent_ch" style="font-size: 12px; cursor: pointer;">I authorise the Bank to fill and pay my cheque in repayment of this facility in the event of default.</label>
+                        <label for="consent_ch" class="csp-s-f46c7862068d">I authorise the Bank to fill and pay my cheque in repayment of this facility in the event of default.</label>
                     </div>
 
                     <!-- Block 4 -->
-                    <div style="border: 0.5px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary);">
-                        <h4 style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Global Standing Instruction (GSI) Mandate</h4>
-                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+                    <div class="csp-s-a0a6e3867809">
+                        <h4 class="csp-s-e49833deaf2c">Global Standing Instruction (GSI) Mandate</h4>
+                        <p class="csp-s-0c463ec678b2">
                             The borrower mandates Mainstreet Microfinance Bank to trigger a GSI command through NIBSS to debit any bank account linked to their BVN across all licensed commercial and microfinance institutions in Nigeria to offset default debts.
                         </p>
-                        <div class="flat-card warning" style="padding: 10px; margin-bottom: 8px; font-size: 12px;">
+                        <div class="flat-card warning csp-s-179e88d9b15b">
                             GSI allows the bank to recover outstanding principal and interest from your accounts across all financial institutions in Nigeria.
                         </div>
                         <input type="checkbox" name="consent_gsi" id="consent_g" value="1" {% if data.get('consent_gsi') %}checked{% endif %} required>
-                        <label for="consent_g" style="font-size: 12px; cursor: pointer;">I execute a GSI Mandate authorising Mainstreet Microfinance Bank to recover any outstanding amount from my accounts across all financial institutions.</label>
+                        <label for="consent_g" class="csp-s-f46c7862068d">I execute a GSI Mandate authorising Mainstreet Microfinance Bank to recover any outstanding amount from my accounts across all financial institutions.</label>
                     </div>
                 </div>
 
                 <!-- ASSISTED SIGNING ATTENTION & WITNESS FIELDS -->
                 {% if assistance_required %}
-                <div style="border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; background-color: var(--bg-secondary); margin-bottom: 24px;">
-                    <h4 style="font-size: 14px; color: var(--accent-brand); font-weight: 600; margin-bottom: 8px;">Assisted Signing Attestation</h4>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">The applicant has indicated that they require assistance in completing this electronic signature. A witness must read the terms aloud and sign below.</p>
+                <div class="csp-s-26a88058e771">
+                    <h4 class="csp-s-aed5b676a9a2">Assisted Signing Attestation</h4>
+                    <p class="csp-s-f144ecff48fd">The applicant has indicated that they require assistance in completing this electronic signature. A witness must read the terms aloud and sign below.</p>
                     
                     <div class="form-group">
                         <label class="field-label">Assistance Type <span class="required">*</span></label>
@@ -814,14 +814,14 @@
                     
                     <div class="form-group">
                         <label class="field-label">Witness Attestation Statement <span class="required">*</span></label>
-                        <textarea name="witness_attestation" class="field-input" required style="height: 80px; font-size:12px;">I certify that I have read and explained the document aloud to the signer in a language they understand, and they appeared to fully comprehend and consent to all terms.</textarea>
+                        <textarea name="witness_attestation" class="field-input csp-s-8a053dd9db79" required>I certify that I have read and explained the document aloud to the signer in a language they understand, and they appeared to fully comprehend and consent to all terms.</textarea>
                     </div>
                     
                     <div class="form-group">
                         <label class="field-label">Witness Signature Canvas <span class="required">*</span></label>
-                        <div class="signature-box" style="margin-bottom: 8px;">
-                            <canvas id="witness_sig_canvas" style="height: 120px;"></canvas>
-                            <button type="button" class="signature-clear-btn" onclick="clearSignature('witness_sig_canvas')">Clear</button>
+                        <div class="signature-box csp-s-93e5d15d24f6">
+                            <canvas id="witness_sig_canvas" class="csp-s-7fdd606c3434"></canvas>
+                            <button type="button" class="signature-clear-btn" data-clear-signature="witness_sig_canvas">Clear</button>
                         </div>
                         <input type="hidden" name="witness_signature" id="witness_sig_val" value="{{ data.get('witness_signature', '') }}" required>
                     </div>
@@ -829,15 +829,15 @@
                 {% endif %}
 
                 <!-- Main Signature block -->
-                <div style="border-top: 0.5px solid var(--color-divider); padding-top: 20px; margin-bottom: 24px;">
+                <div class="csp-s-c89f73ce6ad2">
                     <label class="field-label">Applicant Signature / Mark <span class="required">*</span></label>
-                    <div class="signature-box" style="margin-bottom: 8px;">
+                    <div class="signature-box csp-s-93e5d15d24f6">
                         <canvas id="applicant_sig_canvas"></canvas>
-                        <button type="button" class="signature-clear-btn" onclick="clearSignature('applicant_sig_canvas')">Clear</button>
+                        <button type="button" class="signature-clear-btn" data-clear-signature="applicant_sig_canvas">Clear</button>
                     </div>
                     <input type="hidden" name="applicant_signature" id="applicant_sig_val" value="{{ data.get('applicant_signature', '') }}" required>
-                    <label for="final_declaration" style="display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; font-size: 12px; line-height: 1.5; cursor: pointer;">
-                        <input type="checkbox" name="final_declaration" id="final_declaration" value="1" {% if data.get('final_declaration') %}checked{% endif %} required style="margin-top: 2px; flex: 0 0 auto;">
+                    <label for="final_declaration" class="csp-s-af299494cc80">
+                        <input type="checkbox" name="final_declaration" id="final_declaration" value="1" {% if data.get('final_declaration') %}checked{% endif %} required class="csp-s-c6313e4f062d">
                         <span>I declare that all information provided in this application is true and correct.</span>
                     </label>
                 </div>
@@ -856,19 +856,19 @@
                         <a href="/client-form/apply/step/{{ step - 1 }}" class="btn-ghost-link">&larr; Back</a>
                         {% endif %}
                     {% endif %}
-                    <span style="margin-left: 20px; font-size: 12px; color: var(--text-muted); cursor: pointer;" onclick="saveDraft()">Save Draft</span>
+                    <span data-save-draft class="csp-s-a904dbafb705">Save Draft</span>
                 </div>
-                <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                <div class="csp-s-f6cda3b21d28">
                     <button type="submit" class="btn-primary-filled" id="continueBtn">
                         {% if step == 9 %}Submit &rarr;{% else %}Save & Continue &rarr;{% endif %}
                     </button>
-                    <span id="consent_remaining" style="font-size: 12px; color:var(--accent-danger); margin-top:4px; display:none;">Consents still required.</span>
+                    <span id="consent_remaining" class="csp-s-5f2c6d32591d">Consents still required.</span>
                 </div>
             </div>
         </form>
     </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     // Toggle fields based on employment type selection
     function toggleEmploymentFields() {
         const empType = document.querySelector('input[name="employment_type"]:checked').value;
@@ -953,8 +953,8 @@
                 <label class="field-label">Tenor (Months)</label>
                 <input type="number" name="facility_tenor[]" class="field-input">
             </div>
-            <div style="padding-bottom: 8px;">
-                <button type="button" class="btn-ghost-link" style="color: var(--accent-danger);" onclick="this.parentElement.parentElement.remove()">Remove</button>
+            <div class="csp-s-af04a756ec2b">
+                <button type="button" class="btn-ghost-link csp-s-cdee27c94461" data-remove-row>Remove</button>
             </div>
         `;
         container.appendChild(newRow);
@@ -1046,8 +1046,8 @@
             <td><input type="text" name="pledge_item_name[]" class="field-input" required></td>
             <td><input type="number" name="pledge_item_qty[]" class="field-input" required></td>
             <td><input type="text" name="pledge_item_desc[]" class="field-input"></td>
-            <td><input type="number" name="pledge_item_val[]" class="field-input" oninput="calculatePledgeTotal()" required></td>
-            <td><button type="button" class="btn-ghost-link" style="color: var(--accent-danger);" onclick="removePledgeRow(this)">Remove</button></td>
+            <td><input type="number" name="pledge_item_val[]" class="field-input" data-pledge-value required></td>
+            <td><button type="button" class="btn-ghost-link csp-s-cdee27c94461" data-remove-pledge-row>Remove</button></td>
         `;
     }
 
@@ -1273,7 +1273,7 @@
         if (input.files && input.files[0]) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                document.getElementById('photo_slot').innerHTML = `<img src="${e.target.result}" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover;">`;
+                document.getElementById('photo_slot').innerHTML = `<img src="${e.target.result}" loading="lazy" decoding="async" class="csp-s-059ba7fa4870">`;
                 document.getElementById('photo_url_val').value = e.target.result;
             }
             reader.readAsDataURL(input.files[0]);
@@ -1367,6 +1367,44 @@
             sessionStorage.setItem('wizardPrevStep', String(currentStep - 1));
         });
     })();
+    document.getElementById('wizardForm')?.addEventListener('submit', (event) => {
+        if (!validateWizardForm()) event.preventDefault();
+    });
+    document.getElementById('id_expiry')?.addEventListener('change', checkIdExpiry);
+    document.getElementById('photo_file')?.addEventListener('change', (event) => previewPhoto(event.currentTarget));
+    document.querySelector('[data-choose-photo]')?.addEventListener('click', () => document.getElementById('photo_file')?.click());
+    document.querySelectorAll('[name="spouse_signature_method"]').forEach((radio) => {
+        radio.addEventListener('change', () => setSpouseSignatureMode(radio.value));
+    });
+    document.querySelector('[data-typed-spouse-signature]')?.addEventListener('input', (event) => renderTypedSpouseSignature(event.currentTarget.value));
+    document.querySelectorAll('[name="employment_type"]').forEach((input) => input.addEventListener('change', toggleEmploymentFields));
+    document.getElementById('loan_purpose')?.addEventListener('change', () => window.toggleOtherPurpose?.());
+    document.querySelectorAll('[name="collateral_security[]"]').forEach((input) => input.addEventListener('change', checkCollateralSelection));
+    document.querySelectorAll('[data-pledge-tab]').forEach((button) => button.addEventListener('click', () => switchPledgeTab(button.dataset.pledgeTab)));
+    document.querySelectorAll('[data-pledge-signature-prefix]').forEach((radio) => {
+        radio.addEventListener('change', () => setPledgeSignatureMode(radio.dataset.pledgeSignaturePrefix, radio.value));
+    });
+    document.querySelectorAll('[data-typed-pledge-prefix]').forEach((input) => {
+        input.addEventListener('input', () => renderTypedPledgeSignature(input.dataset.typedPledgePrefix, input.value));
+    });
+    document.querySelectorAll('[data-clear-signature]').forEach((button) => {
+        button.addEventListener('click', () => clearSignature(button.dataset.clearSignature));
+    });
+    document.getElementById('pledge_file')?.addEventListener('change', (event) => handlePledgeUpload(event.currentTarget));
+    document.querySelector('[data-choose-pledge-file]')?.addEventListener('click', () => document.getElementById('pledge_file')?.click());
+    document.getElementById('review_confirmed')?.addEventListener('change', (event) => onReviewConfirmedChanged(event.currentTarget));
+    document.querySelector('[data-save-draft]')?.addEventListener('click', saveDraft);
+    document.addEventListener('input', (event) => {
+        if (event.target.matches('[data-pledge-value]')) calculatePledgeTotal();
+    });
+    document.addEventListener('click', (event) => {
+        const removeRow = event.target.closest('[data-remove-row]');
+        if (removeRow) removeRow.parentElement.parentElement.remove();
+        const removePledge = event.target.closest('[data-remove-pledge-row]');
+        if (removePledge) removePledgeRow(removePledge);
+        if (event.target.closest('[data-add-facility]')) addFacilityRow();
+        if (event.target.closest('[data-add-pledge-row]')) addPledgeRow();
+    });
 </script>
     </div>
 </div>

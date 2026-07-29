@@ -162,9 +162,9 @@
     <div class="layout-two-col">
         {# LEFT — Application Queue Table #}
         <div class="page-card">
-            <div class="page-card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="page-card-title" style="font-size: 15px;">Application Queue</span>
-                <a href="/applications" style="font-size: 12px; color: var(--color-brand-shield); text-decoration: none;">View All &#x2192;</a>
+            <div class="page-card-header csp-s-3490dbc8a70a">
+                <span class="page-card-title csp-s-827f35e03a44">Application Queue</span>
+                <a href="/applications" class="csp-s-c394f11ae038">View All &#x2192;</a>
             </div>
             <div class="custom-table-container">
                 <table class="custom-table">
@@ -180,7 +180,7 @@
                     <tbody>
                         {% if applications %}
                         {% for app in applications[:10] %}
-                        <tr onclick="window.location.href='/applications/{{ app.id }}'">
+                        <tr data-href="/applications/{{ app.id }}" tabindex="0">
                             <td>{{ app.applicant_name }}</td>
                             <td>{{ app.loan_type }}</td>
                             <td>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}—{% endif %}</td>
@@ -201,7 +201,7 @@
                         </tr>
                         {% endfor %}
                         {% else %}
-                        <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No applications yet. Start by creating one.</td></tr>
+                        <tr><td colspan="5" class="csp-s-56d23a4ca666">No applications yet. Start by creating one.</td></tr>
                         {% endif %}
                     </tbody>
                 </table>
@@ -211,8 +211,8 @@
         {# RIGHT — Pipeline + Activity stacked #}
         <div>
             {# Pipeline Summary #}
-            <div class="page-card" style="margin-bottom: 16px;">
-                <span class="page-card-title" style="font-size: 15px; margin-bottom: 12px; display: block;">Loan Pipeline</span>
+            <div class="page-card csp-s-4933c08820a9">
+                <span class="page-card-title csp-s-4e4e9b657c68">Loan Pipeline</span>
                 <div class="lo-pipeline-bar">
                     {% set stages = [
                         ('intake', 'Intake', m.get('drafts', 0)),
@@ -222,7 +222,7 @@
                     {% set total = stages|sum(attribute='2') %}
                     {% for stage_key, stage_label, count in stages %}
                     {% if count > 0 %}
-                    <a href="/applications?stage={{ stage_key }}" class="lo-pipeline-segment stage-{{ stage_key }}" style="flex: {{ count }};" title="{{ stage_label }}: {{ count }}">
+                    <a href="/applications?stage={{ stage_key }}" class="lo-pipeline-segment stage-{{ stage_key }}" data-csp-style="flex: {{ count }};" title="{{ stage_label }}: {{ count }}">
                         <span class="lo-pipeline-count">{{ count }}</span>
                     </a>
                     {% endif %}
@@ -240,7 +240,7 @@
 
             {# Activity Feed #}
             <div class="page-card">
-                <span class="page-card-title" style="font-size: 15px; margin-bottom: 12px; display: block;">Recent Activity</span>
+                <span class="page-card-title csp-s-4e4e9b657c68">Recent Activity</span>
                 <div class="lo-activity-feed">
                     {% if data and data.queue %}
                     {% for item in data.queue[:6] %}
@@ -254,7 +254,7 @@
                     </div>
                     {% endfor %}
                     {% else %}
-                    <div style="text-align: center; color: var(--text-muted); padding: 16px;">No recent activity.</div>
+                    <div class="csp-s-d52c2f82b418">No recent activity.</div>
                     {% endif %}
                 </div>
             </div>

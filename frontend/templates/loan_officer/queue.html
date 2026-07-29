@@ -41,7 +41,7 @@
         </thead>
         <tbody>
             {% for app in queue %}
-            <tr onclick="window.location.href='/applications/{{ app.id }}'">
+            <tr data-href="/applications/{{ app.id }}" tabindex="0">
                 <td>{{ app.applicant_name }}</td>
                 <td>{{ app.ref_no }}</td>
                 <td>{{ app.stage|replace('_', ' ')|title }}</td>
@@ -49,7 +49,7 @@
                 <td>{{ app.updated_at.strftime('%d %b %Y, %H:%M') if app.updated_at else '' }}</td>
             </tr>
             {% else %}
-            <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No active applications in your queue.</td></tr>
+            <tr><td colspan="5" class="csp-s-542b2a1bdac0">No active applications in your queue.</td></tr>
             {% endfor %}
         </tbody>
     </table>

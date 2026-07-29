@@ -1,0 +1,198 @@
+flowchart LR
+    subgraph UE["1. User and entry"]
+        User([Staff, client, guarantor<br/>Runtime: Browser])
+        Domain["Vercel production or preview domain<br/>Unverified outside repository"]
+        EntryChoice{"Requested path"}
+        User --> Domain --> EntryChoice
+    end
+
+    subgraph BF["2. Browser frontend"]
+        direction TB
+        subgraph Pages["Confirmed Jinja page families"]
+            LoginHTML["shared/login.html<br/>#loginForm<br/>Runtime: Browser"]
+            StaffHTML["Role dashboards, queues, application detail,<br/>review, approval, audit and administration templates"]
+            WizardHTML["application_wizard.html, guarantor_wizard.html,<br/>client_wizard.html, visitation.html"]
+            DocumentHTML["upload_document.html, client_upload_document.html,<br/>document links with data-document-preview"]
+            UsersHTML["system_admin/users.html<br/>#invite-user-form, data-edit-role,<br/>data-save-role, data-deactivate"]
+            ClientHTML["client_start.html, guarantor_sign.html,<br/>client_success.html"]
+        end
+        CSS["dashboard.css + role-themes.css<br/>page additions: login.css, borrowers.css, motion.css<br/>Runtime: /static assets"]
+        ShellJS["base/shell.html + desktop/mobile shells<br/>navigation, confirm dialog, inactivity logout"]
+        CommonJS["dashboard.js + motion.js<br/>DOMContentLoaded, form loading,<br/>tour, badges, drawers, DOM enhancement"]
+        PreviewJS["document-preview.js<br/>delegated click → renderPreviewPages()"]
+        Forms["Native HTML forms and controls<br/>submit/click/change/input/pointer events"]
+        Validate["Browser constraint validation +<br/>validateWizardForm(), validateForm(),<br/>file validation and role-specific checks"]
+        NativeHTTP["Browser navigation/form request<br/>GET or form-urlencoded/multipart POST"]
+        FetchHTTP["fetch()/XMLHttpRequest<br/>JSON, form body, or streamed image"]
+        SuccessJS["Response processing<br/>response.json(), redirects, reload,<br/>progress/load handlers"]
+        RenderDOM["DOM updates<br/>toasts, status text, modal images,<br/>role select, loading/error states"]
+        FrontError["Frontend error UI<br/>showFieldMessage(), status regions,<br/>preview failure text"]:::error
+        CSS -.->|"styles"| LoginHTML
+        CSS -.->|"styles"| StaffHTML
+        CSS -.->|"styles"| WizardHTML
+        CSS -.->|"styles"| DocumentHTML
+        ShellJS --> Forms
+        CommonJS --> Forms
+        PreviewJS --> Forms
+        LoginHTML --> Forms
+        StaffHTML --> Forms
+        WizardHTML --> Forms
+        DocumentHTML --> Forms
+        UsersHTML --> Forms
+        ClientHTML --> Forms
+        Forms -->|"submit / click / change"| Validate
+        Validate -->|"valid native form"| NativeHTTP
+        Validate -->|"valid scripted action"| FetchHTTP
+        Validate -->|"invalid"| FrontError
+        SuccessJS --> RenderDOM
+        FrontError --> RenderDOM
+    end
+
+    subgraph FB["3. FastAPI backend"]
+        direction TB
+        App["backend/app/main.py<br/>app = FastAPI()<br/>backend.app.main:app<br/>Runtime: Python serverless"]
+        Middleware["CORSMiddleware; SecurityHeadersMiddleware;<br/>RequestIDMiddleware; ResponseCacheInvalidationMiddleware"]
+        StaticMount["app.mount('/static', StaticFiles(frontend/static))"]
+        TemplateEngine["Jinja2Templates(frontend/templates)"]
+        AuthRoutes["GET/POST /login; GET /logout;<br/>/api/v1/auth/login[-bearer|-mobile]"]
+        WebRoutes["backend/app/domains/loans/router.py<br/>server-rendered loan/workflow routes"]
+        UserRoutes["/api/v1/users/*<br/>invitations, role update, deactivate"]
+        FileRoutes["/api/v1/documents/{id}/download|preview<br/>/applications/{id}/documents/upload"]
+        ClientRoutes["/share-intake/{token}; /client-access/{token};<br/>/client-form/apply/*; signing OTP endpoints"]
+        MobileRoutes["/api/v1/mobile/*<br/>JSON/mobile CRUD and workflow API"]
+        Pydantic["Pydantic validation<br/>User*, Token, mobile request models;<br/>Form/Query/Path/UploadFile elsewhere"]
+        AuthDep["get_current_user()<br/>Bearer or session/__Host-session cookie"]
+        RoleDep["RoleChecker([...])<br/>normalized role authorization"]
+        ClientDep["get_client_session_data()<br/>signed client-session cookie"]
+        LoanSvc["LoanService, GuarantorService,<br/>VisitationService, workflow logic"]
+        UserSvc["AuthService + UserService<br/>password verification, JWT, invitations"]
+        DocSvc["DocumentService.save_upload()<br/>validate signature/type/size, compress, audit"]
+        Integrations["verification, AML, credit-bureau,<br/>email, OCR and PDF services"]
+        Repos["Domain repositories + SQL files<br/>User, Loan, Document, Workflow,<br/>Audit, OCR, Notification, Signing"]
+        Resp["TemplateResponse / RedirectResponse / JSON<br/>StreamingResponse / signed URL redirect"]
+        ExHandler["HTTPException + DomainException handlers<br/>browser redirect/template or JSON error + request_id"]:::error
+        App --> Middleware
+        App --> StaticMount
+        App --> TemplateEngine
+        Middleware --> AuthRoutes
+        Middleware --> WebRoutes
+        Middleware --> UserRoutes
+        Middleware --> FileRoutes
+        Middleware --> ClientRoutes
+        Middleware --> MobileRoutes
+        AuthRoutes --> Pydantic
+        UserRoutes --> Pydantic
+        MobileRoutes --> Pydantic
+        WebRoutes --> Pydantic
+        FileRoutes --> Pydantic
+        ClientRoutes --> Pydantic
+        Pydantic --> AuthDep
+        Pydantic --> ClientDep
+        AuthDep --> RoleDep
+        RoleDep --> LoanSvc
+        AuthDep --> UserSvc
+        ClientDep --> LoanSvc
+        FileRoutes --> DocSvc
+        LoanSvc --> Repos
+        UserSvc --> Repos
+        DocSvc --> Repos
+        LoanSvc --> Integrations
+        DocSvc --> Integrations
+        Repos --> Resp
+        Integrations --> Resp
+        AuthRoutes -.-> ExHandler
+        WebRoutes -.-> ExHandler
+        UserRoutes -.-> ExHandler
+        FileRoutes -.-> ExHandler
+        ClientRoutes -.-> ExHandler
+        MobileRoutes -.-> ExHandler
+    end
+
+    subgraph DS["4. Data and external services"]
+        direction TB
+        DB[("PostgreSQL via SQLAlchemy async engine<br/>Neon pooled host required in production<br/>SQLite fallback in development")]:::data
+        Redis[("Redis rate limit + optional response/auth cache<br/>Runtime: External service")]:::data
+        Cloud[("Cloudinary authenticated assets<br/>production document storage")]:::data
+        LocalDisk[("frontend/static/uploads<br/>development-only fallback")]:::unverified
+        Qore["QoreID BVN verification<br/>httpx GET"]:::data
+        Bureaus["CreditRegistry + CRC<br/>httpx JSON APIs"]:::data
+        Youverify["Youverify AML screening<br/>httpx POST"]:::data
+        Emailope["EMAIL_SERVICE_URL<br/>JSON POST via urllib"]:::data
+        OCR["pytesseract/pdfplumber/pdf2image<br/>asyncio.to_thread + DB results"]:::data
+        PDF["WeasyPrint offer-letter PDF generation"]:::data
+        Repos --> DB
+        AuthDep --> Redis
+        Middleware --> Redis
+        DocSvc --> Cloud
+        DocSvc -.->|"non-production fallback"| LocalDisk
+        Integrations --> Qore
+        Integrations --> Bureaus
+        Integrations --> Youverify
+        Integrations --> Emailope
+        Integrations --> OCR
+        Integrations --> PDF
+    end
+
+    subgraph VD["5. Vercel deployment"]
+        direction TB
+        Dev["Developer<br/>Development time"]
+        Git["Git repository"]
+        Project["Vercel project/settings<br/>Unverified dashboard state"]:::unverified
+        PyCfg["pyproject.toml<br/>[tool.vercel] entrypoint = backend.app.main:app"]
+        Install["requirements.txt<br/>Vercel Python dependency install<br/>Build time"]
+        Runtime["runtime.txt: python-3.12.11"]
+        Env["Runtime environment names only:<br/>DATABASE_URL, JWT_SECRET_KEY, CORS_ORIGINS,<br/>COOKIE_SECURE, RATE_LIMIT_REDIS_URL, CACHE_REDIS_URL,<br/>Cloudinary, email, bureau, AML and Qore variables"]
+        Bundle["Python function bundle includes backend +<br/>frontend/templates + frontend/static<br/>Inferred from FastAPI-relative paths"]:::unverified
+        Deploy["Vercel deployment<br/>No vercel.json; routing supplied by Python entrypoint<br/>Deployment time"]:::unverified
+        Dev --> Git --> Project
+        Project --> PyCfg
+        Project --> Install
+        Project --> Runtime
+        Project --> Env
+        PyCfg --> Bundle
+        Install --> Bundle
+        Runtime --> Bundle
+        Env --> Deploy
+        Bundle --> Deploy
+    end
+
+    EntryChoice -->|"GET page path"| NativeHTTP
+    EntryChoice -->|"GET /static/*"| StaticMount
+    StaticMount -->|"200 CSS/JS/image"| CSS
+    NativeHTTP -->|"GET/POST; cookies automatically sent"| Middleware
+    FetchHTTP -->|"same-origin HTTP; JSON/form/image"| Middleware
+    AuthRoutes -->|"303 + HttpOnly session cookie; or Token JSON"| SuccessJS
+    WebRoutes -->|"200 HTML or 303 redirect"| SuccessJS
+    UserRoutes -->|"JSON 200/201"| SuccessJS
+    FileRoutes -->|"PNG stream or 307 signed download"| SuccessJS
+    ClientRoutes -->|"HTML/JSON/303"| SuccessJS
+    MobileRoutes -->|"JSON + Bearer auth"| SuccessJS
+    ExHandler -->|"4xx/5xx JSON, HTML or redirect"| FrontError
+
+    LoginHTML -->|"POST /login; application/x-www-form-urlencoded"| AuthRoutes
+    UsersHTML -->|"POST /api/v1/users/invitations; JSON"| UserRoutes
+    UsersHTML -->|"PUT /api/v1/users/{id}/role; JSON"| UserRoutes
+    UsersHTML -->|"POST /api/v1/users/{id}/deactivate"| UserRoutes
+    WizardHTML -->|"POST /applications/{id}/step/{step}; form-urlencoded"| WebRoutes
+    DocumentHTML -->|"POST /applications/{id}/documents/upload; multipart/form-data"| FileRoutes
+    PreviewJS -->|"GET /api/v1/documents/{id}/preview?page=N"| FileRoutes
+    ClientHTML -->|"POST /client-form/signing/{viewed|otp/start|otp/verify}"| ClientRoutes
+
+    BadGuarantor["Confirmed missing backend routes:<br/>POST /applications/{id}/guarantor-link/{slot}<br/>POST /client-form/apply/guarantors/sign"]:::error
+    StaffHTML -.->|"guarantor link call has no registered receiver"| BadGuarantor
+    ClientHTML -.->|"guarantor signing form has no registered receiver"| BadGuarantor
+
+    Deploy -.->|"runs"| App
+    Deploy -.->|"serves through FastAPI, not separate static deployment"| StaticMount
+    Deploy -.->|"exposes"| Domain
+
+    classDef frontend fill:#e8f1ff,stroke:#2563eb,color:#111827
+    classDef backend fill:#ecfdf5,stroke:#059669,color:#111827
+    classDef data fill:#fff7ed,stroke:#ea580c,color:#111827
+    classDef deployment fill:#f5f3ff,stroke:#7c3aed,color:#111827
+    classDef error fill:#fef2f2,stroke:#dc2626,color:#111827
+    classDef unverified fill:#f9fafb,stroke:#6b7280,color:#111827,stroke-dasharray:5 5
+    class Domain unverified
+    class LoginHTML,StaffHTML,WizardHTML,DocumentHTML,UsersHTML,ClientHTML,CSS,ShellJS,CommonJS,PreviewJS,Forms,Validate,NativeHTTP,FetchHTTP,SuccessJS,RenderDOM frontend
+    class App,Middleware,StaticMount,TemplateEngine,AuthRoutes,WebRoutes,UserRoutes,FileRoutes,ClientRoutes,MobileRoutes,Pydantic,AuthDep,RoleDep,ClientDep,LoanSvc,UserSvc,DocSvc,Integrations,Repos,Resp backend
+    class Dev,Git,PyCfg,Install,Runtime,Env,Bundle,Deploy deployment

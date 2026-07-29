@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 import hashlib
@@ -10,9 +11,8 @@ from decimal import Decimal
 from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 
-from app.core.database import db_conn
+from app.core.database import db_conn, get_connection
 from app.core.exceptions import DomainException
 from app.domains.loans.repository import LoanRepository
 from app.domains.loans.service import LoanService
@@ -20,9 +20,11 @@ from app.core.audit import AuditService
 from app.core.dependencies import get_current_user, RoleChecker
 from app.core.template_utils import (
     build_template_context,
+    csp_nonce_context,
     detect_device_type,
     get_role_template,
 )
+from app.core.templates import create_templates
 from app.core.workflow import WORKFLOW_STAGES, ROLE_LABELS
 from app.services.dashboard_service import DashboardService
 from app.services.email_service import EmailService
@@ -44,7 +46,7 @@ router = APIRouter()
 # Resolve templates folder relatively
 base_dir = os.path.dirname(os.path.abspath(__file__))
 templates_dir = os.path.abspath(os.path.join(base_dir, "../../../../frontend/templates"))
-templates = Jinja2Templates(directory=templates_dir)
+templates = create_templates(templates_dir)
 templates.env.globals.update(
     brand_logo_black="https://res.cloudinary.com/ddezxlqjr/image/upload/v1784551475/MMFB_Logo_Black_lnma0l.png",
     brand_logo_white="https://res.cloudinary.com/ddezxlqjr/image/upload/v1784551475/MMFB_logo_White_gzthxm.png",
@@ -72,7 +74,11 @@ def return_target_for(app, user_role: str) -> str | None:
 def form_data_to_jsonable_dict(form_data) -> dict:
     payload = {}
     for key in form_data.keys():
-        values = form_data.getlist(key)
+        if hasattr(form_data, "getlist"):
+            values = form_data.getlist(key)
+        else:
+            val = form_data.get(key)
+            values = val if isinstance(val, list) else [val]
         cleaned = []
         for value in values:
             if hasattr(value, "filename"):
@@ -123,7 +129,6 @@ def get_visitation_service(conn = Depends(db_conn)) -> VisitationService:
 @router.get("/dashboard")
 async def render_dashboard(
     request: Request,
-    conn = Depends(db_conn),
     current_user = Depends(get_current_user)
 ):
     """
@@ -131,15 +136,6 @@ async def render_dashboard(
     Mobile and desktop share the same template but extend different
     base shells via the 'shell' context variable.
     """
-    dashboard_svc = DashboardService(conn)
-    data = await dashboard_svc.get_dashboard_data(current_user)
-
-    repo = LoanRepository(conn)
-    if current_user.role.lower().replace(" ", "_") in ("account_officer", "loan_officer"):
-        applications = data.get("queue", [])
-    else:
-        applications = await repo.list_recent(current_user.org_id, limit=10)
-
     role = current_user.role.lower().replace(" ", "_")
 
     # Roles with dedicated dashboard routes
@@ -151,8 +147,26 @@ async def render_dashboard(
         return RedirectResponse(url="/md-dashboard", status_code=status.HTTP_303_SEE_OTHER)
     if role == "legal":
         return RedirectResponse(url="/legal-queue", status_code=status.HTTP_303_SEE_OTHER)
-    if role in ("md", "ed"):
-        return RedirectResponse(url="/executive-dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    from app.core.cache import cache_dashboard_data, get_cached_dashboard_data
+
+    cache_key, data = await get_cached_dashboard_data(
+        current_user.org_id,
+        current_user.id,
+        role,
+    )
+    if data is None:
+        data = await DashboardService(None).get_dashboard_data_isolated(current_user)
+        await cache_dashboard_data(cache_key, data)
+
+    if role in ("account_officer", "loan_officer"):
+        applications = data.get("queue", [])
+    else:
+        async with get_connection() as dashboard_conn:
+            applications = await LoanRepository(dashboard_conn).list_recent(
+                current_user.org_id,
+                limit=10,
+            )
     template_name = get_role_template(role, "dashboard.html")
 
     ctx = build_template_context(
@@ -611,47 +625,58 @@ async def render_application_detail(
     if role in ("branch_supervisor", "credit_analyst"):
         template_name = "branch_manager/application_detail.html"
     
-    # Load all data needed for the detail view
-    loan_svc = get_loan_service(conn)
-    doc_svc = get_document_service(conn)
-    visitation_repo = VisitationRepository(conn)
-    
-    wizard_data = await loan_svc.get_wizard_data(UUID(application_id))
-    documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
-    visitation_data = await visitation_repo.get_by_loan(loan_id=UUID(application_id), org_id=current_user.org_id) or {}
-    readiness_summary = await repo.get_readiness_summary(UUID(application_id), current_user.org_id)
-    
-    # Load and filter audit events
-    all_audit_events = await repo.list_workflow_events(current_user.org_id)
-    audit_events = [e for e in all_audit_events if str(e.get("loan_id")) == application_id]
-    
-    # Load and filter compliance flags
-    dashboard_svc = DashboardService(conn)
-    all_flags = await dashboard_svc.get_compliance_flags(current_user, limit=1000)
-    flags = [f for f in all_flags if str(f.get("loan_id")) == application_id]
+    app_uuid = UUID(application_id)
 
-    # Fetch verification/bureau/AML checks
-    ver_check = await conn.fetchrow(
-        "SELECT status, is_valid, checked_at FROM verification_checks WHERE loan_application_id = $1 ORDER BY checked_at DESC LIMIT 1;",
-        UUID(application_id)
-    )
-    bureau_sub = await conn.fetchrow(
-        "SELECT status, registry_id, provider, submitted_at FROM bureau_submissions WHERE loan_application_id = $1 ORDER BY submitted_at DESC LIMIT 1;",
-        UUID(application_id)
-    )
-    aml_check = await conn.fetchrow(
-        "SELECT status, category_count, checked_at FROM sanctions_checks WHERE loan_application_id = $1 ORDER BY checked_at DESC LIMIT 1;",
-        UUID(application_id)
-    )
+    async def load_snapshot():
+        async with get_connection() as detail_conn:
+            return await LoanRepository(detail_conn).get_application_detail_snapshot(
+                app_uuid,
+                current_user.org_id,
+            )
 
-    # Fetch checklist items
-    checklist_rows = await conn.fetch(
-        "SELECT context, item_key, is_checked FROM checklist_items WHERE loan_application_id = $1;",
-        UUID(application_id)
+    async def load_documents():
+        async with get_connection() as detail_conn:
+            return await DocumentRepository(detail_conn).get_by_loan(
+                app_uuid,
+                current_user.org_id,
+            )
+
+    async def load_readiness():
+        async with get_connection() as detail_conn:
+            return await LoanRepository(detail_conn).get_readiness_summary(
+                app_uuid,
+                current_user.org_id,
+            )
+
+    async def load_events():
+        async with get_connection() as detail_conn:
+            return await LoanRepository(detail_conn).list_workflow_events_for_application(
+                current_user.org_id,
+                app_uuid,
+                limit=200,
+            )
+
+    async def load_flags():
+        async with get_connection() as detail_conn:
+            return await DashboardService(detail_conn).get_application_compliance_flags(
+                current_user,
+                app_uuid,
+                limit=200,
+            )
+
+    snapshot, documents, readiness_summary, audit_events, flags = await asyncio.gather(
+        load_snapshot(),
+        load_documents(),
+        load_readiness(),
+        load_events(),
+        load_flags(),
     )
-    checklist_map = {}
-    for row in checklist_rows:
-        checklist_map[f"{row['context']}:{row['item_key']}"] = row["is_checked"]
+    wizard_data = snapshot.get("wizard_data") or {}
+    visitation_data = snapshot.get("visitation_data") or {}
+    ver_check = snapshot.get("verification_check")
+    bureau_sub = snapshot.get("bureau_submission")
+    aml_check = snapshot.get("aml_check")
+    checklist_map = snapshot.get("checklist_map") or {}
 
     crc_configured = bool(settings.CRC_API_KEY)
     cr_configured = bool(settings.CREDIT_REGISTRY_USERNAME and settings.CREDIT_REGISTRY_PASSWORD)
@@ -692,7 +717,6 @@ async def render_wizard_step(
     request: Request,
     application_id: str,
     step: int,
-    service: LoanService = Depends(get_loan_service),
     conn = Depends(db_conn),
     current_user = Depends(get_current_user)
 ):
@@ -704,9 +728,10 @@ async def render_wizard_step(
     except ValueError:
         raise HTTPException(status_code=404, detail="Loan Application not found")
     repo = LoanRepository(conn)
-    app = await repo.get_by_id(app_uuid, current_user.org_id)
-    if not app:
+    snapshot = await repo.get_wizard_page_snapshot(app_uuid, current_user.org_id)
+    if not snapshot:
         raise HTTPException(status_code=404, detail="Loan Application not found")
+    app, data, latest, signature_events = snapshot
         
     user_role = current_user.role.lower().replace(" ", "_")
     if user_role not in ("account_officer", "loan_officer"):
@@ -714,15 +739,8 @@ async def render_wizard_step(
     if app.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="You do not have permission to view/modify this application")
 
-    data = await service.get_wizard_data(app_uuid)
-
     if step == 2 and data.get("marital_status") == "Single":
         return RedirectResponse(url=f"/applications/{application_id}/step/3", status_code=status.HTTP_303_SEE_OTHER)
-
-    from app.domains.signing.service import SigningService
-    from app.domains.signing.repository import SigningRepository
-    signing_svc = SigningService(SigningRepository(conn))
-    latest = await signing_svc.repo.latest_version(app_uuid, "applicant_stage", "intake")
     readonly = step == 9
     applicant_signed = False
     signatures = {}
@@ -731,11 +749,7 @@ async def render_wizard_step(
             readonly = True
         if latest["status"] == "signed":
             applicant_signed = True
-            sigs = await conn.fetch(
-                "SELECT * FROM signature_events WHERE document_version_id = $1",
-                latest["id"],
-            )
-            for sig in sigs:
+            for sig in signature_events:
                 if sig.get("witness_for_event_id"):
                     signatures["witness"] = sig["signature_image_ref"]
                 else:
@@ -1899,6 +1913,8 @@ async def process_crm_review(
         raise HTTPException(status_code=404, detail="Loan Application not found")
 
     form_data = await request.form()
+    if form_data.get("applicant_signature"):
+        raise HTTPException(status_code=403, detail="Staff cannot submit an applicant signature")
     new_amount = form_data.get("amount")
     if new_amount:
         await conn.execute("UPDATE loan_applications SET amount = $1 WHERE id = $2", Decimal(new_amount), UUID(application_id))
@@ -3431,6 +3447,153 @@ async def generate_existing_client_link(
     }
 
 
+@router.post("/applications/{application_id}/guarantor-link/{slot}")
+async def generate_guarantor_signing_link(
+    request: Request,
+    application_id: str,
+    slot: int,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    role = current_user.role.lower().replace(" ", "_")
+    allowed_roles = {"account_officer", "loan_officer", "branch_manager", "branch_supervisor", "credit_analyst"}
+    if role not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+    try:
+        app_id = UUID(application_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+
+    app = await LoanRepository(conn).get_by_id(app_id, current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+
+    if slot not in (1, 2):
+        raise HTTPException(status_code=400, detail="Invalid guarantor slot")
+
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=1440)
+    token = jwt.encode(
+        {
+            "type": "guarantor_signing",
+            "app_id": str(app_id),
+            "slot": slot,
+            "org_id": str(current_user.org_id),
+            "officer_id": str(current_user.id),
+            "exp": expires_at,
+            "nonce": secrets.token_hex(16),
+        },
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+    )
+    base_url = str(request.base_url).rstrip("/")
+    share_url = f"{base_url}/guarantor-access/{token}"
+    return {
+        "share_url": share_url,
+        "link": share_url,
+        "expires_at": expires_at,
+    }
+
+
+@router.get("/guarantor-access/{token}")
+async def redeem_guarantor_client_link(
+    request: Request,
+    token: str,
+    conn=Depends(db_conn),
+):
+    link = decode_access_token(token)
+    if not link or link.get("type") != "guarantor_signing":
+        return templates.TemplateResponse(
+            request,
+            "shared/client_error.html",
+            {"error_message": "This guarantor link is invalid or expired."},
+            status_code=403,
+        )
+    try:
+        app_id = UUID(link["app_id"])
+        org_id = UUID(link["org_id"])
+        officer_id = UUID(link["officer_id"])
+        slot = int(link["slot"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(status_code=403, detail="Invalid guarantor link")
+
+    app = await LoanRepository(conn).get_by_id(app_id, org_id)
+    if not app:
+        return templates.TemplateResponse(
+            request,
+            "shared/client_error.html",
+            {"error_message": "This application is no longer available."},
+            status_code=403,
+        )
+
+    # Check if slot exists in database, otherwise insert default draft row
+    guarantor_row = await conn.fetchrow(
+        "SELECT id, full_name, assistance_required FROM guarantors WHERE loan_id = $1 AND slot = $2",
+        app_id, slot
+    )
+    if not guarantor_row:
+        await conn.execute(
+            """INSERT INTO guarantors (loan_id, org_id, slot, form_stage)
+               VALUES ($1, $2, $3, 'draft')
+               ON CONFLICT (loan_id, slot) DO NOTHING""",
+            app_id, org_id, slot
+        )
+        guarantor_row = await conn.fetchrow(
+            "SELECT id, full_name, assistance_required FROM guarantors WHERE loan_id = $1 AND slot = $2",
+            app_id, slot
+        )
+
+    guarantor_id = guarantor_row["id"]
+
+    signing = SigningService(SigningRepository(conn))
+    latest = await signing.repo.latest_version(app_id, "guarantor", str(guarantor_id))
+    if not latest:
+        stage_data_row = await LoanRepository(conn).get_stage_data(app_id, f"guarantor_{slot}")
+        payload = (stage_data_row or {}).get("data_json") or {}
+        latest = await signing.freeze_version(app_id, "guarantor", str(guarantor_id), payload, officer_id)
+
+    signing_session = await signing.issue_session(
+        app_id,
+        "guarantor",
+        str(guarantor_id),
+        [latest["id"]],
+        officer_id,
+        lifetime=timedelta(hours=2),
+    )
+
+    session_expires = datetime.now(timezone.utc) + timedelta(hours=2)
+    session_token = jwt.encode(
+        {
+            "type": "client_session",
+            "app_id": str(app_id),
+            "org_id": str(org_id),
+            "officer_id": str(officer_id),
+            "signing_session_id": str(signing_session["id"]),
+            "guarantor_slot": slot,
+            "guarantor_id": str(guarantor_id),
+            "exp": session_expires,
+        },
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+    )
+    secure = (
+        settings.COOKIE_SECURE
+        or request.url.scheme == "https"
+        or request.headers.get("x-forwarded-proto") == "https"
+    )
+    response = RedirectResponse("/client-form/apply/guarantors/sign", status_code=303)
+    response.set_cookie(
+        "client_session",
+        session_token,
+        httponly=True,
+        secure=secure,
+        samesite="lax",
+        max_age=2 * 60 * 60,
+        path="/",
+    )
+    return response
+
+
 @router.get("/client-access/{token}")
 async def redeem_existing_client_link(
     request: Request,
@@ -3526,7 +3689,7 @@ def get_client_session_data(request: Request) -> dict:
 
 
 @router.post("/client-form/signing/otp/start")
-async def start_client_signing_otp(
+async def start_signing_otp(
     session=Depends(get_client_session_data),
     conn=Depends(db_conn),
 ):
@@ -3545,7 +3708,7 @@ async def start_client_signing_otp(
 
 
 @router.post("/client-form/signing/viewed")
-async def mark_client_signing_document_viewed(
+async def mark_document_viewed(
     session=Depends(get_client_session_data),
     conn=Depends(db_conn),
 ):
@@ -3565,7 +3728,7 @@ async def mark_client_signing_document_viewed(
 
 
 @router.post("/client-form/signing/otp/verify")
-async def verify_client_signing_otp(
+async def verify_signing_otp(
     request: Request,
     session=Depends(get_client_session_data),
     conn=Depends(db_conn),
@@ -3661,6 +3824,12 @@ async def process_client_wizard_step(
     form_data = await request.form()
     data_dict = form_data_to_jsonable_dict(form_data)
     
+    if step == 9 and not data_dict.get("review_confirmed"):
+        raise HTTPException(
+            status_code=400,
+            detail="Must confirm you have reviewed the details before signing",
+        )
+
     service = get_loan_service(conn)
     await service.save_wizard_step(UUID(app_id), step, data_dict, UUID(officer_id), UUID(org_id))
 
@@ -3881,6 +4050,209 @@ async def process_client_guarantor_step(
             user_role="client"
         )
         return RedirectResponse(url="/client-form/apply/step/3", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/client-form/apply/guarantors/sign")
+async def render_guarantor_signing_page(
+    request: Request,
+    session = Depends(get_client_session_data),
+    conn = Depends(db_conn),
+):
+    app_id = session.get("app_id")
+    org_id = session.get("org_id")
+    slot = session.get("guarantor_slot")
+    
+    if slot is None:
+        raise HTTPException(status_code=403, detail="Not authorized as a guarantor")
+
+    app = await LoanRepository(conn).get_by_id(UUID(app_id), UUID(org_id))
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+
+    guarantor_row = await conn.fetchrow(
+        "SELECT * FROM guarantors WHERE loan_id = $1 AND slot = $2",
+        UUID(app_id), slot
+    )
+    if not guarantor_row:
+        raise HTTPException(status_code=404, detail="Guarantor not found")
+
+    ctx = build_template_context(
+        request,
+        user=None,
+        app=app,
+        guarantor_data=dict(guarantor_row),
+        assistance_required=guarantor_row["assistance_required"],
+        hide_tabbar=True,
+    )
+    return templates.TemplateResponse(request, "shared/guarantor_sign.html", ctx)
+
+
+@router.post("/client-form/apply/guarantors/sign")
+async def process_guarantor_signature(
+    request: Request,
+    session = Depends(get_client_session_data),
+    conn = Depends(db_conn)
+):
+    app_id = session.get("app_id")
+    org_id = session.get("org_id")
+    officer_id = session.get("officer_id")
+    slot = session.get("guarantor_slot")
+    guarantor_id = session.get("guarantor_id")
+    
+    if slot is None or guarantor_id is None:
+        raise HTTPException(status_code=403, detail="Not authorized as a guarantor")
+
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(app_id), UUID(org_id))
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+
+    form_data = await request.form()
+    data_dict = form_data_to_jsonable_dict(form_data)
+    
+    auth_transaction_id = data_dict.get("auth_transaction_id")
+    if not auth_transaction_id:
+        raise HTTPException(status_code=400, detail="auth_transaction_id is required")
+
+    signature_data = data_dict.get("guarantor_signature", "")
+    if not signature_data.startswith("data:image/png;base64,"):
+        raise HTTPException(status_code=422, detail="Guarantor signature is required")
+    try:
+        signature_bytes = base64.b64decode(
+            signature_data.split(",", 1)[1], validate=True
+        )
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=422, detail="Guarantor signature is invalid")
+
+    signing_svc = SigningService(SigningRepository(conn))
+    version = await signing_svc.repo.latest_version(UUID(app_id), "guarantor", str(guarantor_id))
+    if not version:
+        stage_data_row = await repo.get_stage_data(UUID(app_id), f"guarantor_{slot}")
+        payload = (stage_data_row or {}).get("data_json") or {}
+        version = await signing_svc.freeze_version(
+            UUID(app_id), "guarantor", str(guarantor_id), payload, UUID(officer_id)
+        )
+
+    assistance_required = await conn.fetchval(
+        "SELECT assistance_required FROM guarantors WHERE id = $1",
+        UUID(guarantor_id)
+    )
+    
+    witness = None
+    if assistance_required:
+        witness_name = data_dict.get("witness_name")
+        witness_attestation = data_dict.get("witness_attestation")
+        witness_sig_data = data_dict.get("witness_signature", "")
+        
+        if not witness_name or not witness_attestation or not witness_sig_data:
+            raise HTTPException(status_code=422, detail="Witness name, attestation statement, and signature are required")
+            
+        if not witness_sig_data.startswith("data:image/png;base64,"):
+            raise HTTPException(status_code=422, detail="Witness signature is required")
+        try:
+            witness_sig_bytes = base64.b64decode(
+                witness_sig_data.split(",", 1)[1], validate=True
+            )
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=422, detail="Witness signature is invalid")
+            
+        async def store_witness_signature(content: bytes, digest: str, version_row: dict) -> str:
+            from pathlib import Path
+            folder = (
+                Path(settings.DOCUMENT_UPLOAD_DIR)
+                / str(org_id)
+                / str(app_id)
+                / "signatures"
+                / "witness"
+                / str(version_row["version_number"])
+            )
+            folder.mkdir(parents=True, exist_ok=True)
+            path = folder / f"{digest}.png"
+            path.write_bytes(content)
+            return path.as_uri()
+            
+        witness_image_hash = hashlib.sha256(witness_sig_bytes).hexdigest()
+        witness_sig_ref = await store_witness_signature(witness_sig_bytes, witness_image_hash, version)
+        
+        witness = {
+            "subject_id": "witness",
+            "signer_identity_ref": witness_name,
+            "signature_image_ref": witness_sig_ref,
+            "mark_type": data_dict.get("mark_type") or "drawn_signature",
+            "assistance_type": data_dict.get("assistance_type") or "read_aloud_by_staff",
+            "reader_witness_user_id": None,
+            "reader_witness_attestation_text": witness_attestation,
+        }
+
+    async def store_guarantor_signature(content: bytes, digest: str, version_row: dict) -> str:
+        from pathlib import Path
+        folder = (
+            Path(settings.DOCUMENT_UPLOAD_DIR)
+            / str(org_id)
+            / str(app_id)
+            / "signatures"
+            / f"guarantor_{slot}"
+            / str(version_row["version_number"])
+        )
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / f"{digest}.png"
+        path.write_bytes(content)
+        return path.as_uri()
+
+    # Get guarantor row to read full name
+    guarantor_row = await conn.fetchrow(
+        "SELECT full_name FROM guarantors WHERE id = $1",
+        UUID(guarantor_id)
+    )
+
+    event = await signing_svc.sign(
+        version=version,
+        auth_transaction_id=auth_transaction_id,
+        signature_bytes=signature_bytes,
+        storage_upload=store_guarantor_signature,
+        subject_type="guarantor",
+        subject_id=str(guarantor_id),
+        signer_identity_ref=(guarantor_row["full_name"] if guarantor_row else f"Guarantor Slot {slot}"),
+        consent_text_version="v1",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        mark_type=data_dict.get("mark_type") or "drawn_signature",
+        assistance_type=data_dict.get("assistance_type") or "self_read",
+        witness=witness
+    )
+
+    # Persist the signature stage to guarantors table
+    await conn.execute(
+        """UPDATE guarantors SET
+           signature_detected = TRUE,
+           witness_signature_detected = $1,
+           form_stage = 'submitted',
+           updated_at = NOW()
+           WHERE id = $2""",
+        bool(witness), UUID(guarantor_id)
+    )
+    
+    # Audit row
+    audit_svc = AuditService(conn)
+    await audit_svc.insert(
+        org_id=UUID(org_id),
+        entity_type="loan_application",
+        entity_id=UUID(app_id),
+        action="guarantor.signed",
+        user_id=UUID(officer_id),
+        user_role="client",
+        field_name=f"guarantor_{slot}",
+        new_value="signed",
+        source="manual",
+    )
+    
+    # Update stage data details
+    existing_stage = await repo.get_stage_data(UUID(app_id), "intake")
+    data = existing_stage["data_json"] if existing_stage and existing_stage.get("data_json") else {}
+    data[f"guarantor_{slot}_status"] = "Submitted"
+    await repo.save_stage_data(UUID(app_id), "intake", data, UUID(officer_id))
+
+    return RedirectResponse(url="/client-form/success", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/client-form/success")

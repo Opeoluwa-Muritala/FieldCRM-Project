@@ -5,34 +5,34 @@
 {% block breadcrumb %}Executive Director -> Approval -> {{ app.ref_no }}{% endblock %}
 {% block content %}
 
-<div class="page-card" style="margin-bottom:20px;">
+<div class="page-card csp-s-3c4a3d440074">
   <h2 class="page-card-title">{{ app.applicant_name }}</h2>
-  <div style="display:flex;gap:24px;flex-wrap:wrap;">
-    <div><span style="color:var(--text-muted)">Ref</span><br><strong>{{ app.ref_no }}</strong></div>
-    <div><span style="color:var(--text-muted)">Amount</span><br><strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}—{% endif %}</strong></div>
-    <div><span style="color:var(--text-muted)">Tenor</span><br><strong>{{ app.tenor_months or '—' }} months</strong></div>
-    <div><span style="color:var(--text-muted)">Type</span><br><strong>{{ app.loan_type|upper }}</strong></div>
+  <div class="csp-s-0e63b0d79e95">
+    <div><span class="csp-s-500708668cdd">Ref</span><br><strong>{{ app.ref_no }}</strong></div>
+    <div><span class="csp-s-500708668cdd">Amount</span><br><strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}—{% endif %}</strong></div>
+    <div><span class="csp-s-500708668cdd">Tenor</span><br><strong>{{ app.tenor_months or '—' }} months</strong></div>
+    <div><span class="csp-s-500708668cdd">Type</span><br><strong>{{ app.loan_type|upper }}</strong></div>
   </div>
 </div>
 
 {% if app.crm_notes %}
-<div class="page-card" style="margin-bottom:20px;background:#f3f8ff;border:1px solid #90caf9;">
+<div class="page-card csp-s-201a238b7c40">
   <strong>CRM Notes:</strong>
-  <p style="margin:8px 0 0;color:var(--text-secondary);">{{ app.crm_notes }}</p>
+  <p class="csp-s-abc22c46dd80">{{ app.crm_notes }}</p>
 </div>
 {% endif %}
 
 {% if head_crm_notes %}
-<div class="page-card" style="margin-bottom:20px;background:#f3f8ff;border:1px solid #90caf9;">
+<div class="page-card csp-s-201a238b7c40">
   <strong>Head CRM Handover:</strong>
-  <p style="margin:8px 0 0;color:var(--text-secondary);white-space:pre-wrap;">{{ head_crm_notes }}</p>
+  <p class="csp-s-513211ca42df">{{ head_crm_notes }}</p>
 </div>
 {% endif %}
 
 {# ── Committee Votes ── #}
 {% if votes %}
-<div class="page-card" style="margin-bottom:20px;">
-  <h3 style="margin-bottom:12px;">Committee Recommendations</h3>
+<div class="page-card csp-s-3c4a3d440074">
+  <h3 class="csp-s-4636770b4968">Committee Recommendations</h3>
   <table class="custom-table">
     <thead><tr><th>Member</th><th>Recommendation</th><th>Notes</th></tr></thead>
     <tbody>
@@ -40,7 +40,7 @@
     <tr>
       <td>{{ v.member_name }}</td>
       <td><span class="status-badge {% if v.recommendation == 'approve' %}approved{% elif v.recommendation == 'reject' %}rejected{% else %}needs-review{% endif %}">{{ v.recommendation|title }}</span></td>
-      <td style="font-size:13px;color:var(--text-secondary);">{{ v.notes or '—' }}</td>
+      <td class="csp-s-fc12bffd31c0">{{ v.notes or '—' }}</td>
     </tr>
     {% endfor %}
     </tbody>
@@ -49,8 +49,8 @@
 {% endif %}
 
 {# ── Documents ── #}
-<div class="page-card" style="margin-bottom:20px;">
-  <h3 style="margin-bottom:12px;">Document Summary</h3>
+<div class="page-card csp-s-3c4a3d440074">
+  <h3 class="csp-s-4636770b4968">Document Summary</h3>
   <table class="custom-table">
     <thead><tr><th>Document</th><th>Quality</th><th>Verified</th></tr></thead>
     <tbody>
@@ -58,40 +58,38 @@
     <tr>
       <td>{% if doc.url %}<a href="{{ doc.url }}" target="_blank" rel="noopener">{{ doc.doc_type.replace('_',' ').title() }}</a>{% else %}{{ doc.doc_type.replace('_',' ').title() }}{% endif %}</td>
       <td><span class="status-badge {% if doc.quality_status == 'clear' %}approved{% else %}needs-review{% endif %}">{{ doc.quality_status }}</span></td>
-      <td>{% if doc.verified %}&#10003;{% else %}<span style="color:#c62828">&#10007;</span>{% endif %}</td>
+      <td>{% if doc.verified %}&#10003;{% else %}<span class="csp-s-d23e3c89c60a">&#10007;</span>{% endif %}</td>
     </tr>
-    {% else %}<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">No documents.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="3" class="csp-s-542b2a1bdac0">No documents.</td></tr>{% endfor %}
     </tbody>
   </table>
 </div>
 
 {# ── ED Actions ── #}
-<div class="page-card" style="background:#e8f5e9;border:1px solid #a5d6a7;">
-  <h3 style="margin-bottom:12px;">ED Decision</h3>
-  <p style="margin-bottom:16px;color:var(--text-secondary);font-size:14px;">
+<div class="page-card csp-s-00b62f6fef4a">
+  <h3 class="csp-s-4636770b4968">ED Decision</h3>
+  <p class="csp-s-a55b62d15f51">
     As ED, you have final approval authority for this loan (below &#x20A6;10,000,000).
     You may approve directly, or request MD's input inside FieldCRM. MD's input returns the file to you for the final decision.
   </p>
-  <form method="post" action="/applications/{{ app_id }}/ed-approve" style="display: flex; flex-direction: column; gap: 16px; max-width: 320px; margin-bottom: 12px;">
-    <div class="form-group" style="text-align: left;">
-        <label class="field-label" style="font-weight: 600;">Approved/Recommended Amount (₦)</label>
-        <input type="number" name="amount" class="field-input" value="{{ app.amount or 0 }}" required style="width: 100%;">
+  <form method="post" action="/applications/{{ app_id }}/ed-approve" class="csp-s-38d429ef2f25">
+    <div class="form-group csp-s-4555334f9590">
+        <label class="field-label csp-s-3d9df89ef84d">Approved/Recommended Amount (₦)</label>
+        <input type="number" name="amount" class="field-input csp-s-37ab52c9d67a" value="{{ app.amount or 0 }}" required>
     </div>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;">
-      <button type="submit" name="action" value="approve" class="btn btn-primary"
-        data-confirm="Issue disbursement instruction for {{ app.applicant_name }}?"
-        style="font-size:15px;padding:12px 24px;">
+    <div class="csp-s-633fe02090af">
+      <button type="submit" name="action" value="approve" class="btn btn-primary csp-s-267f540099a7"
+        data-confirm="Issue disbursement instruction for {{ app.applicant_name }}?">
         &#10003; Approve — Issue Disbursement Instruction
       </button>
-      {% if (app.amount or 0) <= 10000000 %}<button type="submit" name="action" value="escalate_md" class="btn btn-secondary"
-        data-confirm="Request MD input? The file will return to you for final approval."
-        style="padding:12px 24px;">
+      {% if (app.amount or 0) <= 10000000 %}<button type="submit" name="action" value="escalate_md" class="btn btn-secondary csp-s-8c1a4df4297d"
+        data-confirm="Request MD input? The file will return to you for final approval.">
         &#8679; Request MD Input
       </button>{% endif %}
     </div>
   </form>
-  <div style="margin-top:12px;">
-    <a href="/ed-queue" class="btn btn-secondary" style="font-size:13px;">&#8592; Back to Queue</a>
+  <div class="csp-s-b6d781cbbc10">
+    <a href="/ed-queue" class="btn btn-secondary csp-s-cdcef186c815">&#8592; Back to Queue</a>
   </div>
 </div>
 {% endblock %}

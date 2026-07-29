@@ -6,39 +6,39 @@
 {% block content %}
 
 {# ── Loan Summary ── #}
-<div class="page-card" style="margin-bottom:20px;">
+<div class="page-card csp-s-3c4a3d440074">
   <h2 class="page-card-title">{{ app.applicant_name }} — {{ app.ref_no }}</h2>
-  <div style="display:flex;gap:24px;flex-wrap:wrap;">
-    <div><span style="color:var(--text-muted)">Amount</span><br><strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}—{% endif %}</strong></div>
-    <div><span style="color:var(--text-muted)">Tenor</span><br><strong>{{ app.tenor_months or '—' }} months</strong></div>
-    <div><span style="color:var(--text-muted)">Type</span><br><strong>{{ app.loan_type|upper }}</strong></div>
-    <div><span style="color:var(--text-muted)">Purpose</span><br><strong>{{ app.purpose or '—' }}</strong></div>
-    <div><span style="color:var(--text-muted)">Phone</span><br><strong>{{ app.phone or '—' }}</strong></div>
+  <div class="csp-s-0e63b0d79e95">
+    <div><span class="csp-s-500708668cdd">Amount</span><br><strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}—{% endif %}</strong></div>
+    <div><span class="csp-s-500708668cdd">Tenor</span><br><strong>{{ app.tenor_months or '—' }} months</strong></div>
+    <div><span class="csp-s-500708668cdd">Type</span><br><strong>{{ app.loan_type|upper }}</strong></div>
+    <div><span class="csp-s-500708668cdd">Purpose</span><br><strong>{{ app.purpose or '—' }}</strong></div>
+    <div><span class="csp-s-500708668cdd">Phone</span><br><strong>{{ app.phone or '—' }}</strong></div>
   </div>
   {% if app.crm_notes %}
-  <div style="margin-top:12px;padding:10px;background:#f3f8ff;border-radius:6px;border:1px solid #90caf9;">
-    <strong style="font-size:13px;">CRM Notes:</strong>
-    <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">{{ app.crm_notes }}</p>
+  <div class="csp-s-54c91d27d4ca">
+    <strong class="csp-s-cdcef186c815">CRM Notes:</strong>
+    <p class="csp-s-bf3ed32c1c17">{{ app.crm_notes }}</p>
   </div>
   {% endif %}
 </div>
 
 {# ── Last Loan with Us ── #}
 {% if last_loan %}
-<div class="page-card" style="margin-bottom:20px;background:#fffde7;border:1px solid #f9a825;">
-  <h3 style="margin-bottom:12px;">&#128196; Last Loan with Us</h3>
-  <div style="display:flex;gap:24px;flex-wrap:wrap;">
-    <div><span style="color:var(--text-muted)">Ref</span><br><strong>{{ last_loan.ref_no }}</strong></div>
-    <div><span style="color:var(--text-muted)">Amount</span><br><strong>{% if last_loan.amount %}&#x20A6;{{ "{:,.0f}".format(last_loan.amount) }}{% else %}—{% endif %}</strong></div>
-    <div><span style="color:var(--text-muted)">Disbursed</span><br><strong>{{ last_loan.disbursed_at.strftime('%d %b %Y') if last_loan.disbursed_at else '—' }}</strong></div>
-    <div><span style="color:var(--text-muted)">Tenor</span><br><strong>{{ last_loan.tenor_months or '—' }}m</strong></div>
-    <div><span style="color:var(--text-muted)">Total Paid</span><br><strong style="color:#2e7d32;">&#x20A6;{{ "{:,.0f}".format(last_loan.total_paid) }}</strong></div>
-    <div><span style="color:var(--text-muted)">Status</span><br><span class="status-badge {% if last_loan.stage == 'disbursed' %}approved{% else %}needs-review{% endif %}">{{ last_loan.stage }}</span></div>
+<div class="page-card csp-s-50adace56086">
+  <h3 class="csp-s-4636770b4968">&#128196; Last Loan with Us</h3>
+  <div class="csp-s-0e63b0d79e95">
+    <div><span class="csp-s-500708668cdd">Ref</span><br><strong>{{ last_loan.ref_no }}</strong></div>
+    <div><span class="csp-s-500708668cdd">Amount</span><br><strong>{% if last_loan.amount %}&#x20A6;{{ "{:,.0f}".format(last_loan.amount) }}{% else %}—{% endif %}</strong></div>
+    <div><span class="csp-s-500708668cdd">Disbursed</span><br><strong>{{ last_loan.disbursed_at.strftime('%d %b %Y') if last_loan.disbursed_at else '—' }}</strong></div>
+    <div><span class="csp-s-500708668cdd">Tenor</span><br><strong>{{ last_loan.tenor_months or '—' }}m</strong></div>
+    <div><span class="csp-s-500708668cdd">Total Paid</span><br><strong class="csp-s-eaba5841e110">&#x20A6;{{ "{:,.0f}".format(last_loan.total_paid) }}</strong></div>
+    <div><span class="csp-s-500708668cdd">Status</span><br><span class="status-badge {% if last_loan.stage == 'disbursed' %}approved{% else %}needs-review{% endif %}">{{ last_loan.stage }}</span></div>
   </div>
   {% if repayments %}
-  <div style="margin-top:12px;">
-    <strong style="font-size:13px;">Repayment History (last 5)</strong>
-    <table class="custom-table" style="margin-top:8px;">
+  <div class="csp-s-b6d781cbbc10">
+    <strong class="csp-s-cdcef186c815">Repayment History (last 5)</strong>
+    <table class="custom-table csp-s-a33b8fc2ff77">
       <thead><tr><th>Date</th><th>Amount Paid</th><th>Channel</th></tr></thead>
       <tbody>
       {% for p in repayments[-5:] %}
@@ -54,20 +54,20 @@
   {% endif %}
 </div>
 {% else %}
-<div class="page-card" style="margin-bottom:20px;background:#f5f5f5;border:1px solid #ddd;">
-  <p style="color:var(--text-muted);margin:0;">&#x2139;&#xFE0F; No previous loan found for this applicant.</p>
+<div class="page-card csp-s-b356e844dbb9">
+  <p class="csp-s-634bf0f07b2d">&#x2139;&#xFE0F; No previous loan found for this applicant.</p>
 </div>
 {% endif %}
 
 {# ── Account Statement placeholder ── #}
-<div class="page-card" style="margin-bottom:20px;">
-  <h3 style="margin-bottom:12px;">&#127968; Account Statement</h3>
-  <p style="color:var(--text-muted);font-size:14px;">Account statement attached in document checklist. Review uploaded bank statements in the supporting documents.</p>
+<div class="page-card csp-s-3c4a3d440074">
+  <h3 class="csp-s-4636770b4968">&#127968; Account Statement</h3>
+  <p class="csp-s-60c6744b7133">Account statement attached in document checklist. Review uploaded bank statements in the supporting documents.</p>
 </div>
 
 {# ── Votes so far ── #}
-<div class="page-card" style="margin-bottom:20px;">
-  <h3 style="margin-bottom:12px;">Committee Votes ({{ votes|length }} so far)</h3>
+<div class="page-card csp-s-3c4a3d440074">
+  <h3 class="csp-s-4636770b4968">Committee Votes ({{ votes|length }} so far)</h3>
   {% if votes %}
   <table class="custom-table">
     <thead><tr><th>Member</th><th>Recommendation</th><th>Notes</th><th>Voted</th></tr></thead>
@@ -76,55 +76,54 @@
     <tr>
       <td>{{ v.member_name }}</td>
       <td><span class="status-badge {% if v.recommendation == 'approve' %}approved{% elif v.recommendation == 'reject' %}rejected{% else %}needs-review{% endif %}">{{ v.recommendation|title }}</span></td>
-      <td style="font-size:13px;color:var(--text-secondary);">{{ v.notes or '—' }}</td>
-      <td style="font-size:12px;color:var(--text-muted);">{{ v.voted_at.strftime('%d %b %Y %H:%M') if v.voted_at else '—' }}</td>
+      <td class="csp-s-fc12bffd31c0">{{ v.notes or '—' }}</td>
+      <td class="csp-s-829026effa57">{{ v.voted_at.strftime('%d %b %Y %H:%M') if v.voted_at else '—' }}</td>
     </tr>
     {% endfor %}
     </tbody>
   </table>
   {% else %}
-  <p style="color:var(--text-muted);font-size:14px;">No votes submitted yet.</p>
+  <p class="csp-s-60c6744b7133">No votes submitted yet.</p>
   {% endif %}
 </div>
 
 {# ── My Vote ── #}
-<div class="page-card" style="margin-bottom:20px;background:#e8f5e9;border:1px solid #a5d6a7;">
-  <h3 style="margin-bottom:12px;">My Recommendation</h3>
+<div class="page-card csp-s-bd52dc9144ff">
+  <h3 class="csp-s-4636770b4968">My Recommendation</h3>
   <form method="post" action="/applications/{{ app_id }}/committee-vote">
-    <div style="margin-bottom:12px;">
-      <label style="display:block;font-weight:600;margin-bottom:6px;">Recommendation</label>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+    <div class="csp-s-4636770b4968">
+      <label class="csp-s-7cc29690fd28">Recommendation</label>
+      <div class="csp-s-633fe02090af">
+        <label class="csp-s-8022fb31df94">
           <input type="radio" name="recommendation" value="approve" {% if my_vote and my_vote.recommendation == 'approve' %}checked{% endif %}> Approve
         </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <label class="csp-s-8022fb31df94">
           <input type="radio" name="recommendation" value="return" {% if my_vote and my_vote.recommendation == 'return' %}checked{% endif %}> Return
         </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <label class="csp-s-8022fb31df94">
           <input type="radio" name="recommendation" value="reject" {% if my_vote and my_vote.recommendation == 'reject' %}checked{% endif %}> Reject
         </label>
       </div>
     </div>
-    <div style="margin-bottom:16px;">
-      <label for="notes" style="display:block;font-weight:600;margin-bottom:6px;">Notes (optional)</label>
+    <div class="csp-s-7564ec607ed8">
+      <label for="notes" class="csp-s-7cc29690fd28">Notes (optional)</label>
       <textarea id="notes" name="notes" rows="3"
-        style="width:100%;padding:10px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;"
-        placeholder="Add any comments or conditions…">{{ my_vote.notes if my_vote else '' }}</textarea>
+        placeholder="Add any comments or conditions…" class="csp-s-7f2f7061619d">{{ my_vote.notes if my_vote else '' }}</textarea>
     </div>
     <button type="submit" class="btn btn-primary">Submit My Vote</button>
-    {% if my_vote %}<span style="margin-left:12px;color:var(--text-muted);font-size:13px;">&#10003; You already voted — submitting will update your recommendation.</span>{% endif %}
+    {% if my_vote %}<span class="csp-s-592c5f789c29">&#10003; You already voted — submitting will update your recommendation.</span>{% endif %}
   </form>
 </div>
 
 {# ── Complete Review (chair action) ── #}
-<div class="page-card" style="background:#fff3e0;border:1px solid #ffcc80;">
-  <h3 style="margin-bottom:8px;">Complete Committee Review</h3>
-  <p style="font-size:14px;color:var(--text-secondary);margin-bottom:12px;">
+<div class="page-card csp-s-00ef89aca1b5">
+  <h3 class="csp-s-c500155b62b4">Complete Committee Review</h3>
+  <p class="csp-s-75276b437186">
     Once all members have voted, the committee chair submits the final recommendation to route the loan to the appropriate approval authority.
   </p>
   <form method="post" action="/applications/{{ app_id }}/committee-complete">
-    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-      <select name="recommendation" style="padding:8px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;" required>
+    <div class="csp-s-8d96373f2aab">
+      <select name="recommendation" required class="csp-s-9375776e9792">
         <option value="">— Select final recommendation —</option>
         <option value="approve">Approve — Route to ED/MD</option>
         <option value="return">Return to CRM</option>

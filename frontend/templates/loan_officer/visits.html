@@ -40,7 +40,7 @@
         </thead>
         <tbody>
             {% for visit in visits %}
-            <tr onclick="window.location.href='/applications/{{ visit.loan_id }}/visitation'">
+            <tr data-href="/applications/{{ visit.loan_id }}/visitation" tabindex="0">
                 <td>{{ visit.applicant_name }}</td>
                 <td>{{ visit.ref_no }}</td>
                 <td>{{ visit.stage|replace('_', ' ')|title }}</td>
@@ -48,7 +48,7 @@
                 <td>{{ visit.application_date.strftime('%d %b') if visit.application_date else '' }}</td>
             </tr>
             {% else %}
-            <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No visits due today.</td></tr>
+            <tr><td colspan="5" class="csp-s-542b2a1bdac0">No visits due today.</td></tr>
             {% endfor %}
         </tbody>
     </table>

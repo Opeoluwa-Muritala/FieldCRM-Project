@@ -5,46 +5,46 @@
 {% block breadcrumb %}Committee &rarr; Summary &rarr; {{ app.ref_no }}{% endblock %}
 
 {% block content %}
-<div class="app-detail-layout" style="font-family: 'Montserrat', sans-serif;">
+<div class="app-detail-layout csp-s-68745a7985a4">
     
     {# === LEFT COLUMN: PROFILE CARD === #}
     <div class="app-detail-sidebar">
         
         {# Identity Card #}
-        <div class="page-card" style="margin-bottom: 0;">
-            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 4px;">{{ app.ref_no }}</div>
-            <h2 class="page-card-title" style="margin-bottom: 8px; font-size: 20px; font-weight: 600;">{{ borrower_name }}</h2>
-            <div style="font-size: 14px; font-weight: 500; color: var(--color-brand-shield); margin-bottom: 12px;">
+        <div class="page-card csp-s-b3a2297a12f5">
+            <div class="csp-s-9c19c1a1a663">{{ app.ref_no }}</div>
+            <h2 class="page-card-title csp-s-cbc7eadb2c84">{{ borrower_name }}</h2>
+            <div class="csp-s-c4c3ed249eaf">
                 {{ product_type }} · ₦{{ "{:,}".format(amount|int) }}
             </div>
             <span class="status-badge approved">Awaiting Committee Vote</span>
         </div>
 
         {# Quick Details #}
-        <div class="page-card" style="margin-bottom: 0;">
-            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">Application Parameters</h3>
-            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
-                <div style="display: flex; justify-content: space-between;">
-                    <span style="color: var(--text-muted);">Tenor:</span>
-                    <strong style="color: var(--text-main);">{{ tenure }} Months</strong>
+        <div class="page-card csp-s-b3a2297a12f5">
+            <h3 class="csp-s-02ca940a9f25">Application Parameters</h3>
+            <div class="csp-s-98d92af9a897">
+                <div class="csp-s-9de9ed288dc0">
+                    <span class="csp-s-9d21da37c47e">Tenor:</span>
+                    <strong class="csp-s-a8492c877bbf">{{ tenure }} Months</strong>
                 </div>
-                <div style="display: flex; justify-content: space-between;">
-                    <span style="color: var(--text-muted);">Amount Requested:</span>
-                    <strong style="color: var(--text-main);">₦{{ "{:,}".format(amount|int) }}</strong>
+                <div class="csp-s-9de9ed288dc0">
+                    <span class="csp-s-9d21da37c47e">Amount Requested:</span>
+                    <strong class="csp-s-a8492c877bbf">₦{{ "{:,}".format(amount|int) }}</strong>
                 </div>
-                <div style="display: flex; justify-content: space-between;">
-                    <span style="color: var(--text-muted);">Product Category:</span>
-                    <strong style="color: var(--text-main);">{{ product_type }}</strong>
+                <div class="csp-s-9de9ed288dc0">
+                    <span class="csp-s-9d21da37c47e">Product Category:</span>
+                    <strong class="csp-s-a8492c877bbf">{{ product_type }}</strong>
                 </div>
             </div>
         </div>
 
         {# Verification Summary Card #}
-        <div class="page-card" style="margin-bottom: 0;">
-            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">Integration Status</h3>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="page-card csp-s-b3a2297a12f5">
+            <h3 class="csp-s-02ca940a9f25">Integration Status</h3>
+            <div class="csp-s-18809276c4d1">
                 
-                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                <div class="csp-s-0f68c45cf836">
                     <span>Qore ID (BVN)</span>
                     {% if ver_check %}
                         <span class="status-badge {% if ver_check.is_valid %}verified{% else %}returned{% endif %}">
@@ -55,12 +55,12 @@
                     {% endif %}
                 </div>
                 
-                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                <div class="csp-s-0f68c45cf836">
                     <span>{% if bureau_multiple_configured %}{% if bureau_sub %}{{ 'CRC' if bureau_sub.provider == 'crc' else 'Credit Registry' }}{% else %}Credit Bureau{% endif %}{% else %}{{ active_bureau_provider or 'Credit Bureau' }}{% endif %}</span>
                     {% if bureau_sub %}
-                        <div style="display: flex; gap: 6px; align-items: center;">
+                        <div class="csp-s-f8df590e4541">
                             {% if bureau_multiple_configured %}
-                                <span style="font-size: 10px; color: var(--text-muted);">({{ 'CRC' if bureau_sub.provider == 'crc' else 'CreditRegistry' }})</span>
+                                <span class="csp-s-51c0d45556d3">({{ 'CRC' if bureau_sub.provider == 'crc' else 'CreditRegistry' }})</span>
                             {% endif %}
                             <span class="status-badge {% if bureau_sub.status == 'success' %}verified{% else %}returned{% endif %}">
                                 {{ bureau_sub.status|title }}
@@ -71,7 +71,7 @@
                     {% endif %}
                 </div>
                 
-                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                <div class="csp-s-0f68c45cf836">
                     <span>Youverify AML</span>
                     {% if aml_check %}
                         <span class="status-badge {% if aml_check.status == 'clear' %}verified{% else %}returned{% endif %}">
@@ -91,36 +91,36 @@
     <div class="app-detail-main">
         
         {# Collateral Valuation Summary #}
-        <div class="page-card" style="margin-bottom: 0;">
-            <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Pledged Collateral Valuations</h2>
+        <div class="page-card csp-s-b3a2297a12f5">
+            <h2 class="page-card-title csp-s-12705adb11a6">Pledged Collateral Valuations</h2>
             
             <div class="custom-table-container">
-                <table class="custom-table" style="width: 100%; border-collapse: collapse;">
+                <table class="custom-table csp-s-57761fd3cad8">
                     <thead>
-                        <tr style="border-bottom: 1px solid var(--color-divider); text-align: left;">
-                            <th style="padding: 8px; font-size: 12px; color: var(--text-muted);">Item</th>
-                            <th style="padding: 8px; font-size: 12px; color: var(--text-muted);">Estimated Value</th>
-                            <th style="padding: 8px; font-size: 12px; color: var(--text-muted);">Appraised Value</th>
-                            <th style="padding: 8px; font-size: 12px; color: var(--text-muted);">LTV Ratio</th>
-                            <th style="padding: 8px; font-size: 12px; color: var(--text-muted);">Valuation Date</th>
+                        <tr class="csp-s-9f3e6e4fd751">
+                            <th class="csp-s-94c54a63414c">Item</th>
+                            <th class="csp-s-94c54a63414c">Estimated Value</th>
+                            <th class="csp-s-94c54a63414c">Appraised Value</th>
+                            <th class="csp-s-94c54a63414c">LTV Ratio</th>
+                            <th class="csp-s-94c54a63414c">Valuation Date</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in items %}
-                        <tr style="border-bottom: 0.5px solid var(--color-divider);">
-                            <td style="padding: 8px; font-size: 13px; font-weight: 500;">{{ item.item_name }}</td>
-                            <td style="padding: 8px; font-size: 13px; color: var(--text-muted);">₦{{ "{:,.2f}".format(item.estimated_value) if item.estimated_value else '—' }}</td>
-                            <td style="padding: 8px; font-size: 13px; font-weight: 600; color: var(--color-brand-shield);">
+                        <tr class="csp-s-02559e4e9a9f">
+                            <td class="csp-s-09c24f13879f">{{ item.item_name }}</td>
+                            <td class="csp-s-ee27c38ed57f">₦{{ "{:,.2f}".format(item.estimated_value) if item.estimated_value else '—' }}</td>
+                            <td class="csp-s-2acd3f8df8dd">
                                 ₦{{ "{:,.2f}".format(item.appraised_value) if item.appraised_value else '—' }}
                             </td>
-                            <td style="padding: 8px; font-size: 13px; font-weight: 600; color: {% if item.loan_to_value_ratio and item.loan_to_value_ratio > 0.8 %}var(--accent-danger){% else %}var(--accent-success){% endif %};">
+                            <td data-csp-style="padding: 8px; font-size: 13px; font-weight: 600; color: {% if item.loan_to_value_ratio and item.loan_to_value_ratio > 0.8 %}var(--accent-danger){% else %}var(--accent-success){% endif %};">
                                 {% if item.loan_to_value_ratio %}{{ "{:.2f}%".format(item.loan_to_value_ratio * 100) }}{% else %}—{% endif %}
                             </td>
-                            <td style="padding: 8px; font-size: 13px; color: var(--text-muted);">{{ item.valuation_date if item.valuation_date else '—' }}</td>
+                            <td class="csp-s-ee27c38ed57f">{{ item.valuation_date if item.valuation_date else '—' }}</td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="5" style="text-align: center; padding: 12px; color: var(--text-muted); font-size: 12px;">No pledged collateral items found.</td>
+                            <td colspan="5" class="csp-s-2dc012ce9d08">No pledged collateral items found.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -129,71 +129,71 @@
         </div>
 
         {# Workflow History Timeline #}
-        <div class="page-card" style="margin-bottom: 0;">
-            <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Dossier Review & Decision History</h2>
+        <div class="page-card csp-s-b3a2297a12f5">
+            <h2 class="page-card-title csp-s-12705adb11a6">Dossier Review & Decision History</h2>
             
-            <div style="display: flex; flex-direction: column; gap: 16px; position: relative; padding-left: 20px; margin-top: 16px;">
-                <div style="position: absolute; left: 6px; top: 4px; bottom: 4px; width: 2px; background-color: var(--border-color);"></div>
+            <div class="csp-s-a7842e5fd3e1">
+                <div class="csp-s-d4db5daf6a43"></div>
                 
                 {% for event in audit_events %}
-                    <div style="position: relative;">
-                        <div style="position: absolute; left: -20px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background-color: var(--color-brand-shield);"></div>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <strong style="font-size: 13px; color: var(--text-main);">{{ event.action }}</strong>
-                            <span style="font-size: 11px; color: var(--text-muted);">{{ event.created_at.strftime('%d %b %Y %H:%M') if event.created_at else '' }}</span>
+                    <div class="csp-s-4fa00029d5b1">
+                        <div class="csp-s-e1fe8dc69ccd"></div>
+                        <div class="csp-s-dbdfa39111c8">
+                            <strong class="csp-s-69150ae557ef">{{ event.action }}</strong>
+                            <span class="csp-s-c029905cd705">{{ event.created_at.strftime('%d %b %Y %H:%M') if event.created_at else '' }}</span>
                         </div>
-                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                        <div class="csp-s-1daed4d6debf">
                             By: {{ event.actor_role|title }} ({{ event.actor_id }})
                         </div>
                         {% if event.reason %}
-                            <div style="font-size: 12px; font-style: italic; color: var(--text-main); background: var(--bg-secondary); border-left: 3px solid var(--color-divider); padding: 6px 12px; margin-top: 6px; border-radius: 0 4px 4px 0;">
+                            <div class="csp-s-94f262da4f4a">
                                 "{{ event.reason }}"
                             </div>
                         {% endif %}
                     </div>
                 {% else %}
-                    <div style="font-size: 13px; color: var(--text-muted);">No historical audit events logged yet.</div>
+                    <div class="csp-s-1324e637d53b">No historical audit events logged yet.</div>
                 {% endfor %}
             </div>
         </div>
 
-        <div class="page-card" style="margin-top:24px;">
-            <h3 style="margin-top:0;">Forms and supporting documents</h3>
-            <div style="display:flex;flex-direction:column;gap:8px;">
+        <div class="page-card csp-s-04bbec5e3d10">
+            <h3 class="csp-s-1294519fc513">Forms and supporting documents</h3>
+            <div class="csp-s-a28c8d3bc812">
                 {% for doc in documents %}
-                <a href="{{ doc.url }}" data-document-preview data-document-title="{{ doc.category|replace('_', ' ')|title }}" style="color:var(--color-brand-shield);text-decoration:none;">
+                <a href="{{ doc.url }}" data-document-preview data-document-title="{{ doc.category|replace('_', ' ')|title }}" class="csp-s-dc6dd825c791">
                     {{ doc.category|replace('_', ' ')|title }}
                 </a>
-                {% else %}<span style="color:var(--text-muted);">No documents uploaded.</span>{% endfor %}
+                {% else %}<span class="csp-s-805f01b170a3">No documents uploaded.</span>{% endfor %}
             </div>
         </div>
 
-        <div class="page-card" style="margin-top:24px;">
-            <h3 style="margin-top:0;">MCC amount recommendation</h3>
-            <div class="custom-table-container" style="margin-bottom:16px;"><table class="custom-table"><thead><tr><th>Member</th><th>Suggested amount</th><th>Notes</th><th></th></tr></thead><tbody>
+        <div class="page-card csp-s-04bbec5e3d10">
+            <h3 class="csp-s-1294519fc513">MCC amount recommendation</h3>
+            <div class="custom-table-container csp-s-7564ec607ed8"><table class="custom-table"><thead><tr><th>Member</th><th>Suggested amount</th><th>Notes</th><th></th></tr></thead><tbody>
             {% for vote in mcc_votes %}<tr><td>{{ vote.full_name }}</td><td>₦{{ '{:,.2f}'.format(vote.recommended_amount or 0) }}</td><td>{{ vote.notes or '—' }}</td><td><button type="button" class="btn-secondary" data-concur-amount="{{ vote.recommended_amount }}">Concur</button></td></tr>
             {% else %}<tr><td colspan="4">No recommendations submitted yet.</td></tr>{% endfor %}
             </tbody></table></div>
-            <form method="post" action="/applications/{{ app_id }}/mcc-vote" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">
+            <form method="post" action="/applications/{{ app_id }}/mcc-vote" class="csp-s-3864ae2ace2f">
                 <label>Recommended amount<input class="form-input" id="mcc-recommended-amount" name="recommended_amount" type="number" min="1" step="0.01" value="{{ amount }}" required></label>
-                <label style="flex:1">Notes<input class="form-input" name="notes"></label>
+                <label class="csp-s-83725d2c6e00">Notes<input class="form-input" name="notes"></label>
                 <button class="btn-primary-filled" type="submit">Submit recommendation</button>
             </form>
             {% if user_role in ('ed', 'md') %}
-            <hr style="margin:20px 0;border:0;border-top:1px solid var(--border-color);">
-            <form method="post" action="/applications/{{ app_id }}/mcc-finalize" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">
+            <hr class="csp-s-ec9cf721dd5a">
+            <form method="post" action="/applications/{{ app_id }}/mcc-finalize" class="csp-s-3864ae2ace2f">
                 <label>Final approved amount<input class="form-input" name="final_amount" type="number" min="1" step="0.01" value="{{ amount }}" required></label>
                 <button class="btn-primary-filled" type="submit">Set final amount</button>
             </form>
             {% endif %}
         </div>
 
-        <script>document.querySelectorAll('[data-concur-amount]').forEach((button) => button.addEventListener('click', () => { document.getElementById('mcc-recommended-amount').value = button.dataset.concurAmount; document.getElementById('mcc-recommended-amount').focus(); }));</script>
+        <script nonce="{{ csp_nonce }}">document.querySelectorAll('[data-concur-amount]').forEach((button) => button.addEventListener('click', () => { document.getElementById('mcc-recommended-amount').value = button.dataset.concurAmount; document.getElementById('mcc-recommended-amount').focus(); }));</script>
 
         {# Back navigation #}
-        <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center;">
-            <a href="/mcc" style="text-decoration: none; color: var(--text-muted); font-size: 13px; font-weight: 500;">&larr; Back to MCC dossiers</a>
-            <span style="font-size:13px;color:var(--text-muted);">Read-only meeting view</span>
+        <div class="csp-s-094b364acfc5">
+            <a href="/mcc" class="csp-s-4568314e4da6">&larr; Back to MCC dossiers</a>
+            <span class="csp-s-244cb7eb6f45">Read-only meeting view</span>
         </div>
         
     </div>

@@ -9,24 +9,26 @@
 <div class="ocr-split-container">
     <!-- Left panel: Document Image/PDF Viewer -->
     <div class="ocr-viewer-panel">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <div style="font-size:12px; font-weight:500;">Document Viewport</div>
-            <div style="display:flex; gap:8px;">
-                <button type="button" class="btn-primary-filled doc-zoom-btn" onclick="zoomDoc(1.1)" aria-label="Zoom in">+</button>
-                <button type="button" class="btn-primary-filled doc-zoom-btn" onclick="zoomDoc(0.9)" aria-label="Zoom out">&minus;</button>
-                <button type="button" class="btn-primary-filled doc-zoom-btn" onclick="fitDoc()">Fit</button>
+        <div class="csp-s-8e7137fcc774">
+            <div class="csp-s-b000f698d6ea">Document Viewport</div>
+            <div class="csp-s-b887bfd5436e">
+                <button type="button" class="btn-primary-filled doc-zoom-btn" data-zoom="1.1" aria-label="Zoom in">+</button>
+                <button type="button" class="btn-primary-filled doc-zoom-btn" data-zoom="0.9" aria-label="Zoom out">&minus;</button>
+                <button type="button" class="btn-primary-filled doc-zoom-btn" id="fitDocBtn">Fit</button>
             </div>
         </div>
         
         <div class="ocr-viewer-viewport" id="viewport">
-            <img src="{{ doc_url }}" alt="Uploaded Document Image" id="docImg" class="doc-viewer-img" loading="lazy" decoding="async" style="transform: scale(1.0); transition: transform 0.1s ease;">
-            <!-- Inline highlight box representing field bounding boxes -->
-            <div id="highlightBox" style="position: absolute; border: 2.5px solid var(--color-brand-shield); background-color: rgba(107, 63, 160, 0.2); pointer-events: none; display: none;"></div>
+            <div id="ocrImageWrapper" class="ocr-image-wrapper">
+                <img src="{{ doc_url }}" alt="Uploaded Document Image" id="docImg" class="doc-viewer-img ocr-image-element csp-s-ac5373b9a30d" loading="lazy" decoding="async">
+                <!-- Inline highlight box representing field bounding boxes -->
+                <div id="highlightBox" class="csp-s-0a5e9e72d2c8"></div>
+            </div>
         </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; font-size:12px; color:var(--text-muted);">
+        <div class="csp-s-ff6e192fc6b3">
             <span>Page 1 of 1</span>
-            <div style="display:flex; gap:8px;">
+            <div class="csp-s-b887bfd5436e">
                 <a href="#" class="btn-ghost-link">Prev</a>
                 <a href="#" class="btn-ghost-link">Next</a>
             </div>
@@ -38,77 +40,85 @@
         <form id="ocrVerifyForm" action="/applications/{{ app_id }}/ocr-review?doc={{ doc_type }}" method="POST">
             
             <!-- Dynamic Fields row entries -->
-            <div class="ocr-field-row" onfocusin="highlightField('name', 50, 40, 180, 30)">
+            <div class="ocr-field-row" data-highlight-field="name" data-highlight-box="50,40,180,30">
                 <div class="ocr-meta-line">
-                    <label class="field-label" style="margin-bottom:0;">Applicant Full Name</label>
+                    <label class="field-label csp-s-768bda7dd991">Applicant Full Name</label>
                     <span class="source-pill ocr">OCR</span>
                 </div>
-                <input type="text" name="full_name" class="field-input" value="Grace Omowunmi" oninput="markCorrected(this)">
+                <input type="text" name="full_name" class="field-input" value="Grace Omowunmi" data-mark-corrected>
                 <div class="confidence-bar-bg">
-                    <div class="confidence-bar-fill high" style="width: 98%;"></div>
+                    <div class="confidence-bar-fill high csp-s-b9960251b9ee"></div>
                 </div>
-                <span style="font-size: 12px; color: var(--text-muted);">OCR confidence: 98% · <span style="color:var(--accent-warning);">Critical field — manual review required</span></span>
+                <span class="csp-s-f779da42d59e">OCR confidence: 98% · <span class="csp-s-524e68c7b2d7">Critical field — manual review required</span></span>
             </div>
 
-            <div class="ocr-field-row" style="border-left: 2px solid var(--accent-warning); padding-left: 8px;" onfocusin="highlightField('amount', 50, 100, 120, 30)">
+            <div class="ocr-field-row csp-s-13fbbf0eb486" data-highlight-field="amount" data-highlight-box="50,100,120,30">
                 <div class="ocr-meta-line">
-                    <label class="field-label" style="margin-bottom:0;">Loan Amount</label>
+                    <label class="field-label csp-s-768bda7dd991">Loan Amount</label>
                     <span class="source-pill corrected">CORRECTED</span>
                 </div>
-                <input type="text" name="amount" class="field-input" value="500,000" oninput="markCorrected(this)">
+                <input type="text" name="amount" class="field-input" value="500,000" data-mark-corrected>
                 <div class="confidence-bar-bg">
-                    <div class="confidence-bar-fill mid" style="width: 61%;"></div>
+                    <div class="confidence-bar-fill mid csp-s-d3c182660970"></div>
                 </div>
-                <span style="font-size: 12px; color: var(--accent-warning);">Low confidence (61%) — verify against original. Critical field — manual review required</span>
+                <span class="csp-s-eb0d61c13b38">Low confidence (61%) — verify against original. Critical field — manual review required</span>
             </div>
 
-            <div class="ocr-field-row" style="border-left: 2px solid var(--accent-danger); padding-left: 8px;" onfocusin="highlightField('sig', 80, 200, 150, 50)">
+            <div class="ocr-field-row csp-s-2443e2be2198" data-highlight-field="sig" data-highlight-box="80,200,150,50">
                 <div class="ocr-meta-line">
-                    <label class="field-label" style="margin-bottom:0;">Guarantor Signature</label>
-                    <span class="source-pill" style="background-color:rgba(160,26,26,0.1); color:var(--accent-danger);">Missing</span>
+                    <label class="field-label csp-s-768bda7dd991">Guarantor Signature</label>
+                    <span class="source-pill csp-s-043429fff63f">Missing</span>
                 </div>
-                <input type="text" name="signature" class="field-input" value="Unreadable" oninput="markCorrected(this)">
+                <input type="text" name="signature" class="field-input" value="Unreadable" data-mark-corrected>
                 <div class="confidence-bar-bg">
-                    <div class="confidence-bar-fill low" style="width: 22%;"></div>
+                    <div class="confidence-bar-fill low csp-s-c4ead094be65"></div>
                 </div>
-                <span style="font-size: 12px; color: var(--accent-danger);">OCR Confidence: 22% · Bounding Box unreadable</span>
+                <span class="csp-s-9c75c3ec1a1e">OCR Confidence: 22% · Bounding Box unreadable</span>
             </div>
 
-            <div class="ocr-field-row" onfocusin="highlightField('bvn', 50, 150, 140, 30)">
+            <div class="ocr-field-row" data-highlight-field="bvn" data-highlight-box="50,150,140,30">
                 <div class="ocr-meta-line">
-                    <label class="field-label" style="margin-bottom:0;">Bank Verification Number (BVN)</label>
+                    <label class="field-label csp-s-768bda7dd991">Bank Verification Number (BVN)</label>
                     <span class="source-pill ocr">OCR</span>
                 </div>
-                <input type="text" name="bvn" class="field-input" value="22233344455" oninput="markCorrected(this)">
+                <input type="text" name="bvn" class="field-input" value="22233344455" data-mark-corrected>
                 <div class="confidence-bar-bg">
-                    <div class="confidence-bar-fill high" style="width: 95%;"></div>
+                    <div class="confidence-bar-fill high csp-s-aa5321969972"></div>
                 </div>
-                <span style="font-size: 12px; color: var(--text-muted);">OCR confidence: 95% · <span style="color:var(--accent-warning);">Critical field — manual review required</span></span>
+                <span class="csp-s-f779da42d59e">OCR confidence: 95% · <span class="csp-s-524e68c7b2d7">Critical field — manual review required</span></span>
             </div>
 
             <!-- Page actions footer sticky bar -->
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:32px; border-top:0.5px solid var(--color-divider); padding-top:16px;">
-                <a href="/applications/{{ app_id }}/return?doc={{ doc_type }}" style="color: var(--accent-danger); font-size:12px; font-weight:500; text-decoration:none;">Return Document for Re-upload</a>
+            <div class="csp-s-4b3d24658936">
+                <a href="/applications/{{ app_id }}/return?doc={{ doc_type }}" class="csp-s-39338490c131">Return Document for Re-upload</a>
                 
-                <div style="display:flex; gap:12px;">
-                    <button type="submit" name="action" value="save" class="btn-ghost-link" style="border:0.5px solid var(--border-color); border-radius:8px; padding:0 16px; height:36px;">Save All Corrections</button>
-                    <button type="submit" name="action" value="verify" class="btn-primary-filled" style="height:36px;">Mark as Verified &rarr;</button>
+                <div class="csp-s-5fcdd953a3c9">
+                    <button type="submit" name="action" value="save" class="btn-ghost-link csp-s-bdfe6d71d30a">Save All Corrections</button>
+                    <button type="submit" name="action" value="verify" class="btn-primary-filled csp-s-265fa3510a03">Mark as Verified &rarr;</button>
                 </div>
             </div>
         </form>
     </div>
 </div>
 
-<script>
-    let scaleVal = 1.0;
+<script nonce="{{ csp_nonce }}">
+    let scaleVal = 100; // zoom level in percentage
+    let currentHighlight = null;
+
     function zoomDoc(mult) {
         scaleVal *= mult;
-        document.getElementById('docImg').style.transform = `scale(${scaleVal})`;
+        const img = document.getElementById('docImg');
+        img.style.width = `${scaleVal}%`;
+        img.style.maxWidth = 'none';
+        applyHighlight();
     }
 
     function fitDoc() {
-        scaleVal = 1.0;
-        document.getElementById('docImg').style.transform = 'scale(1.0)';
+        scaleVal = 100;
+        const img = document.getElementById('docImg');
+        img.style.width = '100%';
+        img.style.maxWidth = '100%';
+        applyHighlight();
     }
 
     function markCorrected(input) {
@@ -122,14 +132,40 @@
 
     // Highlight bounding boxes on document image when fields are focused
     function highlightField(fieldName, left, top, width, height) {
+        currentHighlight = { left, top, width, height };
+        applyHighlight();
+    }
+
+    function applyHighlight() {
+        if (!currentHighlight) return;
         const box = document.getElementById('highlightBox');
-        if (!box) return;
+        const img = document.getElementById('docImg');
+        if (!box || !img) return;
+
+        // Compute scaling factor based on actual rendered width vs natural width
+        const factor = img.clientWidth / img.naturalWidth;
         
         box.style.display = 'block';
-        box.style.left = left + 'px';
-        box.style.top = top + 'px';
-        box.style.width = width + 'px';
-        box.style.height = height + 'px';
+        box.style.left = (currentHighlight.left * factor) + 'px';
+        box.style.top = (currentHighlight.top * factor) + 'px';
+        box.style.width = (currentHighlight.width * factor) + 'px';
+        box.style.height = (currentHighlight.height * factor) + 'px';
     }
+
+    window.addEventListener('resize', applyHighlight);
+    document.getElementById('docImg')?.addEventListener('load', applyHighlight);
+    document.querySelectorAll('[data-zoom]').forEach((button) => {
+        button.addEventListener('click', () => zoomDoc(Number(button.dataset.zoom)));
+    });
+    document.getElementById('fitDocBtn')?.addEventListener('click', fitDoc);
+    document.querySelectorAll('[data-mark-corrected]').forEach((input) => {
+        input.addEventListener('input', () => markCorrected(input));
+    });
+    document.querySelectorAll('[data-highlight-field]').forEach((row) => {
+        row.addEventListener('focusin', () => {
+            const box = row.dataset.highlightBox.split(',').map(Number);
+            highlightField(row.dataset.highlightField, ...box);
+        });
+    });
 </script>
 {% endblock %}

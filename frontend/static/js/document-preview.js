@@ -25,14 +25,14 @@
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
         modal.setAttribute('aria-labelledby', 'document-preview-title');
-        modal.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(17,24,39,.68);padding:24px;display:grid;place-items:center;';
+        modal.className = 'preview-modal-overlay';
         modal.innerHTML = `
-            <section style="width:min(100%,1000px);height:min(92vh,850px);background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.35);display:flex;flex-direction:column;">
-                <header style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 16px;border-bottom:1px solid #e5e7eb;">
-                    <h2 id="document-preview-title" style="margin:0;font-size:16px;"></h2>
-                    <button type="button" data-preview-close aria-label="Close document preview" style="border:0;background:transparent;font-size:28px;line-height:1;cursor:pointer;">&times;</button>
+            <section class="preview-modal-container">
+                <header class="preview-modal-header">
+                    <h2 id="document-preview-title" class="preview-modal-title"></h2>
+                    <button type="button" data-preview-close aria-label="Close document preview" class="preview-modal-close">&times;</button>
                 </header>
-                <div data-preview-content style="flex:1;overflow:auto;background:#f3f4f6;padding:20px;display:flex;flex-direction:column;gap:16px;align-items:center;"></div>
+                <div data-preview-content class="preview-modal-body"></div>
             </section>`;
         title = modal.querySelector('#document-preview-title');
         preview = modal.querySelector('[data-preview-content]');
@@ -88,22 +88,34 @@
     }, true);
 
     async function renderPreviewPages(url, requestId) {
+        function startLoadingPage(pageNum) {
+            const image = document.createElement('img');
+            image.alt = `Document page ${pageNum}`;
+            image.className = 'preview-modal-image';
+            image.src = pageUrl(url, pageNum);
+            const loadPromise = streamPreviewImage(image).then(() => image);
+            return { image, loadPromise };
+        }
+
+        let current = startLoadingPage(1);
+
         for (let page = 1; page <= MAX_PREVIEW_PAGES; page += 1) {
             if (modal.hidden || requestId !== previewRequestId) return;
-            const image = document.createElement('img');
-            image.alt = `Document page ${page}`;
-            image.style.cssText = 'max-width:100%;height:auto;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18);';
-            image.src = pageUrl(url, page);
+            
+            let next = null;
+            if (page < MAX_PREVIEW_PAGES) {
+                next = startLoadingPage(page + 1);
+            }
+
             try {
-                // The browser progressively renders each image response. The
-                // endpoint returns a Cloudinary-rendered PNG, never PDF bytes.
-                await streamPreviewImage(image);
+                const loadedImage = await current.loadPromise;
                 if (modal.hidden || requestId !== previewRequestId) return;
-                if (page === 1) preview.replaceChildren(image);
-                else preview.appendChild(image);
+                if (page === 1) preview.replaceChildren(loadedImage);
+                else preview.appendChild(loadedImage);
+                current = next;
             } catch (_) {
                 if (page === 1) throw new Error('Preview image request failed');
-                return; // No next page (or the document is a single image).
+                return;
             }
         }
     }

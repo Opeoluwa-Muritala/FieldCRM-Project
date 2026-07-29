@@ -6,8 +6,8 @@
 {% block page_title %}{{ title }}{% endblock %}
 
 {% block content %}
-<div style="display:flex; justify-content:center; padding: 20px 0;">
-    <div class="page-card no-shadow" style="max-width: 600px; width: 100%;">
+<div class="csp-s-60238872d0e5">
+    <div class="page-card no-shadow csp-s-c18995f17d73">
         <div class="page-card-header">
             <h2 class="page-card-title">{{ title }}</h2>
             <p class="page-card-subtitle">Specify the corrections required before the file returns to the preceding workflow stage.</p>
@@ -15,7 +15,7 @@
 
         <form action="/applications/{{ app_id }}/return" method="POST">
             <!-- Return Reason Select option -->
-            <div class="form-group" style="margin-bottom: 20px;">
+            <div class="form-group csp-s-f6279acc7326">
                 <label class="field-label" for="returnReason">Primary Return Reason</label>
                 <select name="reason_category" id="returnReason" class="field-select" required>
                     <option value="Missing Documents">Missing Documents</option>
@@ -28,42 +28,42 @@
             </div>
 
             <!-- Checklist of Omissions -->
-            <div style="margin-bottom: 20px;">
+            <div class="csp-s-f6279acc7326">
                 <label class="field-label">Checklist of specific items to correct</label>
-                <div style="display:flex; flex-direction:column; gap:8px;">
-                    <div style="display:flex; align-items:center; gap:8px;">
+                <div class="csp-s-6e146183a3a3">
+                    <div class="csp-s-7b6ef42c3f03">
                         <input type="checkbox" name="corrections[]" value="ID Expiry proof" id="corr_id">
-                        <label for="corr_id" style="font-size:13px; cursor:pointer;">Update ID document / Verify Expiry date</label>
+                        <label for="corr_id" class="csp-s-db02ddaa43b5">Update ID document / Verify Expiry date</label>
                     </div>
-                    <div style="display:flex; align-items:center; gap:8px;">
+                    <div class="csp-s-7b6ef42c3f03">
                         <input type="checkbox" name="corrections[]" value="Spousal consent signature" id="corr_spouse">
-                        <label for="corr_spouse" style="font-size:13px; cursor:pointer;">Collect Spousal Consent Signature canvas</label>
+                        <label for="corr_spouse" class="csp-s-db02ddaa43b5">Collect Spousal Consent Signature canvas</label>
                     </div>
-                    <div style="display:flex; align-items:center; gap:8px;">
+                    <div class="csp-s-7b6ef42c3f03">
                         <input type="checkbox" name="corrections[]" value="Bank Statement" id="corr_statement">
-                        <label for="corr_statement" style="font-size:13px; cursor:pointer;">Upload recent 3 months Bank Statement</label>
+                        <label for="corr_statement" class="csp-s-db02ddaa43b5">Upload recent 3 months Bank Statement</label>
                     </div>
-                    <div style="display:flex; align-items:center; gap:8px;">
+                    <div class="csp-s-7b6ef42c3f03">
                         <input type="checkbox" name="corrections[]" value="Guarantor Cheque" id="corr_cheque">
-                        <label for="corr_cheque" style="font-size:13px; cursor:pointer;">Guarantor Cheque details validation</label>
+                        <label for="corr_cheque" class="csp-s-db02ddaa43b5">Guarantor Cheque details validation</label>
                     </div>
-                    <div style="display:flex; align-items:center; gap:8px;">
+                    <div class="csp-s-7b6ef42c3f03">
                         <input type="checkbox" name="corrections[]" value="Visitation Concurrence" id="corr_visit">
-                        <label for="corr_visit" style="font-size:13px; cursor:pointer;">Concurrence signoff mismatch</label>
+                        <label for="corr_visit" class="csp-s-db02ddaa43b5">Concurrence signoff mismatch</label>
                     </div>
                 </div>
             </div>
 
             <!-- Notes -->
-            <div class="form-group-full" style="margin-bottom: 24px;">
+            <div class="form-group-full csp-s-fec3619ed0de">
                 <label class="field-label" for="returnNotes">Checklist Details / Instruction Notes <span class="required">*</span></label>
                 <textarea name="notes" id="returnNotes" class="field-textarea" placeholder="Detail precisely what the officer needs to fix or upload..." required></textarea>
             </div>
 
             <!-- Footer Buttons -->
-            <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="csp-s-5ffb91a26b04">
                 <a href="/applications/{{ app_id }}" class="btn-ghost-link">Cancel — Go Back</a>
-                <button type="submit" class="btn-primary-filled" style="background-color: var(--accent-danger);">
+                <button type="submit" class="btn-primary-filled csp-s-bd04d44c7bd4">
                     Return to previous stage &rarr;
                 </button>
             </div>

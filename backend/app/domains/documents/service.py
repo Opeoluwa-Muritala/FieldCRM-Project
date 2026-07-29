@@ -174,8 +174,11 @@ class DocumentService:
             user_role=user_role,
             doc_type=doc_type,
         )
-        # Trigger server-side OCR asynchronously (fire-and-forget)
-        asyncio.create_task(self._run_ocr(document, mime_type))
+        # Insert a pending row into ocr_jobs instead of running asyncio.create_task
+        await self.repo.conn.execute(
+            "INSERT INTO ocr_jobs (id, document_id, status) VALUES ($1, $2, 'pending')",
+            uuid4(), document["id"]
+        )
         return document
 
     async def _run_ocr(self, document: dict, mime_type: str) -> None:

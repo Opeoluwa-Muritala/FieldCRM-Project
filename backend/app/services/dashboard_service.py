@@ -5,6 +5,9 @@ Each role gets a genuinely different dashboard with role-appropriate metrics,
 task lists, and queue data. This service dispatches to role-specific methods
 that run the corresponding SQL queries.
 """
+from datetime import datetime
+
+from app.core.database import get_connection
 from app.core.sql import load_sql
 from app.domains.loans.schemas import LoanRow
 
@@ -18,6 +21,74 @@ class DashboardService:
 
     def __init__(self, conn):
         self.conn = conn
+
+    @staticmethod
+    def _restore_datetimes(row: dict, *fields: str) -> dict:
+        restored = dict(row)
+        for field in fields:
+            value = restored.get(field)
+            if isinstance(value, str):
+                try:
+                    restored[field] = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                except ValueError:
+                    pass
+        return restored
+
+    async def get_dashboard_data_isolated(self, user) -> dict:
+        """Load independent account-officer sections on separate connections.
+
+        The batch is deliberately bounded to four operations, below the
+        process pool's configured capacity. Other roles retain their existing
+        single-connection behavior until their query shapes are profiled.
+        """
+        role = user.role.lower().replace(" ", "_")
+        if role not in ("account_officer", "loan_officer"):
+            async with get_connection() as conn:
+                return await DashboardService(conn).get_dashboard_data(user)
+
+        async with get_connection() as conn:
+            return await DashboardService(conn).get_account_officer_bundle(user)
+
+    async def get_account_officer_bundle(self, user) -> dict:
+        row = await self.conn.fetchrow(
+            load_sql("loans", "dashboard_loan_officer_bundle"),
+            user.org_id,
+            user.id,
+        )
+        bundle = dict(row) if row else {}
+        metrics = bundle.get("metrics") or {}
+        tasks = [
+            self._restore_datetimes(item, "updated_at")
+            for item in bundle.get("tasks") or []
+        ]
+        queue = [
+            DashboardService._with_stage_display(
+                self._restore_datetimes(
+                    item,
+                    "returned_at",
+                    "created_at",
+                    "updated_at",
+                )
+            )
+            for item in bundle.get("queue") or []
+        ]
+        visits_due = [
+            self._restore_datetimes(item, "application_date")
+            for item in bundle.get("visits_due") or []
+        ]
+        return {
+            "metrics": {
+                "my_applications": metrics.get("my_applications", 0),
+                "pending_upload": metrics.get("pending_upload", 0),
+                "visits_due": len(visits_due),
+                "returned": metrics.get("returned_count", 0),
+                "ocr_review": metrics.get("ocr_review_count", 0),
+                "drafts": metrics.get("drafts_count", 0),
+            },
+            "tasks": [dict(row) for row in tasks or []],
+            "queue": queue,
+            "visits_due": [dict(row) for row in visits_due or []],
+        }
 
     async def get_dashboard_data(self, user) -> dict:
         """Dispatch to role-specific data method."""
@@ -52,9 +123,7 @@ class DashboardService:
         Sections: Today's Tasks, Recent Activity, Personal Queue
         """
         # Metrics
-        metrics_sql = load_sql("loans", "dashboard_loan_officer")
-        metrics_row = await self.conn.fetchrow(metrics_sql, user.org_id, user.id)
-        metrics = dict(metrics_row) if metrics_row else {}
+        metrics = await self._fetch_one("loans", "dashboard_loan_officer", user.org_id, user.id)
 
         # Today's tasks — prioritized actionable items
         tasks_sql = load_sql("loans", "list_officer_tasks")
@@ -293,6 +362,22 @@ class DashboardService:
         )
         return [dict(r) for r in rows] if rows else []
 
+    async def get_application_compliance_flags(
+        self,
+        user,
+        application_id,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> list[dict]:
+        rows = await self.conn.fetch(
+            load_sql("audit", "list_application_compliance_flags"),
+            user.org_id,
+            application_id,
+            limit,
+            offset,
+        )
+        return [dict(r) for r in rows] if rows else []
+
     async def get_recent_audit_activity(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
         rows = await self.conn.fetch(
             load_sql("audit", "list_recent_activity"),
@@ -364,9 +449,17 @@ class DashboardService:
         }
 
     async def get_par_summary(self, user) -> dict:
+        from app.core.cache import get_json, set_json
+        cache_key = f"fieldcrm:dashboard:par:{user.org_id}"
+        cached = await get_json(cache_key)
+        if cached is not None:
+            return cached
+
         from app.services.loan_servicing_service import LoanServicingService
         svc = LoanServicingService(self.conn)
-        return await svc.get_par_summary(user.org_id)
+        result = await svc.get_par_summary(user.org_id)
+        await set_json(cache_key, result, ttl_seconds=30)
+        return result
 
     async def get_crm_queue(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
         from app.domains.loans.repository import LoanRepository
@@ -423,5 +516,14 @@ class DashboardService:
         }
 
     async def _fetch_one(self, domain: str, query: str, *args) -> dict:
+        from app.core.cache import get_json, set_json
+        args_str = ":".join(str(arg) for arg in args)
+        cache_key = f"fieldcrm:dashboard:metrics:{domain}:{query}:{args_str}"
+        cached = await get_json(cache_key)
+        if cached is not None:
+            return cached
+
         row = await self.conn.fetchrow(load_sql(domain, query), *args)
-        return dict(row) if row else {}
+        result = dict(row) if row else {}
+        await set_json(cache_key, result, ttl_seconds=30)
+        return result

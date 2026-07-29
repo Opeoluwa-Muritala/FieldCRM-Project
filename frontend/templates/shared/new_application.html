@@ -8,10 +8,10 @@
 {% block page_title %}➕ New Loan Application{% endblock %}
 
 {% block content %}
-<div style="display: flex; justify-content: center; padding: 20px 0;">
-    <div class="page-card no-shadow" style="max-width: 640px; width: 100%;">
-        <div class="page-card-header" style="text-align: center; margin-bottom: 32px;">
-            <h2 class="page-card-title" style="font-size: 24px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+<div class="csp-s-379920d954e6">
+    <div class="page-card no-shadow csp-s-efb39d9cfbf0">
+        <div class="page-card-header csp-s-3cf2f7ea58a5">
+            <h2 class="page-card-title csp-s-b4dad54230ab">
                 <span>➕</span> New Loan Application
             </h2>
             <p class="page-card-subtitle">Select customer type and loan category to begin.</p>
@@ -19,92 +19,92 @@
 
         <form id="newAppForm" action="/applications/new" method="POST">
             <!-- Customer Type selection -->
-            <div style="margin-bottom: 32px;">
-                <label class="field-label" style="text-align: center; margin-bottom: 12px;">Customer Type</label>
-                <div style="display: flex; gap: 16px; justify-content: center;">
-                    <div class="toggle-option-card" id="custTypeNew" onclick="selectCustType('new')" style="width: 260px; text-align: center;">
-                        <input type="radio" name="customer_type" value="new" id="radioNew" style="display:none;" required>
-                        <strong style="display: block; font-size: 15px; color: var(--color-brand-shield);">New Customer</strong>
-                        <span style="font-size: 12px; color: var(--text-muted);">First-time borrower profile registration</span>
+            <div class="csp-s-e8a8a9c051f6">
+                <label class="field-label csp-s-a56b14ff62f4">Customer Type</label>
+                <div class="csp-s-95d0fe5e93eb">
+                    <div class="toggle-option-card csp-s-670e727589ed" id="custTypeNew" data-customer-type="new">
+                        <input type="radio" name="customer_type" value="new" id="radioNew" required class="csp-s-d0466aa33fa8">
+                        <strong class="csp-s-41b580bd6c85">New Customer</strong>
+                        <span class="csp-s-f779da42d59e">First-time borrower profile registration</span>
                     </div>
-                    <div class="toggle-option-card" id="custTypeExisting" onclick="selectCustType('existing')" style="width: 260px; text-align: center;">
-                        <input type="radio" name="customer_type" value="existing" id="radioExisting" style="display:none;">
-                        <strong style="display: block; font-size: 15px; color: var(--color-brand-shield);">Existing Customer</strong>
-                        <span style="font-size: 12px; color: var(--text-muted);">Retrieve existing accounts and history</span>
+                    <div class="toggle-option-card csp-s-670e727589ed" id="custTypeExisting" data-customer-type="existing">
+                        <input type="radio" name="customer_type" value="existing" id="radioExisting" class="csp-s-d0466aa33fa8">
+                        <strong class="csp-s-41b580bd6c85">Existing Customer</strong>
+                        <span class="csp-s-f779da42d59e">Retrieve existing accounts and history</span>
                     </div>
                 </div>
             </div>
 
             <!-- Existing Customer Search Slot (Hidden initially) -->
-            <div id="existingSearchSlot" style="display: none; margin-bottom: 32px; padding: 16px; border: 0.5px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary);">
+            <div id="existingSearchSlot" class="csp-s-e5403ebfd1fb">
                 <label class="field-label" for="bvnSearch">Search by Name, BVN, or Account Number</label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="bvnSearch" class="field-input" placeholder="e.g. 22233344455" oninput="mockAutoFill()">
-                    <button type="button" class="btn-primary-filled" style="height: 38px;">Search</button>
+                <div class="csp-s-a9c77021d675">
+                    <input type="text" id="bvnSearch" class="field-input" placeholder="e.g. 22233344455">
+                    <button type="button" class="btn-primary-filled csp-s-56ab29fe6d1f">Search</button>
                 </div>
-                <div id="searchFeedback" style="font-size: 12px; color: var(--accent-success); margin-top: 6px; display: none;">
+                <div id="searchFeedback" class="csp-s-77d09ec59941">
                     ✓ Customer record matched: Grace Omowunmi (BVN: 222******55)
                 </div>
             </div>
 
             <!-- Loan Category grid -->
-            <div style="margin-bottom: 32px;">
-                <label class="field-label" style="text-align: center; margin-bottom: 12px;">Loan Category</label>
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
-                    <div class="toggle-option-card" id="loanEnterprise" onclick="selectLoanType('enterprise')" style="text-align: center;">
-                        <input type="radio" name="loan_type" value="enterprise" id="radioEnterprise" style="display:none;" required>
-                        <strong style="display: block; font-size: 14px;">Enterprise Loan</strong>
+            <div class="csp-s-e8a8a9c051f6">
+                <label class="field-label csp-s-a56b14ff62f4">Loan Category</label>
+                <div class="csp-s-82461dce141b">
+                    <div class="toggle-option-card csp-s-fb5ec070f2bf" id="loanEnterprise" data-loan-type="enterprise">
+                        <input type="radio" name="loan_type" value="enterprise" id="radioEnterprise" required class="csp-s-d0466aa33fa8">
+                        <strong class="csp-s-a101ab7485d7">Enterprise Loan</strong>
                     </div>
-                    <div class="toggle-option-card" id="loanMsef" onclick="selectLoanType('msef')" style="text-align: center;">
-                        <input type="radio" name="loan_type" value="msef" id="radioMsef" style="display:none;">
-                        <strong style="display: block; font-size: 14px;">MSEF</strong>
+                    <div class="toggle-option-card csp-s-fb5ec070f2bf" id="loanMsef" data-loan-type="msef">
+                        <input type="radio" name="loan_type" value="msef" id="radioMsef" class="csp-s-d0466aa33fa8">
+                        <strong class="csp-s-a101ab7485d7">MSEF</strong>
                     </div>
-                    <div class="toggle-option-card" id="loanPayee" onclick="selectLoanType('payee')" style="text-align: center;">
-                        <input type="radio" name="loan_type" value="payee" id="radioPayee" style="display:none;">
-                        <strong style="display: block; font-size: 14px;">PAYEE</strong>
+                    <div class="toggle-option-card csp-s-fb5ec070f2bf" id="loanPayee" data-loan-type="payee">
+                        <input type="radio" name="loan_type" value="payee" id="radioPayee" class="csp-s-d0466aa33fa8">
+                        <strong class="csp-s-a101ab7485d7">PAYEE</strong>
                     </div>
-                    <div class="toggle-option-card" id="loanOther" onclick="selectLoanType('other')" style="text-align: center;">
-                        <input type="radio" name="loan_type" value="other" id="radioOther" style="display:none;">
-                        <strong style="display: block; font-size: 14px;">Other Option</strong>
+                    <div class="toggle-option-card csp-s-fb5ec070f2bf" id="loanOther" data-loan-type="other">
+                        <input type="radio" name="loan_type" value="other" id="radioOther" class="csp-s-d0466aa33fa8">
+                        <strong class="csp-s-a101ab7485d7">Other Option</strong>
                     </div>
                 </div>
             </div>
 
             <!-- Other Loan Category Description input (Hidden initially) -->
-            <div id="otherCategorySlot" style="display: none; margin-bottom: 32px;">
+            <div id="otherCategorySlot" class="csp-s-5ec0f0f02886">
                 <label class="field-label" for="otherLoanDesc">Specify Other Loan Category</label>
                 <input type="text" id="otherLoanDesc" name="other_loan_desc" class="field-input" placeholder="Specify category description">
             </div>
 
             <!-- Action Button -->
-            <button type="submit" id="beginAppBtn" class="btn-primary-filled" style="width: 100%; height: 42px; font-size: 14px;" disabled>
+            <button type="submit" id="beginAppBtn" class="btn-primary-filled csp-s-cc22c4b46188" disabled>
                 Begin Application &rarr;
             </button>
         </form>
 
         <!-- Generate Share Link Card -->
-        <div style="margin-top: 32px; border-top: 0.5px solid var(--border-color); padding-top: 24px;">
-            <div style="text-align: center;">
-                <h3 style="font-size: 16px; font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <div class="csp-s-4687a0157d60">
+            <div class="csp-s-fb5ec070f2bf">
+                <h3 class="csp-s-eaacf0d435d4">
                     <span>🔗</span> Share Client Intake Link
                 </h3>
-                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                <p class="csp-s-705b4a7f7fd6">
                     Generate a secure, single-use link for your client to complete the loan intake form themselves.
                 </p>
-                <button type="button" class="btn-primary-filled" id="generateLinkBtn" onclick="generateClientLink()" style="height: 38px; font-size: 13px; padding: 0 16px;">
+                <button type="button" class="btn-primary-filled csp-s-50de81d2b0b8" id="generateLinkBtn">
                     Generate Sharing Link
                 </button>
             </div>
             
-            <div id="shareLinkContainer" style="display: none; margin-top: 16px; padding: 12px; border: 0.5px solid var(--border-color); border-radius: 6px; background-color: var(--bg-secondary);">
-                <label class="field-label" style="font-size: 12px;">Client Intake URL</label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="shareLinkInput" readonly class="field-input" style="flex: 1; font-family: monospace; font-size: 12px;">
-                    <button type="button" class="btn-primary-filled" onclick="copyShareLink()" id="copyLinkBtn" style="height: 38px; font-size: 12px; padding: 0 12px;">
+            <div id="shareLinkContainer" class="csp-s-2a65e3066f59">
+                <label class="field-label csp-s-94b6caffd552">Client Intake URL</label>
+                <div class="csp-s-a9c77021d675">
+                    <input type="text" id="shareLinkInput" readonly class="field-input csp-s-435cd2e98737">
+                    <button type="button" class="btn-primary-filled csp-s-619cdd377910" id="copyLinkBtn">
                         Copy
                     </button>
                 </div>
-                <div id="copyFeedback" style="font-size: 11px; color: var(--accent-success); margin-top: 6px; display: none;">
+                <div id="copyFeedback" class="csp-s-53afb5298111">
                     ✓ Copied to clipboard!
                 </div>
             </div>
@@ -112,7 +112,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     function selectCustType(type) {
         document.getElementById('radioNew').checked = (type === 'new');
         document.getElementById('radioExisting').checked = (type === 'existing');
@@ -203,5 +203,14 @@
             feedback.style.display = 'none';
         }, 2000);
     }
+    document.querySelectorAll('[data-customer-type]').forEach((card) => {
+        card.addEventListener('click', () => selectCustType(card.dataset.customerType));
+    });
+    document.querySelectorAll('[data-loan-type]').forEach((card) => {
+        card.addEventListener('click', () => selectLoanType(card.dataset.loanType));
+    });
+    document.getElementById('bvnSearch')?.addEventListener('input', mockAutoFill);
+    document.getElementById('generateLinkBtn')?.addEventListener('click', generateClientLink);
+    document.getElementById('copyLinkBtn')?.addEventListener('click', copyShareLink);
 </script>
 {% endblock %}

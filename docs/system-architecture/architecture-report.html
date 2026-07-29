@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FieldCRM architecture report</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#172033;background:#f6f8fb}body{margin:0}header{background:#172554;color:white;padding:28px}main{max-width:1180px;margin:auto;padding:24px}section{background:white;border:1px solid #dbe2ea;border-radius:12px;padding:20px;margin:16px 0}h1,h2{margin-top:0}code{background:#eef2f7;padding:2px 5px;border-radius:4px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;border-bottom:1px solid #e5e7eb;padding:9px;vertical-align:top}.confirmed{color:#047857}.inferred{color:#a16207}.unverified{color:#6b7280}.high{color:#b91c1c;font-weight:700}.medium{color:#b45309;font-weight:700}.ok{background:#dcfce7}.bad{background:#fee2e2}input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #94a3b8;border-radius:7px}details{border:1px solid #e5e7eb;border-radius:8px;padding:10px;margin:8px 0}summary{cursor:pointer;font-weight:650}.flow{display:flex;gap:8px;align-items:center;overflow:auto;padding:12px}.node{min-width:145px;padding:10px;border:2px solid #2563eb;background:#e8f1ff;border-radius:8px}.arrow{font-size:22px}.backend{border-color:#059669;background:#ecfdf5}.data{border-color:#ea580c;background:#fff7ed}.deploy{border-color:#7c3aed;background:#f5f3ff}
+</style>
+</head>
+<body>
+<header><h1>FieldCRM full architecture report</h1><p>Repository-derived snapshot. No deployment state or secret values are included.</p></header>
+<main>
+<section><h2>Evidence legend</h2><p><span class="confirmed">Confirmed</span>: code/file evidence. <span class="inferred">Inferred</span>: strongly suggested. <span class="unverified">Unverified</span>: requires Vercel/provider/database access.</p></section>
+<section><h2>Architecture at a glance</h2><div class="flow"><div class="node">Browser<br>Jinja HTML/CSS/JS</div><div class="arrow">→</div><div class="node backend">FastAPI<br>routes/dependencies</div><div class="arrow">→</div><div class="node backend">services/repositories</div><div class="arrow">→</div><div class="node data">PostgreSQL, Redis,<br>Cloudinary/providers</div></div><p>The authoritative combined Mermaid visualization is <code>full-system-flow.mmd</code>.</p></section>
+<section><h2>Function and endpoint search</h2><input id="search" type="search" placeholder="Filter functions, files, routes, risks…"><div id="searchBody">
+<details open><summary>Frontend — Runtime: Browser</summary><p>108 Jinja templates; CSS: dashboard, role themes, login, borrowers, motion; JS: dashboard, motion, document preview. Initial pages are server rendered. Native forms dominate; fetch/XHR enhances previews, drafts, OTP, badges, checklist and administration.</p></details>
+<details><summary>Backend — Runtime: Python serverless</summary><p><code>backend/app/main.py</code> exports <code>app = FastAPI()</code>. Auth/users/mobile routers use <code>/api/v1</code> prefixes; the browser loan router is unprefixed. Pydantic, Form, Query, Path and UploadFile validate inputs.</p></details>
+<details><summary>Authentication and authorization</summary><p>JWT bearer or HttpOnly session cookie → <code>get_current_user</code> → cached/user repository lookup → <code>RoleChecker</code>. Client intake uses a separate signed client-session dependency.</p></details>
+<details><summary>Data and external services</summary><p>PostgreSQL through an async SQLAlchemy adapter; SQLite locally. Redis supports rate limiting/cache. Cloudinary stores authenticated production files. QoreID, CreditRegistry, CRC, Youverify and an Emailope-compatible endpoint are runtime integrations.</p></details>
+<details><summary>Vercel deployment — Runtime: Build/Deployment</summary><p><code>pyproject.toml</code> selects <code>backend.app.main:app</code>; root <code>requirements.txt</code> and Python 3.12.11 configure the build. No <code>vercel.json</code> or independent frontend build exists. Actual dashboard configuration is unverified.</p></details>
+</div></section>
+<section><h2>Frontend-to-backend contracts</h2><table><thead><tr><th>Caller</th><th>Endpoint</th><th>Status</th></tr></thead><tbody>
+<tr><td>Login form</td><td>POST /login</td><td class="ok">Matched</td></tr>
+<tr><td>Document preview</td><td>GET /api/v1/documents/{id}/preview?page=N</td><td class="ok">Matched</td></tr>
+<tr><td>Admin invitations/roles/deactivation</td><td>/api/v1/users/*</td><td class="ok">Matched</td></tr>
+<tr><td>Guarantor link generator</td><td>POST /applications/{id}/guarantor-link/{slot}</td><td class="bad">Backend endpoint not found</td></tr>
+<tr><td>Guarantor signing form</td><td>POST /client-form/apply/guarantors/sign</td><td class="bad">Backend endpoint not found</td></tr>
+</tbody></table></section>
+<section><h2>Risk findings</h2><table><thead><tr><th>Severity</th><th>Evidence</th><th>Finding</th></tr></thead><tbody>
+<tr><td class="high">High</td><td>Confirmed</td><td>Two guarantor frontend actions have no registered FastAPI receiver.</td></tr>
+<tr><td class="high">High</td><td>Confirmed</td><td>OCR uses a detached asyncio task that may not finish in serverless runtime.</td></tr>
+<tr><td class="medium">Medium</td><td>Confirmed</td><td>Verification/AML modules contain seed cases that precede real-provider checks.</td></tr>
+<tr><td class="medium">Medium</td><td>Unverified</td><td>Vercel bundle contents, route generation, function size/duration and environment dashboard state.</td></tr>
+</tbody></table></section>
+<section><h2>Detailed evidence</h2><p>See the adjacent Markdown reports for frontend functions/interactions, backend functions, contracts, routes, deployment, and verification commands. File paths and runtime labels are preserved there.</p></section>
+</main>
+<script>
+const input=document.getElementById('search');input.addEventListener('input',()=>{const q=input.value.toLowerCase();document.querySelectorAll('#searchBody details').forEach(d=>d.hidden=!d.textContent.toLowerCase().includes(q));});
+</script>
+</body>
+</html>

@@ -45,7 +45,7 @@
             </thead>
             <tbody>
                 {% for event in events %}
-                <tr class="table-row-link" onclick="window.location.href='/applications/{{ event.application_id }}'">
+                <tr class="table-row-link" data-href="/applications/{{ event.application_id }}" tabindex="0">
                     <td>{{ event.timestamp.strftime("%Y-%m-%d %H:%M") if event.timestamp else "-" }}</td>
                     <td>REF-{{ event.application_id|string|upper|truncate(8, True, "") }}</td>
                     <td>{{ event.action|replace("_", " ")|title }}</td>

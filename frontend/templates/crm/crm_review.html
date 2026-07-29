@@ -4,13 +4,13 @@
 {% block page_title %}CRM Dossier Review{% endblock %}
 {% block breadcrumb %}CRM -> Review -> {{ app.ref_no }}{% endblock %}
 {% block content %}
-<div class="page-card" style="margin-bottom:20px;">
+<div class="page-card csp-s-3c4a3d440074">
   <h2 class="page-card-title">{{ app.applicant_name }} — {{ app.ref_no }}</h2>
-  <div style="display:flex;gap:24px;flex-wrap:wrap;">
-    <div><span style="color:var(--text-muted)">Amount</span><br><strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}—{% endif %}</strong></div>
-    <div><span style="color:var(--text-muted)">Tenor</span><br><strong>{{ app.tenor_months or '—' }} months</strong></div>
-    <div><span style="color:var(--text-muted)">BVN</span><br><strong>{{ app.bvn or '—' }}</strong></div>
-    <div><span style="color:var(--text-muted)">Stage</span><br><span class="status-badge needs-review">{{ app.status }}</span></div>
+  <div class="csp-s-0e63b0d79e95">
+    <div><span class="csp-s-500708668cdd">Amount</span><br><strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}—{% endif %}</strong></div>
+    <div><span class="csp-s-500708668cdd">Tenor</span><br><strong>{{ app.tenor_months or '—' }} months</strong></div>
+    <div><span class="csp-s-500708668cdd">BVN</span><br><strong>{{ app.bvn or '—' }}</strong></div>
+    <div><span class="csp-s-500708668cdd">Stage</span><br><span class="status-badge needs-review">{{ app.status }}</span></div>
   </div>
 </div>
 
@@ -23,8 +23,8 @@
   <div><span>Decision owner</span><strong>{{ 'Head CRM' if current_user.role == 'head_crm' else 'CRM Officer' }}</strong></div>
 </section>
 
-<div class="page-card" style="margin-bottom:20px;">
-  <h3 style="margin-bottom:12px;">Document Checklist</h3>
+<div class="page-card csp-s-3c4a3d440074">
+  <h3 class="csp-s-4636770b4968">Document Checklist</h3>
   <table class="custom-table">
     <thead><tr><th>Document</th><th>Quality</th><th>Verified</th></tr></thead>
     <tbody>
@@ -32,68 +32,67 @@
     <tr>
       <td>
         {% if doc.url %}
-          <a href="{{ doc.url }}" target="_blank" style="color: var(--color-brand-shield); text-decoration: none; font-weight: 500;">
+          <a href="{{ doc.url }}" target="_blank" class="csp-s-24755a6a9e78">
             {{ doc.doc_type.replace('_',' ').title() }} &nearr;
           </a>
         {% else %}
           {{ doc.doc_type.replace('_',' ').title() }}
         {% endif %}
-        <br><small style="color:var(--text-muted)">{{ doc.original_name }}</small>
+        <br><small class="csp-s-500708668cdd">{{ doc.original_name }}</small>
       </td>
       <td><span class="status-badge {% if doc.quality_status == 'clear' %}approved{% else %}needs-review{% endif %}">{{ doc.quality_status }}</span></td>
-      <td>{% if doc.verified %}<span style="color:#2e7d32">&#10003; Verified</span>{% else %}<span style="color:#c62828">&#10007; Unverified</span>{% endif %}</td>
+      <td>{% if doc.verified %}<span class="csp-s-c571d44c8112">&#10003; Verified</span>{% else %}<span class="csp-s-d23e3c89c60a">&#10007; Unverified</span>{% endif %}</td>
     </tr>
-    {% else %}<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">No documents uploaded.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="3" class="csp-s-542b2a1bdac0">No documents uploaded.</td></tr>{% endfor %}
     </tbody>
   </table>
 </div>
 
-<div class="page-card" style="margin-bottom:20px;">
-  <h3 style="margin-bottom:12px;">Upload Supporting Document</h3>
-  <p style="font-size:14px;color:var(--text-secondary);margin-bottom:14px;">
+<div class="page-card csp-s-3c4a3d440074">
+  <h3 class="csp-s-4636770b4968">Upload Supporting Document</h3>
+  <p class="csp-s-759c47a698b8">
     Attach a memo or any document explaining the approval or denial recommendation.
   </p>
   <form method="post" action="/applications/{{ app_id }}/crm-upload" enctype="multipart/form-data">
-    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+    <div class="csp-s-13c65d1c8f4b">
       <div>
-        <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Document Type</label>
-        <select name="doc_label" style="padding:8px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;">
+        <label class="csp-s-176722429920">Document Type</label>
+        <select name="doc_label" class="csp-s-9375776e9792">
           <option value="crm_memo">CRM Memo</option>
           <option value="approval_recommendation">Approval Recommendation</option>
           <option value="denial_recommendation">Denial Recommendation</option>
           <option value="other">Other</option>
         </select>
       </div>
-      <div style="flex:1;min-width:200px;">
-        <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">File</label>
-        <input type="file" name="file" required
-          style="display:block;padding:6px 0;font-size:14px;">
+      <div class="csp-s-45140eebde26">
+        <label class="csp-s-176722429920">File</label>
+        <input type="file" name="file" required class="csp-s-84f41f4cdab1">
       </div>
-      <button type="submit" class="btn btn-secondary" style="padding:9px 20px;">Upload</button>
+      <button type="submit" class="btn btn-secondary csp-s-6c19517da870">Upload</button>
     </div>
   </form>
   {% if documents %}
-  <div style="margin-top:14px;">
-    <strong style="font-size:13px;">CRM Documents</strong>
-    <table class="custom-table" style="margin-top:8px;">
+  <div class="csp-s-8d842990309a">
+    <strong class="csp-s-cdcef186c815">CRM Documents</strong>
+    <table class="custom-table csp-s-a33b8fc2ff77">
       <thead><tr><th>Type</th><th>File</th><th>Uploaded</th></tr></thead>
       <tbody>
       {% for doc in documents if doc.doc_type in ('crm_memo','approval_recommendation','denial_recommendation') %}
       <tr>
         <td>{{ doc.doc_type.replace('_',' ').title() }}</td>
-        <td style="font-size:13px;">
+        <td class="csp-s-cdcef186c815">
           {% if doc.url %}
-            <a href="{{ doc.url }}" target="_blank" style="color: var(--color-brand-shield); text-decoration: none; font-weight: 500;">
+            <a href="{{ doc.url }}" target="_blank" class="csp-s-24755a6a9e78">
               {{ doc.original_name or '—' }} &nearr;
             </a>
           {% else %}
             {{ doc.original_name or '—' }}
           {% endif %}
         </td>
-        <td style="font-size:12px;color:var(--text-muted);">{{ doc.created_at.strftime('%d %b %Y') if doc.created_at else '—' }}</td>
+        <td class="csp-s-829026effa57">{{ doc.created_at.strftime('%d %b %Y') if doc.created_at else '—' }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="3" style="color:var(--text-muted);text-align:center;">No CRM documents uploaded yet.</td></tr>
+      <tr><td colspan="3" class="csp-s-39585830afee">No CRM documents uploaded yet.</td></tr>
       {% endfor %}
       </tbody>
     </table>
@@ -102,48 +101,47 @@
 </div>
 
 <div class="audit-action-panel">
-  <h3 style="margin-bottom:12px;">{{ 'Head CRM Approval' if current_user.role == 'head_crm' else 'CRM Dossier Review' }}</h3>
+  <h3 class="csp-s-4636770b4968">{{ 'Head CRM Approval' if current_user.role == 'head_crm' else 'CRM Dossier Review' }}</h3>
   <p class="action-note">{{ 'This approval records the Head CRM handover and routes the complete dossier to ED.' if current_user.role == 'head_crm' else 'This review records dossier completeness and routes the file to Head CRM for approval.' }}</p>
   {% if request.query_params.get('error') %}
-  <div class="flat-card warning" id="crm-review-error" role="alert" tabindex="-1" style="margin-bottom:16px;"><strong>Review cannot proceed.</strong><br>{{ request.query_params.get('error') }}</div>
+  <div class="flat-card warning csp-s-7564ec607ed8" id="crm-review-error" role="alert" tabindex="-1"><strong>Review cannot proceed.</strong><br>{{ request.query_params.get('error') }}</div>
   {% endif %}
   <form method="post" action="/applications/{{ app_id }}/crm-review">
     {% if current_user.role == 'crm' %}
-    <section id="crm-consents" style="margin:20px 0;padding:18px;border:1px solid var(--border-color);border-radius:8px;">
-      <h4 style="margin:0 0 8px;">Declarations &amp; Consents</h4>
-      <p style="font-size:13px;color:var(--text-muted);">All items below are required before this file can proceed.</p>
-      <label style="display:block;margin:12px 0;"><input type="checkbox" name="consent_credit_bureau" value="1" {% if consent_data.consent_credit_bureau %}checked{% endif %}> Credit Bureau Disclosure (CBN-mandated disclosure consent)</label>
-      <label style="display:block;margin:12px 0;"><input type="checkbox" name="consent_credit_check" value="1" {% if consent_data.consent_credit_check %}checked{% endif %}> Credit Check Authorisation</label>
-      <label style="display:block;margin:12px 0;"><input type="checkbox" name="consent_cheque" value="1" {% if consent_data.consent_cheque %}checked{% endif %}> Cheque Recovery Authorisation</label>
-      <label style="display:block;margin:12px 0;"><input type="checkbox" name="consent_gsi" value="1" {% if consent_data.consent_gsi %}checked{% endif %}> Global Standing Instruction (GSI) Mandate</label>
-      <p class="flat-card" style="margin-top:16px;font-size:13px;">The applicant signs through their authenticated client link. Staff cannot sign on an applicant's behalf.</p>
-      <label style="display:block;margin-top:16px;"><input type="checkbox" name="final_declaration" value="1" {% if consent_data.final_declaration %}checked{% endif %}> I declare all information provided is true and correct.</label>
+    <section id="crm-consents" class="csp-s-a94d78a93365">
+      <h4 class="csp-s-bb5bea385726">Declarations &amp; Consents</h4>
+      <p class="csp-s-244cb7eb6f45">All items below are required before this file can proceed.</p>
+      <label class="csp-s-16dda14d4377"><input type="checkbox" name="consent_credit_bureau" value="1" {% if consent_data.consent_credit_bureau %}checked{% endif %}> Credit Bureau Disclosure (CBN-mandated disclosure consent)</label>
+      <label class="csp-s-16dda14d4377"><input type="checkbox" name="consent_credit_check" value="1" {% if consent_data.consent_credit_check %}checked{% endif %}> Credit Check Authorisation</label>
+      <label class="csp-s-16dda14d4377"><input type="checkbox" name="consent_cheque" value="1" {% if consent_data.consent_cheque %}checked{% endif %}> Cheque Recovery Authorisation</label>
+      <label class="csp-s-16dda14d4377"><input type="checkbox" name="consent_gsi" value="1" {% if consent_data.consent_gsi %}checked{% endif %}> Global Standing Instruction (GSI) Mandate</label>
+      <p class="flat-card csp-s-df1b781e15ed">The applicant signs through their authenticated client link. Staff cannot sign on an applicant's behalf.</p>
+      <label class="csp-s-613eed490326"><input type="checkbox" name="final_declaration" value="1" {% if consent_data.final_declaration %}checked{% endif %}> I declare all information provided is true and correct.</label>
     </section>
     {% endif %}
-    <div style="margin-bottom:16px; max-width: 300px;">
-      <label for="amount" style="display:block;margin-bottom:6px;font-weight:600;">Approved/Recommended Amount (₦)</label>
-      <input type="number" id="amount" name="amount" class="field-input" value="{{ application.amount or 0 }}" required style="width: 100%;">
+    <div class="csp-s-9ae4f281dc21">
+      <label for="amount" class="csp-s-804b43b420f0">Approved/Recommended Amount (₦)</label>
+      <input type="number" id="amount" name="amount" class="field-input csp-s-37ab52c9d67a" value="{{ application.amount or 0 }}" required>
     </div>
-    <div style="margin-bottom:16px;">
-      <label for="crm_notes" style="display:block;margin-bottom:6px;font-weight:600;">Notes for Executive (optional)</label>
+    <div class="csp-s-7564ec607ed8">
+      <label for="crm_notes" class="csp-s-804b43b420f0">Notes for Executive (optional)</label>
       <textarea id="crm_notes" name="crm_notes" rows="4"
-        style="width:100%;padding:10px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;"
-        placeholder="Summarise dossier completeness and any flags…"></textarea>
+        placeholder="Summarise dossier completeness and any flags…" class="csp-s-7f2f7061619d"></textarea>
     </div>
-    <div style="display:flex;gap:12px;">
+    <div class="csp-s-695296fc9a22">
       <button type="submit" name="action" value="advance" class="btn btn-primary">{{ 'Approve and send to ED' if current_user.role == 'head_crm' else 'Send to Head CRM' }}</button>
       <button type="button" id="show-crm-return" class="btn btn-secondary">Return Application</button>
     </div>
-    <div id="crm-return-confirmation" class="flat-card warning" hidden style="margin-top:16px;">
+    <div id="crm-return-confirmation" class="flat-card warning csp-s-76977cc9f242" hidden>
       <strong>Return this application to the branch?</strong>
-      <p style="margin:6px 0 12px;">The file will move back to the preceding pipeline stage.</p>
+      <p class="csp-s-21595e3fffef">The file will move back to the preceding pipeline stage.</p>
       <button type="submit" name="action" value="return" class="btn btn-secondary">Confirm return</button>
       <button type="button" id="cancel-crm-return" class="btn btn-ghost">Cancel</button>
     </div>
   </form>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 (() => {
   const returnPanel = document.getElementById('crm-return-confirmation');
   document.getElementById('show-crm-return')?.addEventListener('click', () => {

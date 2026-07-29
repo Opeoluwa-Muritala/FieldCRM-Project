@@ -8,7 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=20260729">
+    <link rel="stylesheet" href="/static/css/csp-utilities.css?v=20260729">
+    <script defer src="/static/js/csp-styles.js?v=20260729"></script>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -68,7 +70,7 @@
                             <span>Visitations Queue</span>
                         </a>
                         {% else %}
-                        <div class="sidebar-nav-link" style="opacity: 0.5; cursor: not-allowed;">
+                        <div class="sidebar-nav-link csp-s-d84b154e5ee1">
                             <span>No Field Tasks</span>
                         </div>
                         {% endif %}
@@ -118,7 +120,7 @@
                     <div class="sidebar-user-name">{{ current_user.name if current_user else "Team Lead" }}</div>
                     <div class="sidebar-user-role">{{ role }}</div>
                 </div>
-                <a href="/logout" style="margin-left: auto; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 18px;" title="Logout">
+                <a href="/logout" title="Logout" class="csp-s-c2db7e0bbb5e">
                     &#x21aa;
                 </a>
             </div>
@@ -151,8 +153,8 @@
         </div>
     </div>
     <script src="/static/js/document-preview.js?v=6"></script>
-    <script src="/static/js/motion.js"></script>
-    <script>
+    <script src="/static/js/motion.js?v=20260729"></script>
+    <script nonce="{{ csp_nonce }}">
         (() => {
             const sidebar = document.getElementById("sidebar");
             const toggle = document.querySelector("[data-sidebar-toggle]");

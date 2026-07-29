@@ -21,7 +21,7 @@
 </div>
 <div class="custom-table-container queue-table-wrap page-card"><table class="custom-table"><thead><tr><th>Applicant</th><th>Officer</th><th>Amount</th><th>Tenor</th><th>OCR Issues</th></tr></thead><tbody>
 {% for item in reviews %}
-<tr onclick="window.location.href='/applications/{{ item.id }}/credit-review'"><td>{{ item.applicant_name }}</td><td>{{ item.officer_name or '-' }}</td><td>{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}-{% endif %}</td><td>{{ item.tenor_months or '-' }}</td><td>{{ item.exception_count }}</td></tr>
-{% else %}<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No credit reviews waiting.</td></tr>{% endfor %}
+<tr data-href="/applications/{{ item.id }}/credit-review" tabindex="0"><td>{{ item.applicant_name }}</td><td>{{ item.officer_name or '-' }}</td><td>{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}-{% endif %}</td><td>{{ item.tenor_months or '-' }}</td><td>{{ item.exception_count }}</td></tr>
+{% else %}<tr><td colspan="5" class="csp-s-542b2a1bdac0">No credit reviews waiting.</td></tr>{% endfor %}
 </tbody></table></div>
 {% endblock %}

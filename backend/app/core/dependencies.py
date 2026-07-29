@@ -1,6 +1,8 @@
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
+from time import perf_counter
 from app.core.database import get_connection
+from app.core.performance import record_counter, record_duration
 from app.core.security import decode_access_token
 from app.core.cache import cache_auth_user, get_cached_auth_user
 from app.domains.users.repository import UserRepository
@@ -29,8 +31,10 @@ async def get_current_user_from_token(token: str, conn=None) -> UserRow:
         parsed_user_id = None
 
     cached = await get_cached_auth_user(user_id) if parsed_user_id else None
+    record_counter("auth_cache_hit" if cached else "auth_cache_miss")
     user = UserRow(**cached) if cached else None
     if user is None and parsed_user_id:
+        record_counter("auth_db_fallback")
         if conn is None:
             async with get_connection() as direct_conn:
                 user = await UserRepository(direct_conn).get_by_id(parsed_user_id)
@@ -52,8 +56,12 @@ async def get_current_user(
     token: str = Depends(oauth2_scheme),
 ) -> UserRow:
     # Resolve token from OAuth2 authorization header or session cookies
+    started_at = perf_counter()
     token = token or request.cookies.get("session") or request.cookies.get("__Host-session")
-    user = await get_current_user_from_token(token)
+    try:
+        user = await get_current_user_from_token(token)
+    finally:
+        record_duration("auth", started_at)
     # Response-cache invalidation uses this only after a successful write.
     # It does not change the authentication or direct database read path.
     request.state.cache_user = user

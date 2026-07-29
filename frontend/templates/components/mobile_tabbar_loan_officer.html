@@ -11,13 +11,13 @@
 {% endmacro %}
 
 <button class="tab-item {% if active_tab == 'home' %}active{% endif %}"
-        type="button" onclick="window.location.href='/dashboard'" aria-label="Home">
+        type="button" data-href="/dashboard" aria-label="Home">
     <span class="tab-icon">{{ tab_icon('home') }}</span>
     <span class="tab-label">Home</span>
 </button>
 
 <button class="tab-item {% if active_tab == 'queue' %}active{% endif %}"
-        type="button" onclick="window.location.href='/my-queue'" aria-label="My Queue">
+        type="button" data-href="/my-queue" aria-label="My Queue">
     {% if metrics and metrics.my_applications and metrics.my_applications > 0 %}
     <span class="tab-badge">{{ metrics.my_applications }}</span>
     {% endif %}
@@ -26,7 +26,7 @@
 </button>
 
 <button class="tab-item tab-item-primary {% if active_tab == 'new' %}active{% endif %}"
-        type="button" onclick="window.location.href='/applications/new'" aria-label="New Application">
+        type="button" data-href="/applications/new" aria-label="New Application">
     <span class="tab-icon tab-icon-primary">
         <svg class="tab-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <use href="/static/img/icons.svg#icon-new-f"/>
@@ -36,13 +36,13 @@
 </button>
 
 <button class="tab-item {% if active_tab == 'upload' %}active{% endif %}"
-        type="button" onclick="window.location.href='/document-upload'" aria-label="Upload">
+        type="button" data-href="/document-upload" aria-label="Upload">
     <span class="tab-icon">{{ tab_icon('upload') }}</span>
     <span class="tab-label">Upload</span>
 </button>
 
 <button class="tab-item {% if active_tab == 'visits' %}active{% endif %}"
-        type="button" onclick="window.location.href='/visits'" aria-label="Visits">
+        type="button" data-href="/visits" aria-label="Visits">
     {% if metrics and metrics.visits_due and metrics.visits_due > 0 %}
     <span class="tab-badge">{{ metrics.visits_due }}</span>
     {% endif %}

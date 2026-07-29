@@ -17,16 +17,23 @@
 {% set user_role = user.role|lower|replace(' ', '_') if user else 'loan_officer' %}
 <body data-role="{{ user_role }}">
     {# Offline connectivity banner — shown via JS when network drops #}
-    <div class="offline-banner" id="offlineBanner" style="display: none;">
+    <div class="offline-banner" id="offlineBanner">
         You are currently offline. Changes will be saved locally.
     </div>
 
     {% block shell %}{% endblock %}
 
-    <script src="/static/js/dashboard.js"></script>
-    <script src="/static/js/motion.js"></script>
-    <script src="/static/js/document-preview.js?v=6"></script>
-    <script>
+    <script defer src="/static/js/dashboard.js?v=20260729"></script>
+    <script defer src="/static/js/motion.js?v=20260729"></script>
+    <script nonce="{{ csp_nonce }}">
+        if (document.querySelector('[data-document-preview], a[href*="/api/v1/documents/"][href*="/preview"]')) {
+            const previewScript = document.createElement('script');
+            previewScript.src = '/static/js/document-preview.js?v=20260729';
+            previewScript.defer = true;
+            document.head.appendChild(previewScript);
+        }
+    </script>
+    <script nonce="{{ csp_nonce }}">
         window.showFieldMessage = function(message, tone = 'error') {
             let region = document.getElementById('field-message-region');
             if (!region) {

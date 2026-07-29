@@ -36,6 +36,11 @@ _ROLE_TEMPLATE_ALIASES = {
 }
 
 
+def csp_nonce_context(request) -> dict[str, str]:
+    """Expose the request-scoped CSP nonce to every Jinja template."""
+    return {"csp_nonce": getattr(request.state, "csp_nonce", "")}
+
+
 def detect_device_type(request) -> str:
     """Determine device type from User-Agent header.
 

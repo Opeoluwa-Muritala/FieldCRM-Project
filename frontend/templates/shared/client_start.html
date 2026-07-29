@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loan Application Intake | FieldCRM</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/dashboard.css">
-    <style>
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=20260729">
+    <link rel="stylesheet" href="/static/css/csp-utilities.css?v=20260729">
+    <script defer src="/static/js/csp-styles.js?v=20260729"></script>
+    <style nonce="{{ csp_nonce }}">
         body {
             background-color: var(--bg-secondary, #f3f4f6);
             font-family: 'Montserrat', sans-serif;
@@ -52,8 +54,8 @@
     <div class="start-container">
         <div class="header-section">
             <a href="/dashboard" class="brand-home-link" aria-label="Go to dashboard"><img class="brand-logo" src="{{ brand_logo_black }}" alt="Mainstreet Microfinance Bank Logo"></a>
-            <h1 style="font-family: 'Montserrat', sans-serif; font-size: 24px; color: #111827; margin: 8px 0 4px;">Loan Application Intake</h1>
-            <p style="font-size: 13px; color: var(--text-muted, #6b7280); margin: 0;">Complete your borrower profile registration.</p>
+            <h1 class="csp-s-309c2ab9106c">Loan Application Intake</h1>
+            <p class="csp-s-e561b77bd7e2">Complete your borrower profile registration.</p>
         </div>
 
         <div class="officer-banner">
@@ -62,58 +64,58 @@
 
         <form action="/share-intake/{{ token }}/start" method="POST" id="startForm">
             <!-- Full Name -->
-            <div class="form-group" style="margin-bottom: 24px;">
-                <label class="field-label" for="fullName">Your Full Name <span style="color:var(--accent-danger);">*</span></label>
+            <div class="form-group csp-s-fec3619ed0de">
+                <label class="field-label" for="fullName">Your Full Name <span class="csp-s-77e237a218c9">*</span></label>
                 <input type="text" id="fullName" name="full_name" class="field-input" placeholder="e.g. Grace Omowunmi" required>
             </div>
 
             <!-- Customer Type selection -->
-            <div style="margin-bottom: 24px;">
-                <label class="field-label" style="margin-bottom: 12px;">Customer Status <span style="color:var(--accent-danger);">*</span></label>
-                <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-                    <div class="toggle-option-card" id="custTypeNew" onclick="selectCustType('new')" style="flex: 1; min-width: 220px; text-align: center; cursor: pointer;">
-                        <input type="radio" name="customer_type" value="new" id="radioNew" style="display:none;" required>
-                        <strong style="display: block; font-size: 14px; color: var(--color-brand-shield);">New Customer</strong>
-                        <span style="font-size: 11px; color: var(--text-muted);">First-time borrower profile</span>
+            <div class="csp-s-fec3619ed0de">
+                <label class="field-label csp-s-c804002a4185">Customer Status <span class="csp-s-77e237a218c9">*</span></label>
+                <div class="csp-s-a666bf8aaea0">
+                    <div class="toggle-option-card csp-s-554984cc2bfa" id="custTypeNew" data-customer-type="new">
+                        <input type="radio" name="customer_type" value="new" id="radioNew" required class="csp-s-d0466aa33fa8">
+                        <strong class="csp-s-6e8ff20aada1">New Customer</strong>
+                        <span class="csp-s-c029905cd705">First-time borrower profile</span>
                     </div>
-                    <div class="toggle-option-card" id="custTypeExisting" onclick="selectCustType('existing')" style="flex: 1; min-width: 220px; text-align: center; cursor: pointer;">
-                        <input type="radio" name="customer_type" value="existing" id="radioExisting" style="display:none;">
-                        <strong style="display: block; font-size: 14px; color: var(--color-brand-shield);">Existing Customer</strong>
-                        <span style="font-size: 11px; color: var(--text-muted);">Already registered / past loan history</span>
+                    <div class="toggle-option-card csp-s-554984cc2bfa" id="custTypeExisting" data-customer-type="existing">
+                        <input type="radio" name="customer_type" value="existing" id="radioExisting" class="csp-s-d0466aa33fa8">
+                        <strong class="csp-s-6e8ff20aada1">Existing Customer</strong>
+                        <span class="csp-s-c029905cd705">Already registered / past loan history</span>
                     </div>
                 </div>
             </div>
 
             <!-- Loan Category grid -->
-            <div style="margin-bottom: 32px;">
-                <label class="field-label" style="margin-bottom: 12px;">Loan Category <span style="color:var(--accent-danger);">*</span></label>
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-                    <div class="toggle-option-card" id="loanEnterprise" onclick="selectLoanType('enterprise')" style="text-align: center; cursor: pointer;">
-                        <input type="radio" name="loan_type" value="enterprise" id="radioEnterprise" style="display:none;" required>
-                        <strong style="display: block; font-size: 13px;">Enterprise Loan</strong>
+            <div class="csp-s-e8a8a9c051f6">
+                <label class="field-label csp-s-c804002a4185">Loan Category <span class="csp-s-77e237a218c9">*</span></label>
+                <div class="csp-s-4424a8a886a2">
+                    <div class="toggle-option-card csp-s-97b242a52b2d" id="loanEnterprise" data-loan-type="enterprise">
+                        <input type="radio" name="loan_type" value="enterprise" id="radioEnterprise" required class="csp-s-d0466aa33fa8">
+                        <strong class="csp-s-e5e1736b956e">Enterprise Loan</strong>
                     </div>
-                    <div class="toggle-option-card" id="loanMsef" onclick="selectLoanType('msef')" style="text-align: center; cursor: pointer;">
-                        <input type="radio" name="loan_type" value="msef" id="radioMsef" style="display:none;">
-                        <strong style="display: block; font-size: 13px;">MSEF</strong>
+                    <div class="toggle-option-card csp-s-97b242a52b2d" id="loanMsef" data-loan-type="msef">
+                        <input type="radio" name="loan_type" value="msef" id="radioMsef" class="csp-s-d0466aa33fa8">
+                        <strong class="csp-s-e5e1736b956e">MSEF</strong>
                     </div>
-                    <div class="toggle-option-card" id="loanPayee" onclick="selectLoanType('payee')" style="text-align: center; cursor: pointer;">
-                        <input type="radio" name="loan_type" value="payee" id="radioPayee" style="display:none;">
-                        <strong style="display: block; font-size: 13px;">PAYEE</strong>
+                    <div class="toggle-option-card csp-s-97b242a52b2d" id="loanPayee" data-loan-type="payee">
+                        <input type="radio" name="loan_type" value="payee" id="radioPayee" class="csp-s-d0466aa33fa8">
+                        <strong class="csp-s-e5e1736b956e">PAYEE</strong>
                     </div>
-                    <div class="toggle-option-card" id="loanOther" onclick="selectLoanType('other')" style="text-align: center; cursor: pointer;">
-                        <input type="radio" name="loan_type" value="other" id="radioOther" style="display:none;">
-                        <strong style="display: block; font-size: 13px;">Other Option</strong>
+                    <div class="toggle-option-card csp-s-97b242a52b2d" id="loanOther" data-loan-type="other">
+                        <input type="radio" name="loan_type" value="other" id="radioOther" class="csp-s-d0466aa33fa8">
+                        <strong class="csp-s-e5e1736b956e">Other Option</strong>
                     </div>
                 </div>
             </div>
 
-            <button type="submit" id="startBtn" class="btn-primary-filled" style="width: 100%; height: 42px; font-size: 14px;" disabled>
+            <button type="submit" id="startBtn" class="btn-primary-filled csp-s-cc22c4b46188" disabled>
                 Start Form Intake &rarr;
             </button>
         </form>
     </div>
 
-    <script>
+    <script nonce="{{ csp_nonce }}">
         function selectCustType(type) {
             document.getElementById('radioNew').checked = (type === 'new');
             document.getElementById('radioExisting').checked = (type === 'existing');
@@ -145,6 +147,12 @@
         }
 
         document.getElementById('fullName').addEventListener('input', validateForm);
+        document.querySelectorAll('[data-customer-type]').forEach((card) => {
+            card.addEventListener('click', () => selectCustType(card.dataset.customerType));
+        });
+        document.querySelectorAll('[data-loan-type]').forEach((card) => {
+            card.addEventListener('click', () => selectLoanType(card.dataset.loanType));
+        });
     </script>
 </body>
 </html>

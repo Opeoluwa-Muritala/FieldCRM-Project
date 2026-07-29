@@ -11,10 +11,10 @@
     <div class="app-detail-sidebar">
         
         {# Identity Card #}
-        <div class="page-card" style="margin-bottom: 0;">
-            <div style="font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; margin-bottom: 4px;">{{ app.ref_no }}</div>
-            <h2 class="page-card-title" style="margin-bottom: 8px; font-size: 20px;">{{ borrower_name }}</h2>
-            <div style="font-size: 14px; font-weight: 500; color: var(--role-accent); margin-bottom: 12px;">
+        <div class="page-card csp-s-b3a2297a12f5">
+            <div class="csp-s-b58aaded1d86">{{ app.ref_no }}</div>
+            <h2 class="page-card-title csp-s-0344cc85b2e7">{{ borrower_name }}</h2>
+            <div class="csp-s-8a68ca586d8b">
                 {{ product_type }} · ₦{{ "{:,}".format(amount|int) }}
             </div>
             
@@ -32,65 +32,65 @@
         </div>
         
         {# Vertical Stage Timeline #}
-        <div class="page-card" style="margin-bottom: 0;">
-            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 16px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Application Timeline</h3>
-            <div style="display: flex; flex-direction: column; gap: 16px; position: relative; padding-left: 20px;">
+        <div class="page-card csp-s-b3a2297a12f5">
+            <h3 class="csp-s-2e2b4cd7c4f9">Application Timeline</h3>
+            <div class="csp-s-b37edfac2acb">
                 
                 {# Vertical line element #}
-                <div style="position: absolute; left: 6px; top: 8px; bottom: 8px; width: 2px; background-color: var(--border-color);"></div>
+                <div class="csp-s-1a60179c1584"></div>
                 
                 {# Stage 1 #}
-                <div style="position: relative;">
-                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 1 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                <div class="csp-s-4fa00029d5b1">
+                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 1 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
                         {% if app.current_stage > 1 %}✓{% endif %}
                     </div>
-                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 1 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 1 %}var(--text-main){% else %}var(--text-muted){% endif %};">Intake & Submission</div>
-                    <div style="font-size: 11px; color: var(--text-muted);">{{ app.created_at.strftime('%d %b %Y') if app.created_at else '' }}</div>
+                    <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 1 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 1 %}var(--text-main){% else %}var(--text-muted){% endif %};">Intake & Submission</div>
+                    <div class="csp-s-c029905cd705">{{ app.created_at.strftime('%d %b %Y') if app.created_at else '' }}</div>
                 </div>
                 
                 {# Stage 2 #}
-                <div style="position: relative;">
-                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 2 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                <div class="csp-s-4fa00029d5b1">
+                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 2 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
                         {% if app.current_stage > 2 %}✓{% endif %}
                     </div>
-                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 2 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 2 %}var(--text-main){% else %}var(--text-muted){% endif %};">OCR Verification</div>
-                    <div style="font-size: 11px; color: var(--text-muted);">{% if app.current_stage >= 2 %}Auto-scanned{% else %}Awaiting scan{% endif %}</div>
+                    <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 2 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 2 %}var(--text-main){% else %}var(--text-muted){% endif %};">OCR Verification</div>
+                    <div class="csp-s-c029905cd705">{% if app.current_stage >= 2 %}Auto-scanned{% else %}Awaiting scan{% endif %}</div>
                 </div>
                 
                 {# Stage 3 #}
-                <div style="position: relative;">
-                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 3 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                <div class="csp-s-4fa00029d5b1">
+                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 3 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
                         {% if app.current_stage > 3 %}✓{% endif %}
                     </div>
-                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 3 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 3 %}var(--text-main){% else %}var(--text-muted){% endif %};">Credit Risk Review</div>
-                    <div style="font-size: 11px; color: var(--text-muted);">{% if app.current_stage >= 3 %}Assigned to Fatima{% else %}Awaiting desk{% endif %}</div>
+                    <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 3 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 3 %}var(--text-main){% else %}var(--text-muted){% endif %};">Credit Risk Review</div>
+                    <div class="csp-s-c029905cd705">{% if app.current_stage >= 3 %}Assigned to Fatima{% else %}Awaiting desk{% endif %}</div>
                 </div>
                 
                 {# Stage 4 #}
-                <div style="position: relative;">
-                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 4 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                <div class="csp-s-4fa00029d5b1">
+                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 4 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
                         {% if app.current_stage > 4 %}✓{% endif %}
                     </div>
-                    <div style="font-size: 13px; font-weight: {% if app.current_stage == 4 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 4 %}var(--text-main){% else %}var(--text-muted){% endif %};">Branch Concurrence</div>
-                    <div style="font-size: 11px; color: var(--text-muted);">{% if app.current_stage >= 4 %}Awaiting Adebayo{% else %}Awaiting signoff{% endif %}</div>
+                    <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 4 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 4 %}var(--text-main){% else %}var(--text-muted){% endif %};">Branch Concurrence</div>
+                    <div class="csp-s-c029905cd705">{% if app.current_stage >= 4 %}Awaiting Adebayo{% else %}Awaiting signoff{% endif %}</div>
                 </div>
                 
                 {# Stage 5 & 6 #}
-                <div style="position: relative;">
-                    <div style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 5 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                <div class="csp-s-4fa00029d5b1">
+                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 5 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
                         {% if app.current_stage > 5 %}✓{% endif %}
                     </div>
-                    <div style="font-size: 13px; font-weight: {% if app.current_stage >= 5 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 5 %}var(--text-main){% else %}var(--text-muted){% endif %};">Further Review</div>
-                    <div style="font-size: 11px; color: var(--text-muted);">Awaiting subsequent approval stages</div>
+                    <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage >= 5 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 5 %}var(--text-main){% else %}var(--text-muted){% endif %};">Further Review</div>
+                    <div class="csp-s-c029905cd705">Awaiting subsequent approval stages</div>
                 </div>
                 
             </div>
         </div>
         
         {# Quick Document List #}
-        <div class="page-card" style="margin-bottom: 0;">
-            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Documents Checklist</h3>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div class="page-card csp-s-b3a2297a12f5">
+            <h3 class="csp-s-93e773d1eb63">Documents Checklist</h3>
+            <div class="csp-s-baf2fda59eac">
                 {% set doc_categories = [
                     ('passport_photo', 'Passport Photograph'),
                     ('id_card', 'Valid ID Card'),
@@ -111,20 +111,20 @@
                         {% endif %}
                     {% endfor %}
                     
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+                    <div class="csp-s-9d119403466a">
                         {% if doc_info.found and doc_info.url %}
-                            <a href="{{ doc_info.url }}" data-document-preview data-document-title="{{ cat_name }}" style="color: var(--color-brand-shield); text-decoration: none; font-weight: 500;">
+                            <a href="{{ doc_info.url }}" data-document-preview data-document-title="{{ cat_name }}" class="csp-s-24755a6a9e78">
                                 {{ cat_name }} &nearr;
                             </a>
                         {% else %}
                             <span>{{ cat_name }}</span>
                         {% endif %}
                         {% if doc_info.status == 'verified' %}
-                            <span style="color: var(--accent-success); font-weight: bold;">✓</span>
+                            <span class="csp-s-ed426f3ea56b">✓</span>
                         {% elif doc_info.status == 'needs_review' %}
-                            <span style="color: var(--accent-warning); font-weight: bold;">⚠</span>
+                            <span class="csp-s-193e651b3606">⚠</span>
                         {% else %}
-                            <span style="color: var(--accent-danger); font-weight: bold;">✗</span>
+                            <span class="csp-s-8eb8ddaf732d">✗</span>
                         {% endif %}
                     </div>
                 {% endfor %}
@@ -132,15 +132,15 @@
         </div>
 
         {# Verification & Integrations Card #}
-        <div class="page-card" style="margin-bottom: 0;">
-            <h3 style="font-size: 14px; font-weight: 500; margin-bottom: 12px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 8px;">Verification & Screening</h3>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="page-card csp-s-b3a2297a12f5">
+            <h3 class="csp-s-93e773d1eb63">Verification & Screening</h3>
+            <div class="csp-s-18809276c4d1">
                 
                 {# Qore ID Verification #}
-                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+                <div class="csp-s-9d119403466a">
                     <span>Qore ID (BVN Check)</span>
                     {% if not VERIFICATION_ENABLED %}
-                        <span class="status-badge" style="background-color: var(--color-neutral-light, #f0f0f0); color: #666;">Not Configured</span>
+                        <span class="status-badge csp-s-11e9e4393854">Not Configured</span>
                     {% elif ver_check %}
                         {% if ver_check.is_valid %}
                             <span class="status-badge verified">Verified (Valid)</span>
@@ -155,14 +155,14 @@
                 </div>
                 
                 {# Credit Bureau Check #}
-                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+                <div class="csp-s-9d119403466a">
                     <span>{% if bureau_multiple_configured %}{% if bureau_sub %}{{ 'CRC' if bureau_sub.provider == 'crc' else 'Credit Registry' }}{% else %}Credit Bureau{% endif %}{% else %}{{ active_bureau_provider or 'Credit Bureau' }}{% endif %} Check</span>
                     {% if not BUREAU_REPORTING_ENABLED %}
-                        <span class="status-badge" style="background-color: var(--color-neutral-light, #f0f0f0); color: #666;">Not Configured</span>
+                        <span class="status-badge csp-s-11e9e4393854">Not Configured</span>
                     {% elif bureau_sub %}
-                        <div style="display: flex; gap: 6px; align-items: center;">
+                        <div class="csp-s-f8df590e4541">
                             {% if bureau_multiple_configured %}
-                                <span style="font-size: 11px; color: var(--text-muted);">({{ 'CRC' if bureau_sub.provider == 'crc' else 'CreditRegistry' }})</span>
+                                <span class="csp-s-c029905cd705">({{ 'CRC' if bureau_sub.provider == 'crc' else 'CreditRegistry' }})</span>
                             {% endif %}
                             <span class="status-badge {% if bureau_sub.status == 'success' %}verified{% else %}returned{% endif %}">
                                 {{ bureau_sub.status|replace('_', ' ')|title }}
@@ -174,10 +174,10 @@
                 </div>
                 
                 {# Youverify AML / Sanctions Screening #}
-                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+                <div class="csp-s-9d119403466a">
                     <span>Youverify (AML Screening)</span>
                     {% if not AML_SCREENING_ENABLED %}
-                        <span class="status-badge" style="background-color: var(--color-neutral-light, #f0f0f0); color: #666;">Not Configured</span>
+                        <span class="status-badge csp-s-11e9e4393854">Not Configured</span>
                     {% elif aml_check %}
                         <span class="status-badge {% if aml_check.status == 'clear' %}verified{% elif aml_check.status in ('pep_hit', 'sanctions_hit', 'review_required') %}returned{% else %}needs-review{% endif %}">
                             {{ aml_check.status|replace('_', ' ')|title }}
@@ -196,44 +196,44 @@
     <div class="app-detail-main">
         
         {# Checklist Readiness Summary #}
-        <div class="page-card" style="margin-bottom: 0;">
-            <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 8px;">Structural Checklist Verification</h2>
-            <div style="background-color: var(--bg-secondary); border-radius: 8px; padding: 16px; border: 0.5px solid var(--border-color);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; font-weight:500;">
+        <div class="page-card csp-s-b3a2297a12f5">
+            <h2 class="page-card-title csp-s-a0d7f3b22ab2">Structural Checklist Verification</h2>
+            <div class="csp-s-7f49720786bb">
+                <div class="csp-s-776e362a0624">
                     <span>Checklist Status: 18 of 22 items ready</span>
-                    <span style="color: var(--role-accent);">81% Complete</span>
+                    <span class="csp-s-6b5ed7bc331f">81% Complete</span>
                 </div>
-                <div style="height: 6px; background-color: var(--border-color); border-radius: 3px; overflow: hidden; margin-bottom: 8px;">
-                    <div style="width: 81%; height: 100%; background-color: var(--role-accent);"></div>
+                <div class="csp-s-6afb4593a038">
+                    <div class="csp-s-4ce1c3c63e3d"></div>
                 </div>
-                <div style="font-size:12px; color: var(--accent-danger); font-weight:500;">
+                <div class="csp-s-03b73410ceae">
                     ⚠ 4 critical checklist items still require attention.
                 </div>
             </div>
         </div>
 
         {# Credit Underwriter Recommendation Card #}
-        <div class="page-card" style="margin-bottom: 0;">
-            <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 12px;">Credit Risk Recommendation</h2>
-            <div style="border: 0.5px solid var(--border-color); border-radius: 8px; padding: 16px; background-color: rgba(26, 107, 69, 0.03);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span style="font-size: 13px; font-weight: 500; color: var(--text-main);">Verdict:</span>
+        <div class="page-card csp-s-b3a2297a12f5">
+            <h2 class="page-card-title csp-s-56b52be0a8d2">Credit Risk Recommendation</h2>
+            <div class="csp-s-685407943ebd">
+                <div class="csp-s-e4fc022ec9f5">
+                    <span class="csp-s-d3bfb4e04f8e">Verdict:</span>
                     <span class="status-badge approved">Recommend Approval</span>
                 </div>
-                <div style="font-size: 13px; color: var(--text-main); font-style: italic; margin-bottom: 8px;">
+                <div class="csp-s-02702e890f89">
                     "Applicant possesses adequate cashflow capacity. Guarantor strength and DSR parameters align with risk thresholds. Highly recommended for approval."
                 </div>
-                <div style="font-size: 11px; color: var(--text-muted); text-align: right;">
+                <div class="csp-s-a68e2c437e2f">
                     — Relationship Officer Assessment
                 </div>
             </div>
         </div>
 
         {# Forms & Documents Verification checklist groups #}
-        <div class="page-card" style="margin-bottom: 0;">
-            <h2 class="page-card-title" style="font-size: 16px; margin-bottom: 12px;">Verification Audit Groups</h2>
+        <div class="page-card csp-s-b3a2297a12f5">
+            <h2 class="page-card-title csp-s-56b52be0a8d2">Verification Audit Groups</h2>
             
-            <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="csp-s-18809276c4d1">
                 {% set checklist_items = [
                     ('loan_application_form', 'Loan Application Form (MMFB/CRM/01)'),
                     ('guarantor_form_1', 'Guarantor Form 1'),
@@ -245,16 +245,15 @@
                 
                 {% for item_key, item_label in checklist_items %}
                     {% set is_checked = checklist_map.get("concurrence:" ~ item_key, false) %}
-                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; border-bottom: 0.5px solid var(--color-divider); padding-bottom: 6px;">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; margin-bottom: 0;">
+                    <div class="csp-s-6c4537549942">
+                        <label class="csp-s-339da052c5e1">
                             <input type="checkbox" 
-                                   class="checklist-checkbox" 
+                                   class="checklist-checkbox csp-s-55c56a078e7b" 
                                    data-context="concurrence" 
                                    data-key="{{ item_key }}" 
                                    data-label="{{ item_label }}"
                                    {% if is_checked %}checked{% endif %}
-                                   onchange="toggleChecklistItem(this)"
-                                   style="width: 16px; height: 16px; accent-color: var(--color-brand-shield);">
+                                   data-checklist-toggle>
                             <span>{{ item_label }}</span>
                         </label>
                         <span class="status-badge-indicator" id="badge-concurrence-{{ item_key }}">
@@ -269,7 +268,7 @@
             </div>
         </div>
 
-        <script>
+        <script nonce="{{ csp_nonce }}">
             function toggleChecklistItem(checkbox) {
                 const context = checkbox.getAttribute('data-context');
                 const itemKey = checkbox.getAttribute('data-key');
@@ -311,16 +310,21 @@
                     }
                 });
             }
+            document.addEventListener('change', (event) => {
+                if (event.target.matches('[data-checklist-toggle]')) {
+                    toggleChecklistItem(event.target);
+                }
+            });
         </script>
 
         {# Concur / Return Action Bar #}
-        <div class="page-card" style="margin-bottom: 0;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div style="display:flex; gap:16px;">
-                    <a href="/applications/{{ app_id }}/return?type=officer" style="color: var(--accent-danger); font-size:13px; font-weight:500; text-decoration:none; display: flex; align-items: center;">Return to Relationship Officer</a>
+        <div class="page-card csp-s-b3a2297a12f5">
+            <div class="csp-s-5ffb91a26b04">
+                <div class="csp-s-4dd169649d12">
+                    <a href="/applications/{{ app_id }}/return?type=officer" class="csp-s-7ee1400d1897">Return to Relationship Officer</a>
                 </div>
                 
-                <form action="/applications/{{ app_id }}/approve" method="POST" style="display:flex; flex-direction:column; align-items:flex-end;">
+                <form action="/applications/{{ app_id }}/approve" method="POST" class="csp-s-f6cda3b21d28">
                     <button type="submit" class="btn-primary-filled" id="approveBtn">
                         Concur &amp; Forward for Review &rarr;
                     </button>
