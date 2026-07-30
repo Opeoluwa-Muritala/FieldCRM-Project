@@ -63,7 +63,7 @@ class SyncViewModel(
     }
 
     private suspend fun readQueueFromDb(): List<SyncItem> = withContext(Dispatchers.IO) {
-        database.appDatabaseQueries.selectQueuedItems().executeAsList().map { row ->
+        database.appDatabaseQueries.selectQueuedItems(System.currentTimeMillis()).executeAsList().map { row ->
             val label = when (row.action) {
                 "CREATE_APPLICATION"  -> "Loan application"
                 "UPDATE_APPLICATION"  -> "Application update"

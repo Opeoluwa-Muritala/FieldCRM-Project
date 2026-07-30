@@ -3,6 +3,8 @@ package com.fieldcrm.android.ui.navigation
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import android.net.Uri
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -43,7 +45,8 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun FieldCRMApp(
     appViewModel: AppViewModel = koinViewModel(),
-    promptManager: BiometricPromptManager? = null
+    promptManager: BiometricPromptManager? = null,
+    deepLinkApplicationId: String? = null
 ) {
     val loginViewModel: LoginViewModel = koinViewModel()
     val borrowerViewModel: BorrowerViewModel = koinViewModel()
@@ -63,6 +66,20 @@ fun FieldCRMApp(
     val syncUiState by syncViewModel.uiState.collectAsState()
 
     val backStack = rememberNavBackStack(Screen.Login)
+
+    LaunchedEffect(deepLinkApplicationId, appUiState.session) {
+        val id = deepLinkApplicationId
+        if (id != null && appUiState.session != null) {
+            applicationViewModel.resolveAuthorizedApplication(id) { application ->
+                if (application != null) {
+                    appViewModel.setSelectedApplication(application)
+                    backStack.clear()
+                    backStack.add(Screen.Dashboard)
+                    backStack.add(Screen.ApplicationDetail)
+                }
+            }
+        }
+    }
 
     var selectedDocUrl by remember { mutableStateOf("") }
     var selectedDocName by remember { mutableStateOf("") }
@@ -321,10 +338,15 @@ fun FieldCRMApp(
             onBackClick = { backStack.removeLastOrNull() },
             onNavigateTo = { screen, appId ->
                 if (screen == Screen.ApplicationDetail && appId != null) {
-                    val app = applicationUiState.applications.find { it.id == appId }
-                    if (app != null) appViewModel.setSelectedApplication(app)
+                    applicationViewModel.resolveAuthorizedApplication(appId) { app ->
+                        if (app != null) {
+                            appViewModel.setSelectedApplication(app)
+                            backStack.add(Screen.ApplicationDetail)
+                        }
+                    }
+                } else {
+                    backStack.add(screen)
                 }
-                backStack.add(screen)
             }
         )
 
@@ -375,6 +397,10 @@ fun FieldCRMApp(
             onNavigateToCommitteeQueue = { backStack.add(Screen.CommitteeQueue) },
             onNavigateToEdQueue = { backStack.add(Screen.EdQueue) },
             onNavigateToMdQueue = { backStack.add(Screen.MdQueue) },
+            onNavigateToLegalWorkspace = { backStack.add(Screen.LegalWorkspace) },
+            onNavigateToMccWorkspace = { backStack.add(Screen.MccWorkspace) },
+            onNavigateToInterestPresets = { backStack.add(Screen.InterestPresets) },
+            onNavigateToBranches = { backStack.add(Screen.BranchManagement) },
             syncState = syncUiState,
             onSyncNow = { syncViewModel.syncNow() }
         )
@@ -442,11 +468,12 @@ fun FieldCRMApp(
                 onNavigateToVisitationReport = { backStack.add(Screen.VisitationReport) },
                 onNavigateToGuarantorsForm = { backStack.add(Screen.GuarantorsForm) },
                 onNavigateToReview = {
-                    val reviewScreen: Screen? = when (appUiState.session?.role?.legacyUiRole) {
-                        UserRole.BRANCH_MANAGER -> Screen.BranchManagerReview
+                    val reviewScreen: Screen? = when (appUiState.session?.role) {
+                        UserRole.BRANCH_MANAGER, UserRole.BRANCH_SUPERVISOR -> Screen.BranchManagerReview
+                        UserRole.CREDIT_ANALYST -> Screen.CreditOfficerReview
                         UserRole.AUDITOR -> Screen.AuditorCompliance
                         UserRole.CRM -> Screen.CrmReview
-                        UserRole.EXECUTIVE -> Screen.ExecutiveApproval
+                        UserRole.EXECUTIVE, UserRole.HEAD_CRM -> Screen.ExecutiveApproval
                         UserRole.COMMITTEE -> Screen.CommitteeReview
                         UserRole.ED -> Screen.EdApproval
                         UserRole.MD -> Screen.MdApproval
@@ -462,7 +489,31 @@ fun FieldCRMApp(
                     selectedDocName = name
                     backStack.add(Screen.DocumentViewer)
                 },
-                onNavigateToOcrReview = { }
+                onNavigateToOcrReview = { },
+                onOpenClientSigning = {
+                    applicationViewModel.generateApplicationSigningLink(application.id) { url ->
+                        CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(url))
+                    }
+                },
+                onShareClientSigning = {
+                    applicationViewModel.generateApplicationSigningLink(application.id) { url ->
+                        val share = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, url)
+                        }
+                        context.startActivity(Intent.createChooser(share, "Share signing link"))
+                    }
+                },
+                onOpenGuarantorSigning = { slot ->
+                    applicationViewModel.generateApplicationSigningLink(application.id, slot) { url ->
+                        CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(url))
+                    }
+                },
+                onGenerateOffer = {
+                    applicationViewModel.generateOffer(application.id) {
+                        applicationViewModel.loadApplicationDetail(application.id)
+                    }
+                }
             )
         }
 
@@ -504,6 +555,7 @@ fun FieldCRMApp(
             DocumentUploadScreen(
                 applicationId = app?.id ?: "",
                 borrower = borrower,
+                role = appUiState.session?.role,
                 onBackClick = { backStack.removeLastOrNull() },
                 onComplete = { updatedBorrower ->
                     borrowerViewModel.updateBorrowerLocal(updatedBorrower) {
@@ -706,6 +758,35 @@ fun FieldCRMApp(
             }
         )
 
+        Screen.LegalWorkspace -> LegalWorkspaceScreen(
+            onBack = { backStack.removeLastOrNull() },
+            onOpenApplication = { appId ->
+                applicationViewModel.resolveAuthorizedApplication(appId) { app ->
+                    if (app != null) {
+                        appViewModel.setSelectedApplication(app)
+                        backStack.add(Screen.ValuationEditor)
+                    }
+                }
+            }
+        )
+
+        Screen.ValuationEditor -> ValuationEditorScreen(
+            applicationId = appUiState.selectedApplication?.id.orEmpty(),
+            onBack = { backStack.removeLastOrNull() }
+        )
+
+        Screen.MccWorkspace -> MccWorkspaceScreen(
+            onBack = { backStack.removeLastOrNull() }
+        )
+
+        Screen.InterestPresets -> InterestPresetScreen(
+            onBack = { backStack.removeLastOrNull() }
+        )
+
+        Screen.BranchManagement -> BranchManagementScreen(
+            onBack = { backStack.removeLastOrNull() }
+        )
+
         Screen.AuditTrail -> AuditTrailScreen(
             onBackClick = { backStack.removeLastOrNull() }
         )
@@ -818,7 +899,18 @@ fun FieldCRMApp(
                 totalPaid = servicingUiState.totalPaid,
                 outstanding = servicingUiState.outstanding,
                 canRecordPayment = canRecord,
-                onRecordPayment = { /* TODO: wire record-payment bottom sheet */ },
+                onRecordPayment = { amount, channel, reference ->
+                    app?.let {
+                        servicingViewModel.recordPayment(
+                            applicationId = it.id,
+                            amount = amount,
+                            channel = channel,
+                            bankRef = reference,
+                            paymentDate = null,
+                            onDone = {}
+                        )
+                    }
+                },
                 onBack = { backStack.removeLastOrNull() }
             )
         }

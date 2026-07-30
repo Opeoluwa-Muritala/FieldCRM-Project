@@ -1,4 +1,7 @@
 import json
+import secrets
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any, Literal
 from uuid import UUID
 
@@ -11,6 +14,8 @@ from app.core.dependencies import get_current_user
 from app.core.workflow import NEXT_STAGE, ROLE_LABELS, STAGE_ROLE
 from app.domains.documents.repository import DocumentRepository
 from app.domains.documents.service import DocumentService
+from app.domains.documents.direct_upload import DirectDocumentUploadService
+from app.domains.documents.schemas import DirectUploadAuthorizationRequest, DirectUploadFinalizeRequest
 from app.domains.ocr.repository import OcrRepository
 from app.domains.guarantors.repository import GuarantorRepository
 from app.domains.guarantors.service import GuarantorService
@@ -20,10 +25,15 @@ from app.domains.notifications.repository import NotificationRepository
 from app.domains.notifications.service import NotificationService
 from app.domains.visitation.repository import VisitationRepository
 from app.domains.visitation.service import VisitationService
+from app.domains.signing.repository import SigningRepository
+from app.domains.branches.repository import BranchRepository
+from app.domains.users.repository import UserRepository
+from app.domains.users.service import UserService
 from app.services.dashboard_service import DashboardService
 from app.services.email_service import EmailService
 from app.core.rate_limit import enforce_reset_limits
 from app.core.cache import cache_response, get_json, set_json
+from app.config import settings
 
 
 router = APIRouter()
@@ -46,6 +56,7 @@ class CreateApplicationRequest(BaseModel):
     amount: float | None = None
     tenure: int | None = None
     product_type: str | None = None
+    client_request_id: UUID | None = None
 
 
 class MobileBorrowerRequest(BaseModel):
@@ -109,18 +120,68 @@ class AuditChecklistRequest(BaseModel):
     exhibits_verified: bool = False
 
 
+class CreditChecklistItemRequest(BaseModel):
+    item_key: str
+    item_label: str = ""
+    is_checked: bool
+    context: str = "credit"
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8)
+    confirm_password: str
+
+
+class DisbursementRequest(BaseModel):
+    disbursed_amount: float = Field(gt=0)
+    disbursement_method: Literal["bank_transfer", "cheque", "cash", "direct_debit"]
+    disbursed_bank_ref: str | None = None
+    payment_date: date
+    interest_rate: float = Field(gt=0)
+    repayment_frequency: str
+    schedule_method: Literal["flat_rate", "reducing_balance"] = "flat_rate"
+
+
+class ValuationItemRequest(BaseModel):
+    item_id: UUID
+    appraised_value: float = Field(ge=0)
+    valuer_name: str | None = None
+    valuer_license_no: str | None = None
+    valuation_date: date | None = None
+
+
+class ValuationRequest(BaseModel):
+    items: list[ValuationItemRequest]
+
+
+class MccVoteRequest(BaseModel):
+    recommended_amount: float = Field(gt=0)
+    notes: str = ""
+
+
+class MccFinalizeRequest(BaseModel):
+    final_amount: float = Field(gt=0)
+
+
+class InterestPresetRequest(BaseModel):
+    loan_type: str = Field(min_length=1, max_length=50)
+    rate: float = Field(gt=0)
+    rate_type: str = Field(min_length=1, max_length=30)
+
+
+class BranchRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    code: str = Field(min_length=1, max_length=20)
+
+
+class UserRoleRequest(BaseModel):
+    role: str
+    branch_id: UUID | None = None
+
+
 def _role(user) -> str:
-    raw_role = user.role.lower().replace(" ", "_")
-    # The web workflow is authoritative.  The mobile endpoints are still
-    # backed by the former stage names, so normalize only at this boundary
-    # while their endpoint names are migrated.  API responses retain the
-    # canonical website role supplied by the server.
-    return {
-        "account_officer": "loan_officer",
-        "branch_supervisor": "branch_manager",
-        "credit_analyst": "committee",
-        "head_crm": "executive",
-    }.get(raw_role, raw_role)
+    return user.role.lower().replace(" ", "_")
 
 
 def _mobile_role(user) -> str:
@@ -370,6 +431,34 @@ async def clear_mobile_notifications(conn=Depends(db_conn), current_user=Depends
     return {"ok": True}
 
 
+@router.get("/queues/legal")
+async def get_mobile_legal_queue_exact(
+    page: int = Query(1, ge=1),
+    size: int = Query(50, ge=1, le=100),
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"legal", "system_admin"})
+    rows = await conn.fetch(
+        """
+        SELECT id, ref_no, applicant_name, amount, stage, updated_at,
+               COUNT(*) OVER() AS total_count
+        FROM loan_applications
+        WHERE org_id=$1
+          AND stage IN ('branch_manager_review','credit_analyst_review','crm_review')
+          AND deleted_at IS NULL
+        ORDER BY updated_at ASC
+        LIMIT $2 OFFSET $3
+        """,
+        current_user.org_id, size, (page - 1) * size,
+    )
+    total = int(rows[0]["total_count"]) if rows else 0
+    return {
+        "items": [{k: v for k, v in dict(row).items() if k != "total_count"} for row in rows],
+        "page": page, "size": size, "total": total,
+    }
+
+
 @router.get("/queues/{queue_name}")
 @cache_response(ttl_seconds=30)
 async def get_mobile_queue(
@@ -390,6 +479,7 @@ async def get_mobile_queue(
         "ed-approval",
         "md-approval",
         "executive-approval",
+        "legal",
     ],
     stage: str | None = None,
     limit: int = Query(50, ge=1, le=100),
@@ -399,10 +489,10 @@ async def get_mobile_queue(
 ):
     dashboard = DashboardService(conn)
     if queue_name == "loan-officer":
-        _ensure_roles(current_user, {"loan_officer", "system_admin"})
+        _ensure_roles(current_user, {"account_officer", "system_admin"})
         items = await dashboard.get_loan_officer_queue(current_user, stage=_stage_from_query(stage), limit=limit, offset=offset)
     elif queue_name == "visits-due":
-        _ensure_roles(current_user, {"loan_officer", "system_admin"})
+        _ensure_roles(current_user, {"account_officer", "system_admin"})
         items = await dashboard.get_visits_due_today(current_user)
     elif queue_name == "awaiting-concurrence":
         _ensure_roles(current_user, {"branch_manager", "system_admin"})
@@ -443,6 +533,21 @@ async def get_mobile_queue(
     elif queue_name == "executive-approval":
         _ensure_roles(current_user, {"md", "ed", "system_admin"})
         items = await dashboard.get_executive_queue(current_user)
+    elif queue_name == "legal":
+        _ensure_roles(current_user, {"legal", "system_admin"})
+        items = await conn.fetch(
+            """
+            SELECT id, ref_no, applicant_name, amount, stage, updated_at
+            FROM loan_applications
+            WHERE org_id=$1
+              AND stage IN ('branch_manager_review','credit_analyst_review','crm_review')
+              AND deleted_at IS NULL
+            ORDER BY updated_at ASC
+            LIMIT $2 OFFSET $3
+            """,
+            current_user.org_id, limit, offset,
+        )
+        items = [dict(item) for item in items]
     else:
         _ensure_roles(current_user, {"system_admin"})
         items = await dashboard.get_system_control_queue(current_user, limit=limit, offset=offset)
@@ -459,7 +564,7 @@ async def list_mobile_borrowers(
     current_user=Depends(get_current_user),
 ):
     repo = LoanRepository(conn)
-    officer_id = current_user.id if _role(current_user) == "loan_officer" else None
+    officer_id = current_user.id if _role(current_user) == "account_officer" else None
     applications, total = await repo.list_by_stage(
         org_id=current_user.org_id,
         stage=None,
@@ -522,10 +627,7 @@ async def list_mobile_applications(
         page=page,
         size=size,
     )
-    items = []
-    for app in applications:
-        full_app = await repo.get_by_id(app.id, current_user.org_id)
-        items.append(_mobile_application(full_app or app, current_user))
+    items = [_mobile_application(app, current_user) for app in applications]
     return {
         "items": items,
         "total": total,
@@ -540,7 +642,25 @@ async def create_mobile_application(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"loan_officer", "system_admin"})
+    _ensure_roles(current_user, {"account_officer", "system_admin"})
+    if payload.client_request_id:
+        existing = await conn.fetchrow(
+            """
+            SELECT * FROM loan_applications
+            WHERE org_id = $1 AND client_request_id = $2 AND deleted_at IS NULL
+            """,
+            current_user.org_id,
+            payload.client_request_id,
+        )
+        if existing:
+            existing_app = await LoanRepository(conn).get_by_id(
+                existing["id"], current_user.org_id
+            )
+            return {
+                "application": _mobile_application(existing_app, current_user),
+                "next": {"type": "intake_step", "step": 1},
+                "replayed": True,
+            }
     applicant_name = payload.applicant_name
     if payload.borrower_id:
         try:
@@ -556,6 +676,20 @@ async def create_mobile_application(
         applicant_name=applicant_name,
         user_id=current_user.id,
     )
+    if payload.client_request_id:
+        updated_idempotent = await conn.fetchrow(
+            """
+            UPDATE loan_applications
+            SET client_request_id = $1
+            WHERE id = $2 AND org_id = $3
+            RETURNING *
+            """,
+            payload.client_request_id,
+            app.id,
+            current_user.org_id,
+        )
+        if updated_idempotent:
+            app = await LoanRepository(conn).get_by_id(app.id, current_user.org_id) or app
     if payload.amount is not None or payload.tenure is not None:
         updated = await LoanRepository(conn).update_intake_details(
             loan_id=app.id,
@@ -581,14 +715,16 @@ async def get_mobile_application(
     documents = await DocumentRepository(conn).get_by_loan(application_id, current_user.org_id)
     visitation = await VisitationRepository(conn).get_by_loan(loan_id=application_id, org_id=current_user.org_id) or {}
     readiness = await LoanRepository(conn).get_readiness_summary(application_id, current_user.org_id)
-    workflow_events = await LoanRepository(conn).list_workflow_events(current_user.org_id)
+    workflow_events = await LoanRepository(conn).list_workflow_events_for_application(
+        current_user.org_id, application_id
+    )
     return {
         "application": app,
         "intake": await loan_service.get_wizard_data(application_id),
         "documents": documents,
         "visitation": visitation,
         "readiness": readiness,
-        "workflow_events": [dict(event) for event in workflow_events if str(event.get("loan_id")) == str(application_id)],
+        "workflow_events": [dict(event) for event in workflow_events],
     }
 
 
@@ -699,6 +835,54 @@ async def upload_mobile_document(
     return {"document": _mobile_document(document)}
 
 
+@router.post("/applications/{application_id}/documents/upload-authorizations")
+async def authorize_mobile_document_upload(
+    application_id: UUID,
+    payload: DirectUploadAuthorizationRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    await _get_application_or_404(conn, application_id, current_user)
+    crm_categories = {
+        "offer_acceptance", "disbursement_mandate", "direct_debit_mandate",
+        "insurance_certificate", "legal_clearance", "other_crm",
+    }
+    if payload.doc_type in crm_categories:
+        _ensure_roles(current_user, {"crm", "head_crm", "system_admin"})
+    authorization = await DirectDocumentUploadService(conn).authorize(
+        application_id=application_id,
+        org_id=current_user.org_id,
+        actor_id=current_user.id,
+        actor_role=current_user.role,
+        doc_type=payload.doc_type,
+        form_code=payload.form_code,
+        original_name=payload.filename,
+        mime_type=payload.mime_type,
+        size_bytes=payload.size_bytes,
+    )
+    return {"authorization": authorization}
+
+
+@router.post("/applications/{application_id}/documents/finalize")
+async def finalize_mobile_document_upload(
+    application_id: UUID,
+    payload: DirectUploadFinalizeRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    await _get_application_or_404(conn, application_id, current_user)
+    document = await DirectDocumentUploadService(conn).finalize(
+        intent_id=payload.intent_id,
+        application_id=application_id,
+        org_id=current_user.org_id,
+        actor_id=current_user.id,
+        public_id=payload.public_id,
+        version=payload.version,
+        signature=payload.signature,
+    )
+    return {"document": _mobile_document(document)}
+
+
 @router.get("/applications/{application_id}/documents")
 async def list_mobile_documents(
     application_id: UUID,
@@ -708,6 +892,27 @@ async def list_mobile_documents(
     await _get_application_or_404(conn, application_id, current_user)
     documents = await DocumentRepository(conn).get_by_loan(application_id, current_user.org_id)
     return {"items": [_mobile_document(document) for document in documents]}
+
+
+@router.post("/applications/{application_id}/crm-documents")
+async def upload_mobile_crm_document(
+    application_id: UUID,
+    file: UploadFile = File(...),
+    category: Literal[
+        "offer_acceptance", "disbursement_mandate", "direct_debit_mandate",
+        "insurance_certificate", "legal_clearance", "other_crm"
+    ] = Form(...),
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    await _get_application_or_404(conn, application_id, current_user)
+    _ensure_roles(current_user, {"crm", "head_crm", "system_admin"})
+    document = await _document_service(conn).save_upload(
+        loan_id=application_id, org_id=current_user.org_id,
+        doc_type=category, form_code=None, file=file,
+        uploaded_by=current_user.id, user_role=current_user.role,
+    )
+    return {"document": _mobile_document(document)}
 
 
 @router.get("/applications/{application_id}/ocr-fields")
@@ -827,7 +1032,7 @@ async def submit_mobile_credit_review(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"loan_officer", "branch_manager", "system_admin"})
+    _ensure_roles(current_user, {"account_officer", "branch_manager", "system_admin"})
     app = await _get_application_or_404(conn, application_id, current_user)
     if payload.recommendation_decision == "Recommend Approval":
         stage = "branch_approval"
@@ -1069,6 +1274,8 @@ async def search_mobile(
 @cache_response(ttl_seconds=60, application_scoped=True)
 async def get_mobile_audit_trail(
     application_id: UUID,
+    page: int = Query(1, ge=1),
+    size: int = Query(50, ge=1, le=100),
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
@@ -1081,9 +1288,10 @@ async def get_mobile_audit_trail(
         FROM workflow_events we
         JOIN users u ON u.id = we.triggered_by
         WHERE we.loan_id = $1 AND we.org_id = $2
-        ORDER BY we.created_at DESC
+        ORDER BY we.created_at DESC, we.id DESC
+        LIMIT $3 OFFSET $4
         """,
-        application_id, current_user.org_id,
+        application_id, current_user.org_id, size, (page - 1) * size,
     )
 
     stage_labels = {
@@ -1763,6 +1971,350 @@ async def advance_review_workflow(
     return {"application": updated, "stage": next_stage, "notified_role": next_role}
 
 
+@router.post("/applications/{application_id}/submit-to-branch-manager")
+async def submit_mobile_signed_intake_to_branch_manager(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    """JSON equivalent of the canonical signed-intake web transition."""
+    app = await _get_application_or_404(conn, application_id, current_user)
+    _ensure_roles(current_user, {"account_officer", "system_admin"})
+    if _role(current_user) != "system_admin" and app.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not have permission to submit this application")
+    if app.stage != "intake":
+        raise HTTPException(status_code=409, detail="Only an intake application can be submitted to the branch manager")
+
+    signed_version = await SigningRepository(conn).latest_version(
+        application_id, "applicant_stage", "intake"
+    )
+    if not signed_version or signed_version["status"] != "signed":
+        raise HTTPException(status_code=409, detail="The client must sign the intake before it can be submitted")
+
+    repo = LoanRepository(conn)
+    await repo.assign_default_branch_manager(application_id, current_user.org_id)
+    updated = await repo.advance_stage(application_id, current_user.org_id, "branch_manager_review")
+    if not updated:
+        raise HTTPException(status_code=409, detail="Application could not be submitted")
+
+    await AuditService(conn).log(
+        application_id=str(application_id),
+        org_id=str(current_user.org_id),
+        action="Signed intake submitted to Branch Manager",
+        from_stage="intake",
+        to_stage="branch_manager_review",
+        actor_id=str(current_user.id),
+        actor_role=current_user.role,
+    )
+    return {"application": _mobile_application(updated, current_user), "stage": updated.stage}
+
+
+@router.post("/applications/{application_id}/credit-bureau-pull")
+async def pull_mobile_credit_bureau_report(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    app = await _get_application_or_404(conn, application_id, current_user)
+    _ensure_roles(current_user, {"credit_analyst", "system_admin"})
+    from app.domains.credit_bureau.service import CreditBureauService
+
+    service = CreditBureauService(conn)
+    session_code = await service.get_session_code()
+    if not session_code:
+        raise HTTPException(status_code=503, detail="Credit bureau authentication is unavailable")
+    registry_id = await service.find_customer(
+        session_code=session_code, bvn=app.bvn, phone=app.phone, name=app.applicant_name
+    )
+    if not registry_id:
+        raise HTTPException(status_code=404, detail="Applicant was not found by the credit bureau")
+    report = await service.get_report(
+        loan_application_id=str(application_id),
+        registry_id=registry_id,
+        session_code=session_code,
+    )
+    return {"application_id": application_id, "report": report}
+
+
+@router.get("/applications/{application_id}/credit-checklist")
+async def get_mobile_credit_checklist(
+    application_id: UUID,
+    context: str = Query("credit", min_length=1, max_length=40),
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    await _get_application_or_404(conn, application_id, current_user)
+    rows = await conn.fetch(
+        """
+        SELECT item_key, item_label, is_checked, checked_at
+        FROM checklist_items
+        WHERE loan_application_id = $1 AND context = $2
+        ORDER BY item_key
+        """,
+        application_id, context,
+    )
+    return {"application_id": application_id, "context": context, "items": [dict(row) for row in rows]}
+
+
+@router.patch("/applications/{application_id}/credit-checklist")
+async def update_mobile_credit_checklist(
+    application_id: UUID,
+    payload: CreditChecklistItemRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    app = await _get_application_or_404(conn, application_id, current_user)
+    _ensure_roles(current_user, {"credit_analyst", "system_admin"})
+    row = await conn.fetchrow(
+        """
+        INSERT INTO checklist_items
+            (loan_application_id, context, item_key, item_label, is_checked, checked_by, checked_at)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        ON CONFLICT (loan_application_id, context, item_key)
+        DO UPDATE SET item_label = EXCLUDED.item_label,
+                      is_checked = EXCLUDED.is_checked,
+                      checked_by = EXCLUDED.checked_by,
+                      checked_at = NOW()
+        RETURNING item_key, item_label, is_checked, checked_at
+        """,
+        application_id, payload.context, payload.item_key, payload.item_label,
+        payload.is_checked, current_user.id,
+    )
+    await AuditService(conn).log(
+        application_id=str(application_id), org_id=str(current_user.org_id),
+        action="Credit checklist updated", from_stage=app.stage, to_stage=app.stage,
+        actor_id=str(current_user.id), actor_role=current_user.role,
+        reason=f"{payload.item_label or payload.item_key}: {payload.is_checked}",
+    )
+    return dict(row)
+
+
+def _signing_link(request: Request, path: str, claims: dict[str, Any], minutes: int) -> dict[str, Any]:
+    from jose import jwt
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=minutes)
+    token = jwt.encode(
+        {**claims, "exp": expires_at, "nonce": secrets.token_hex(16)},
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+    )
+    return {
+        "share_url": f"{str(request.base_url).rstrip('/')}/{path}/{token}",
+        "expires_at": expires_at,
+    }
+
+
+@router.post("/applications/{application_id}/client-link")
+async def generate_mobile_client_link(
+    request: Request,
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    app = await _get_application_or_404(conn, application_id, current_user)
+    _ensure_roles(current_user, {"account_officer", "system_admin"})
+    if _role(current_user) != "system_admin" and app.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not have permission to share this application")
+    if app.stage != "intake":
+        raise HTTPException(status_code=409, detail="Only an intake application can be shared with the client")
+    return _signing_link(
+        request, "client-access",
+        {"type": "existing_client_signing", "app_id": str(application_id),
+         "org_id": str(current_user.org_id), "officer_id": str(current_user.id)},
+        10,
+    )
+
+
+@router.post("/applications/{application_id}/guarantor-link/{slot}")
+async def generate_mobile_guarantor_link(
+    request: Request,
+    application_id: UUID,
+    slot: int = Path(..., ge=1, le=2),
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    await _get_application_or_404(conn, application_id, current_user)
+    _ensure_roles(
+        current_user,
+        {"account_officer", "branch_manager", "branch_supervisor", "credit_analyst", "system_admin"},
+    )
+    return _signing_link(
+        request, "guarantor-access",
+        {"type": "guarantor_signing", "app_id": str(application_id), "slot": slot,
+         "org_id": str(current_user.org_id), "officer_id": str(current_user.id)},
+        1440,
+    )
+
+
+@router.get("/applications/{application_id}/offer")
+async def get_mobile_offer_readiness(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    app = await _get_application_or_404(conn, application_id, current_user)
+    offer = await conn.fetchrow(
+        """
+        SELECT id, status, interest_rate_snapshot, generated_pdf_url, created_at
+        FROM offer_letters
+        WHERE loan_application_id = $1
+        ORDER BY created_at DESC LIMIT 1
+        """,
+        application_id,
+    )
+    return {
+        "ready": app.stage == "disbursement_ready",
+        "stage": app.stage,
+        "offer": dict(offer) if offer else None,
+    }
+
+
+@router.post("/applications/{application_id}/offer", status_code=status.HTTP_201_CREATED)
+async def generate_mobile_offer(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    app = await _get_application_or_404(conn, application_id, current_user)
+    _ensure_roles(current_user, {"crm", "system_admin"})
+    if app.stage != "disbursement_ready":
+        raise HTTPException(status_code=409, detail="Application is not ready for an offer letter")
+    existing = await conn.fetchrow(
+        "SELECT * FROM offer_letters WHERE loan_application_id = $1 ORDER BY created_at DESC LIMIT 1",
+        application_id,
+    )
+    if existing:
+        return {"offer": dict(existing), "replayed": True}
+
+    preset = await conn.fetchrow(
+        "SELECT rate FROM interest_rate_presets WHERE loan_type = $1 ORDER BY set_at DESC LIMIT 1",
+        app.loan_type,
+    )
+    rate = preset["rate"] if preset else Decimal("24.0")
+    clause_row = await conn.fetchrow(
+        "SELECT clause_keys FROM offer_letter_clause_sets WHERE loan_type = $1", app.loan_type
+    )
+    clauses = clause_row["clause_keys"] if clause_row else [
+        "Interest is subject to market review.",
+        "Penalty fees apply to past due amounts.",
+        "Global Standing Instruction applies to the facility.",
+    ]
+    if isinstance(clauses, str):
+        clauses = json.loads(clauses)
+    from app.services.pdf_service import generate_offer_letter_pdf
+    from app.services.cloud_storage_service import upload_document
+    org_name = await conn.fetchval("SELECT name FROM organisations WHERE id = $1", current_user.org_id)
+    pdf_bytes = generate_offer_letter_pdf(
+        loan={"ref_no": app.ref_no, "applicant_name": app.applicant_name,
+              "amount": app.amount or 0, "tenor_months": app.tenor_months or 12,
+              "loan_type": app.loan_type, "repayment_frequency": "Monthly"},
+        org={"name": org_name or "Organisation"}, rate=float(rate), clauses=list(clauses),
+    )
+    cloud = upload_document(
+        file_bytes=pdf_bytes, mime_type="application/pdf", org_id=str(current_user.org_id),
+        loan_id=str(application_id), doc_type="offer_letter", filename_stem=application_id.hex,
+    )
+    if not cloud or not cloud.public_id:
+        raise HTTPException(status_code=503, detail="Offer letter storage is unavailable")
+    pdf_url = f"cloudinary://{cloud.public_id}"
+    offer = await conn.fetchrow(
+        """
+        INSERT INTO offer_letters
+            (loan_application_id, loan_type, clause_set_version, clauses_included,
+             interest_rate_snapshot, generated_pdf_url, generated_by, status)
+        VALUES ($1, $2, 'v1', $3, $4, $5, $6, 'issued')
+        RETURNING *
+        """,
+        application_id, app.loan_type, json.dumps(clauses), rate, pdf_url, current_user.id,
+    )
+    await DocumentRepository(conn).create(
+        loan_id=application_id, org_id=current_user.org_id, doc_type="offer_letter",
+        form_code=None, original_name="offer_letter.pdf", stored_path=pdf_url,
+        mime_type="application/pdf", size_bytes=len(pdf_bytes), uploaded_by=current_user.id,
+        cloud_public_id=cloud.public_id, cloud_preview_url=cloud.preview_url,
+    )
+    return {"offer": dict(offer)}
+
+
+@router.get("/applications/{application_id}/disbursement")
+async def get_mobile_disbursement(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    app = await _get_application_or_404(conn, application_id, current_user)
+    offer_exists = await conn.fetchval(
+        """
+        SELECT EXISTS(
+            SELECT 1 FROM documents
+            WHERE loan_id = $1 AND org_id = $2 AND doc_type = 'offer_letter'
+              AND deleted_at IS NULL
+        )
+        """,
+        application_id, current_user.org_id,
+    )
+    return {
+        "application": _mobile_application(app, current_user),
+        "can_record": _role(current_user) in {"crm", "system_admin"}
+                      and app.stage == "disbursement_ready" and bool(offer_exists),
+        "offer_generated": bool(offer_exists),
+    }
+
+
+@router.post("/applications/{application_id}/disbursement")
+async def record_mobile_disbursement(
+    application_id: UUID,
+    payload: DisbursementRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    await _get_application_or_404(conn, application_id, current_user)
+    _ensure_roles(current_user, {"crm", "system_admin"})
+    offer_exists = await conn.fetchval(
+        """
+        SELECT EXISTS(
+            SELECT 1 FROM documents
+            WHERE loan_id = $1 AND org_id = $2 AND doc_type = 'offer_letter'
+              AND deleted_at IS NULL
+        )
+        """,
+        application_id, current_user.org_id,
+    )
+    if not offer_exists:
+        raise HTTPException(status_code=409, detail="Generate the offer letter before recording disbursement")
+    disbursement_ref = f"DIS-{datetime.now().strftime('%Y%m%d')}-{secrets.token_hex(4).upper()}"
+    app = await LoanRepository(conn).disburse(
+        loan_id=application_id, org_id=current_user.org_id,
+        disbursed_amount=payload.disbursed_amount,
+        disbursement_method=payload.disbursement_method,
+        disbursed_bank_ref=payload.disbursed_bank_ref,
+        disbursement_ref=disbursement_ref,
+        interest_rate=payload.interest_rate,
+        repayment_frequency=payload.repayment_frequency,
+        schedule_method=payload.schedule_method,
+    )
+    if not app:
+        raise HTTPException(status_code=409, detail="Application is not ready for disbursement")
+    from app.services.loan_servicing_service import LoanServicingService
+    service = LoanServicingService(conn)
+    await service.create_schedule(
+        loan_id=application_id, org_id=current_user.org_id,
+        principal=payload.disbursed_amount, annual_rate=payload.interest_rate,
+        tenor_months=app.tenor_months or 12, frequency=payload.repayment_frequency,
+        method=payload.schedule_method, disbursement_date=payload.payment_date,
+    )
+    await AuditService(conn).log(
+        application_id=str(application_id), org_id=str(current_user.org_id),
+        action="Disbursement Recorded", from_stage="disbursement_ready", to_stage="disbursed",
+        actor_id=str(current_user.id), actor_role=current_user.role,
+    )
+    schedule = await service.get_schedule(loan_id=application_id, org_id=current_user.org_id)
+    return {
+        "application": _mobile_application(app, current_user),
+        "disbursement_ref": disbursement_ref,
+        "schedule": schedule,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Repayment schedule + payments
 # ---------------------------------------------------------------------------
@@ -1845,13 +2397,411 @@ async def get_mobile_par_dashboard(
     return {"par": par, "loans": [dict(l) if hasattr(l, 'keys') else l for l in loans]}
 
 
+@router.post("/settings/change-password")
+async def change_mobile_password(
+    payload: ChangePasswordRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    if payload.new_password != payload.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+    if payload.new_password == payload.current_password:
+        raise HTTPException(status_code=400, detail="New password must differ from the current password")
+    from app.domains.auth.repository import AuthRepository
+    from app.domains.auth.service import AuthService
+    changed = await AuthService(AuthRepository(conn)).change_password(
+        str(current_user.id), payload.current_password, payload.new_password
+    )
+    if not changed:
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    return {"changed": True}
+
+
+@router.get("/system-activity")
+async def get_mobile_system_activity(
+    page: int = Query(1, ge=1),
+    size: int = Query(50, ge=1, le=100),
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"auditor", "system_admin"})
+    rows = await conn.fetch(
+        """
+        SELECT we.*, u.full_name AS actor_name, COUNT(*) OVER() AS total_count
+        FROM workflow_events we
+        LEFT JOIN users u ON u.id = we.triggered_by AND u.org_id = we.org_id
+        WHERE we.org_id = $1
+        ORDER BY we.created_at DESC, we.id DESC
+        LIMIT $2 OFFSET $3
+        """,
+        current_user.org_id, size, (page - 1) * size,
+    )
+    total = int(rows[0]["total_count"]) if rows else 0
+    return {
+        "items": [
+            {key: value for key, value in dict(row).items() if key != "total_count"}
+            for row in rows
+        ],
+        "page": page, "size": size, "total": total,
+    }
+
+
+@router.get("/queues/legal")
+async def get_mobile_legal_queue(
+    page: int = Query(1, ge=1),
+    size: int = Query(50, ge=1, le=100),
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"legal", "system_admin"})
+    rows = await conn.fetch(
+        """
+        SELECT la.id, la.ref_no, la.applicant_name, la.amount, la.stage, la.updated_at,
+               u.full_name AS officer_name, bm.full_name AS branch_manager_name,
+               COUNT(*) OVER() AS total_count
+        FROM loan_applications la
+        LEFT JOIN users u ON u.id = la.created_by AND u.org_id = la.org_id
+        LEFT JOIN users bm ON bm.id = la.branch_manager_id AND bm.org_id = la.org_id
+        WHERE la.org_id = $1
+          AND la.stage IN ('branch_manager_review', 'credit_analyst_review', 'crm_review')
+          AND la.deleted_at IS NULL
+        ORDER BY la.updated_at ASC
+        LIMIT $2 OFFSET $3
+        """,
+        current_user.org_id, size, (page - 1) * size,
+    )
+    total = int(rows[0]["total_count"]) if rows else 0
+    return {
+        "items": [{k: v for k, v in dict(row).items() if k != "total_count"} for row in rows],
+        "page": page, "size": size, "total": total,
+    }
+
+
+@router.get("/applications/{application_id}/valuation")
+async def get_mobile_valuation(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    app = await _get_application_or_404(conn, application_id, current_user)
+    _ensure_roles(current_user, {"legal", "system_admin"})
+    items = await conn.fetch(
+        """
+        SELECT id, item_number, item_name, serial_number, description, estimated_value,
+               appraised_value, valuer_name, valuer_license_no, valuation_date,
+               loan_to_value_ratio
+        FROM pledged_items
+        WHERE loan_id = $1
+        ORDER BY item_number
+        """,
+        application_id,
+    )
+    return {"application": _mobile_application(app, current_user), "items": [dict(item) for item in items]}
+
+
+@router.put("/applications/{application_id}/valuation")
+async def update_mobile_valuation(
+    application_id: UUID,
+    payload: ValuationRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    app = await _get_application_or_404(conn, application_id, current_user)
+    _ensure_roles(current_user, {"legal", "system_admin"})
+    updated = []
+    for item in payload.items:
+        value = Decimal(str(item.appraised_value))
+        ltv = Decimal(str(app.amount)) / value if value > 0 and app.amount else None
+        row = await conn.fetchrow(
+            """
+            UPDATE pledged_items
+            SET appraised_value=$1, valuer_name=$2, valuer_license_no=$3,
+                valuation_date=$4, loan_to_value_ratio=$5
+            WHERE id=$6 AND loan_id=$7
+            RETURNING id, item_number, item_name, appraised_value, valuer_name,
+                      valuer_license_no, valuation_date, loan_to_value_ratio
+            """,
+            value, item.valuer_name, item.valuer_license_no, item.valuation_date,
+            ltv, item.item_id, application_id,
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail=f"Pledged item {item.item_id} was not found")
+        updated.append(dict(row))
+    await AuditService(conn).log(
+        application_id=str(application_id), org_id=str(current_user.org_id),
+        action="Collateral Valuation Recorded", from_stage=app.stage, to_stage=app.stage,
+        actor_id=str(current_user.id), actor_role=current_user.role,
+        reason=f"{len(updated)} pledged item(s) valued",
+    )
+    return {"items": updated}
+
+
+@router.get("/mcc")
+async def get_mobile_mcc_queue(
+    page: int = Query(1, ge=1),
+    size: int = Query(50, ge=1, le=100),
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"ed", "md", "system_admin"})
+    rows = await conn.fetch(
+        """
+        SELECT id, ref_no, applicant_name, amount, stage, updated_at,
+               COUNT(*) OVER() AS total_count
+        FROM loan_applications
+        WHERE org_id=$1 AND deleted_at IS NULL AND stage IN ('ed_approval','md_approval')
+        ORDER BY updated_at DESC
+        LIMIT $2 OFFSET $3
+        """,
+        current_user.org_id, size, (page - 1) * size,
+    )
+    total = int(rows[0]["total_count"]) if rows else 0
+    return {
+        "items": [{k: v for k, v in dict(row).items() if k != "total_count"} for row in rows],
+        "page": page, "size": size, "total": total,
+    }
+
+
+@router.get("/applications/{application_id}/mcc")
+async def get_mobile_mcc_application(
+    application_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    app = await _get_application_or_404(conn, application_id, current_user)
+    _ensure_roles(current_user, {"ed", "md", "system_admin"})
+    if app.stage not in {"ed_approval", "md_approval"}:
+        raise HTTPException(status_code=409, detail="This dossier is not available for MCC review")
+    votes = await conn.fetch(
+        """
+        SELECT cv.id, cv.member_id, u.full_name AS member_name, cv.recommendation,
+               cv.recommended_amount, cv.notes, cv.created_at
+        FROM committee_votes cv
+        JOIN users u ON u.id=cv.member_id AND u.org_id=cv.org_id
+        WHERE cv.loan_id=$1 AND cv.org_id=$2
+        ORDER BY cv.created_at
+        """,
+        application_id, current_user.org_id,
+    )
+    valuation = await conn.fetch(
+        "SELECT * FROM pledged_items WHERE loan_id=$1 ORDER BY item_number", application_id
+    )
+    return {
+        "application": _mobile_application(app, current_user),
+        "votes": [dict(vote) for vote in votes],
+        "valuation": [dict(item) for item in valuation],
+    }
+
+
+@router.post("/applications/{application_id}/mcc-vote", status_code=status.HTTP_201_CREATED)
+async def submit_mobile_mcc_vote(
+    application_id: UUID,
+    payload: MccVoteRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    app = await _get_application_or_404(conn, application_id, current_user)
+    _ensure_roles(current_user, {"ed", "md", "system_admin"})
+    if app.stage not in {"ed_approval", "md_approval"}:
+        raise HTTPException(status_code=409, detail="This dossier is not available for MCC voting")
+    try:
+        vote = await conn.fetchrow(
+            """
+            INSERT INTO committee_votes
+                (loan_id, org_id, member_id, recommendation, notes, recommended_amount)
+            VALUES ($1,$2,$3,'approve',$4,$5)
+            RETURNING *
+            """,
+            application_id, current_user.org_id, current_user.id,
+            payload.notes, payload.recommended_amount,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="You have already voted on this dossier") from exc
+    return {"vote": dict(vote)}
+
+
+@router.post("/applications/{application_id}/mcc-finalize")
+async def finalize_mobile_mcc(
+    application_id: UUID,
+    payload: MccFinalizeRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    await _get_application_or_404(conn, application_id, current_user)
+    _ensure_roles(current_user, {"ed", "md"})
+    row = await conn.fetchrow(
+        """
+        UPDATE loan_applications
+        SET amount=$1, mcc_finalized_by=$2, mcc_finalized_at=NOW(), updated_at=NOW()
+        WHERE id=$3 AND org_id=$4 AND stage IN ('ed_approval','md_approval')
+        RETURNING *
+        """,
+        Decimal(str(payload.final_amount)), current_user.id, application_id, current_user.org_id,
+    )
+    if not row:
+        raise HTTPException(status_code=409, detail="Final MCC amount could not be set")
+    return {"application": _mobile_application(
+        await LoanRepository(conn).get_by_id(application_id, current_user.org_id), current_user
+    )}
+
+
+@router.get("/admin/interest-presets")
+async def get_mobile_interest_presets(
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"system_admin"})
+    rows = await conn.fetch(
+        """
+        SELECT id, loan_type, rate, rate_type, effective_from, set_at
+        FROM interest_rate_presets
+        ORDER BY set_at DESC
+        """
+    )
+    return {"items": [dict(row) for row in rows]}
+
+
+@router.post("/admin/interest-presets", status_code=status.HTTP_201_CREATED)
+async def create_mobile_interest_preset(
+    payload: InterestPresetRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"system_admin"})
+    row = await conn.fetchrow(
+        """
+        INSERT INTO interest_rate_presets (loan_type, rate, rate_type, set_by)
+        VALUES ($1,$2,$3,$4)
+        RETURNING id, loan_type, rate, rate_type, effective_from, set_at
+        """,
+        payload.loan_type, Decimal(str(payload.rate)), payload.rate_type, current_user.id,
+    )
+    return dict(row)
+
+
+@router.delete("/admin/interest-presets/{preset_id}")
+async def delete_mobile_interest_preset(
+    preset_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"system_admin"})
+    result = await conn.execute(
+        """
+        DELETE FROM interest_rate_presets
+        WHERE id=$1 AND set_by IN (SELECT id FROM users WHERE org_id=$2)
+        """,
+        preset_id, current_user.org_id,
+    )
+    if result != "DELETE 1":
+        raise HTTPException(status_code=404, detail="Interest preset not found")
+    return {"deleted": str(preset_id)}
+
+
+@router.put("/admin/interest-presets/{preset_id}")
+async def update_mobile_interest_preset(
+    preset_id: UUID,
+    payload: InterestPresetRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"system_admin"})
+    row = await conn.fetchrow(
+        """
+        UPDATE interest_rate_presets
+        SET loan_type=$1, rate=$2, rate_type=$3, set_by=$4, set_at=NOW()
+        WHERE id=$5 AND set_by IN (SELECT id FROM users WHERE org_id=$6)
+        RETURNING id, loan_type, rate, rate_type, effective_from, set_at
+        """,
+        payload.loan_type, Decimal(str(payload.rate)), payload.rate_type,
+        current_user.id, preset_id, current_user.org_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Interest preset not found")
+    return dict(row)
+
+
+@router.get("/branches")
+async def get_mobile_branches(
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    return {"items": await BranchRepository(conn).list_by_org(current_user.org_id)}
+
+
+@router.post("/branches", status_code=status.HTTP_201_CREATED)
+async def create_mobile_branch(
+    payload: BranchRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"system_admin"})
+    return await BranchRepository(conn).create(current_user.org_id, payload.name, payload.code)
+
+
+@router.put("/users/{user_id}/role")
+async def update_mobile_user_role(
+    user_id: UUID,
+    payload: UserRoleRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"system_admin"})
+    service = UserService(UserRepository(conn))
+    user = await service.update_user_role(current_user, user_id, payload.role)
+    if payload.branch_id is not None:
+        user = await service.update_user_branch(current_user, user_id, payload.branch_id)
+    return {"id": user.id, "role": user.role, "branch_id": user.branch_id}
+
+
+@router.post("/users/{user_id}/deactivate")
+async def deactivate_mobile_user(
+    user_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"system_admin"})
+    await UserService(UserRepository(conn)).deactivate_managed_user(current_user, user_id)
+    return {"id": user_id, "active": False}
+
+
+@router.get("/reports/par/loans")
+async def get_mobile_par_loans(
+    page: int = Query(1, ge=1),
+    size: int = Query(25, ge=1, le=100),
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"crm", "head_crm", "ed", "md", "auditor", "system_admin"})
+    loans, total = await LoanRepository(conn).list_disbursed_page(
+        current_user.org_id, limit=size, offset=(page - 1) * size
+    )
+    return {
+        "items": [_mobile_application(loan, current_user) for loan in loans],
+        "page": page, "size": size, "total": total,
+    }
+
+
+@router.get("/dashboards/{role_name}")
+async def get_mobile_role_dashboard(
+    role_name: str,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    current_role = _role(current_user)
+    if role_name != current_role and current_role != "system_admin":
+        raise HTTPException(status_code=403, detail="You may only access your assigned dashboard")
+    data = await DashboardService(conn).get_dashboard_data(current_user)
+    return {"role": current_role, "metrics": _mobile_dashboard_metrics(data), "data": data}
+
+
 @router.post("/generate-share-link")
 async def generate_share_link_mobile(
     request: Request,
     current_user=Depends(get_current_user),
 ):
     """Mobile endpoint to generate a client shareable link."""
-    _ensure_roles(current_user, {"loan_officer", "system_admin"})
+    _ensure_roles(current_user, {"account_officer", "system_admin"})
     from jose import jwt
     from app.config import settings
     import secrets

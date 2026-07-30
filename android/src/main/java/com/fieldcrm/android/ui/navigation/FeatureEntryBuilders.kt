@@ -67,6 +67,11 @@ internal fun EntryProviderScope<NavKey>.reviewEntryBuilder(
     content: @Composable (Screen) -> Unit
 ) {
     entry<Screen.BranchManagerReview> { content(it) }
+    entry<Screen.LegalWorkspace> { content(it) }
+    entry<Screen.ValuationEditor> { content(it) }
+    entry<Screen.MccWorkspace> { content(it) }
+    entry<Screen.InterestPresets> { content(it) }
+    entry<Screen.BranchManagement> { content(it) }
     entry<Screen.AuditorCompliance> { content(it) }
     entry<Screen.AdminMcrApproval> { content(it) }
     entry<Screen.WorkflowEventAudit> { content(it) }

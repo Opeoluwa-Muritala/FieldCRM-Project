@@ -15,6 +15,11 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+        buildConfigField(
+            "String",
+            "API_BASE_URL",
+            "\"${providers.gradleProperty("FIELDCRM_API_BASE_URL").get()}\""
+        )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -46,6 +51,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     // composeOptions block removed — Kotlin 2.0 plugin.compose bundles the compiler
@@ -105,6 +111,7 @@ dependencies {
     // Biometric authentication
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.browser)
 
     // Encrypted storage — session tokens and document files
     implementation(libs.androidx.security.crypto)

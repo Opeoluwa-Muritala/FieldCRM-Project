@@ -63,7 +63,8 @@ class SyncRepository(
     }
 
     suspend fun syncQueueWithServer(): Boolean {
-        val queuedItems = queries.selectQueuedItems().executeAsList()
+        val now = ClockSystem.nowEpochMillis()
+        val queuedItems = queries.selectQueuedItems(now).executeAsList()
         if (queuedItems.isEmpty()) return true
 
         var overallSuccess = true
@@ -119,9 +120,23 @@ class SyncRepository(
                 if (success) {
                     queries.deleteQueueItem(item.id)
                 } else {
+                    val delayMillis = (30_000L * (1L shl item.attempts.coerceAtMost(7).toInt()))
+                        .coerceAtMost(3_600_000L)
+                    queries.recordQueueFailure(
+                        last_error = "Server rejected queued ${item.action}",
+                        next_retry_at = now + delayMillis,
+                        id = item.id,
+                    )
                     overallSuccess = false
                 }
             } catch (e: Exception) {
+                val delayMillis = (30_000L * (1L shl item.attempts.coerceAtMost(7).toInt()))
+                    .coerceAtMost(3_600_000L)
+                queries.recordQueueFailure(
+                    last_error = e.message ?: "Network error",
+                    next_retry_at = now + delayMillis,
+                    id = item.id,
+                )
                 overallSuccess = false
             }
         }

@@ -11,6 +11,7 @@ import com.fieldcrm.shared.db.AppDatabase
 import com.fieldcrm.shared.repository.SyncRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.fieldcrm.android.BuildConfig
 
 class AndroidSyncWorker(
     appContext: Context,
@@ -31,10 +32,10 @@ class AndroidSyncWorker(
             val session = SessionStore(applicationContext).load() ?: return@withContext Result.failure()
 
             // Build Ktor client pointing to the deployed online backend.
-            val client = FieldCRMClient(baseUrl = "https://fieldcrm.onrender.com")
+            val client = FieldCRMClient(baseUrl = BuildConfig.API_BASE_URL)
             client.setToken(session.token)
 
-            val mobileApi = MobileApiServiceImpl(client.httpClient, "https://fieldcrm.onrender.com")
+            val mobileApi = MobileApiServiceImpl(client.httpClient, BuildConfig.API_BASE_URL)
             mobileApi.setToken(session.token)
             if (mobileApi.getMe() == null) {
                 return@withContext Result.failure()

@@ -72,10 +72,14 @@ fun DashboardScreenView(
     onNavigateToCommitteeQueue: () -> Unit = {},
     onNavigateToEdQueue: () -> Unit = {},
     onNavigateToMdQueue: () -> Unit = {},
+    onNavigateToLegalWorkspace: () -> Unit = {},
+    onNavigateToMccWorkspace: () -> Unit = {},
+    onNavigateToInterestPresets: () -> Unit = {},
+    onNavigateToBranches: () -> Unit = {},
     syncState: SyncUiState = SyncUiState(),
     onSyncNow: () -> Unit = {}
 ) {
-    val resolvedRole = role?.legacyUiRole ?: UserRole.LOAN_OFFICER
+    val resolvedRole = role ?: UserRole.ACCOUNT_OFFICER
     val activity = LocalContext.current as android.app.Activity
     val windowSizeClass = calculateWindowSizeClass(activity)
     val isTablet = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
@@ -117,6 +121,7 @@ fun DashboardScreenView(
             UserRole.ED -> "Executive Director"
             UserRole.MD -> "Managing Director"
             UserRole.SYSTEM_ADMIN -> "System Admin"
+            UserRole.LEGAL -> "Legal Officer"
         }
     }
     val userEmail = sessionEmail ?: ""
@@ -184,6 +189,12 @@ fun DashboardScreenView(
             MetricData(liveMetrics?.policy_breaches?.toString() ?: "—", "POLICY BREACHES", FieldIcons.AlertOutlined, FieldTheme.colors.statusDanger),
             MetricData(liveMetrics?.apps_today?.toString() ?: "—", "APPS TODAY", FieldIcons.DocumentOutlined, FieldTheme.colors.statusSuccess)
         )
+        UserRole.LEGAL -> listOf(
+            MetricData(liveMetrics?.underwriting_queue?.toString() ?: "—", "LEGAL QUEUE", FieldIcons.QueueOutlined, FieldTheme.colors.purple600),
+            MetricData(liveMetrics?.missing_docs?.toString() ?: "—", "VALUATIONS DUE", FieldIcons.DocumentOutlined, FieldTheme.colors.statusWarning),
+            MetricData(liveMetrics?.approved_today?.toString() ?: "—", "COMPLETED TODAY", FieldIcons.CheckCircleOutlined, FieldTheme.colors.statusSuccess),
+            MetricData(liveMetrics?.high_risk_cases?.toString() ?: "—", "HIGH LTV", FieldIcons.AlertOutlined, FieldTheme.colors.statusDanger)
+        )
     }
 
     // Role-based status sets — values must match backend _stage_status() output (title-case)
@@ -197,6 +208,7 @@ fun DashboardScreenView(
             UserRole.ED -> setOf("ed approval")
             UserRole.MD -> setOf("md approval")
             UserRole.AUDITOR, UserRole.SYSTEM_ADMIN -> emptySet()
+            UserRole.LEGAL -> setOf("branch manager review", "credit analyst review", "crm review")
         }
     }
 
@@ -271,6 +283,10 @@ fun DashboardScreenView(
             "COMMITTEE_QUEUE" -> onNavigateToCommitteeQueue()
             "ED_QUEUE" -> onNavigateToEdQueue()
             "MD_QUEUE" -> onNavigateToMdQueue()
+            "LEGAL_WORKSPACE" -> onNavigateToLegalWorkspace()
+            "MCC_WORKSPACE" -> onNavigateToMccWorkspace()
+            "INTEREST_PRESETS" -> onNavigateToInterestPresets()
+            "BRANCHES" -> onNavigateToBranches()
         }
     }
 
@@ -717,11 +733,13 @@ fun PhoneDashboardHome(
                             item { ShuttleChip("ED Queue", FieldIcons.ShieldOutlined) { onQuickActionClick("ED_QUEUE") } }
                             item { ShuttleChip("PAR Dashboard", FieldIcons.PaymentsOutlined) { onQuickActionClick("PAR_DASHBOARD") } }
                             item { ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") } }
+                            item { ShuttleChip("MCC", FieldIcons.GroupOutlined) { onQuickActionClick("MCC_WORKSPACE") } }
                         }
                         UserRole.MD -> {
                             item { ShuttleChip("MD Queue", FieldIcons.ShieldOutlined) { onQuickActionClick("MD_QUEUE") } }
                             item { ShuttleChip("PAR Dashboard", FieldIcons.PaymentsOutlined) { onQuickActionClick("PAR_DASHBOARD") } }
                             item { ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") } }
+                            item { ShuttleChip("MCC", FieldIcons.GroupOutlined) { onQuickActionClick("MCC_WORKSPACE") } }
                         }
                         UserRole.SYSTEM_ADMIN -> {
                             item { ShuttleChip("Users", FieldIcons.GroupOutlined) { onQuickActionClick("USERS") } }
@@ -729,6 +747,12 @@ fun PhoneDashboardHome(
                             item { ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") } }
                             item { ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") } }
                             item { ShuttleChip("Sign Out", FieldIcons.CloseOutlined) { onQuickActionClick("SIGNOUT") } }
+                            item { ShuttleChip("Interest Presets", FieldIcons.PaymentsOutlined) { onQuickActionClick("INTEREST_PRESETS") } }
+                            item { ShuttleChip("Branches", FieldIcons.MapOutlined) { onQuickActionClick("BRANCHES") } }
+                        }
+                        UserRole.LEGAL -> {
+                            item { ShuttleChip("Legal Queue", FieldIcons.QueueOutlined) { onQuickActionClick("LEGAL_WORKSPACE") } }
+                            item { ShuttleChip("Pipeline", FieldIcons.DocumentOutlined) { onQuickActionClick("PIPELINE") } }
                         }
                     }
                 }
@@ -937,11 +961,13 @@ fun TabletDashboardHome(
                             ShuttleChip("ED Queue", FieldIcons.ShieldOutlined) { onQuickActionClick("ED_QUEUE") }
                             ShuttleChip("PAR Dashboard", FieldIcons.PaymentsOutlined) { onQuickActionClick("PAR_DASHBOARD") }
                             ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") }
+                            ShuttleChip("MCC", FieldIcons.GroupOutlined) { onQuickActionClick("MCC_WORKSPACE") }
                         }
                         UserRole.MD -> {
                             ShuttleChip("MD Queue", FieldIcons.ShieldOutlined) { onQuickActionClick("MD_QUEUE") }
                             ShuttleChip("PAR Dashboard", FieldIcons.PaymentsOutlined) { onQuickActionClick("PAR_DASHBOARD") }
                             ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") }
+                            ShuttleChip("MCC", FieldIcons.GroupOutlined) { onQuickActionClick("MCC_WORKSPACE") }
                         }
                         UserRole.SYSTEM_ADMIN -> {
                             ShuttleChip("Users", FieldIcons.GroupOutlined) { onQuickActionClick("USERS") }
@@ -949,6 +975,12 @@ fun TabletDashboardHome(
                             ShuttleChip("Pipeline", FieldIcons.QueueOutlined) { onQuickActionClick("PIPELINE") }
                             ShuttleChip("View Clients", FieldIcons.PersonAddOutlined) { onQuickActionClick("REG_BORROWER") }
                             ShuttleChip("Sign Out", FieldIcons.CloseOutlined) { onQuickActionClick("SIGNOUT") }
+                            ShuttleChip("Interest Presets", FieldIcons.PaymentsOutlined) { onQuickActionClick("INTEREST_PRESETS") }
+                            ShuttleChip("Branches", FieldIcons.MapOutlined) { onQuickActionClick("BRANCHES") }
+                        }
+                        UserRole.LEGAL -> {
+                            ShuttleChip("Legal Queue", FieldIcons.QueueOutlined) { onQuickActionClick("LEGAL_WORKSPACE") }
+                            ShuttleChip("Pipeline", FieldIcons.DocumentOutlined) { onQuickActionClick("PIPELINE") }
                         }
                     }
                 }

@@ -20,6 +20,7 @@ import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import com.fieldcrm.android.core.network.ApiResult
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,11 +46,14 @@ fun UsersScreen(
     var createError by remember { mutableStateOf<String?>(null) }
 
     val roles = listOf(
-        "loan_officer" to "Loan Officer",
+        "account_officer" to "Account Officer",
         "branch_manager" to "Branch Manager",
+        "branch_supervisor" to "Branch Supervisor",
+        "credit_analyst" to "Credit Analyst",
         "auditor" to "Auditor",
         "crm" to "CRM Officer",
-        "committee" to "Committee Member",
+        "head_crm" to "Head CRM",
+        "legal" to "Legal",
         "ed" to "Executive Director",
         "md" to "Managing Director",
         "system_admin" to "System Admin",
@@ -318,7 +322,23 @@ fun UsersScreen(
                                             )
                                         }
                                     }
-                                    RoleBadge(role = user.display_role.ifBlank { user.role.replace("_", " ").replaceFirstChar { it.uppercaseChar() } })
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        RoleBadge(role = user.display_role.ifBlank { user.role.replace("_", " ").replaceFirstChar { it.uppercaseChar() } })
+                                        if (user.active) {
+                                            TextButton(onClick = {
+                                                val current = roles.indexOfFirst { it.first == user.role }.coerceAtLeast(0)
+                                                val nextRole = roles[(current + 1) % roles.size].first
+                                                scope.launch {
+                                                    if (api.updateUserRole(user.id, nextRole) is ApiResult.Success) refreshUsers()
+                                                }
+                                            }) { Text("Change role") }
+                                            TextButton(onClick = {
+                                                scope.launch {
+                                                    if (api.deactivateUser(user.id) is ApiResult.Success) refreshUsers()
+                                                }
+                                            }) { Text("Deactivate", color = FieldTheme.colors.statusDanger) }
+                                        }
+                                    }
                                 }
                             }
                         }

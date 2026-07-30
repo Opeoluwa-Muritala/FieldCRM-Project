@@ -31,6 +31,7 @@ CREATE TABLE LoanApplication (
     crm_notes             TEXT,
     crm_reviewed_by       TEXT,
     executive_approved_by TEXT,
+    remote_id             TEXT,
     created_at            TEXT    NOT NULL DEFAULT '',
     updated_at            TEXT
 );
@@ -56,7 +57,9 @@ CREATE TABLE SyncQueue (
     entity_id    TEXT    NOT NULL,
     payload_json TEXT    NOT NULL,   -- Complete serialized data payload
     timestamp    INTEGER NOT NULL,   -- Epoch millis to replay in strict chronological order
-    attempts     INTEGER NOT NULL DEFAULT 0
+    attempts     INTEGER NOT NULL DEFAULT 0,
+    last_error   TEXT,
+    next_retry_at INTEGER NOT NULL DEFAULT 0
 );
 
 selectAllApplications:
@@ -102,11 +105,21 @@ DELETE FROM LocalDocument WHERE loan_id = ?;
 
 -- Queue Operations
 selectQueuedItems:
-SELECT * FROM SyncQueue ORDER BY timestamp ASC;
+SELECT * FROM SyncQueue
+WHERE next_retry_at <= ?
+ORDER BY timestamp ASC;
 
 insertQueueItem:
-INSERT INTO SyncQueue (id, action, entity_id, payload_json, timestamp, attempts)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO SyncQueue (id, action, entity_id, payload_json, timestamp, attempts, last_error, next_retry_at)
+VALUES (?, ?, ?, ?, ?, ?, NULL, 0);
+
+recordQueueFailure:
+UPDATE SyncQueue
+SET attempts = attempts + 1, last_error = ?, next_retry_at = ?
+WHERE id = ?;
+
+reconcileRemoteId:
+UPDATE LoanApplication SET remote_id = ? WHERE id = ?;
 
 deleteQueueItem:
 DELETE FROM SyncQueue WHERE id = ?;

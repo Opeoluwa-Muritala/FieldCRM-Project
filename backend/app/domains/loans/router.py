@@ -30,6 +30,8 @@ from app.services.dashboard_service import DashboardService
 from app.services.email_service import EmailService
 from app.domains.documents.repository import DocumentRepository
 from app.domains.documents.service import DocumentService
+from app.domains.documents.direct_upload import DirectDocumentUploadService
+from app.domains.documents.schemas import DirectUploadAuthorizationRequest, DirectUploadFinalizeRequest
 from app.domains.guarantors.repository import GuarantorRepository
 from app.domains.guarantors.service import GuarantorService
 from app.domains.visitation.repository import VisitationRepository
@@ -1130,6 +1132,47 @@ async def process_document_upload(
         user_role=current_user.role,
     )
     return RedirectResponse(url=f"/applications/{application_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/api/v1/applications/{application_id}/documents/upload-authorizations")
+async def authorize_staff_document_upload(
+    application_id: UUID,
+    payload: DirectUploadAuthorizationRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    app = await LoanRepository(conn).get_by_id(application_id, current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    _verify_loan_scope(app, current_user)
+    return {
+        "authorization": await DirectDocumentUploadService(conn).authorize(
+            application_id=application_id, org_id=current_user.org_id,
+            actor_id=current_user.id, actor_role=current_user.role,
+            doc_type=payload.doc_type, form_code=payload.form_code,
+            original_name=payload.filename, mime_type=payload.mime_type,
+            size_bytes=payload.size_bytes,
+        )
+    }
+
+
+@router.post("/api/v1/applications/{application_id}/documents/finalize")
+async def finalize_staff_document_upload(
+    application_id: UUID,
+    payload: DirectUploadFinalizeRequest,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    app = await LoanRepository(conn).get_by_id(application_id, current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    _verify_loan_scope(app, current_user)
+    document = await DirectDocumentUploadService(conn).finalize(
+        intent_id=payload.intent_id, application_id=application_id,
+        org_id=current_user.org_id, actor_id=current_user.id,
+        public_id=payload.public_id, version=payload.version, signature=payload.signature,
+    )
+    return {"document": {"id": str(document["id"])}, "redirect": f"/applications/{application_id}"}
 
 @router.post("/applications/{application_id}/crm-upload")
 async def process_crm_upload(
@@ -4014,6 +4057,43 @@ async def process_client_document_upload(
     )
 
     return {"redirect": "/client-form/apply/step/4"}
+
+
+@router.post("/client-form/apply/documents/upload-authorizations")
+async def authorize_client_document_upload(
+    payload: DirectUploadAuthorizationRequest,
+    session=Depends(get_client_session_data),
+    conn=Depends(db_conn),
+):
+    app_id = UUID(session["app_id"])
+    org_id = UUID(session["org_id"])
+    actor_id = UUID(session["officer_id"])
+    app = await LoanRepository(conn).get_by_id(app_id, org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    return {
+        "authorization": await DirectDocumentUploadService(conn).authorize(
+            application_id=app_id, org_id=org_id, actor_id=actor_id, actor_role="client",
+            doc_type=payload.doc_type, form_code=payload.form_code,
+            original_name=payload.filename, mime_type=payload.mime_type,
+            size_bytes=payload.size_bytes,
+        )
+    }
+
+
+@router.post("/client-form/apply/documents/finalize")
+async def finalize_client_document_upload(
+    payload: DirectUploadFinalizeRequest,
+    session=Depends(get_client_session_data),
+    conn=Depends(db_conn),
+):
+    app_id = UUID(session["app_id"])
+    document = await DirectDocumentUploadService(conn).finalize(
+        intent_id=payload.intent_id, application_id=app_id, org_id=UUID(session["org_id"]),
+        actor_id=UUID(session["officer_id"]), public_id=payload.public_id,
+        version=payload.version, signature=payload.signature,
+    )
+    return {"document": {"id": str(document["id"])}, "redirect": "/client-form/apply/step/4"}
 
 
 @router.get("/client-form/apply/guarantors/{guarantor_index}/step/{step}")

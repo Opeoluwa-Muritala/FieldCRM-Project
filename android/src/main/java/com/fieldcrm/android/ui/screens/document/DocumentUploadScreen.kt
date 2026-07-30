@@ -27,6 +27,7 @@ import com.fieldcrm.android.ui.viewmodel.DocumentUploadViewModel
 import com.fieldcrm.android.ui.viewmodel.UploadState
 import com.fieldcrm.shared.model.BorrowerModel
 import org.koin.androidx.compose.koinViewModel
+import com.fieldcrm.android.core.session.UserRole
 
 private val DOCUMENT_CATEGORIES = listOf(
     "id" to "Identity Document (NIN / Intl. Passport / Driver's License)",
@@ -34,6 +35,12 @@ private val DOCUMENT_CATEGORIES = listOf(
     "bank_statement" to "Bank Statement",
     "guarantor" to "Guarantor Document",
     "pledge" to "Deed of Pledge",
+    "offer_acceptance" to "CRM — Offer Acceptance",
+    "disbursement_mandate" to "CRM — Disbursement Mandate",
+    "direct_debit_mandate" to "CRM — Direct Debit Mandate",
+    "insurance_certificate" to "CRM — Insurance Certificate",
+    "legal_clearance" to "CRM — Legal Clearance",
+    "other_crm" to "CRM — Other",
     "other" to "Other Supporting"
 )
 
@@ -41,12 +48,22 @@ private val DOCUMENT_CATEGORIES = listOf(
 fun DocumentUploadScreen(
     applicationId: String,
     borrower: BorrowerModel?,
+    role: UserRole? = null,
     onBackClick: () -> Unit,
     onComplete: (BorrowerModel) -> Unit
 ) {
     val viewModel: DocumentUploadViewModel = koinViewModel()
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val visibleCategories = remember(role) {
+        if (role in setOf(UserRole.CRM, UserRole.HEAD_CRM, UserRole.SYSTEM_ADMIN)) {
+            DOCUMENT_CATEGORIES
+        } else {
+            DOCUMENT_CATEGORIES.filterNot { it.first.endsWith("_mandate") || it.first in setOf(
+                "offer_acceptance", "insurance_certificate", "legal_clearance", "other_crm"
+            ) }
+        }
+    }
 
     // Reset on launch so stale state from a previous screen visit doesn't persist
     LaunchedEffect(applicationId) {
@@ -176,6 +193,7 @@ fun DocumentUploadScreen(
                     ) {
                         CategorySelector(
                             selected = uiState.category,
+                            categories = visibleCategories,
                             onSelect = viewModel::setCategory
                         )
                         OcrFieldsCard(
@@ -235,6 +253,7 @@ fun DocumentUploadScreen(
                             )
                             CategorySelector(
                                 selected = uiState.category,
+                                categories = visibleCategories,
                                 onSelect = viewModel::setCategory
                             )
                             SourceSelectionPanel(
@@ -351,6 +370,7 @@ private fun SourceSelectionPanel(
 @Composable
 private fun CategorySelector(
     selected: String,
+    categories: List<Pair<String, String>>,
     onSelect: (String) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -365,7 +385,7 @@ private fun CategorySelector(
                 .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(8.dp))
                 .background(FieldTheme.colors.gray850, RoundedCornerShape(8.dp))
         ) {
-            DOCUMENT_CATEGORIES.forEachIndexed { index, (key, label) ->
+            categories.forEachIndexed { index, (key, label) ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -394,7 +414,7 @@ private fun CategorySelector(
                         )
                     }
                 }
-                if (index < DOCUMENT_CATEGORIES.lastIndex) {
+                if (index < categories.lastIndex) {
                     FieldDivider()
                 }
             }

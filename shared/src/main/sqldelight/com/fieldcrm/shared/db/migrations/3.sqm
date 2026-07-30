@@ -1,0 +1,3 @@
+ALTER TABLE LoanApplication ADD COLUMN remote_id TEXT;
+ALTER TABLE SyncQueue ADD COLUMN last_error TEXT;
+ALTER TABLE SyncQueue ADD COLUMN next_retry_at INTEGER NOT NULL DEFAULT 0;

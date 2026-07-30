@@ -45,7 +45,11 @@ fun ApplicationDetailScreenView(
     onNavigateToAuditTrail: () -> Unit = {},
     onNavigateToFormWizard: () -> Unit = {},
     onNavigateToDocumentViewer: (url: String, name: String) -> Unit = { _, _ -> },
-    onNavigateToOcrReview: () -> Unit = {}
+    onNavigateToOcrReview: () -> Unit = {},
+    onOpenClientSigning: () -> Unit = {},
+    onShareClientSigning: () -> Unit = {},
+    onOpenGuarantorSigning: (Int) -> Unit = {},
+    onGenerateOffer: () -> Unit = {}
 ) {
     val auditTrailVm: AuditTrailViewModel = koinViewModel()
     val auditUiState by auditTrailVm.uiState.collectAsState()
@@ -132,6 +136,59 @@ fun ApplicationDetailScreenView(
                                     style = FieldTheme.typography.body.copy(fontSize = 14.sp),
                                     color = FieldTheme.colors.gray400
                                 )
+                            }
+                        }
+
+                        if (role == UserRole.ACCOUNT_OFFICER && application.stage == "intake") {
+                            item {
+                                FieldCard {
+                                    Text("Secure browser signing", style = FieldTheme.typography.title)
+                                    Spacer(Modifier.height(12.dp))
+                                    PrimaryButton(
+                                        text = "Open applicant signing",
+                                        onClick = onOpenClientSigning,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    SecondaryButton(
+                                        text = "Share applicant link",
+                                        onClick = onShareClientSigning,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        SecondaryButton(
+                                            text = "Guarantor 1",
+                                            onClick = { onOpenGuarantorSigning(1) },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        SecondaryButton(
+                                            text = "Guarantor 2",
+                                            onClick = { onOpenGuarantorSigning(2) },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (role in setOf(UserRole.CRM, UserRole.SYSTEM_ADMIN) && application.stage == "disbursement_ready") {
+                            item {
+                                FieldCard {
+                                    Text("Offer and disbursement", style = FieldTheme.typography.title)
+                                    Spacer(Modifier.height(12.dp))
+                                    PrimaryButton(
+                                        text = "Generate offer letter",
+                                        onClick = onGenerateOffer,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        "The server validates approval stage and securely stores the generated PDF before confirming success.",
+                                        style = FieldTheme.typography.body,
+                                        color = FieldTheme.colors.gray400
+                                    )
+                                }
                             }
                         }
 
@@ -835,6 +892,7 @@ fun ApplicationActionFooter(
                 onClick = onNavigateToReview,
                 modifier = Modifier.fillMaxWidth()
             )
+            UserRole.LEGAL -> ReadOnlyBanner()
         }
     }
 }

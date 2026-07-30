@@ -30,6 +30,7 @@ import org.koin.dsl.module
 import io.ktor.client.HttpClient
 import com.fieldcrm.android.data.api.MobileApiService
 import com.fieldcrm.android.data.api.MobileApiServiceImpl
+import com.fieldcrm.android.BuildConfig
 
 val appModule = module {
     // SQLite Database Driver
@@ -47,11 +48,10 @@ val appModule = module {
     // Session persistence (SharedPreferences, 48-hour TTL)
     single { SessionStore(androidContext()) }
 
-    // Deployed Render production backend URL client
-    single { FieldCRMClient("https://fieldcrm.onrender.com") }
+    single { FieldCRMClient(BuildConfig.API_BASE_URL) }
 
     // HttpClient and MobileApiService
-    single<MobileApiService> { MobileApiServiceImpl(get<FieldCRMClient>().httpClient, "https://fieldcrm.onrender.com") }
+    single<MobileApiService> { MobileApiServiceImpl(get<FieldCRMClient>().httpClient, BuildConfig.API_BASE_URL) }
 
     // Repositories
     single { BorrowerRepository(get(), get()) }

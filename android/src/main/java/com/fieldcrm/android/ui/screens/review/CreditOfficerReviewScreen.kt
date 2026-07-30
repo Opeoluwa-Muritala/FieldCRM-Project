@@ -35,15 +35,7 @@ fun CreditOfficerReviewScreen(
     onBackClick: () -> Unit,
     onCompleteReview: () -> Unit
 ) {
-    var creditScoreIndex by remember { mutableIntStateOf(0) }
-    val creditScores = listOf(
-        Pair("740 (Excellent)", StatusChipVariant.Verified),
-        Pair("680 (Good)", StatusChipVariant.Verified),
-        Pair("580 (Fair)", StatusChipVariant.NeedsReview),
-        Pair("450 (Poor)", StatusChipVariant.Missing)
-    )
-    
-    var incomeStatement by remember { mutableStateOf("Verified Bank Statement (Lagos Node)") }
+    var incomeStatement by remember { mutableStateOf("") }
     var dtiRatio by remember { mutableFloatStateOf(0.32f) } // 32%
     var recommendationDecision by remember { mutableStateOf("Recommend Approval") } // "Recommend Approval", "Recommend Rejection", "Return for Correction"
     var recommendationNotes by remember { mutableStateOf("Applicant leverage index fits normal limits. Strong guarantor signature match verified.") }
@@ -291,44 +283,12 @@ fun CreditOfficerReviewScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             
-                            Text(
-                                text = "Select Bureau Credit Assessment",
-                                style = FieldTheme.typography.bodyStrong,
-                                color = FieldTheme.colors.gray300
+                            PrimaryButton(
+                                text = if (appState.isMutating) "Refreshing bureau report…" else "Pull credit-bureau report",
+                                enabled = !appState.isMutating,
+                                onClick = { applicationViewModel.pullCreditBureau(application.id) },
+                                modifier = Modifier.fillMaxWidth()
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            // Horizontal chip choices for Bureau scores
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                creditScores.forEachIndexed { index, item ->
-                                    val isSelected = index == creditScoreIndex
-                                    Box(
-                                        modifier = Modifier
-                                            .background(
-                                                if (isSelected) FieldTheme.colors.purple900.copy(alpha = 0.2f) else FieldTheme.colors.gray900,
-                                                RoundedCornerShape(4.dp)
-                                            )
-                                            .border(
-                                                0.5.dp,
-                                                if (isSelected) FieldTheme.colors.purple600 else FieldTheme.colors.gray800,
-                                                RoundedCornerShape(4.dp)
-                                            )
-                                            .clickable { creditScoreIndex = index }
-                                            .padding(horizontal = 10.dp, vertical = 8.dp)
-                                            .weight(1f),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = item.first.split(" ")[0],
-                                            style = FieldTheme.typography.mono.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
-                                            color = if (isSelected) FieldTheme.colors.purple400 else FieldTheme.colors.gray400
-                                        )
-                                    }
-                                }
-                            }
                             
                             Spacer(modifier = Modifier.height(16.dp))
                             FieldDivider()
@@ -339,8 +299,10 @@ fun CreditOfficerReviewScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                DetailItem(label = "Selected Score Tier", value = creditScores[creditScoreIndex].first)
-                                StatusChip(variant = creditScores[creditScoreIndex].second)
+                                DetailItem(
+                                    label = "Latest server response",
+                                    value = appState.bureauReport?.toString() ?: "No report loaded"
+                                )
                             }
                             
                             Spacer(modifier = Modifier.height(8.dp))
