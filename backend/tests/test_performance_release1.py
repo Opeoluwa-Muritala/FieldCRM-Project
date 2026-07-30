@@ -81,7 +81,7 @@ def test_application_workflow_history_is_scoped_by_org_and_application():
     assert "WHERE org_id = $1" in query
     assert "AND loan_id = $2" in query
     assert "ORDER BY created_at DESC, id DESC" in query
-    assert args == (org_id, application_id, 75)
+    assert args == (org_id, application_id, 75, 0)
 
 
 def test_application_compliance_union_scopes_every_branch():

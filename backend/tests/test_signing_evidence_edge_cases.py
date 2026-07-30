@@ -343,8 +343,11 @@ async def test_part3_signed_at_utc_only():
     # Assert signed_at parameter is NOT client-supplied or caller-supplied in values dict
     called_args = repo.create_signature_event.call_args[0][0]
     assert "signed_at" not in called_args
-    # Confirm it is defaulted at database level (s.84 Evidence Act requirement)
-    assert "signed_at timestamptz NOT NULL DEFAULT now()" in open("migrations/023_signing_evidence.sql", encoding="utf-8").read()
+    try:
+        content = open("migrations/023_signing_evidence.sql", encoding="utf-8").read()
+    except FileNotFoundError:
+        content = open("backend/migrations/023_signing_evidence.sql", encoding="utf-8").read()
+    assert "signed_at timestamptz NOT NULL DEFAULT now()" in content
 
 
 # =============================================================================

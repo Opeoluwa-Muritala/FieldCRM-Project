@@ -4,14 +4,17 @@
 -- Params: $1=user_id
 
 SELECT
-    id,
-    org_id,
-    full_name,
-    email,
-    password_hash,
-    role,
-    active,
-    last_login_at,
-    created_at
-FROM users
-WHERE id = $1;
+    u.id,
+    u.org_id,
+    u.full_name,
+    u.email,
+    u.password_hash,
+    u.role,
+    u.active,
+    u.branch_id,
+    b.name AS branch_name,
+    u.last_login_at,
+    u.created_at
+FROM users u
+LEFT JOIN branches b ON b.id = u.branch_id
+WHERE u.id = $1;

@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status, Query
 from fastapi.responses import RedirectResponse
 
 from app.core.database import db_conn, get_connection
@@ -150,23 +150,30 @@ async def render_dashboard(
 
     from app.core.cache import cache_dashboard_data, get_cached_dashboard_data
 
-    cache_key, data = await get_cached_dashboard_data(
-        current_user.org_id,
-        current_user.id,
-        role,
-    )
-    if data is None:
-        data = await DashboardService(None).get_dashboard_data_isolated(current_user)
-        await cache_dashboard_data(cache_key, data)
+    loading = request.headers.get("X-Progressive-Load") != "true"
 
-    if role in ("account_officer", "loan_officer"):
-        applications = data.get("queue", [])
+    if loading:
+        data = {"metrics": {}, "tasks": [], "queue": []}
+        applications = []
     else:
-        async with get_connection() as dashboard_conn:
-            applications = await LoanRepository(dashboard_conn).list_recent(
-                current_user.org_id,
-                limit=10,
-            )
+        cache_key, data = await get_cached_dashboard_data(
+            current_user.org_id,
+            current_user.id,
+            role,
+        )
+        if data is None:
+            data = await DashboardService(None).get_dashboard_data_isolated(current_user)
+            await cache_dashboard_data(cache_key, data)
+
+        if role in ("account_officer", "loan_officer"):
+            applications = data.get("queue", [])
+        else:
+            async with get_connection() as dashboard_conn:
+                applications = await LoanRepository(dashboard_conn).list_recent(
+                    current_user.org_id,
+                    limit=10,
+                )
+
     template_name = get_role_template(role, "dashboard.html")
 
     ctx = build_template_context(
@@ -176,6 +183,7 @@ async def render_dashboard(
         applications=applications,
         metrics=data.get("metrics", {}),
         today_label=datetime.now().strftime("%A, %d %B %Y"),
+        loading=loading,
     )
 
     return templates.TemplateResponse(request, template_name, ctx)
@@ -461,11 +469,14 @@ async def render_user_management(
     dashboard_svc = DashboardService(conn)
     users = await dashboard_svc.get_admin_users(current_user)
     data = await dashboard_svc.get_dashboard_data(current_user)
+    from app.domains.branches.repository import BranchRepository
+    branches = await BranchRepository(conn).list_by_org(current_user.org_id)
     ctx = build_template_context(
         request,
         current_user,
         users=users,
         data=data,
+        branches=branches,
         role_counts=data.get("role_counts", []),
         metrics=data.get("metrics", {}),
         active_tab="users",
@@ -530,16 +541,18 @@ async def render_applications_list(
     repo = LoanRepository(conn)
     role_name = current_user.role.lower().replace(" ", "_")
     officer_id = current_user.id if role_name in ("account_officer", "loan_officer") else None
+    branch_id = getattr(current_user, "branch_id", None) if role_name in ("branch_manager", "account_officer", "loan_officer") else None
     applications, total = await repo.list_by_stage(
         org_id=current_user.org_id,
         stage=db_stage,
         officer_id=officer_id,
-        page=1,
-        size=100,
+        page=page,
+        size=size,
         loan_type=loan_type if loan_type and loan_type != "all" else None,
         query=q.strip() if q and q.strip() else None,
         from_date=from_date,
         to_date=to_date,
+        branch_id=branch_id,
     )
     ctx = build_template_context(
         request,
@@ -4277,3 +4290,101 @@ async def render_client_success(
     response = templates.TemplateResponse(request, "shared/client_success.html", ctx)
     response.delete_cookie("client_session")
     return response
+
+
+@router.get("/api/v1/applications/{application_id}/compliance-flags")
+async def list_web_application_compliance_flags(
+    application_id: UUID,
+    page: int = 1,
+    size: int = 20,
+    conn = Depends(db_conn),
+    current_user = Depends(get_current_user),
+):
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(application_id, current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    offset = (page - 1) * size
+    from app.services.dashboard_service import DashboardService
+    flags = await DashboardService(conn).get_application_compliance_flags(
+        current_user, application_id, limit=size, offset=offset
+    )
+    return {
+        "items": flags,
+        "has_more": len(flags) >= size
+    }
+
+
+@router.get("/api/v1/applications/{application_id}/workflow-events")
+async def list_web_application_workflow_events(
+    application_id: UUID,
+    page: int = 1,
+    size: int = 20,
+    conn = Depends(db_conn),
+    current_user = Depends(get_current_user),
+):
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(application_id, current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    offset = (page - 1) * size
+    events = await repo.list_workflow_events_for_application(
+        current_user.org_id, application_id, limit=size, offset=offset
+    )
+    return {
+        "items": events,
+        "has_more": len(events) >= size
+    }
+
+
+@router.get("/api/v1/web/borrowers")
+async def list_progressive_borrowers(
+    request: Request,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["Branch Manager", "Branch Supervisor", "Credit Analyst", "CRM", "Head CRM", "Auditor", "ED", "MD"])),
+):
+    applications, total = await LoanRepository(conn).list_by_stage(
+        org_id=current_user.org_id,
+        stage=None,
+        officer_id=None,
+        page=page,
+        size=size,
+        branch_id=getattr(current_user, "branch_id", None),
+    )
+    if request.headers.get("x-progressive-load") == "true":
+        return templates.TemplateResponse(
+            request,
+            "partials/borrower_rows.html",
+            {"request": request, "applications": applications},
+        )
+    return {
+        "items": applications, "total": total, "page": page, "size": size,
+        "has_more": page * size < total,
+    }
+
+
+@router.get("/api/v1/web/reports/par/loans")
+async def list_progressive_par_loans(
+    request: Request,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    conn = Depends(db_conn),
+    current_user = Depends(RoleChecker(["md", "ed", "auditor", "crm", "head_crm"])),
+):
+    items, total = await LoanRepository(conn).list_disbursed_page(
+        current_user.org_id, limit=size, offset=(page-1)*size
+    )
+    if request.headers.get("x-progressive-load") == "true":
+        return templates.TemplateResponse(
+            request,
+            "partials/par_loan_rows.html",
+            {"request": request, "loans": items},
+        )
+    return {
+        "items": items, "total": total, "page": page, "size": size,
+        "has_more": page * size < total,
+    }

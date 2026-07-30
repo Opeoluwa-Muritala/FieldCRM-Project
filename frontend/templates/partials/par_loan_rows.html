@@ -1,0 +1,21 @@
+<div class="page-card" id="par-loans"
+     data-section-src="/api/v1/web/reports/par/loans?page=1&amp;size=20"
+     data-paginate-url="/api/v1/web/reports/par/loans?size=20">
+    <h3>Active Loan Portfolio</h3>
+    <table class="custom-table">
+        <thead><tr><th>Ref</th><th>Borrower</th><th>Disbursed</th><th>Sector</th><th>Classification</th><th>Days Overdue</th><th></th></tr></thead>
+        <tbody class="paginated-container">
+        {% for loan in loans %}
+        <tr data-paginate-item data-id="{{ loan.id }}" data-href="/applications/{{ loan.id }}/repayment-schedule" tabindex="0">
+            <td>{{ loan.ref_no }}</td>
+            <td>{{ loan.applicant_name }}</td>
+            <td>{% if loan.disbursed_amount %}&#x20A6;{{ "{:,.0f}".format(loan.disbursed_amount) }}{% else %}&mdash;{% endif %}</td>
+            <td>{{ loan.sector or '&mdash;' }}</td>
+            <td><span class="status-badge {% if loan.classification == 'current' %}approved{% else %}needs-review{% endif %}">{{ (loan.classification or 'current')|upper }}</span></td>
+            <td>{{ loan.days_past_due or 0 }}</td>
+            <td><a href="/applications/{{ loan.id }}/repayment-schedule">Schedule</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>

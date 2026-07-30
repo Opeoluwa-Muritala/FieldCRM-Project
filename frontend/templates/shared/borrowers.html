@@ -24,6 +24,11 @@
     </div>
 </section>
 
+{% set counts = state_counts %}
+{% include "partials/borrower_metrics.html" %}
+{% include "partials/borrower_rows.html" %}
+
+{% if false %}
 <section class="metrics-row" aria-label="Loan state summary">
     <article class="metric-card">
         <div class="metric-card-top">
@@ -130,4 +135,5 @@
         {% endif %}
     </div>
 </section>
+{% endif %}
 {% endblock %}

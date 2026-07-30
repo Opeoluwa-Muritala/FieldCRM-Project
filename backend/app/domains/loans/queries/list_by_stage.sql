@@ -3,7 +3,8 @@
 -- Nullable filters — pass NULL to skip.
 -- Params: $1=org_id, $2=stage (nullable), $3=officer_id (nullable),
 --         $4=loan_type (nullable), $5=search query (nullable),
---         $6=from_date (nullable), $7=to_date (nullable), $8=limit, $9=offset
+--         $6=from_date (nullable), $7=to_date (nullable), $8=limit, $9=offset,
+--         $10=branch_id (nullable)
 
 SELECT
     la.id,
@@ -12,6 +13,13 @@ SELECT
     la.stage,
     la.amount,
     la.applicant_name,
+    la.org_id,
+    la.created_by,
+    la.phone,
+    la.bvn,
+    la.tenor_months,
+    la.repayment_mode,
+    la.purpose,
     la.created_at,
     la.updated_at,
     u.full_name             AS officer_name,
@@ -31,5 +39,6 @@ WHERE la.org_id       = $1
   )
   AND ($6::DATE IS NULL OR DATE(la.created_at) >= $6)
   AND ($7::DATE IS NULL OR DATE(la.created_at) <= $7)
+  AND ($10::UUID IS NULL OR la.branch_id = $10)
 ORDER BY la.updated_at DESC
 LIMIT $8 OFFSET $9;

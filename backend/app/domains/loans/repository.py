@@ -17,9 +17,16 @@ class LoanRepository(BaseRepository):
         applicant_name: str,
         created_by: UUID,
     ) -> LoanRow:
+        user_row = await self.conn.fetchrow(
+            "SELECT branch_id FROM users WHERE id = $1",
+            str(created_by)
+        )
+        branch_id = user_row["branch_id"] if user_row else None
+
         row = await self.conn.fetchrow(
             self.sql("create"),
-            org_id, ref_no, customer_type, loan_type, applicant_name, created_by
+            org_id, ref_no, customer_type, loan_type, applicant_name, created_by,
+            str(branch_id) if branch_id else None
         )
         return LoanRow(**row)
 
@@ -38,11 +45,13 @@ class LoanRepository(BaseRepository):
         query: str | None = None,
         from_date: date | None = None,
         to_date: date | None = None,
+        branch_id: UUID | None = None,
     ) -> tuple[list[LoanListItem], int]:
         rows = await self.conn.fetch(
             self.sql("list_by_stage"),
             org_id, stage, officer_id, loan_type, query, from_date, to_date,
             size, (page - 1) * size,
+            str(branch_id) if branch_id else None,
         )
         total = rows[0]["total_count"] if rows else 0
         return [LoanListItem(**r) for r in rows], total
@@ -121,6 +130,38 @@ class LoanRepository(BaseRepository):
         rows = await self.conn.fetch(self.sql("list_recent"), org_id, limit)
         return [LoanRow(**r) for r in rows]
 
+    async def list_disbursed_page(self, org_id: UUID, limit: int = 10, offset: int = 0) -> tuple[list[LoanRow], int]:
+        rows = await self.conn.fetch(
+            """
+            SELECT la.*, COUNT(*) OVER() AS total_count
+            FROM loan_applications la
+            WHERE la.org_id = $1
+              AND la.stage = 'disbursed'
+              AND la.deleted_at IS NULL
+            ORDER BY la.updated_at DESC
+            LIMIT $2 OFFSET $3
+            """,
+            org_id, limit, offset
+        )
+        if not rows:
+            return [], 0
+        total = rows[0]["total_count"]
+        return [LoanRow(**r) for r in rows], total
+
+    async def list_workflow_events_for_application(
+        self, org_id: UUID, application_id: UUID, limit: int = 10, offset: int = 0
+    ) -> list[dict]:
+        rows = await self.conn.fetch(
+            """
+            SELECT * FROM workflow_events
+            WHERE org_id = $1 AND loan_id = $2
+            ORDER BY created_at DESC, id DESC
+            LIMIT $3 OFFSET $4
+            """,
+            org_id, application_id, limit, offset
+        )
+        return [dict(r) for r in rows] if rows else []
+
     async def search(self, org_id: UUID, query: str) -> list[LoanRow]:
         rows = await self.conn.fetch(
             """
@@ -173,12 +214,14 @@ class LoanRepository(BaseRepository):
         org_id: UUID,
         loan_id: UUID,
         limit: int = 200,
+        offset: int = 0,
     ):
         return await self.conn.fetch(
             self.sql("list_workflow_events_for_application"),
             org_id,
             loan_id,
             limit,
+            offset,
         )
 
     async def soft_delete(self, loan_id: UUID, org_id: UUID) -> UUID | None:
@@ -327,6 +370,34 @@ class LoanRepository(BaseRepository):
     async def list_disbursed(self, org_id: UUID) -> list[dict]:
         rows = await self.conn.fetch(self.sql("list_disbursed"), org_id)
         return [dict(r) for r in rows]
+
+    async def list_disbursed_page(
+        self,
+        org_id: UUID,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[dict], int]:
+        rows = await self.conn.fetch(
+            self.sql("list_disbursed_page"),
+            org_id,
+            limit,
+            offset,
+        )
+        total = int(rows[0]["total_count"]) if rows else 0
+        return [dict(row) for row in rows], total
+
+    async def borrower_state_counts(self, org_id: UUID) -> dict:
+        row = await self.conn.fetchrow(
+            self.sql("borrower_state_counts"),
+            org_id,
+        )
+        return dict(row) if row else {
+            "total": 0,
+            "draft": 0,
+            "review": 0,
+            "approved": 0,
+            "active": 0,
+        }
 
     async def save_stage_data(self, loan_id: UUID, stage: str, data: dict, user_id: UUID) -> dict:
         existing = await self.get_stage_data(loan_id, stage)

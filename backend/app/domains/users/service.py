@@ -1,5 +1,6 @@
 import secrets
 from datetime import datetime, timedelta, timezone
+from uuid import UUID
 
 from app.domains.users.repository import UserRepository
 from app.domains.auth.repository import AuthRepository
@@ -71,7 +72,8 @@ class UserService:
             full_name=user_in.full_name,
             email=user_in.email,
             role=db_role,
-            password_hash=hashed
+            password_hash=hashed,
+            branch_id=user_in.branch_id
         )
         return user
 
@@ -98,6 +100,7 @@ class UserService:
             email=email,
             role=role,
             password_hash=get_password_hash(secrets.token_urlsafe(32)),
+            branch_id=invite_in.branch_id
         )
         await self.repo.deactivate_user(user.id)
         token = secrets.token_urlsafe(32)
@@ -139,3 +142,13 @@ class UserService:
             raise DomainException("This user is already inactive.", 400)
 
         await self.repo.deactivate_user(user.id)
+
+    async def update_user_branch(self, current_admin: UserRow, user_id, branch_id: UUID | None) -> UserRow:
+        user = await self.repo.get_by_id(user_id)
+        if not user or user.org_id != current_admin.org_id:
+            raise DomainException("User not found.", 404)
+        if user.id == current_admin.id:
+            raise DomainException("You cannot change your own branch.", 400)
+
+        await self.repo.update_branch(user.id, branch_id)
+        return await self.repo.get_by_id(user.id)

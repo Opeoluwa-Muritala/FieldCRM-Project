@@ -39,6 +39,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 # Domain Routers
 from app.domains.auth.router import router as auth_router
 from app.domains.users.router import router as users_router
+from app.domains.branches.router import router as branches_router
 from app.domains.loans.router import router as loans_router
 from app.domains.ocr.router import router as ocr_router
 from app.api.v1.mobile import router as mobile_api_router, warm_mobile_static_cache
@@ -354,6 +355,7 @@ app.add_exception_handler(DomainException, browser_domain_exception_handler)
 # Mount Routers
 app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"])
 app.include_router(users_router, prefix=f"{settings.API_V1_STR}/users", tags=["Users"])
+app.include_router(branches_router, tags=["Branches"])
 app.include_router(mobile_api_router, prefix=f"{settings.API_V1_STR}/mobile", tags=["Mobile API"])
 app.include_router(ocr_router)
 

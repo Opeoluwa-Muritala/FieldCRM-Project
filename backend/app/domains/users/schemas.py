@@ -8,6 +8,7 @@ class UserBase(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=100)
     email: str = Field(..., description="Unique user email address")
     role: str = Field(..., description="account_officer, branch_manager, branch_supervisor, credit_analyst, crm, head_crm, auditor, ed, md, legal, system_admin")
+    branch_id: Optional[UUID] = None
 
 
 class UserCreate(UserBase):
@@ -22,6 +23,7 @@ class UserInvitationCreate(UserBase):
 
 class UserRoleUpdate(BaseModel):
     role: str = Field(..., description="The operational role to assign")
+    branch_id: Optional[UUID] = None
 
 
 class UserUpdate(BaseModel):
@@ -29,12 +31,14 @@ class UserUpdate(BaseModel):
     email: Optional[str] = None
     role: Optional[str] = None
     active: Optional[bool] = None
+    branch_id: Optional[UUID] = None
 
 
 class UserResponse(UserBase):
     id: str
     org_id: str
     active: bool
+    branch_name: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -52,6 +56,8 @@ class UserRow(BaseModel):
     password_hash: str
     role: str  # stored as lowercase snake_case in DB
     active: bool
+    branch_id: Optional[UUID] = None
+    branch_name: Optional[str] = None
     last_login_at: Optional[datetime] = None
     created_at: datetime
 

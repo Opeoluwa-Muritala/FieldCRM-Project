@@ -111,11 +111,13 @@
     <section id="crm-consents" class="csp-s-a94d78a93365">
       <h4 class="csp-s-bb5bea385726">Declarations &amp; Consents</h4>
       <p class="csp-s-244cb7eb6f45">All items below are required before this file can proceed.</p>
-      <label class="csp-s-16dda14d4377"><input type="checkbox" name="consent_credit_bureau" value="1" {% if consent_data.consent_credit_bureau %}checked{% endif %}> Credit Bureau Disclosure (CBN-mandated disclosure consent)</label>
-      <label class="csp-s-16dda14d4377"><input type="checkbox" name="consent_credit_check" value="1" {% if consent_data.consent_credit_check %}checked{% endif %}> Credit Check Authorisation</label>
-      <label class="csp-s-16dda14d4377"><input type="checkbox" name="consent_cheque" value="1" {% if consent_data.consent_cheque %}checked{% endif %}> Cheque Recovery Authorisation</label>
-      <label class="csp-s-16dda14d4377"><input type="checkbox" name="consent_gsi" value="1" {% if consent_data.consent_gsi %}checked{% endif %}> Global Standing Instruction (GSI) Mandate</label>
-      <p class="flat-card csp-s-df1b781e15ed">The applicant signs through their authenticated client link. Staff cannot sign on an applicant's behalf.</p>
+      <p class="flat-card consent-signing-note csp-s-df1b781e15ed">The applicant signs through their authenticated client link. Staff cannot sign on an applicant's behalf.</p>
+      <div class="consent-checklist">
+        <label class="consent-checklist-item"><input type="checkbox" name="consent_credit_bureau" value="1" {% if consent_data.consent_credit_bureau %}checked{% endif %}> <span><strong>Credit Bureau Disclosure</strong><small>CBN-mandated disclosure consent</small></span></label>
+        <label class="consent-checklist-item"><input type="checkbox" name="consent_credit_check" value="1" {% if consent_data.consent_credit_check %}checked{% endif %}> <span><strong>Credit Check Authorisation</strong></span></label>
+        <label class="consent-checklist-item"><input type="checkbox" name="consent_gsi" value="1" {% if consent_data.consent_gsi %}checked{% endif %}> <span><strong>Global Standing Instruction (GSI) Mandate</strong></span></label>
+        <label class="consent-checklist-item"><input type="checkbox" name="consent_cheque" value="1" {% if consent_data.consent_cheque %}checked{% endif %}> <span><strong>Cheque Recovery Authorisation</strong></span></label>
+      </div>
       <label class="csp-s-613eed490326"><input type="checkbox" name="final_declaration" value="1" {% if consent_data.final_declaration %}checked{% endif %}> I declare all information provided is true and correct.</label>
     </section>
     {% endif %}

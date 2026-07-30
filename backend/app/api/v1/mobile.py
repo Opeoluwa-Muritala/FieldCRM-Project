@@ -454,7 +454,7 @@ async def get_mobile_queue(
 @cache_response(ttl_seconds=30)
 async def list_mobile_borrowers(
     page: int = Query(1, ge=1),
-    size: int = Query(50, ge=1, le=100),
+    size: int = Query(20, ge=1, le=100),
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
@@ -466,16 +466,9 @@ async def list_mobile_borrowers(
         officer_id=officer_id,
         page=page,
         size=size,
+        branch_id=getattr(current_user, "branch_id", None),
     )
-    seen: set[str] = set()
-    items = []
-    for app in applications:
-        full_app = await repo.get_by_id(app.id, current_user.org_id)
-        borrower_id = str(full_app.id if full_app else app.id)
-        if borrower_id in seen:
-            continue
-        seen.add(borrower_id)
-        items.append(_mobile_borrower(full_app or app, current_user))
+    items = [_mobile_borrower(app, current_user) for app in applications]
     return {
         "items": items,
         "total": total,

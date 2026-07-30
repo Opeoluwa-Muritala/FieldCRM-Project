@@ -19,6 +19,7 @@ MIGRATION_FILES = [
     "003_seed_demo.sql",
     "004_notifications.sql",
     "005_seed_notifications_and_pledges.sql",
+    "024_branch_scoping.sql",
 ]
 
 
@@ -59,7 +60,64 @@ def run_migrations() -> None:
         conn.autocommit = False
         cursor = conn.cursor()
 
+        # Create migration history table if not exists
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS migration_history ("
+            "    filename VARCHAR(255) PRIMARY KEY,"
+            "    applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+            ");"
+        )
+        conn.commit()
+
+        # Check if core tables exist
+        cursor.execute(
+            "SELECT count(*) FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name = 'users';"
+        )
+        users_exist = cursor.fetchone()[0] > 0
+
+        cursor.execute(
+            "SELECT count(*) FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name = 'branches';"
+        )
+        branches_exist = cursor.fetchone()[0] > 0
+
+        cursor.execute(
+            "SELECT count(*) FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name = 'notifications';"
+        )
+        notifications_exist = cursor.fetchone()[0] > 0
+
+        # Check if history table is empty
+        cursor.execute("SELECT count(*) FROM migration_history;")
+        history_count = cursor.fetchone()[0]
+        
+        if history_count == 0 and users_exist:
+            cursor.execute("INSERT INTO migration_history (filename) VALUES ('001_full_schema.sql') ON CONFLICT DO NOTHING;")
+            cursor.execute("INSERT INTO migration_history (filename) VALUES ('002_ref_no_sequence.sql') ON CONFLICT DO NOTHING;")
+            cursor.execute("INSERT INTO migration_history (filename) VALUES ('003_seed_demo.sql') ON CONFLICT DO NOTHING;")
+            if notifications_exist:
+                cursor.execute("INSERT INTO migration_history (filename) VALUES ('004_notifications.sql') ON CONFLICT DO NOTHING;")
+                cursor.execute("INSERT INTO migration_history (filename) VALUES ('005_seed_notifications_and_pledges.sql') ON CONFLICT DO NOTHING;")
+            if branches_exist:
+                cursor.execute("INSERT INTO migration_history (filename) VALUES ('024_branch_scoping.sql') ON CONFLICT DO NOTHING;")
+            conn.commit()
+            logger.info("Seeded migration history table selectively based on existing tables.")
+
+        # Self-healing: if branches do not exist but 024 is in history, remove it to force re-run
+        if not branches_exist:
+            cursor.execute("DELETE FROM migration_history WHERE filename = '024_branch_scoping.sql';")
+            conn.commit()
+
+        # Fetch already applied migrations
+        cursor.execute("SELECT filename FROM migration_history;")
+        applied = {row[0] for row in cursor.fetchall()}
+
         for filename in MIGRATION_FILES:
+            if filename in applied:
+                logger.info("Skipping already applied migration: %s", filename)
+                continue
+
             filepath = os.path.join(MIGRATION_DIR, filename)
             if not os.path.exists(filepath):
                 logger.error("Migration file not found: %s", filepath)
@@ -70,9 +128,8 @@ def run_migrations() -> None:
             with open(filepath, "r", encoding="utf-8") as f:
                 sql = f.read()
 
-            # Execute each statement separately to handle multi-statement files
-            # psycopg2 can handle multi-statement strings directly
             cursor.execute(sql)
+            cursor.execute("INSERT INTO migration_history (filename) VALUES (%s);", (filename,))
             logger.info("  Completed: %s", filename)
 
         conn.commit()

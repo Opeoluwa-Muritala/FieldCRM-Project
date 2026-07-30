@@ -25,10 +25,12 @@ class UserRepository(BaseRepository):
         email: str,
         role: str,
         password_hash: str,
+        branch_id: UUID | None = None,
     ) -> UserRow:
         row = await self.conn.fetchrow(
             self.sql("create_user"),
             str(org_id), full_name, email, role, password_hash,
+            str(branch_id) if branch_id else None,
         )
         return UserRow(**row)
 
@@ -37,3 +39,6 @@ class UserRepository(BaseRepository):
 
     async def update_role(self, user_id: UUID, role: str) -> None:
         await self.conn.execute("UPDATE users SET role = $2 WHERE id = $1", str(user_id), role)
+
+    async def update_branch(self, user_id: UUID, branch_id: UUID | None) -> None:
+        await self.conn.execute("UPDATE users SET branch_id = $2 WHERE id = $1", str(user_id), str(branch_id) if branch_id else None)
