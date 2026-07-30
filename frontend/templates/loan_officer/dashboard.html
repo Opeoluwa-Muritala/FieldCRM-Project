@@ -29,23 +29,30 @@
     </div>
 
     {# 2×2 Stat Chips #}
-    <div class="lo-stat-chips">
-        <div class="lo-stat-chip">
-            <span class="lo-stat-chip-value">{{ m.get('my_applications', 0) }}</span>
-            <span class="lo-stat-chip-label">Applications Today</span>
-        </div>
-        <div class="lo-stat-chip">
-            <span class="lo-stat-chip-value">{{ m.get('pending_upload', 0) }}</span>
-            <span class="lo-stat-chip-label">Pending Sync</span>
-        </div>
-        <div class="lo-stat-chip">
-            <span class="lo-stat-chip-value">{{ m.get('visits_due', 0) }}</span>
-            <span class="lo-stat-chip-label">Visits Due</span>
-        </div>
-        <div class="lo-stat-chip lo-stat-chip-danger">
-            <span class="lo-stat-chip-value">{{ m.get('returned', 0) }}</span>
-            <span class="lo-stat-chip-label">Missing Docs</span>
-        </div>
+    <div class="lo-stat-chips" id="lo-stat-chips" data-section-src="/dashboard?partial=metrics">
+        {% if loading %}
+            <div class="skeleton-chip skeleton w-full"></div>
+            <div class="skeleton-chip skeleton w-full"></div>
+            <div class="skeleton-chip skeleton w-full"></div>
+            <div class="skeleton-chip skeleton w-full"></div>
+        {% else %}
+            <div class="lo-stat-chip">
+                <span class="lo-stat-chip-value">{{ m.get('my_applications', 0) }}</span>
+                <span class="lo-stat-chip-label">Applications Today</span>
+            </div>
+            <div class="lo-stat-chip">
+                <span class="lo-stat-chip-value">{{ m.get('pending_upload', 0) }}</span>
+                <span class="lo-stat-chip-label">Pending Sync</span>
+            </div>
+            <div class="lo-stat-chip">
+                <span class="lo-stat-chip-value">{{ m.get('visits_due', 0) }}</span>
+                <span class="lo-stat-chip-label">Visits Due</span>
+            </div>
+            <div class="lo-stat-chip lo-stat-chip-danger">
+                <span class="lo-stat-chip-value">{{ m.get('returned', 0) }}</span>
+                <span class="lo-stat-chip-label">Missing Docs</span>
+            </div>
+        {% endif %}
     </div>
 
     {# Today's Tasks — swipeable cards #}
@@ -53,38 +60,43 @@
         <span class="lo-section-title">Today's Tasks</span>
         <a href="/applications" class="lo-section-link">View All &#x2192;</a>
     </div>
-    <div class="lo-task-list" id="loTaskList">
-        {% if data and data.tasks %}
-        {% for task in data.tasks %}
-        <div class="lo-task-card" data-loan-id="{{ task.loan_id }}" data-swipe="true">
-            <div class="lo-task-card-inner">
-                <div class="lo-task-card-type type-{{ task.task_type }}">
-                    {% if task.task_type == 'returned' %}&#x21A9;
-                    {% elif task.task_type == 'ocr_review' %}&#x1F50D;
-                    {% else %}&#x1F4DD;{% endif %}
-                </div>
-                <div class="lo-task-card-info">
-                    <div class="lo-task-card-name">{{ task.applicant_name }}</div>
-                    <div class="lo-task-card-desc">{{ task.task_description }}</div>
-                </div>
-                <div class="lo-task-card-amount">
-                    {% if task.amount %}&#x20A6;{{ "{:,.0f}".format(task.amount) }}{% endif %}
-                </div>
-            </div>
-            {# Swipe action layers #}
-            <div class="lo-swipe-action lo-swipe-left" aria-hidden="true">
-                <span>&#x2192; Open</span>
-            </div>
-            <div class="lo-swipe-action lo-swipe-right" aria-hidden="true">
-                <span>Quick View &#x2190;</span>
-            </div>
-        </div>
-        {% endfor %}
+    <div class="lo-task-list" id="loTaskList" data-section-src="/dashboard?partial=tasks">
+        {% if loading %}
+            <div class="skeleton-card skeleton w-full mb-2"></div>
+            <div class="skeleton-card skeleton w-full mb-2"></div>
         {% else %}
-        <div class="lo-empty-state">
-            <span class="lo-empty-icon">&#x2705;</span>
-            <span class="lo-empty-text">All caught up! No tasks pending.</span>
-        </div>
+            {% if data and data.tasks %}
+            {% for task in data.tasks %}
+            <div class="lo-task-card" data-loan-id="{{ task.loan_id }}" data-swipe="true">
+                <div class="lo-task-card-inner">
+                    <div class="lo-task-card-type type-{{ task.task_type }}">
+                        {% if task.task_type == 'returned' %}&#x21A9;
+                        {% elif task.task_type == 'ocr_review' %}&#x1F50D;
+                        {% else %}&#x1F4DD;{% endif %}
+                    </div>
+                    <div class="lo-task-card-info">
+                        <div class="lo-task-card-name">{{ task.applicant_name }}</div>
+                        <div class="lo-task-card-desc">{{ task.task_description }}</div>
+                    </div>
+                    <div class="lo-task-card-amount">
+                        {% if task.amount %}&#x20A6;{{ "{:,.0f}".format(task.amount) }}{% endif %}
+                    </div>
+                </div>
+                {# Swipe action layers #}
+                <div class="lo-swipe-action lo-swipe-left" aria-hidden="true">
+                    <span>&#x2192; Open</span>
+                </div>
+                <div class="lo-swipe-action lo-swipe-right" aria-hidden="true">
+                    <span>Quick View &#x2190;</span>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="lo-empty-state">
+                <span class="lo-empty-icon">&#x2705;</span>
+                <span class="lo-empty-text">All caught up! No tasks pending.</span>
+            </div>
+            {% endif %}
         {% endif %}
     </div>
 
@@ -92,18 +104,23 @@
     <div class="lo-section-header">
         <span class="lo-section-title">Recent Activity</span>
     </div>
-    <div class="lo-activity-list">
-        {% if data and data.queue %}
-        {% for item in data.queue[:5] %}
-        <a href="/applications/{{ item.id }}" class="lo-activity-item">
-            <span class="lo-activity-dot"></span>
-            <div class="lo-activity-info">
-                <span class="lo-activity-name">{{ item.applicant_name }}</span>
-                <span class="lo-activity-stage">{{ item.stage|replace('_', ' ')|title }}</span>
-            </div>
-            <span class="lo-activity-time">{{ item.updated_at.strftime('%d %b, %H:%M') if item.updated_at else '' }}</span>
-        </a>
-        {% endfor %}
+    <div class="lo-activity-list" id="lo-activity-list" data-section-src="/dashboard?partial=queue">
+        {% if loading %}
+            <div class="skeleton w-full h-10 mb-2"></div>
+            <div class="skeleton w-full h-10"></div>
+        {% else %}
+            {% if data and data.queue %}
+            {% for item in data.queue[:5] %}
+            <a href="/applications/{{ item.id }}" class="lo-activity-item">
+                <span class="lo-activity-dot"></span>
+                <div class="lo-activity-info">
+                    <span class="lo-activity-name">{{ item.applicant_name }}</span>
+                    <span class="lo-activity-stage">{{ item.stage|replace('_', ' ')|title }}</span>
+                </div>
+                <span class="lo-activity-time">{{ item.updated_at.strftime('%d %b, %H:%M') if item.updated_at else '' }}</span>
+            </a>
+            {% endfor %}
+            {% endif %}
         {% endif %}
     </div>
 </div>
@@ -115,47 +132,54 @@
     <div class="dashboard-greeting">Good morning, {{ user.name if user else 'Officer' }} — {{ user.display_role if user and user.display_role else 'Relationship Officer' }}.</div>
 
     {# 4 Metric Cards #}
-    <div class="metrics-row">
-        <div class="metric-card">
-            <div class="metric-card-top">
-                <span class="metric-label">Applications Today</span>
-                <div class="metric-icon-bg">&#x1F4CB;</div>
+    <div class="metrics-row" id="metrics-row" data-section-src="/dashboard?partial=metrics">
+        {% if loading %}
+            <div class="skeleton-card skeleton w-full"></div>
+            <div class="skeleton-card skeleton w-full"></div>
+            <div class="skeleton-card skeleton w-full"></div>
+            <div class="skeleton-card skeleton w-full"></div>
+        {% else %}
+            <div class="metric-card">
+                <div class="metric-card-top">
+                    <span class="metric-label">Applications Today</span>
+                    <div class="metric-icon-bg">&#x1F4CB;</div>
+                </div>
+                <div class="metric-card-bottom">
+                    <span class="metric-value">{{ m.get('my_applications', 0) }}</span>
+                    <span class="metric-delta">Active</span>
+                </div>
             </div>
-            <div class="metric-card-bottom">
-                <span class="metric-value">{{ m.get('my_applications', 0) }}</span>
-                <span class="metric-delta">Active</span>
+            <div class="metric-card">
+                <div class="metric-card-top">
+                    <span class="metric-label">Pending Sync</span>
+                    <div class="metric-icon-bg">&#x1F4E4;</div>
+                </div>
+                <div class="metric-card-bottom">
+                    <span class="metric-value">{{ m.get('pending_upload', 0) }}</span>
+                    <span class="metric-delta">Awaiting</span>
+                </div>
             </div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-card-top">
-                <span class="metric-label">Pending Sync</span>
-                <div class="metric-icon-bg">&#x1F4E4;</div>
+            <div class="metric-card">
+                <div class="metric-card-top">
+                    <span class="metric-label">Visits Due</span>
+                    <div class="metric-icon-bg">&#x1F4CD;</div>
+                </div>
+                <div class="metric-card-bottom">
+                    <span class="metric-value">{{ m.get('visits_due', 0) }}</span>
+                    <span class="metric-delta">Scheduled</span>
+                </div>
             </div>
-            <div class="metric-card-bottom">
-                <span class="metric-value">{{ m.get('pending_upload', 0) }}</span>
-                <span class="metric-delta">Awaiting</span>
+            <div class="metric-card">
+                <div class="metric-card-top">
+                    <span class="metric-label">Missing Docs</span>
+                    <div class="metric-icon-bg metric-icon-bg-danger">&#x21A9;</div>
+                </div>
+                <div class="metric-card-bottom">
+                    <span class="metric-value">{{ m.get('returned', 0) }}</span>
+                    <span class="metric-delta metric-delta-danger">Needs Attention</span>
+                </div>
             </div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-card-top">
-                <span class="metric-label">Visits Due</span>
-                <div class="metric-icon-bg">&#x1F4CD;</div>
-            </div>
-            <div class="metric-card-bottom">
-                <span class="metric-value">{{ m.get('visits_due', 0) }}</span>
-                <span class="metric-delta">Scheduled</span>
-            </div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-card-top">
-                <span class="metric-label">Missing Docs</span>
-                <div class="metric-icon-bg metric-icon-bg-danger">&#x21A9;</div>
-            </div>
-            <div class="metric-card-bottom">
-                <span class="metric-value">{{ m.get('returned', 0) }}</span>
-                <span class="metric-delta metric-delta-danger">Needs Attention</span>
-            </div>
-        </div>
+        {% endif %}
     </div>
 
     {# Two-column layout: Queue Table + Pipeline + Activity #}
@@ -166,95 +190,115 @@
                 <span class="page-card-title csp-s-827f35e03a44">Application Queue</span>
                 <a href="/applications" class="csp-s-c394f11ae038">View All &#x2192;</a>
             </div>
-            <div class="custom-table-container">
-                <table class="custom-table">
-                    <thead>
-                        <tr>
-                            <th>Applicant</th>
-                            <th>Type</th>
-                            <th>Amount</th>
-                            <th>Stage</th>
-                            <th>Updated</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if applications %}
-                        {% for app in applications[:10] %}
-                        <tr data-href="/applications/{{ app.id }}" tabindex="0">
-                            <td>{{ app.applicant_name }}</td>
-                            <td>{{ app.loan_type }}</td>
-                            <td>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}—{% endif %}</td>
-                            <td>
-                                {% set stage_class = {
-                                    'intake': 'needs-review',
-                                    'ocr_review': 'low-confidence',
-                                    'credit_review': 'needs-review',
-                                    'branch_approval': 'needs-review',
-                                    'disbursement_ready': 'approved',
-                                    'disbursed': 'verified',
-                                    'returned': 'returned',
-                                    'rejected': 'missing'
-                                } %}
-                                <span class="status-badge {{ stage_class.get(app.stage, '') }}">{{ app.status }}</span>
-                            </td>
-                            <td>{{ app.updated_at.strftime('%d %b %Y, %H:%M') if app.updated_at else '' }}</td>
-                        </tr>
-                        {% endfor %}
-                        {% else %}
-                        <tr><td colspan="5" class="csp-s-56d23a4ca666">No applications yet. Start by creating one.</td></tr>
-                        {% endif %}
-                    </tbody>
-                </table>
+            <div class="custom-table-container" id="custom-table-container" data-section-src="/dashboard?partial=queue">
+                {% if loading %}
+                    <table class="custom-table">
+                        <tbody>
+                            <tr class="skeleton-row"><td colspan="5"><div class="skeleton w-full h-5"></div></td></tr>
+                            <tr class="skeleton-row"><td colspan="5"><div class="skeleton w-full h-5"></div></td></tr>
+                            <tr class="skeleton-row"><td colspan="5"><div class="skeleton w-full h-5"></div></td></tr>
+                        </tbody>
+                    </table>
+                {% else %}
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Applicant</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Stage</th>
+                                <th>Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if applications %}
+                            {% for app in applications[:10] %}
+                            <tr data-href="/applications/{{ app.id }}" tabindex="0">
+                                <td>{{ app.applicant_name }}</td>
+                                <td>{{ app.loan_type }}</td>
+                                <td>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}—{% endif %}</td>
+                                <td>
+                                    {% set stage_class = {
+                                        'intake': 'needs-review',
+                                        'ocr_review': 'low-confidence',
+                                        'credit_review': 'needs-review',
+                                        'branch_approval': 'needs-review',
+                                        'disbursement_ready': 'approved',
+                                        'disbursed': 'verified',
+                                        'returned': 'returned',
+                                        'rejected': 'missing'
+                                    } %}
+                                    <span class="status-badge {{ stage_class.get(app.stage, '') }}">{{ app.status }}</span>
+                                </td>
+                                <td>{{ app.updated_at.strftime('%d %b %Y, %H:%M') if app.updated_at else '' }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr><td colspan="5" class="csp-s-56d23a4ca666">No applications yet. Start by creating one.</td></tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                {% endif %}
             </div>
         </div>
 
         {# RIGHT — Pipeline + Activity stacked #}
         <div>
             {# Pipeline Summary #}
-            <div class="page-card csp-s-4933c08820a9">
+            <div class="page-card csp-s-4933c08820a9" id="lo-pipeline-card" data-section-src="/dashboard?partial=pipeline">
                 <span class="page-card-title csp-s-4e4e9b657c68">Loan Pipeline</span>
-                <div class="lo-pipeline-bar">
-                    {% set stages = [
-                        ('intake', 'Intake', m.get('drafts', 0)),
-                        ('ocr_review', 'OCR', m.get('ocr_review', 0)),
-                        ('returned', 'Returned', m.get('returned', 0))
-                    ] %}
-                    {% set total = stages|sum(attribute='2') %}
-                    {% for stage_key, stage_label, count in stages %}
-                    {% if count > 0 %}
-                    <a href="/applications?stage={{ stage_key }}" class="lo-pipeline-segment stage-{{ stage_key }}" data-csp-style="flex: {{ count }};" title="{{ stage_label }}: {{ count }}">
-                        <span class="lo-pipeline-count">{{ count }}</span>
-                    </a>
-                    {% endif %}
-                    {% endfor %}
-                    {% if total == 0 %}
-                    <div class="lo-pipeline-segment lo-pipeline-empty">No active applications</div>
-                    {% endif %}
-                </div>
-                <div class="lo-pipeline-legend">
-                    {% for stage_key, stage_label, count in stages %}
-                    <span class="lo-pipeline-legend-item stage-{{ stage_key }}">{{ stage_label }}: {{ count }}</span>
-                    {% endfor %}
-                </div>
+                {% if loading %}
+                    <div class="skeleton w-full h-10 mt-3 rounded-lg"></div>
+                {% else %}
+                    <div class="lo-pipeline-bar">
+                        {% set stages = [
+                            ('intake', 'Intake', m.get('drafts', 0)),
+                            ('ocr_review', 'OCR', m.get('ocr_review', 0)),
+                            ('returned', 'Returned', m.get('returned', 0))
+                        ] %}
+                        {% set total = stages|sum(attribute='2') %}
+                        {% for stage_key, stage_label, count in stages %}
+                        {% if count > 0 %}
+                        <a href="/applications?stage={{ stage_key }}" class="lo-pipeline-segment stage-{{ stage_key }}" data-csp-style="flex: {{ count }};" title="{{ stage_label }}: {{ count }}">
+                            <span class="lo-pipeline-count">{{ count }}</span>
+                        </a>
+                        {% endif %}
+                        {% endfor %}
+                        {% if total == 0 %}
+                        <div class="lo-pipeline-segment lo-pipeline-empty">No active applications</div>
+                        {% endif %}
+                    </div>
+                    <div class="lo-pipeline-legend">
+                        {% for stage_key, stage_label, count in stages %}
+                        <span class="lo-pipeline-legend-item stage-{{ stage_key }}">{{ stage_label }}: {{ count }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
             </div>
 
             {# Activity Feed #}
-            <div class="page-card">
+            <div class="page-card" id="lo-activity-card" data-section-src="/dashboard?partial=activity">
                 <span class="page-card-title csp-s-4e4e9b657c68">Recent Activity</span>
                 <div class="lo-activity-feed">
-                    {% if data and data.queue %}
-                    {% for item in data.queue[:6] %}
-                    <div class="lo-activity-feed-item">
-                        <span class="lo-activity-feed-dot"></span>
-                        <div class="lo-activity-feed-content">
-                            <span class="lo-activity-feed-actor">{{ item.applicant_name }}</span>
-                            <span class="lo-activity-feed-action">{{ item.stage|replace('_', ' ')|title }}</span>
-                        </div>
-                        <span class="lo-activity-feed-time">{{ item.updated_at.strftime('%d %b, %H:%M') if item.updated_at else '' }}</span>
-                    </div>
-                    {% endfor %}
+                    {% if loading %}
+                        <div class="skeleton w-full h-5 mb-2"></div>
+                        <div class="skeleton w-full h-5 mb-2"></div>
+                        <div class="skeleton w-full h-5"></div>
                     {% else %}
-                    <div class="csp-s-d52c2f82b418">No recent activity.</div>
+                        {% if data and data.queue %}
+                        {% for item in data.queue[:6] %}
+                        <div class="lo-activity-feed-item">
+                            <span class="lo-activity-feed-dot"></span>
+                            <div class="lo-activity-feed-content">
+                                <span class="lo-activity-feed-actor">{{ item.applicant_name }}</span>
+                                <span class="lo-activity-feed-action">{{ item.stage|replace('_', ' ')|title }}</span>
+                            </div>
+                            <span class="lo-activity-feed-time">{{ item.updated_at.strftime('%d %b, %H:%M') if item.updated_at else '' }}</span>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="csp-s-d52c2f82b418">No recent activity.</div>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>

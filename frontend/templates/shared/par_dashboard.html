@@ -8,6 +8,17 @@
   <div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">Portfolio at Risk Dashboard</h1></div>
 </div>
 
+{% set par_placeholder = {
+  "total_loans": 0, "total_portfolio": 0,
+  "par1_pct": 0, "par1_amount": 0,
+  "par30_pct": 0, "par30_amount": 0,
+  "par90_pct": 0, "par90_amount": 0
+} %}
+{% set par = par or par_placeholder %}
+{% include "partials/par_summary.html" %}
+{% include "partials/par_loan_rows.html" %}
+
+{% if false %}
 {% if par %}
 <div class="csp-s-b29996e97846">
   <div class="page-card csp-s-5a2dfef236e7">
@@ -71,5 +82,6 @@
     </table>
   </div>
 </div>
+{% endif %}
 {% endif %}
 {% endblock %}

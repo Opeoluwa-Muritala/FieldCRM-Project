@@ -32,6 +32,12 @@
             previewScript.defer = true;
             document.head.appendChild(previewScript);
         }
+        if (document.querySelector('[data-section-src], [data-paginate-url]')) {
+            const progScript = document.createElement('script');
+            progScript.src = '/static/js/progressive-loader.js?v=20260729';
+            progScript.defer = true;
+            document.head.appendChild(progScript);
+        }
     </script>
     <script nonce="{{ csp_nonce }}">
         window.showFieldMessage = function(message, tone = 'error') {

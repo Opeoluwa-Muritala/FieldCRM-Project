@@ -45,6 +45,7 @@ class LoanRow(BaseModel):
     loan_type: str
     stage: str
     applicant_name: str
+    branch_id: Optional[UUID] = None
     bvn: Optional[str] = None
     phone: Optional[str] = None
     amount: Optional[float] = None
@@ -174,11 +175,19 @@ class LoanRow(BaseModel):
 
 class LoanListItem(BaseModel):
     id: UUID
+    org_id: UUID
     ref_no: str
     loan_type: str
     stage: str
     amount: Optional[float]
     applicant_name: str
+    created_by: UUID
+    branch_id: Optional[UUID] = None
+    phone: Optional[str] = None
+    bvn: Optional[str] = None
+    tenor_months: Optional[int] = None
+    repayment_mode: Optional[str] = None
+    purpose: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     officer_name: Optional[str] = None

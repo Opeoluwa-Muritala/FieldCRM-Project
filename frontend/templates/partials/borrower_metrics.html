@@ -1,0 +1,16 @@
+<section class="metrics-row" id="borrower-metrics" data-section-src="/api/v1/web/borrowers/summary" aria-label="Loan state summary">
+    {% for label, value, suffix in [
+        ("Total Current Loans", counts.total, "Scoped"),
+        ("In Review", counts.review, "Stages 2-5"),
+        ("Approved Queue", counts.approved, "Pending release"),
+        ("Active Loans", counts.active, "Disbursed")
+    ] %}
+    <article class="metric-card">
+        <div class="metric-card-top"><span class="metric-label">{{ label }}</span></div>
+        <div class="metric-card-bottom">
+            <strong class="metric-value">{{ value }}</strong>
+            <span class="metric-delta">{{ suffix }}</span>
+        </div>
+    </article>
+    {% endfor %}
+</section>

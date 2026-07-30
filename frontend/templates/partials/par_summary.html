@@ -1,0 +1,16 @@
+<div id="par-summary" data-section-src="/api/v1/web/reports/par/summary">
+    <div class="csp-s-b29996e97846">
+    {% for label, value, detail in [
+        ("Total Disbursed Loans", par.total_loans, par.total_portfolio),
+        ("PAR-1", par.par1_pct ~ "%", par.par1_amount),
+        ("PAR-30", par.par30_pct ~ "%", par.par30_amount),
+        ("PAR-90", par.par90_pct ~ "%", par.par90_amount)
+    ] %}
+        <div class="page-card">
+            <div class="metric-value">{{ value }}</div>
+            <div>{{ label }}</div>
+            <div>&#x20A6;{{ "{:,.0f}".format(detail or 0) }}</div>
+        </div>
+    {% endfor %}
+    </div>
+</div>

@@ -94,7 +94,19 @@ async def update_user_role(
     current_admin: UserRow = Depends(RoleChecker(["System Admin"])),
 ):
     user = await service.update_user_role(current_admin, user_id, update.role)
-    return {"id": str(user.id), "role": user.role, "message": "Role updated."}
+    if update.branch_id is not None:
+        user = await service.update_user_branch(current_admin, user_id, update.branch_id)
+    elif "branch_id" in update.model_fields_set:
+        user = await service.update_user_branch(current_admin, user_id, None)
+        
+    user = await service.repo.get_by_id(user_id)
+    return {
+        "id": str(user.id),
+        "role": user.role,
+        "branch_id": str(user.branch_id) if user.branch_id else None,
+        "branch_name": user.branch_name,
+        "message": "User settings updated successfully."
+    }
 
 
 @router.post("/{user_id}/deactivate")

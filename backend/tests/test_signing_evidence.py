@@ -43,7 +43,11 @@ def test_pdf_hash_and_evidential_wording():
 
 def test_link_flow_does_not_require_otp():
     """The chosen client flow authenticates on one-time link redemption."""
-    assert "single_use_link" in open("migrations/023_signing_evidence.sql", encoding="utf-8").read()
+    try:
+        content = open("migrations/023_signing_evidence.sql", encoding="utf-8").read()
+    except FileNotFoundError:
+        content = open("backend/migrations/023_signing_evidence.sql", encoding="utf-8").read()
+    assert "single_use_link" in content
 
 
 @pytest.mark.asyncio
