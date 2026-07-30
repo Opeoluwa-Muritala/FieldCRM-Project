@@ -601,6 +601,16 @@ async def process_new_application(
     )
     return RedirectResponse(url=f"/applications/{app.id}/step/1", status_code=status.HTTP_303_SEE_OTHER)
 
+def _verify_loan_scope(app, current_user):
+    role = current_user.role.lower().replace(" ", "_")
+    created_by = app.get("created_by") if isinstance(app, dict) else getattr(app, "created_by", None)
+    if role in ("account_officer", "loan_officer") and created_by:
+        if str(created_by) != str(current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to access this application."
+            )
+
 @router.get("/applications/{application_id}")
 async def render_application_detail(
     request: Request,
@@ -616,6 +626,8 @@ async def render_application_detail(
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
+        
+    _verify_loan_scope(app, current_user)
         
     device = detect_device_type(request)
     if device == "mobile":
@@ -745,6 +757,7 @@ async def render_wizard_step(
     if not snapshot:
         raise HTTPException(status_code=404, detail="Loan Application not found")
     app, data, latest, signature_events = snapshot
+    _verify_loan_scope(app, current_user)
         
     user_role = current_user.role.lower().replace(" ", "_")
     if user_role not in ("account_officer", "loan_officer"):
@@ -1078,6 +1091,8 @@ async def render_document_upload(
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
 
+    _verify_loan_scope(app, current_user)
+
     ctx = build_template_context(
         request,
         current_user,
@@ -1099,6 +1114,12 @@ async def process_document_upload(
     current_user = Depends(get_current_user)
 ):
     """POST handler to store documents on server side."""
+    repo = LoanRepository(service.audit_svc.conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    _verify_loan_scope(app, current_user)
+
     doc_type = category or type or "other"
     await service.save_upload(
         loan_id=UUID(application_id),

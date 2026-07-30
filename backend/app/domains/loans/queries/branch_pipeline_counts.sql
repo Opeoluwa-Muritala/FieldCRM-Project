@@ -8,7 +8,7 @@ SELECT
     COALESCE(SUM(amount), 0) AS total_amount
 FROM loan_applications
 WHERE org_id = $1
-  AND branch_manager_id = $2
+  AND branch_id = (SELECT branch_id FROM users WHERE id = $2)
   AND deleted_at IS NULL
 GROUP BY stage
 ORDER BY

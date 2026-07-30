@@ -256,17 +256,11 @@
                             ('ocr_review', 'OCR', m.get('ocr_review', 0)),
                             ('returned', 'Returned', m.get('returned', 0))
                         ] %}
-                        {% set total = stages|sum(attribute='2') %}
                         {% for stage_key, stage_label, count in stages %}
-                        {% if count > 0 %}
-                        <a href="/applications?stage={{ stage_key }}" class="lo-pipeline-segment stage-{{ stage_key }}" data-csp-style="flex: {{ count }};" title="{{ stage_label }}: {{ count }}">
+                        <a href="/applications?stage={{ stage_key }}" class="lo-pipeline-segment stage-{{ stage_key }} {% if count == 0 %}stage-empty{% endif %}" data-csp-style="flex: {{ count if count > 0 else 1 }};" title="{{ stage_label }}: {{ count }}">
                             <span class="lo-pipeline-count">{{ count }}</span>
                         </a>
-                        {% endif %}
                         {% endfor %}
-                        {% if total == 0 %}
-                        <div class="lo-pipeline-segment lo-pipeline-empty">No active applications</div>
-                        {% endif %}
                     </div>
                     <div class="lo-pipeline-legend">
                         {% for stage_key, stage_label, count in stages %}

@@ -1,8 +1,12 @@
-﻿{% set mobile_title_text = "MD Queue" %}
+{% set mobile_title_text = "MD Queue" %}
 {% extends "base/desktop_shell.html" %}
 {% block title %}MD Approval Queue - FieldCRM{% endblock %}
 {% block page_title %}MD Approval Queue{% endblock %}
 {% block breadcrumb %}Managing Director -> Approval Queue{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/dashboard_legacy.css">
+{% endblock %}
+
 {% block content %}
 <div class="md-workflow-page">
 <div class="queue-page-header">

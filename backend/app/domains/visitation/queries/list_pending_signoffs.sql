@@ -20,7 +20,7 @@ FROM visitation_reports vr
 JOIN loan_applications la ON la.id = vr.loan_id
 LEFT JOIN users officer ON officer.id = vr.visiting_officer_id
 WHERE vr.org_id = $1
-  AND la.branch_manager_id = $2
+  AND la.branch_id = (SELECT branch_id FROM users WHERE id = $2)
   AND la.deleted_at IS NULL
   AND vr.status = 'submitted'
 ORDER BY vr.updated_at ASC

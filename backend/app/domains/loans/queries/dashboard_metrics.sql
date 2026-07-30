@@ -21,14 +21,14 @@ SELECT
     -- Branch Manager: awaiting concurrence
     COUNT(*) FILTER (
         WHERE $3 = 'branch_manager'
-          AND branch_manager_id = $2
+          AND branch_id = (SELECT branch_id FROM users WHERE id = $2)
           AND stage = 'branch_approval'
     ) AS metric_3,
 
     -- Branch Manager: awaiting credit review (credit_officer role removed)
     COUNT(*) FILTER (
         WHERE $3 = 'branch_manager'
-          AND branch_manager_id = $2
+          AND branch_id = (SELECT branch_id FROM users WHERE id = $2)
           AND stage = 'credit_review'
     ) AS metric_4,
 

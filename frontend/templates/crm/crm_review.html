@@ -3,6 +3,10 @@
 {% block title %}CRM Review - FieldCRM{% endblock %}
 {% block page_title %}CRM Dossier Review{% endblock %}
 {% block breadcrumb %}CRM -> Review -> {{ app.ref_no }}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/dashboard_legacy.css">
+{% endblock %}
+
 {% block content %}
 <div class="page-card csp-s-3c4a3d440074">
   <h2 class="page-card-title">{{ app.applicant_name }} — {{ app.ref_no }}</h2>

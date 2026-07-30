@@ -1,8 +1,12 @@
-﻿{% set mobile_title_text = "CRM Review Queue" %}
+{% set mobile_title_text = "CRM Review Queue" %}
 {% extends "base/desktop_shell.html" %}
 {% block title %}CRM Review Queue - FieldCRM{% endblock %}
 {% block page_title %}CRM Review Queue{% endblock %}
 {% block breadcrumb %}CRM -> Review Queue{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/dashboard_legacy.css">
+{% endblock %}
+
 {% block content %}
 <div class="queue-page-header"><div><div class="dashboard-date">{{ today_label }}</div><h1 class="page-card-title">Dossier Review Queue</h1></div></div>
 <div class="queue-cards">

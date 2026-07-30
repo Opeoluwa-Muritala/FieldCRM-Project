@@ -84,27 +84,14 @@
         // Set aria-busy
         element.setAttribute('aria-busy', 'true');
 
-        // Setup 600ms timeout for loading text
-        let showText = false;
-        const textTimer = setTimeout(() => {
-            showText = true;
-            let infoEl = element.querySelector('.section-loading-info');
-            if (!infoEl) {
-                infoEl = document.createElement('div');
-                infoEl.className = 'section-loading-info';
-                infoEl.style.cssText = 'font-size: 13px; color: var(--text-muted); margin-top: 12px; font-style: italic;';
-                infoEl.textContent = 'Fetching fresh updates...';
-                element.appendChild(infoEl);
-            }
-        }, 600);
+        // Setup 600ms timeout for loading text (disabled as per request)
+        const textTimer = null;
 
         try {
             const response = await fetch(src, {
                 headers: { 'X-Progressive-Load': 'true' },
                 signal: controller.signal
             });
-
-            clearTimeout(textTimer);
 
             if (!response.ok) throw new Error(`HTTP status ${response.status}`);
 
@@ -137,6 +124,9 @@
             const errStatus = element.querySelector('.section-refresh-failed');
             if (errStatus) errStatus.remove();
 
+            const infoEl = element.querySelector('.section-loading-info');
+            if (infoEl) infoEl.remove();
+
             window.performanceMetrics.sectionRequests[sectionId].duration = performance.now() - startTime;
             window.performanceMetrics.sectionRequests[sectionId].status = 'success';
 
@@ -145,7 +135,6 @@
             element.dispatchEvent(event);
 
         } catch (error) {
-            clearTimeout(textTimer);
             if (error.name === 'AbortError') return;
 
             console.warn(`Section load failed: ${src}`, error);
@@ -158,23 +147,6 @@
 
             window.performanceMetrics.sectionRequests[sectionId].status = 'failed';
             element.removeAttribute('aria-busy');
-
-            // Handle failed state gracefully
-            let failEl = element.querySelector('.section-refresh-failed');
-            if (!failEl) {
-                failEl = document.createElement('div');
-                failEl.className = 'section-refresh-failed';
-                failEl.style.cssText = 'padding: 8px 16px; margin-top: 12px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #991b1b;';
-                failEl.innerHTML = `
-                    <span>Could not refresh data.</span>
-                    <button type="button" class="btn-retry" style="background: #991b1b; color: #fff; border: 0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;">Retry</button>
-                `;
-                failEl.querySelector('.btn-retry').addEventListener('click', () => {
-                    failEl.remove();
-                    fetchSection(element, 0);
-                });
-                element.appendChild(failEl);
-            }
         }
     }
 
