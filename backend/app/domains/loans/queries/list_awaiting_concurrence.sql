@@ -23,7 +23,7 @@ LEFT JOIN users officer ON officer.id = la.created_by
 LEFT JOIN users credit ON credit.id = la.credit_officer_id
 LEFT JOIN visitation_reports vr ON vr.loan_id = la.id
 WHERE la.org_id = $1
-  AND la.branch_manager_id = $2
+  AND la.branch_id = (SELECT branch_id FROM users WHERE id = $2)
   AND la.stage = 'branch_manager_review'
   AND la.deleted_at IS NULL
 ORDER BY

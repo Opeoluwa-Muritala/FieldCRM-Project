@@ -9,23 +9,46 @@
 {% set m = data.metrics if data and data.metrics else {} %}
 <div class="role-workspace">
     <div class="role-hero"><div><div class="dashboard-date">{{ today_label }}</div><h1>System control desk</h1></div><a class="btn-primary-filled desktop-only" href="/users">Manage Users</a></div>
-    <div class="role-stat-grid">
-        <div class="role-stat"><span>Board Tickets</span><strong>{{ m.get('active_users', 0) }}</strong></div>
-        <div class="role-stat"><span>MCR Disbursed</span><strong>{{ m.get('active_loans', 0) }}</strong></div>
-        <div class="role-stat warning"><span>Alert Escalations</span><strong>{{ m.get('ready_for_disbursement', 0) }}</strong></div>
-        <div class="role-stat danger"><span>Decisions Signed</span><strong>{{ m.get('blocked_files', 0) }}</strong></div>
+    <div class="role-stat-grid" id="admin-metrics" data-section-src="/dashboard">
+        {% if loading %}
+            <div class="skeleton-chip skeleton w-full"></div>
+            <div class="skeleton-chip skeleton w-full"></div>
+            <div class="skeleton-chip skeleton w-full"></div>
+            <div class="skeleton-chip skeleton w-full"></div>
+        {% else %}
+            <div class="role-stat"><span>Board Tickets</span><strong>{{ m.get('active_users', 0) }}</strong></div>
+            <div class="role-stat"><span>MCR Disbursed</span><strong>{{ m.get('active_loans', 0) }}</strong></div>
+            <div class="role-stat warning"><span>Alert Escalations</span><strong>{{ m.get('ready_for_disbursement', 0) }}</strong></div>
+            <div class="role-stat danger"><span>Decisions Signed</span><strong>{{ m.get('blocked_files', 0) }}</strong></div>
+        {% endif %}
     </div>
     <div class="role-grid-main">
-        <section class="page-card"><div class="role-section-head"><h2>User Login &amp; Activity</h2><a href="/users">Manage</a></div><div class="role-card-list">
-            {% for item in data.user_activity %}
-            <div class="role-list-card"><strong>{{ item.full_name }}</strong><span>{{ item.role|replace('_', ' ')|title }} · Last login: {{ item.last_login_at.strftime('%d %b %Y, %H:%M') if item.last_login_at else 'Not yet signed in' }}</span><em>{% if item.latest_action %}{{ item.latest_action.action|replace('_', ' ')|title }} · {{ item.latest_action.created_at.strftime('%d %b, %H:%M') if item.latest_action.created_at else '' }}{% else %}No recorded system action{% endif %}</em></div>
-            {% else %}<div class="lo-empty-state">No user activity to show.</div>{% endfor %}
-        </div></section>
-        <section class="page-card"><div class="role-section-head"><h2>User Roles</h2><a href="/users">Manage</a></div><div class="role-pipeline-list">
-            {% for item in data.role_counts %}
-            <a href="/users" class="role-pipeline-row"><span>{{ item.role|replace('_', ' ')|title }}</span><strong>{{ item.count }}</strong></a>
-            {% else %}<div class="lo-empty-state">No active users.</div>{% endfor %}
-        </div></section>
+        <section class="page-card" id="admin-user-activity" data-section-src="/dashboard">
+            <div class="role-section-head"><h2>User Login &amp; Activity</h2><a href="/users">Manage</a></div>
+            <div class="role-card-list">
+                {% if loading %}
+                    <div class="skeleton-card skeleton w-full mb-2"></div>
+                    <div class="skeleton-card skeleton w-full"></div>
+                {% else %}
+                    {% for item in data.user_activity %}
+                    <div class="role-list-card"><strong>{{ item.full_name }}</strong><span>{{ item.role|replace('_', ' ')|title }} · Last login: {{ item.last_login_at.strftime('%d %b %Y, %H:%M') if item.last_login_at else 'Not yet signed in' }}</span><em>{% if item.latest_action %}{{ item.latest_action.action|replace('_', ' ')|title }} · {{ item.latest_action.created_at.strftime('%d %b, %H:%M') if item.latest_action.created_at else '' }}{% else %}No recorded system action{% endif %}</em></div>
+                    {% else %}<div class="lo-empty-state">No user activity to show.</div>{% endfor %}
+                {% endif %}
+            </div>
+        </section>
+        <section class="page-card" id="admin-user-roles" data-section-src="/dashboard">
+            <div class="role-section-head"><h2>User Roles</h2><a href="/users">Manage</a></div>
+            <div class="role-pipeline-list">
+                {% if loading %}
+                    <div class="skeleton-row skeleton w-full mb-2"></div>
+                    <div class="skeleton-row skeleton w-full"></div>
+                {% else %}
+                    {% for item in data.role_counts %}
+                    <a href="/users" class="role-pipeline-row"><span>{{ item.role|replace('_', ' ')|title }}</span><strong>{{ item.count }}</strong></a>
+                    {% else %}<div class="lo-empty-state">No active users.</div>{% endfor %}
+                {% endif %}
+            </div>
+        </section>
     </div>
 </div>
 {% endblock %}

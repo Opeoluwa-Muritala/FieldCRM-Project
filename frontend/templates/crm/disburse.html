@@ -1,8 +1,12 @@
-﻿{% set mobile_title_text = "Record Disbursement" %}
+{% set mobile_title_text = "Record Disbursement" %}
 {% extends "base/desktop_shell.html" %}
 {% block title %}Record Disbursement - FieldCRM{% endblock %}
 {% block page_title %}Record Disbursement{% endblock %}
 {% block breadcrumb %}CRM -> Disburse -> {{ app.ref_no }}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/dashboard_legacy.css">
+{% endblock %}
+
 {% block content %}
 <div class="disbursement-page">
 <div class="page-card csp-s-3c4a3d440074">

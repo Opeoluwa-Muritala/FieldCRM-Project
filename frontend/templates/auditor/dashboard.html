@@ -1,4 +1,4 @@
-﻿{% set mobile_title_text = "Compliance" %}
+{% set mobile_title_text = "Compliance" %}
 {% extends "base/desktop_shell.html" %}
 
 {% block title %}Auditor - FieldCRM{% endblock %}
@@ -9,23 +9,46 @@
 {% set m = data.metrics if data and data.metrics else {} %}
 <div class="role-workspace">
     <div class="role-hero"><div><div class="dashboard-date">{{ today_label }}</div><h1>Compliance review desk</h1></div><a class="btn-primary-filled desktop-only" href="/compliance-flags">Open Flags</a></div>
-    <div class="role-stat-grid">
-        <div class="role-stat warning"><span>Flags Raised</span><strong>{{ m.get('unverified_documents', 0) }}</strong></div>
-        <div class="role-stat danger"><span>Policy Breaches</span><strong>{{ m.get('critical_ocr_gaps', 0) }}</strong></div>
-        <div class="role-stat"><span>Audited Today</span><strong>{{ m.get('workflow_exceptions', 0) }}</strong></div>
-        <div class="role-stat"><span>Workflow Exceptions</span><strong>{{ m.get('audit_events_today', 0) }}</strong></div>
+    <div class="role-stat-grid" id="auditor-metrics" data-section-src="/dashboard">
+        {% if loading %}
+            <div class="skeleton-chip skeleton w-full"></div>
+            <div class="skeleton-chip skeleton w-full"></div>
+            <div class="skeleton-chip skeleton w-full"></div>
+            <div class="skeleton-chip skeleton w-full"></div>
+        {% else %}
+            <div class="role-stat warning"><span>Flags Raised</span><strong>{{ m.get('unverified_documents', 0) }}</strong></div>
+            <div class="role-stat danger"><span>Policy Breaches</span><strong>{{ m.get('critical_ocr_gaps', 0) }}</strong></div>
+            <div class="role-stat"><span>Audited Today</span><strong>{{ m.get('workflow_exceptions', 0) }}</strong></div>
+            <div class="role-stat"><span>Workflow Exceptions</span><strong>{{ m.get('audit_events_today', 0) }}</strong></div>
+        {% endif %}
     </div>
     <div class="role-grid-main">
-        <section class="page-card"><div class="role-section-head"><h2>Compliance Flags</h2><a href="/compliance-flags">View all</a></div><div class="role-card-list">
-            {% for item in data.flags %}
-            <a class="role-list-card" href="/applications/{{ item.loan_id }}"><strong>{{ item.applicant_name }}</strong><span>{{ item.flag_type|title }} - {{ item.flag_label }}</span><em>{{ item.flag_status|replace('_', ' ')|title }}</em></a>
-            {% else %}<div class="lo-empty-state">No compliance flags.</div>{% endfor %}
-        </div></section>
-        <section class="page-card"><div class="role-section-head"><h2>Audit Activity</h2><a href="/audit-trail">Open</a></div><div class="role-card-list">
-            {% for item in data.activity %}
-            <div class="role-list-card"><strong>{{ item.action }}</strong><span>{{ item.user_name or item.user_role }} - {{ item.entity_type }}</span><em>{{ item.created_at.strftime('%d %b %Y, %H:%M') if item.created_at else '' }}</em></div>
-            {% else %}<div class="lo-empty-state">No audit activity.</div>{% endfor %}
-        </div></section>
+        <section class="page-card" id="auditor-flags" data-section-src="/dashboard">
+            <div class="role-section-head"><h2>Compliance Flags</h2><a href="/compliance-flags">View all</a></div>
+            <div class="role-card-list">
+                {% if loading %}
+                    <div class="skeleton-card skeleton w-full mb-2"></div>
+                    <div class="skeleton-card skeleton w-full"></div>
+                {% else %}
+                    {% for item in data.flags %}
+                    <a class="role-list-card" href="/applications/{{ item.loan_id }}"><strong>{{ item.applicant_name }}</strong><span>{{ item.flag_type|title }} - {{ item.flag_label }}</span><em>{{ item.flag_status|replace('_', ' ')|title }}</em></a>
+                    {% else %}<div class="lo-empty-state">No compliance flags.</div>{% endfor %}
+                {% endif %}
+            </div>
+        </section>
+        <section class="page-card" id="auditor-activity" data-section-src="/dashboard">
+            <div class="role-section-head"><h2>Audit Activity</h2><a href="/audit-trail">Open</a></div>
+            <div class="role-card-list">
+                {% if loading %}
+                    <div class="skeleton-card skeleton w-full mb-2"></div>
+                    <div class="skeleton-card skeleton w-full"></div>
+                {% else %}
+                    {% for item in data.activity %}
+                    <div class="role-list-card"><strong>{{ item.action }}</strong><span>{{ item.user_name or item.user_role }} - {{ item.entity_type }}</span><em>{{ item.created_at.strftime('%d %b %Y, %H:%M') if item.created_at else '' }}</em></div>
+                    {% else %}<div class="lo-empty-state">No audit activity.</div>{% endfor %}
+                {% endif %}
+            </div>
+        </section>
     </div>
 </div>
 {% endblock %}
