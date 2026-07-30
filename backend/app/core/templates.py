@@ -22,6 +22,24 @@ class TimedJinja2Templates(Jinja2Templates):
             record_duration("render", started_at)
 
 
+def date_format_filter(value, format_str='%d %b %Y, %H:%M'):
+    if not value:
+        return ''
+    if isinstance(value, str):
+        try:
+            from datetime import datetime
+            clean_val = value.replace('Z', '+00:00')
+            # Handle space instead of T separator if present
+            dt = datetime.fromisoformat(clean_val)
+            return dt.strftime(format_str)
+        except Exception:
+            return value
+    try:
+        return value.strftime(format_str)
+    except Exception:
+        return str(value)
+
+
 def create_templates(directory: str) -> TimedJinja2Templates:
     if directory in _shared_templates:
         return _shared_templates[directory]
@@ -29,6 +47,7 @@ def create_templates(directory: str) -> TimedJinja2Templates:
         directory=directory,
         context_processors=[csp_nonce_context],
     )
+    templates.env.filters['date_format'] = date_format_filter
     templates.env.auto_reload = not settings.is_production
     _shared_templates[directory] = templates
     return templates
