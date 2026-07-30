@@ -71,6 +71,16 @@ sealed class Screen : NavKey {
     @Serializable
     data object WorkflowEventAudit : Screen()
     @Serializable
+    data object LegalWorkspace : Screen()
+    @Serializable
+    data object ValuationEditor : Screen()
+    @Serializable
+    data object MccWorkspace : Screen()
+    @Serializable
+    data object InterestPresets : Screen()
+    @Serializable
+    data object BranchManagement : Screen()
+    @Serializable
     data object Settings : Screen()
     @Serializable
     data object OfflineQueue : Screen()

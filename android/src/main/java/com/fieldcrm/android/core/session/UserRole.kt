@@ -5,6 +5,7 @@ enum class UserRole {
     BRANCH_SUPERVISOR,
     CREDIT_ANALYST,
     HEAD_CRM,
+    LEGAL,
 
     /** Legacy mobile roles retained only to restore sessions written by older app versions. */
     LOAN_OFFICER,
@@ -23,6 +24,7 @@ enum class UserRole {
             BRANCH_SUPERVISOR -> "Branch Supervisor"
             CREDIT_ANALYST -> "Credit Analyst"
             HEAD_CRM -> "Head CRM"
+            LEGAL -> "Legal"
             LOAN_OFFICER   -> "Loan Officer"
             BRANCH_MANAGER -> "Branch Manager"
             AUDITOR        -> "Auditor"
@@ -38,20 +40,6 @@ enum class UserRole {
     val isBusinessRole: Boolean
         get() = this != SYSTEM_ADMIN
 
-    /**
-     * Temporary presentation bridge while the mobile endpoints complete their
-     * migration from the former Committee/Executive flow to the website's
-     * Branch Supervisor/Credit Analyst/Head CRM workflow.
-     */
-    val legacyUiRole: UserRole
-        get() = when (this) {
-            ACCOUNT_OFFICER -> LOAN_OFFICER
-            BRANCH_SUPERVISOR -> BRANCH_MANAGER
-            CREDIT_ANALYST -> COMMITTEE
-            HEAD_CRM -> EXECUTIVE
-            else -> this
-        }
-
     companion object {
         fun fromServerRole(role: String): UserRole = when (role.trim().lowercase()) {
             "account_officer", "accountofficer" -> ACCOUNT_OFFICER
@@ -63,6 +51,7 @@ enum class UserRole {
             "system_admin", "admin", "admin_mcr", "mcr" -> SYSTEM_ADMIN
             "crm"                              -> CRM
             "head_crm", "headcrm" -> HEAD_CRM
+            "legal" -> LEGAL
             // Restored sessions from versions that predate the website workflow.
             "committee" -> COMMITTEE
             "ed"                               -> ED

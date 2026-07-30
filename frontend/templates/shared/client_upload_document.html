@@ -25,6 +25,10 @@
         </div>
 
         <form id="uploadForm" action="/client-form/apply/documents/upload?type={{ doc_type }}"
+              data-authorization-url="/client-form/apply/documents/upload-authorizations"
+              data-finalize-url="/client-form/apply/documents/finalize"
+              data-redirect-url="/client-form/apply/step/4"
+              data-doc-type="{{ doc_type }}"
               method="POST" enctype="multipart/form-data">
 
             <!-- Drop zone -->
@@ -183,7 +187,7 @@
     }
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('fileInput');
-    document.getElementById('uploadForm')?.addEventListener('submit', handleFormSubmit);
+    window.attachDirectDocumentUpload?.(document.getElementById('uploadForm'));
     fileInput?.addEventListener('change', () => handleFileSelected(fileInput));
     dropzone?.addEventListener('click', () => fileInput?.click());
     dropzone?.addEventListener('dragover', (event) => {
@@ -197,6 +201,8 @@
         window.location.href = '/client-form/apply/step/4';
     });
 </script>
+<script src="/static/js/direct-document-upload.js"></script>
+<script nonce="{{ csp_nonce }}">window.attachDirectDocumentUpload?.(document.getElementById('uploadForm'));</script>
     </div>
 </div>
 {% endblock %}

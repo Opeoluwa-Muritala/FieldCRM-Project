@@ -17,11 +17,14 @@ import kotlinx.coroutines.launch
 import com.fieldcrm.android.data.repository.ApplicationDetailResult
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import com.fieldcrm.android.core.network.ApiResult
+import kotlinx.serialization.json.JsonElement
 
 @Immutable
 data class ApplicationUiState(
     val applications: List<LoanApplicationModel> = emptyList(),
     val isLoading: Boolean = false,
+    val isStale: Boolean = false,
     val errorMessage: String? = null,
     // new-application form fields
     val customerType: String = "existing",          // "new" | "existing"
@@ -39,7 +42,9 @@ data class ApplicationUiState(
     val selectedAppDetail: ApplicationDetailResult? = null,
     val isLoadingDetail: Boolean = false,
     val shareUrl: String? = null,
-    val isGeneratingLink: Boolean = false
+    val isGeneratingLink: Boolean = false,
+    val isMutating: Boolean = false,
+    val bureauReport: JsonElement? = null
 )
 
 class ApplicationViewModel(
@@ -58,11 +63,17 @@ class ApplicationViewModel(
         viewModelScope.launch {
             val cached = withContext(Dispatchers.IO) { repository.getCachedApplications() }
             if (cached.isNotEmpty()) {
-                _uiState.update { it.copy(applications = cached) }
+                _uiState.update { it.copy(applications = cached, isStale = true) }
             }
             _uiState.update { it.copy(isLoading = cached.isEmpty()) }
             val fresh = repository.getAllApplications()
-            _uiState.update { it.copy(applications = fresh, isLoading = false) }
+            _uiState.update {
+                it.copy(
+                    applications = if (fresh.isNotEmpty()) fresh else it.applications,
+                    isLoading = false,
+                    isStale = fresh.isEmpty() && it.applications.isNotEmpty()
+                )
+            }
         }
     }
 
@@ -71,6 +82,16 @@ class ApplicationViewModel(
         viewModelScope.launch {
             val detail = repository.getFullDetail(id)
             _uiState.update { it.copy(selectedAppDetail = detail, isLoadingDetail = false) }
+        }
+    }
+
+    fun resolveAuthorizedApplication(
+        id: String,
+        onResolved: (LoanApplicationModel?) -> Unit
+    ) {
+        viewModelScope.launch {
+            val application = repository.getApplicationById(id)
+            onResolved(application)
         }
     }
 
@@ -136,6 +157,83 @@ class ApplicationViewModel(
                         errorMessage = "Failed to generate intake link. Please check network."
                     )
                 }
+            }
+        }
+    }
+
+    fun generateApplicationSigningLink(
+        applicationId: String,
+        guarantorSlot: Int? = null,
+        onCompleted: (String) -> Unit
+    ) {
+        _uiState.update { it.copy(isGeneratingLink = true, errorMessage = null) }
+        viewModelScope.launch {
+            val result = if (guarantorSlot == null) {
+                repository.generateClientSigningLink(applicationId)
+            } else {
+                repository.generateGuarantorSigningLink(applicationId, guarantorSlot)
+            }
+            when (result) {
+                is ApiResult.Success -> {
+                    _uiState.update { it.copy(isGeneratingLink = false, shareUrl = result.data.share_url) }
+                    onCompleted(result.data.share_url)
+                }
+                is ApiResult.Error -> _uiState.update {
+                    it.copy(isGeneratingLink = false, errorMessage = result.detail)
+                }
+                is ApiResult.NetworkError -> _uiState.update {
+                    it.copy(isGeneratingLink = false, errorMessage = result.message)
+                }
+                ApiResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun generateOffer(applicationId: String, onCompleted: () -> Unit = {}) {
+        _uiState.update { it.copy(isMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            when (val result = repository.generateOffer(applicationId)) {
+                is ApiResult.Success -> {
+                    _uiState.update { it.copy(isMutating = false) }
+                    onCompleted()
+                }
+                is ApiResult.Error -> _uiState.update { it.copy(isMutating = false, errorMessage = result.detail) }
+                is ApiResult.NetworkError -> _uiState.update { it.copy(isMutating = false, errorMessage = result.message) }
+                ApiResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun pullCreditBureau(applicationId: String) {
+        _uiState.update { it.copy(isMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            when (val result = repository.pullCreditBureau(applicationId)) {
+                is ApiResult.Success -> _uiState.update {
+                    it.copy(isMutating = false, bureauReport = result.data)
+                }
+                is ApiResult.Error -> _uiState.update { it.copy(isMutating = false, errorMessage = result.detail) }
+                is ApiResult.NetworkError -> _uiState.update { it.copy(isMutating = false, errorMessage = result.message) }
+                ApiResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun recordDisbursement(
+        applicationId: String,
+        request: com.fieldcrm.android.data.api.DisbursementRequest,
+        onCompleted: () -> Unit = {}
+    ) {
+        _uiState.update { it.copy(isMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            when (val result = repository.recordDisbursement(applicationId, request)) {
+                is ApiResult.Success -> {
+                    _uiState.update { it.copy(isMutating = false) }
+                    refreshApplications()
+                    onCompleted()
+                }
+                is ApiResult.Error -> _uiState.update { it.copy(isMutating = false, errorMessage = result.detail) }
+                is ApiResult.NetworkError -> _uiState.update { it.copy(isMutating = false, errorMessage = result.message) }
+                ApiResult.Loading -> Unit
             }
         }
     }

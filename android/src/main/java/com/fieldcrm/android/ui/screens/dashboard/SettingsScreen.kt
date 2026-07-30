@@ -29,6 +29,10 @@ import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.viewmodel.AppViewModel
 import com.fieldcrm.android.ui.viewmodel.ConfigViewModel
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
+import com.fieldcrm.android.data.api.MobileApiService
+import com.fieldcrm.android.core.network.ApiResult
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -381,10 +385,14 @@ fun SettingsScreen(
 // Change Password Modal
 @Composable
 fun ChangePasswordModal(onDismiss: () -> Unit) {
+    val api: MobileApiService = koinInject()
+    val scope = rememberCoroutineScope()
     var oldPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var isSuccess by remember { mutableStateOf(false) }
+    var isSaving by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     FieldCard {
         if (isSuccess) {
@@ -418,13 +426,29 @@ fun ChangePasswordModal(onDismiss: () -> Unit) {
             FieldTextField(value = newPassword, onValueChange = { newPassword = it }, label = "New Password", isRequired = true)
             Spacer(modifier = Modifier.height(12.dp))
             FieldTextField(value = confirmPassword, onValueChange = { confirmPassword = it }, label = "Confirm New Password", isRequired = true)
+            errorMessage?.let {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(it, color = FieldTheme.colors.statusDanger, style = FieldTheme.typography.body)
+            }
             Spacer(modifier = Modifier.height(24.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 SecondaryButton(text = "Cancel", onClick = onDismiss, modifier = Modifier.weight(1f))
                 PrimaryButton(
-                    text = "Update Password",
-                    onClick = { isSuccess = true },
-                    enabled = oldPassword.isNotEmpty() && newPassword.isNotEmpty() && newPassword == confirmPassword,
+                    text = if (isSaving) "Updating…" else "Update Password",
+                    onClick = {
+                        scope.launch {
+                            isSaving = true
+                            errorMessage = null
+                            when (val result = api.changePassword(oldPassword, newPassword, confirmPassword)) {
+                                is ApiResult.Success -> isSuccess = result.data.changed
+                                is ApiResult.Error -> errorMessage = result.detail
+                                is ApiResult.NetworkError -> errorMessage = result.message
+                                ApiResult.Loading -> Unit
+                            }
+                            isSaving = false
+                        }
+                    },
+                    enabled = !isSaving && oldPassword.isNotEmpty() && newPassword.length >= 8 && newPassword == confirmPassword,
                     modifier = Modifier.weight(1.5f)
                 )
             }

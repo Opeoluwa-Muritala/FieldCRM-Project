@@ -20,6 +20,8 @@ MIGRATION_FILES = [
     "004_notifications.sql",
     "005_seed_notifications_and_pledges.sql",
     "024_branch_scoping.sql",
+    "025_mobile_creation_idempotency.sql",
+    "026_document_upload_intents.sql",
 ]
 
 

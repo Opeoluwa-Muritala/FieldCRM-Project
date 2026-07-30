@@ -62,11 +62,11 @@ Dependencies are versioned centrally in [`../gradle/libs.versions.toml`](../grad
 
 The API host is currently hard-coded, not exposed as a build setting:
 
-- `di/AppModule.kt` creates `FieldCRMClient` and `MobileApiServiceImpl` for `https://fieldcrm.onrender.com`.
+- `di/AppModule.kt` creates `FieldCRMClient` and `MobileApiServiceImpl` from `BuildConfig.API_BASE_URL`, generated from `FIELDCRM_API_BASE_URL` in the root Gradle properties.
 - `sync/AndroidSyncWorker.kt` creates a client for the same host.
 - `data/api/MobileApiService.kt` has the same default host.
 
-For a local Android emulator, update **all three locations** to `http://10.0.2.2:8000`; `localhost` inside an emulator points to the emulator itself. For a physical device, use an HTTPS-reachable development host (or a reachable LAN address only where your network-security policy permits cleartext). The client calls `/api/v1/auth/login-mobile` and `/api/v1/mobile/...`; start/configure the backend before signing in.
+All Android variants inherit the single `FIELDCRM_API_BASE_URL` Gradle property. Change that property for a development environment; do not add endpoint hosts to Kotlin. The client appends `/api/v1/auth/login-mobile` and `/api/v1/mobile/...` to this base.
 
 The app receives a mobile token from the backend and sends it with protected calls. Never place backend credentials, provider secrets, or database access in the APK.
 

@@ -16,6 +16,7 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
+import com.fieldcrm.android.core.network.ApiResult
 
 data class ApplicationDetailResult(
     val readiness: Map<String, Any> = emptyMap(),
@@ -148,6 +149,34 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun advanceWorkflow(id: String, notes: String): com.fieldcrm.android.data.api.WorkflowAdvanceResponse? = null
     override suspend fun listUsers() = emptyList<com.fieldcrm.android.data.api.MobileUserItem>()
     override suspend fun createUser(fullName: String, email: String, role: String, password: String) = false
+    override suspend fun pullCreditBureau(id: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun getCreditChecklist(id: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun updateCreditChecklist(id: String, request: com.fieldcrm.android.data.api.CreditChecklistUpdateRequest) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun generateClientLink(id: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun generateGuarantorLink(id: String, slot: Int) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun getOffer(id: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun generateOffer(id: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun getDisbursement(id: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun recordDisbursement(id: String, request: com.fieldcrm.android.data.api.DisbursementRequest) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun changePassword(current: String, new: String, confirm: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun getSystemActivity(page: Int, size: Int) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun getLegalQueue(page: Int) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun getValuation(id: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun updateValuation(id: String, payload: JsonElement) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun getMcc(page: Int) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun getMccApplication(id: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun submitMccVote(id: String, amount: Double, notes: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun finalizeMcc(id: String, amount: Double) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun getInterestPresets() = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun createInterestPreset(loanType: String, rate: Double, rateType: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun deleteInterestPreset(id: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun updateInterestPreset(id: String, loanType: String, rate: Double, rateType: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun getBranches() = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun createBranch(name: String, code: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun updateUserRole(id: String, role: String, branchId: String?) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun deactivateUser(id: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun getParLoans(page: Int) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun getRoleDashboard(role: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
 }
 
 class ApplicationRepository(
@@ -256,6 +285,23 @@ class ApplicationRepository(
     suspend fun generateShareLink(): com.fieldcrm.android.data.api.ShareLinkResponse? {
         return apiService.generateShareLink()
     }
+
+    suspend fun generateClientSigningLink(id: String): ApiResult<com.fieldcrm.android.data.api.SigningLinkResponse> =
+        apiService.generateClientLink(id)
+
+    suspend fun generateGuarantorSigningLink(
+        id: String, slot: Int
+    ): ApiResult<com.fieldcrm.android.data.api.SigningLinkResponse> =
+        apiService.generateGuarantorLink(id, slot)
+
+    suspend fun generateOffer(id: String) = apiService.generateOffer(id)
+
+    suspend fun pullCreditBureau(id: String) = apiService.pullCreditBureau(id)
+
+    suspend fun recordDisbursement(
+        id: String,
+        request: com.fieldcrm.android.data.api.DisbursementRequest
+    ) = apiService.recordDisbursement(id, request)
 
     suspend fun createApplication(application: LoanApplicationModel): Boolean {
         queries.upsert(application)

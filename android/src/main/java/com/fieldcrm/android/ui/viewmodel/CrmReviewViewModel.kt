@@ -27,7 +27,8 @@ class CrmReviewViewModel(private val api: MobileApiService) : ViewModel() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSubmitting = true, error = null)
             try {
-                api.submitCrmReview(applicationId, decision, notes)
+                val result = api.submitCrmReview(applicationId, decision, notes)
+                    ?: error("The server did not confirm this review")
                 _uiState.value = _uiState.value.copy(isSubmitting = false)
                 onDone()
             } catch (e: Exception) {
@@ -41,6 +42,7 @@ class CrmReviewViewModel(private val api: MobileApiService) : ViewModel() {
             _uiState.value = _uiState.value.copy(isSubmitting = true, error = null)
             try {
                 api.submitExecutiveApprove(applicationId)
+                    ?: error("The server did not confirm this approval")
                 _uiState.value = _uiState.value.copy(isSubmitting = false)
                 onDone()
             } catch (e: Exception) {
@@ -54,6 +56,7 @@ class CrmReviewViewModel(private val api: MobileApiService) : ViewModel() {
             _uiState.value = _uiState.value.copy(isSubmitting = true, error = null)
             try {
                 api.submitCommitteeVote(id, recommendation, notes)
+                    ?: error("The server did not confirm this vote")
                 _uiState.value = _uiState.value.copy(isSubmitting = false)
                 onDone()
             } catch (e: Exception) {
@@ -67,6 +70,7 @@ class CrmReviewViewModel(private val api: MobileApiService) : ViewModel() {
             _uiState.value = _uiState.value.copy(isSubmitting = true, error = null)
             try {
                 api.completeCommitteeReview(id, recommendation)
+                    ?: error("The server did not confirm committee completion")
                 _uiState.value = _uiState.value.copy(isSubmitting = false)
                 onDone()
             } catch (e: Exception) {
@@ -80,6 +84,7 @@ class CrmReviewViewModel(private val api: MobileApiService) : ViewModel() {
             _uiState.value = _uiState.value.copy(isSubmitting = true, error = null)
             try {
                 api.submitEdApprove(id, action)
+                    ?: error("The server did not confirm this ED decision")
                 _uiState.value = _uiState.value.copy(isSubmitting = false)
                 onDone()
             } catch (e: Exception) {
@@ -93,6 +98,7 @@ class CrmReviewViewModel(private val api: MobileApiService) : ViewModel() {
             _uiState.value = _uiState.value.copy(isSubmitting = true, error = null)
             try {
                 api.submitMdApprove(id, action, notes)
+                    ?: error("The server did not confirm this MD decision")
                 _uiState.value = _uiState.value.copy(isSubmitting = false)
                 onDone()
             } catch (e: Exception) {
@@ -106,6 +112,7 @@ class CrmReviewViewModel(private val api: MobileApiService) : ViewModel() {
             _uiState.value = _uiState.value.copy(isSubmitting = true, error = null)
             try {
                 api.addBoardReferral(id, email, name, notes)
+                    ?: error("The server did not confirm this referral")
                 _uiState.value = _uiState.value.copy(isSubmitting = false)
                 onDone()
             } catch (e: Exception) {

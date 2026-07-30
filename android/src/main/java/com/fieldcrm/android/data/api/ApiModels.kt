@@ -5,6 +5,42 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
 @Serializable
+data class DirectUploadAuthorizationRequest(
+    val filename: String,
+    val mime_type: String,
+    val size_bytes: Int,
+    val doc_type: String,
+    val form_code: String? = null
+)
+
+@Serializable
+data class DirectUploadAuthorization(
+    val intent_id: String,
+    val upload_url: String,
+    val fields: Map<String, String>,
+    val expires_at: String,
+    val fallback_available: Boolean = true
+)
+
+@Serializable
+data class DirectUploadAuthorizationEnvelope(val authorization: DirectUploadAuthorization)
+
+@Serializable
+data class CloudinaryUploadResponse(
+    val public_id: String,
+    val version: Long,
+    val signature: String
+)
+
+@Serializable
+data class DirectUploadFinalizeRequest(
+    val intent_id: String,
+    val public_id: String,
+    val version: Long,
+    val signature: String
+)
+
+@Serializable
 data class TokenResponse(
     val access_token: String,
     val token_type: String
@@ -118,6 +154,68 @@ data class CreateAppRequest(
     val customer_type: String,
     val loan_type: String,
     val applicant_name: String
+)
+
+@Serializable
+data class SigningLinkResponse(val share_url: String, val expires_at: String)
+
+@Serializable
+data class CreditChecklistItem(
+    val item_key: String,
+    val item_label: String = "",
+    val is_checked: Boolean,
+    val checked_at: String? = null
+)
+
+@Serializable
+data class CreditChecklistResponse(
+    val application_id: String,
+    val context: String,
+    val items: List<CreditChecklistItem> = emptyList()
+)
+
+@Serializable
+data class CreditChecklistUpdateRequest(
+    val item_key: String,
+    val item_label: String,
+    val is_checked: Boolean,
+    val context: String = "credit"
+)
+
+@Serializable
+data class ChangePasswordRequest(
+    val current_password: String,
+    val new_password: String,
+    val confirm_password: String
+)
+
+@Serializable
+data class ChangePasswordResponse(val changed: Boolean)
+
+@Serializable
+data class OfferReadinessResponse(
+    val ready: Boolean,
+    val stage: String,
+    val offer: JsonElement? = null
+)
+
+@Serializable
+data class DisbursementRequest(
+    val disbursed_amount: Double,
+    val disbursement_method: String,
+    val disbursed_bank_ref: String? = null,
+    val payment_date: String,
+    val interest_rate: Double,
+    val repayment_frequency: String,
+    val schedule_method: String = "flat_rate"
+)
+
+@Serializable
+data class SystemActivityResponse(
+    val items: List<JsonElement> = emptyList(),
+    val page: Int,
+    val size: Int,
+    val total: Int
 )
 
 @Serializable

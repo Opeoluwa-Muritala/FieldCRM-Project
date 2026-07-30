@@ -99,7 +99,7 @@ class DocumentUploadViewModel(private val apiService: MobileApiService) : ViewMo
                 fileName = state.fileName.ifBlank { "document" }
             )
             _uiState.update {
-                it.copy(uploadState = if (result != null) UploadState.Done else UploadState.Failed("Upload failed — will retry on next sync"))
+                it.copy(uploadState = if (result != null) UploadState.Done else UploadState.Failed("Upload failed. Please retry."))
             }
             if (result != null) refreshOcrFields(applicationId)
         }

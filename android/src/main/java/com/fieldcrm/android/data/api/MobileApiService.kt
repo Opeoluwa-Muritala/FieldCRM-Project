@@ -8,6 +8,9 @@ import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import com.fieldcrm.android.core.network.ApiResult
 
 sealed interface LoginOutcome {
     data class Success(val token: String) : LoginOutcome
@@ -93,6 +96,35 @@ interface MobileApiService {
     // User management (admin only)
     suspend fun listUsers(): List<MobileUserItem>
     suspend fun createUser(fullName: String, email: String, role: String, password: String): Boolean
+
+    suspend fun pullCreditBureau(id: String): ApiResult<JsonElement>
+    suspend fun getCreditChecklist(id: String): ApiResult<CreditChecklistResponse>
+    suspend fun updateCreditChecklist(id: String, request: CreditChecklistUpdateRequest): ApiResult<CreditChecklistItem>
+    suspend fun generateClientLink(id: String): ApiResult<SigningLinkResponse>
+    suspend fun generateGuarantorLink(id: String, slot: Int): ApiResult<SigningLinkResponse>
+    suspend fun getOffer(id: String): ApiResult<OfferReadinessResponse>
+    suspend fun generateOffer(id: String): ApiResult<JsonElement>
+    suspend fun getDisbursement(id: String): ApiResult<JsonElement>
+    suspend fun recordDisbursement(id: String, request: DisbursementRequest): ApiResult<JsonElement>
+    suspend fun changePassword(current: String, new: String, confirm: String): ApiResult<ChangePasswordResponse>
+    suspend fun getSystemActivity(page: Int = 1, size: Int = 50): ApiResult<SystemActivityResponse>
+    suspend fun getLegalQueue(page: Int = 1): ApiResult<JsonElement>
+    suspend fun getValuation(id: String): ApiResult<JsonElement>
+    suspend fun updateValuation(id: String, payload: JsonElement): ApiResult<JsonElement>
+    suspend fun getMcc(page: Int = 1): ApiResult<JsonElement>
+    suspend fun getMccApplication(id: String): ApiResult<JsonElement>
+    suspend fun submitMccVote(id: String, amount: Double, notes: String): ApiResult<JsonElement>
+    suspend fun finalizeMcc(id: String, amount: Double): ApiResult<JsonElement>
+    suspend fun getInterestPresets(): ApiResult<JsonElement>
+    suspend fun createInterestPreset(loanType: String, rate: Double, rateType: String): ApiResult<JsonElement>
+    suspend fun deleteInterestPreset(id: String): ApiResult<JsonElement>
+    suspend fun updateInterestPreset(id: String, loanType: String, rate: Double, rateType: String): ApiResult<JsonElement>
+    suspend fun getBranches(): ApiResult<JsonElement>
+    suspend fun createBranch(name: String, code: String): ApiResult<JsonElement>
+    suspend fun updateUserRole(id: String, role: String, branchId: String? = null): ApiResult<JsonElement>
+    suspend fun deactivateUser(id: String): ApiResult<JsonElement>
+    suspend fun getParLoans(page: Int = 1): ApiResult<JsonElement>
+    suspend fun getRoleDashboard(role: String): ApiResult<JsonElement>
 }
 
 @kotlinx.serialization.Serializable
@@ -240,7 +272,7 @@ data class CreateUserRequest(
 
 class MobileApiServiceImpl(
     private val client: HttpClient,
-    private val baseUrl: String = "https://fieldcrm.onrender.com"
+    private val baseUrl: String
 ) : MobileApiService {
 
     private var token: String? = null
@@ -252,6 +284,21 @@ class MobileApiServiceImpl(
     private fun HttpRequestBuilder.authHeader() {
         token?.let {
             header(HttpHeaders.Authorization, "Bearer $it")
+        }
+    }
+
+    private suspend inline fun <reified T> resultOf(crossinline request: suspend () -> HttpResponse): ApiResult<T> {
+        return try {
+            val response = request()
+            if (response.status.value in 200..299) {
+                ApiResult.Success(response.body<T>(), response.status.value)
+            } else {
+                ApiResult.Error(response.status.value, response.bodyAsText())
+            }
+        } catch (e: java.io.IOException) {
+            ApiResult.NetworkError(e.message ?: "Network unavailable", e)
+        } catch (e: Exception) {
+            ApiResult.NetworkError(e.message ?: "Request failed", e)
         }
     }
 
@@ -460,10 +507,69 @@ class MobileApiServiceImpl(
                 "png" -> ContentType.Image.PNG
                 else -> ContentType.Application.OctetStream
             }
-            val response: HttpResponse = client.submitFormWithBinaryData(
-                url = "$baseUrl/api/v1/mobile/applications/$id/documents",
+            val authorizationResponse: HttpResponse = client.post(
+                "$baseUrl/api/v1/mobile/applications/$id/documents/upload-authorizations"
+            ) {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(
+                    DirectUploadAuthorizationRequest(
+                        filename = fileName,
+                        mime_type = contentType.toString(),
+                        size_bytes = fileBytes.size,
+                        doc_type = category
+                    )
+                )
+            }
+            if (authorizationResponse.status == HttpStatusCode.ServiceUnavailable) {
+                return uploadDocumentThroughServer(id, category, fileBytes, fileName, contentType)
+            }
+            if (authorizationResponse.status != HttpStatusCode.OK) return null
+            val authorization = authorizationResponse.body<DirectUploadAuthorizationEnvelope>().authorization
+            val cloudResponse: HttpResponse = client.submitFormWithBinaryData(
+                url = authorization.upload_url,
                 formData = formData {
-                    append("doc_type", category)
+                    authorization.fields.forEach { (key, value) -> append(key, value) }
+                    append("file", fileBytes, io.ktor.http.Headers.build {
+                        append(HttpHeaders.ContentType, contentType.toString())
+                        append(HttpHeaders.ContentDisposition, "form-data; name=\"file\"; filename=\"$fileName\"")
+                    })
+                }
+            )
+            if (cloudResponse.status.value !in 200..299) return null
+            val cloud = cloudResponse.body<CloudinaryUploadResponse>()
+            val finalizeResponse: HttpResponse = client.post(
+                "$baseUrl/api/v1/mobile/applications/$id/documents/finalize"
+            ) {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(DirectUploadFinalizeRequest(
+                    authorization.intent_id, cloud.public_id, cloud.version, cloud.signature
+                ))
+            }
+            if (finalizeResponse.status.value in 200..299) finalizeResponse.bodyAsText() else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private suspend fun uploadDocumentThroughServer(
+        id: String,
+        category: String,
+        fileBytes: ByteArray,
+        fileName: String,
+        contentType: ContentType
+    ): String? {
+        return try {
+            val crmCategories = setOf(
+                "offer_acceptance", "disbursement_mandate", "direct_debit_mandate",
+                "insurance_certificate", "legal_clearance", "other_crm"
+            )
+            val isCrmCategory = category in crmCategories
+            val response: HttpResponse = client.submitFormWithBinaryData(
+                url = "$baseUrl/api/v1/mobile/applications/$id/${if (isCrmCategory) "crm-documents" else "documents"}",
+                formData = formData {
+                    append(if (isCrmCategory) "category" else "doc_type", category)
                     append("file", fileBytes, io.ktor.http.Headers.build {
                         append(HttpHeaders.ContentType, contentType.toString())
                         append(HttpHeaders.ContentDisposition, "form-data; name=\"file\"; filename=\"$fileName\"")
@@ -750,20 +856,7 @@ class MobileApiServiceImpl(
     }
 
     override suspend fun uploadDocumentPdf(id: String, category: String, pdfBytes: ByteArray, fileName: String): String? {
-        return try {
-            val response: HttpResponse = client.submitFormWithBinaryData(
-                url = "$baseUrl/api/v1/mobile/applications/$id/documents",
-                formData = formData {
-                    append("doc_type", category)
-                    append("file", pdfBytes, io.ktor.http.Headers.build {
-                        append(HttpHeaders.ContentType, ContentType.Application.Pdf.toString())
-                        append(HttpHeaders.ContentDisposition, "form-data; name=\"file\"; filename=\"$fileName\"")
-                    })
-                }
-            ) { authHeader() }
-            if (response.status == HttpStatusCode.OK || response.status == HttpStatusCode.Created)
-                response.bodyAsText() else null
-        } catch (e: Exception) { null }
+        return uploadDocument(id, category, pdfBytes, fileName)
     }
 
     override suspend fun getCommitteeVotesFull(applicationId: String): CommitteeVotesFullResponse? {
@@ -877,5 +970,140 @@ class MobileApiServiceImpl(
             }
             response.status == HttpStatusCode.Created || response.status == HttpStatusCode.OK
         } catch (e: Exception) { false }
+    }
+
+    override suspend fun pullCreditBureau(id: String) = resultOf<JsonElement> {
+        client.post("$baseUrl/api/v1/mobile/applications/$id/credit-bureau-pull") { authHeader() }
+    }
+
+    override suspend fun getCreditChecklist(id: String) = resultOf<CreditChecklistResponse> {
+        client.get("$baseUrl/api/v1/mobile/applications/$id/credit-checklist") { authHeader() }
+    }
+
+    override suspend fun updateCreditChecklist(id: String, request: CreditChecklistUpdateRequest) =
+        resultOf<CreditChecklistItem> {
+            client.patch("$baseUrl/api/v1/mobile/applications/$id/credit-checklist") {
+                authHeader(); contentType(ContentType.Application.Json); setBody(request)
+            }
+        }
+
+    override suspend fun generateClientLink(id: String) = resultOf<SigningLinkResponse> {
+        client.post("$baseUrl/api/v1/mobile/applications/$id/client-link") { authHeader() }
+    }
+
+    override suspend fun generateGuarantorLink(id: String, slot: Int) = resultOf<SigningLinkResponse> {
+        client.post("$baseUrl/api/v1/mobile/applications/$id/guarantor-link/$slot") { authHeader() }
+    }
+
+    override suspend fun getOffer(id: String) = resultOf<OfferReadinessResponse> {
+        client.get("$baseUrl/api/v1/mobile/applications/$id/offer") { authHeader() }
+    }
+
+    override suspend fun generateOffer(id: String) = resultOf<JsonElement> {
+        client.post("$baseUrl/api/v1/mobile/applications/$id/offer") { authHeader() }
+    }
+
+    override suspend fun getDisbursement(id: String) = resultOf<JsonElement> {
+        client.get("$baseUrl/api/v1/mobile/applications/$id/disbursement") { authHeader() }
+    }
+
+    override suspend fun recordDisbursement(id: String, request: DisbursementRequest) = resultOf<JsonElement> {
+        client.post("$baseUrl/api/v1/mobile/applications/$id/disbursement") {
+            authHeader(); contentType(ContentType.Application.Json); setBody(request)
+        }
+    }
+
+    override suspend fun changePassword(current: String, new: String, confirm: String) =
+        resultOf<ChangePasswordResponse> {
+            client.post("$baseUrl/api/v1/mobile/settings/change-password") {
+                authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(ChangePasswordRequest(current, new, confirm))
+            }
+        }
+
+    override suspend fun getSystemActivity(page: Int, size: Int) = resultOf<SystemActivityResponse> {
+        client.get("$baseUrl/api/v1/mobile/system-activity") {
+            authHeader(); parameter("page", page); parameter("size", size)
+        }
+    }
+
+    override suspend fun getLegalQueue(page: Int) = resultOf<JsonElement> {
+        client.get("$baseUrl/api/v1/mobile/queues/legal") { authHeader(); parameter("page", page) }
+    }
+    override suspend fun getValuation(id: String) = resultOf<JsonElement> {
+        client.get("$baseUrl/api/v1/mobile/applications/$id/valuation") { authHeader() }
+    }
+    override suspend fun updateValuation(id: String, payload: JsonElement) = resultOf<JsonElement> {
+        client.put("$baseUrl/api/v1/mobile/applications/$id/valuation") {
+            authHeader(); contentType(ContentType.Application.Json); setBody(payload)
+        }
+    }
+    override suspend fun getMcc(page: Int) = resultOf<JsonElement> {
+        client.get("$baseUrl/api/v1/mobile/mcc") { authHeader(); parameter("page", page) }
+    }
+    override suspend fun getMccApplication(id: String) = resultOf<JsonElement> {
+        client.get("$baseUrl/api/v1/mobile/applications/$id/mcc") { authHeader() }
+    }
+    override suspend fun submitMccVote(id: String, amount: Double, notes: String) = resultOf<JsonElement> {
+        client.post("$baseUrl/api/v1/mobile/applications/$id/mcc-vote") {
+            authHeader(); contentType(ContentType.Application.Json)
+            setBody(buildJsonObject { put("recommended_amount", amount); put("notes", notes) })
+        }
+    }
+    override suspend fun finalizeMcc(id: String, amount: Double) = resultOf<JsonElement> {
+        client.post("$baseUrl/api/v1/mobile/applications/$id/mcc-finalize") {
+            authHeader(); contentType(ContentType.Application.Json)
+            setBody(buildJsonObject { put("final_amount", amount) })
+        }
+    }
+    override suspend fun getInterestPresets() = resultOf<JsonElement> {
+        client.get("$baseUrl/api/v1/mobile/admin/interest-presets") { authHeader() }
+    }
+    override suspend fun createInterestPreset(loanType: String, rate: Double, rateType: String) = resultOf<JsonElement> {
+        client.post("$baseUrl/api/v1/mobile/admin/interest-presets") {
+            authHeader(); contentType(ContentType.Application.Json)
+            setBody(buildJsonObject {
+                put("loan_type", loanType); put("rate", rate); put("rate_type", rateType)
+            })
+        }
+    }
+    override suspend fun deleteInterestPreset(id: String) = resultOf<JsonElement> {
+        client.delete("$baseUrl/api/v1/mobile/admin/interest-presets/$id") { authHeader() }
+    }
+    override suspend fun updateInterestPreset(id: String, loanType: String, rate: Double, rateType: String) =
+        resultOf<JsonElement> {
+            client.put("$baseUrl/api/v1/mobile/admin/interest-presets/$id") {
+                authHeader(); contentType(ContentType.Application.Json)
+                setBody(buildJsonObject {
+                    put("loan_type", loanType); put("rate", rate); put("rate_type", rateType)
+                })
+            }
+        }
+    override suspend fun getBranches() = resultOf<JsonElement> {
+        client.get("$baseUrl/api/v1/mobile/branches") { authHeader() }
+    }
+    override suspend fun createBranch(name: String, code: String) = resultOf<JsonElement> {
+        client.post("$baseUrl/api/v1/mobile/branches") {
+            authHeader(); contentType(ContentType.Application.Json); setBody(mapOf("name" to name, "code" to code))
+        }
+    }
+    override suspend fun updateUserRole(id: String, role: String, branchId: String?) = resultOf<JsonElement> {
+        client.put("$baseUrl/api/v1/mobile/users/$id/role") {
+            authHeader(); contentType(ContentType.Application.Json)
+            setBody(buildJsonObject {
+                put("role", role)
+                if (branchId != null) put("branch_id", branchId)
+            })
+        }
+    }
+    override suspend fun deactivateUser(id: String) = resultOf<JsonElement> {
+        client.post("$baseUrl/api/v1/mobile/users/$id/deactivate") { authHeader() }
+    }
+    override suspend fun getParLoans(page: Int) = resultOf<JsonElement> {
+        client.get("$baseUrl/api/v1/mobile/reports/par/loans") { authHeader(); parameter("page", page) }
+    }
+    override suspend fun getRoleDashboard(role: String) = resultOf<JsonElement> {
+        client.get("$baseUrl/api/v1/mobile/dashboards/$role") { authHeader() }
     }
 }

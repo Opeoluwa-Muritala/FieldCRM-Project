@@ -118,7 +118,14 @@ class SQLAlchemyTransactionContext:
         self.transaction = None
 
     async def __aenter__(self):
-        self.transaction = await self.conn._conn.begin()
+        # SQLAlchemy automatically starts a transaction on the first SELECT.
+        # Repository services may then need an atomic mutation block on that
+        # same request connection, which must use a savepoint rather than
+        # attempting a second top-level transaction.
+        if self.conn._conn.in_transaction():
+            self.transaction = await self.conn._conn.begin_nested()
+        else:
+            self.transaction = await self.conn._conn.begin()
         return self.conn
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):

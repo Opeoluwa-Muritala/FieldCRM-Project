@@ -73,7 +73,8 @@ class SecurityHeadersMiddleware:
                     "worker-src 'self' https://cdnjs.cloudflare.com; "
                     f"style-src 'self' 'nonce-{csp_nonce}' https://fonts.googleapis.com; "
                     "font-src 'self' https://fonts.gstatic.com; "
-                    "img-src 'self' data: https://res.cloudinary.com;"
+                    "img-src 'self' data: https://res.cloudinary.com; "
+                    "connect-src 'self' https://api.cloudinary.com;"
                 )
                 headers["X-Content-Type-Options"] = "nosniff"
                 headers["Referrer-Policy"] = "strict-origin-when-cross-origin"

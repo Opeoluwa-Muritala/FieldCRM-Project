@@ -65,6 +65,7 @@ class ServicingViewModel(private val api: MobileApiService) : ViewModel() {
             _uiState.value = _uiState.value.copy(isSubmitting = true, error = null)
             try {
                 api.recordPayment(applicationId, amount, channel, bankRef, paymentDate)
+                    ?: error("The server did not confirm this payment")
                 _uiState.value = _uiState.value.copy(isSubmitting = false)
                 loadRepaymentSchedule(applicationId)
                 onDone()

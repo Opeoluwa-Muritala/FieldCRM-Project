@@ -35,9 +35,10 @@ fun RepaymentScheduleScreen(
     classification: String = "current",
     daysPastDue: Int = 0,
     canRecordPayment: Boolean = false,
-    onRecordPayment: () -> Unit = {},
+    onRecordPayment: (Double, String, String?) -> Unit = { _, _, _ -> },
     onBack: () -> Unit,
 ) {
+    var showPaymentDialog by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
             FieldTopAppBar(
@@ -100,7 +101,7 @@ fun RepaymentScheduleScreen(
             if (canRecordPayment) {
                 PrimaryButton(
                     text = "Record Payment",
-                    onClick = onRecordPayment,
+                    onClick = { showPaymentDialog = true },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -164,6 +165,43 @@ fun RepaymentScheduleScreen(
                 }
             }
         }
+    }
+    if (showPaymentDialog) {
+        var amount by remember { mutableStateOf("") }
+        var channel by remember { mutableStateOf("bank_transfer") }
+        var reference by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showPaymentDialog = false },
+            title = { Text("Record Payment") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = amount, onValueChange = { amount = it },
+                        label = { Text("Amount paid") }, singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = channel, onValueChange = { channel = it },
+                        label = { Text("Channel") }, singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = reference, onValueChange = { reference = it },
+                        label = { Text("Bank reference") }, singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = (amount.toDoubleOrNull() ?: 0.0) > 0,
+                    onClick = {
+                        onRecordPayment(amount.toDouble(), channel, reference.ifBlank { null })
+                        showPaymentDialog = false
+                    }
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPaymentDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 
