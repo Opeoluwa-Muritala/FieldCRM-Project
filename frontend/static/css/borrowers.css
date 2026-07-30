@@ -54,7 +54,11 @@
 
 .loan-table {
     display: grid;
-    gap: var(--card-gap);
+    gap: 16px;
+    background-color: #f7f9fb;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
 }
 
 .loan-row {
@@ -119,6 +123,10 @@
         display: grid;
         gap: 0;
         overflow-x: auto;
+        background-color: #f7f9fb;
+        padding: 16px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
     }
 
     .loan-row {

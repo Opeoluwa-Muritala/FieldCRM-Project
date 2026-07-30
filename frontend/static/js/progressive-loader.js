@@ -63,6 +63,7 @@
 
     // Active abort controllers for filters
     const controllers = new Map();
+    const originalSkeletons = {};
 
     async function fetchSection(element, retryCount = 0) {
         const src = element.getAttribute('data-section-src');
@@ -147,6 +148,21 @@
 
             window.performanceMetrics.sectionRequests[sectionId].status = 'failed';
             element.removeAttribute('aria-busy');
+
+            // Render retry button on failure (styled via classes to respect CSP)
+            element.innerHTML = `
+                <div class="section-refresh-failed">
+                    <p>Failed to load data.</p>
+                    <button type="button" class="btn-retry">Retry Loading</button>
+                </div>
+            `;
+            const retryBtn = element.querySelector('.btn-retry');
+            if (retryBtn) {
+                retryBtn.addEventListener('click', () => {
+                    element.innerHTML = originalSkeletons[sectionId] || '';
+                    fetchSection(element, 0);
+                });
+            }
         }
     }
 
@@ -154,6 +170,9 @@
     function initProgressiveLoading() {
         document.querySelectorAll('[data-section-src]').forEach(element => {
             const sectionId = element.id || element.getAttribute('data-section-src');
+            
+            // Save initial skeleton HTML before overriding with cache
+            originalSkeletons[sectionId] = element.innerHTML;
             
             // Stale-While-Revalidate: load cache instantly if present
             const cached = cacheGet(sectionId);

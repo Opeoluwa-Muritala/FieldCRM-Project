@@ -55,7 +55,7 @@
             } %}
             <td data-label="Role"><span class="user-role" data-role-label data-role="{{ item.role }}">{{ role_labels.get(item.role, item.role|replace('_', ' ')|title) }}</span></td>
             <td data-label="Status"><span class="user-status {% if item.active %}is-active{% else %}is-pending{% endif %}"><i></i>{{ 'Active' if item.active else 'Pending' }}</span></td>
-            <td data-label="Last login">{{ item.last_login_at.strftime('%d %b %Y') if item.last_login_at else 'Not yet signed in' }}</td>
+            <td data-label="Last login">{{ item.last_login_at|date_format('%d %b %Y') if item.last_login_at else 'Not yet signed in' }}</td>
             <td data-label="Actions"><div class="user-row-actions">{% if item.id != user.id %}<button type="button" data-edit-role>Edit role</button><button type="button" data-save-role hidden>Save</button>{% if item.active %}<button type="button" class="is-danger" data-deactivate>Deactivate</button>{% endif %}{% else %}<span class="user-action-note">Current user</span>{% endif %}</div></td>
         </tr>
         {% else %}

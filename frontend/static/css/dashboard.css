@@ -3644,3 +3644,33 @@ body, body * { font-family: "Montserrat", sans-serif !important; }
 .rounded-lg {
     border-radius: 8px !important;
 }
+
+/* Progressive loader retry and error state */
+.section-refresh-failed {
+    padding: 16px;
+    text-align: center;
+    border: 1px dashed var(--accent-danger, #ba1a1a);
+    border-radius: 8px;
+    background-color: rgba(186, 26, 26, 0.05);
+    margin: 8px 0;
+}
+.section-refresh-failed p {
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: var(--accent-danger, #ba1a1a);
+}
+.btn-retry {
+    padding: 8px 16px;
+    background-color: var(--color-brand-shield, #6B3FA0);
+    color: #FFFFFF;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    transition: var(--transition-smooth);
+}
+.btn-retry:hover {
+    background-color: var(--color-brand-mid, #8B5CC8);
+}

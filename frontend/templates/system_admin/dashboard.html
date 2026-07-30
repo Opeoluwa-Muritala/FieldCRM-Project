@@ -31,7 +31,7 @@
                     <div class="skeleton-card skeleton w-full"></div>
                 {% else %}
                     {% for item in data.user_activity %}
-                    <div class="role-list-card"><strong>{{ item.full_name }}</strong><span>{{ item.role|replace('_', ' ')|title }} · Last login: {{ item.last_login_at.strftime('%d %b %Y, %H:%M') if item.last_login_at else 'Not yet signed in' }}</span><em>{% if item.latest_action %}{{ item.latest_action.action|replace('_', ' ')|title }} · {{ item.latest_action.created_at.strftime('%d %b, %H:%M') if item.latest_action.created_at else '' }}{% else %}No recorded system action{% endif %}</em></div>
+                    <div class="role-list-card"><strong>{{ item.full_name }}</strong><span>{{ item.role|replace('_', ' ')|title }} · Last login: {{ item.last_login_at|date_format('%d %b %Y, %H:%M') if item.last_login_at else 'Not yet signed in' }}</span><em>{% if item.latest_action %}{{ item.latest_action.action|replace('_', ' ')|title }} · {{ item.latest_action.created_at|date_format('%d %b, %H:%M') if item.latest_action.created_at else '' }}{% else %}No recorded system action{% endif %}</em></div>
                     {% else %}<div class="lo-empty-state">No user activity to show.</div>{% endfor %}
                 {% endif %}
             </div>
