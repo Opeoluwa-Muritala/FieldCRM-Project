@@ -108,8 +108,7 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.lifecycle.viewModel.navigation3)
 
-    // Biometric authentication
-    implementation(libs.androidx.biometric)
+
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.browser)
 
@@ -130,4 +129,10 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.testManifest)
+}
+
+tasks.configureEach {
+    if (name.startsWith("install") && name != "installAll") {
+        dependsOn("uninstallAll")
+    }
 }

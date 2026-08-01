@@ -20,18 +20,13 @@ import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
+import com.fieldcrm.android.ui.viewmodel.DashboardViewModel
+import org.koin.androidx.compose.koinViewModel
 
 private data class VisitDueItem(
     val borrowerName: String,
     val address: String,
     val visitId: String
-)
-
-private val placeholderVisits = listOf(
-    VisitDueItem("Adaeze Okonkwo", "12 Adeola Odeku St, Victoria Island, Lagos", ""),
-    VisitDueItem("Emeka Chukwu", "45 Allen Avenue, Ikeja, Lagos", ""),
-    VisitDueItem("Ngozi Adeyemi", "7 Wuse Zone 5, Abuja", ""),
-    VisitDueItem("Fatima Bello", "22 Awolowo Road, Ikoyi, Lagos", "")
 )
 
 @Composable
@@ -41,19 +36,19 @@ fun VisitsDueScreen(
     onBackClick: () -> Unit,
     onStartVisit: (String) -> Unit = {}
 ) {
-    val visits = remember(applications, borrowers) {
-        if (applications.isNotEmpty()) {
-            applications.map { app ->
-                val borrower = borrowers.find { it.id == app.id }
+    val dashboardViewModel: DashboardViewModel = koinViewModel()
+    val dashboardState by dashboardViewModel.uiState.collectAsState()
+    val productionVisits = dashboardState.metrics?.data?.visits_due.orEmpty()
+    val visits = remember(productionVisits) {
+        productionVisits.map { visit ->
                 VisitDueItem(
-                    borrowerName = borrower?.name ?: "Unknown Applicant",
-                    address = "Awaiting address confirmation",
-                    visitId = app.id
+                    borrowerName = visit.applicant_name,
+                    address = visit.ref_no.ifBlank { visit.application_date },
+                    visitId = visit.loan_id
                 )
             }
-        } else placeholderVisits
     }
-    var isLoading by remember { mutableStateOf(false) }
+    val isLoading = dashboardState.isLoading
 
     Scaffold(
         modifier = Modifier

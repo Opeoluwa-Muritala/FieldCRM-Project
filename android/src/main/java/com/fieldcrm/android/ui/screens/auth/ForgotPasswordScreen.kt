@@ -22,6 +22,10 @@ import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.FieldTextField
 import com.fieldcrm.android.ui.components.PrimaryButton
 import com.fieldcrm.android.ui.components.SecondaryButton
+import com.fieldcrm.android.ui.components.FieldEmail
+import com.fieldcrm.android.ui.components.KeyboardAwareForm
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
 import com.fieldcrm.android.data.api.MobileApiService
 import com.fieldcrm.android.ui.theme.FieldTheme
 import kotlinx.coroutines.delay
@@ -278,7 +282,10 @@ fun ForgotPasswordForm(
     onBackClick: () -> Unit,
     onSubmit: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    KeyboardAwareForm(
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -330,18 +337,28 @@ fun ForgotPasswordForm(
         )
         Spacer(modifier = Modifier.height(24.dp))
 
-        FieldTextField(
+        FieldEmail(
             value = email,
             onValueChange = onEmailChange,
             label = "Email address",
             placeholder = "e.g. staff@mainstreetmfb.com",
-            errorText = emailError
+            errorText = emailError,
+            imeAction = ImeAction.Done,
+            keyboardActions = KeyboardActions(onDone = {
+                focusManager.clearFocus()
+                if (email.contains("@")) {
+                    onSubmit()
+                }
+            })
         )
         Spacer(modifier = Modifier.height(24.dp))
 
         PrimaryButton(
             text = if (isLoading) "Sending..." else "Send Reset Link",
-            onClick = onSubmit,
+            onClick = {
+                focusManager.clearFocus()
+                onSubmit()
+            },
             enabled = !isLoading && email.isNotEmpty()
         )
     }

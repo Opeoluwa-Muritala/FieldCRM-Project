@@ -112,7 +112,7 @@ class LoginViewModel(
                     val session = UserSession(
                         token = outcome.token,
                         role = if (me != null) UserRole.fromServerRole(me.role) else UserRole.LOAN_OFFICER,
-                        orgId = me?.org_id ?: "org_1",
+                        orgId = me?.org_id ?: "",
                         userEmail = me?.email ?: state.email,
                         userName = me?.full_name ?: state.email.substringBefore("@"),
                         loginExpiresAt = System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000

@@ -31,6 +31,18 @@ class SessionStore(context: Context) {
         )
     }
 
+    init {
+        prefs.edit().apply {
+            remove("biometric_enabled")
+            remove("use_biometrics")
+            remove("use_fingerprint")
+            remove("fingerprint_enabled")
+            remove("biometric_active")
+            remove("biometric_pref")
+            remove("dark_mode")
+        }.apply()
+    }
+
     companion object {
         private const val KEY_TOKEN = "auth_token"
         private const val KEY_EMAIL = "user_email"
@@ -38,12 +50,10 @@ class SessionStore(context: Context) {
         private const val KEY_ROLE = "user_role"
         private const val KEY_ORG_ID = "org_id"
         private const val KEY_EXPIRES_AT = "expires_at"
-        private const val KEY_BIOMETRIC_ENROLLED = "biometric_enrolled"
-        private const val KEY_BIOMETRIC_SHOWN = "biometric_enrollment_shown"
         private const val KEY_PASSCODE_HASH = "passcode_hash"
         private const val KEY_ONBOARDING_SEEN = "onboarding_seen"
         private const val KEY_PERMISSIONS_SEEN = "permissions_seen"
-        private const val KEY_DARK_MODE = "dark_mode"
+
 
         // 7-day session TTL — matches the mobile JWT lifetime issued by login-mobile
         private const val SESSION_TTL_MS = 7L * 24 * 60 * 60 * 1000
@@ -72,7 +82,7 @@ class SessionStore(context: Context) {
         return UserSession(
             token = token,
             role = role,
-            orgId = prefs.getString(KEY_ORG_ID, "org_1") ?: "org_1",
+            orgId = prefs.getString(KEY_ORG_ID, "") ?: "",
             userEmail = prefs.getString(KEY_EMAIL, "") ?: "",
             userName = prefs.getString(KEY_NAME, "") ?: "",
             loginExpiresAt = expiresAt
@@ -105,16 +115,6 @@ class SessionStore(context: Context) {
         return token.isNotEmpty() && System.currentTimeMillis() <= expiresAt
     }
 
-    // Biometric
-    fun isBiometricEnrolled(): Boolean = prefs.getBoolean(KEY_BIOMETRIC_ENROLLED, false)
-    fun setBiometricEnrolled(enrolled: Boolean) {
-        prefs.edit().putBoolean(KEY_BIOMETRIC_ENROLLED, enrolled).apply()
-    }
-    fun hasBiometricEnrollmentBeenShown(): Boolean = prefs.getBoolean(KEY_BIOMETRIC_SHOWN, false)
-    fun markBiometricEnrollmentShown() {
-        prefs.edit().putBoolean(KEY_BIOMETRIC_SHOWN, true).apply()
-    }
-
     // Passcode
     fun savePasscodeHash(hash: String) {
         prefs.edit().putString(KEY_PASSCODE_HASH, hash).apply()
@@ -131,7 +131,4 @@ class SessionStore(context: Context) {
     fun hasSeenPermissions(): Boolean = prefs.getBoolean(KEY_PERMISSIONS_SEEN, false)
     fun setPermissionsSeen() { prefs.edit().putBoolean(KEY_PERMISSIONS_SEEN, true).apply() }
 
-    // Dark mode
-    fun isDarkMode(): Boolean = prefs.getBoolean(KEY_DARK_MODE, false)
-    fun setDarkMode(enabled: Boolean) { prefs.edit().putBoolean(KEY_DARK_MODE, enabled).apply() }
 }

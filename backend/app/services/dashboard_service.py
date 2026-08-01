@@ -111,6 +111,8 @@ class DashboardService:
             return await self._ed_data(user)
         elif role == "md":
             return await self._md_data(user)
+        elif role == "legal":
+            return await self._legal_data(user)
         elif role in ("md", "ed"):
             return await self._executive_data(user)
         # Fallback
@@ -472,10 +474,6 @@ class DashboardService:
         from app.domains.loans.repository import LoanRepository
         return await LoanRepository(self.conn).list_executive_queue(user.org_id, limit, offset)
 
-    async def get_committee_queue(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
-        from app.domains.loans.repository import LoanRepository
-        return await LoanRepository(self.conn).list_committee_queue(user.org_id, limit, offset)
-
     async def get_ed_queue(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
         from app.domains.loans.repository import LoanRepository
         return await LoanRepository(self.conn).list_ed_queue(user.org_id, limit, offset)
@@ -483,13 +481,6 @@ class DashboardService:
     async def get_md_queue(self, user, limit: int = 50, offset: int = 0) -> list[dict]:
         from app.domains.loans.repository import LoanRepository
         return await LoanRepository(self.conn).list_md_queue(user.org_id, limit, offset)
-
-    async def _committee_data(self, user) -> dict:
-        queue = await self.get_committee_queue(user, limit=20)
-        return {
-            "metrics": {"committee_queue": len(queue)},
-            "committee_queue": queue,
-        }
 
     async def _ed_data(self, user) -> dict:
         queue = await self.get_ed_queue(user, limit=20)
@@ -514,6 +505,24 @@ class DashboardService:
             "md_queue": queue,
             "par": par,
         }
+
+    async def _legal_data(self, user) -> dict:
+        rows = await self.conn.fetch(
+            """
+            SELECT la.id, la.ref_no, la.applicant_name, la.amount, la.stage,
+                   u.full_name AS officer_name,
+                   EXTRACT(DAY FROM NOW() - la.updated_at)::int AS days_waiting
+            FROM loan_applications la
+            LEFT JOIN users u ON u.id = la.created_by AND u.org_id = la.org_id
+            WHERE la.org_id = $1
+              AND la.stage IN ('branch_manager_review','credit_analyst_review','crm_review')
+              AND la.deleted_at IS NULL
+            ORDER BY la.updated_at ASC LIMIT 20
+            """,
+            user.org_id,
+        )
+        queue = [dict(row) for row in rows]
+        return {"metrics": {"legal_queue": len(queue)}, "legal_queue": queue}
 
     async def _fetch_one(self, domain: str, query: str, *args) -> dict:
         from app.core.cache import get_json, set_json

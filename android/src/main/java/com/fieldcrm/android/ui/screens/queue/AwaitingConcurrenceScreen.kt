@@ -22,6 +22,8 @@ import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
+import com.fieldcrm.android.ui.viewmodel.DashboardViewModel
+import org.koin.androidx.compose.koinViewModel
 
 private data class ConcurrenceItem(
     val applicantName: String,
@@ -31,13 +33,6 @@ private data class ConcurrenceItem(
     val appId: String
 )
 
-private val placeholderConcurrenceItems = listOf(
-    ConcurrenceItem("Adaeze Okonkwo", "Samuel Okeke", "₦500,000", "2026-07-01 09:14", ""),
-    ConcurrenceItem("Emeka Chukwu", "Grace Nwosu", "₦1,200,000", "2026-07-01 08:45", ""),
-    ConcurrenceItem("Fatima Bello", "Samuel Okeke", "₦320,000", "2026-06-30 17:30", ""),
-    ConcurrenceItem("Chukwuemeka Eze", "Aisha Mohammed", "₦750,000", "2026-06-30 16:00", "")
-)
-
 @Composable
 fun AwaitingConcurrenceScreen(
     applications: List<LoanApplicationModel> = emptyList(),
@@ -45,21 +40,21 @@ fun AwaitingConcurrenceScreen(
     onBackClick: () -> Unit,
     onViewApplication: (String) -> Unit = {}
 ) {
-    val concurrenceItems = remember(applications, borrowers) {
-        if (applications.isNotEmpty()) {
-            applications.map { app ->
-                val borrower = borrowers.find { it.id == app.id }
+    val dashboardViewModel: DashboardViewModel = koinViewModel()
+    val dashboardState by dashboardViewModel.uiState.collectAsState()
+    val queue = dashboardState.metrics?.data?.queue.orEmpty()
+    val concurrenceItems = remember(queue) {
+            queue.map { app ->
                 ConcurrenceItem(
-                    applicantName = borrower?.name ?: "Unknown Applicant",
-                    loanOfficer = "Loan Officer",
-                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount)}",
-                    submittedAt = "—",
+                    applicantName = app.applicant_name,
+                    loanOfficer = app.officer_name ?: "Relationship Officer",
+                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount ?: 0.0)}",
+                    submittedAt = "${app.days_waiting}d waiting",
                     appId = app.id
                 )
             }
-        } else placeholderConcurrenceItems
     }
-    var isLoading by remember { mutableStateOf(false) }
+    val isLoading = dashboardState.isLoading
 
     Scaffold(
         modifier = Modifier

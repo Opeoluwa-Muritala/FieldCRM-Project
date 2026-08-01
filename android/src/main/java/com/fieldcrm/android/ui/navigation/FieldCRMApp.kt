@@ -1,13 +1,9 @@
 package com.fieldcrm.android.ui.navigation
 
 import android.content.Intent
-import android.os.Build
-import android.provider.Settings
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -19,13 +15,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
-import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.navigation3.runtime.rememberNavBackStack
-import com.fieldcrm.android.core.biometric.BiometricPromptManager
-import com.fieldcrm.android.core.biometric.BiometricPromptManager.BiometricResult
 import com.fieldcrm.android.core.notification.NotificationSyncWorker
 import com.fieldcrm.android.core.session.UserRole
+import com.fieldcrm.android.core.session.RoleAccessPolicy
 import com.fieldcrm.android.ui.screens.admin.*
 import com.fieldcrm.android.ui.screens.application.*
 import com.fieldcrm.android.ui.screens.audit.*
@@ -39,13 +32,11 @@ import com.fieldcrm.android.ui.screens.queue.*
 import com.fieldcrm.android.ui.screens.review.*
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.viewmodel.*
-import com.fieldcrm.android.ui.viewmodel.BiometricAction
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
 @Composable
 fun FieldCRMApp(
     appViewModel: AppViewModel = koinViewModel(),
-    promptManager: BiometricPromptManager? = null,
     deepLinkApplicationId: String? = null
 ) {
     val loginViewModel: LoginViewModel = koinViewModel()
@@ -54,6 +45,8 @@ fun FieldCRMApp(
     val servicingViewModel: ServicingViewModel = koinViewModel()
     val crmReviewViewModel: CrmReviewViewModel = koinViewModel()
     val syncViewModel: com.fieldcrm.android.ui.viewmodel.SyncViewModel = koinViewModel()
+    val dashboardViewModel: DashboardViewModel = koinViewModel()
+    val notificationsViewModel: NotificationsViewModel = koinViewModel()
 
     val appUiState by appViewModel.uiState.collectAsState()
     val borrowerUiState by borrowerViewModel.uiState.collectAsState()
@@ -83,7 +76,6 @@ fun FieldCRMApp(
 
     var selectedDocUrl by remember { mutableStateOf("") }
     var selectedDocName by remember { mutableStateOf("") }
-    var biometricNotice by remember { mutableStateOf<String?>(null) }
 
     val activity = LocalContext.current as? android.app.Activity
     var backPressedOnce by remember { mutableStateOf(false) }
@@ -94,91 +86,11 @@ fun FieldCRMApp(
         }
     }
 
-    // Biometric state — action lives in ViewModel; result collected from manager
-    val biometricResult by promptManager?.promptResults?.collectAsState(initial = null)
-        ?: remember { mutableStateOf(null) }
-
-    // Launcher to send user to system biometric enrollment when none are set
-    val enrollLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult(),
-        onResult = {}
-    )
-
-    // Dispatch biometric results through ViewModel
-    LaunchedEffect(biometricResult) {
-        when (val result = biometricResult) {
-            BiometricResult.AuthenticationSuccess -> {
-                biometricNotice = null
-                when (appUiState.pendingBiometricAction) {
-                    BiometricAction.LOGIN -> loginViewModel.restoreStoredSession(
-                        onSuccess = { session ->
-                            appViewModel.setSession(session)
-                            backStack.clear()
-                            backStack.add(Screen.Dashboard)
-                        },
-                        onError = {
-                            // Biometric hardware is valid — only the stored token is gone (user signed out).
-                            // Do NOT disable biometrics; just ask them to log in with password.
-                            activity?.runOnUiThread {
-                                android.widget.Toast.makeText(activity, "Please log in with your password first.", android.widget.Toast.LENGTH_LONG).show()
-                            }
-                        }
-                    )
-                    BiometricAction.ENROLL -> {
-                        appViewModel.setBiometricsEnrolled(true)
-                        appViewModel.markBiometricEnrollmentShown()
-                        val next: Screen = when {
-                            !appUiState.hasSeenPermissions -> Screen.PermissionsPrimer
-                            !appUiState.hasSeenOnboarding -> Screen.Onboarding
-                            else -> Screen.Dashboard
-                        }
-                        backStack.clear()
-                        backStack.add(next)
-                    }
-                    null -> {}
-                }
-                appViewModel.setBiometricAction(null)
-            }
-            BiometricResult.AuthenticationNotSet -> {
-                biometricNotice = "Biometric sign-in is not available on this device. Use your password or passcode to continue."
-                if (Build.VERSION.SDK_INT >= 30) {
-                    val enrollIntent = Intent(Settings.ACTION_BIOMETRIC_ENROLL).apply {
-                        putExtra(
-                            Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
-                            BIOMETRIC_STRONG or DEVICE_CREDENTIAL
-                        )
-                    }
-                    enrollLauncher.launch(enrollIntent)
-                }
-                appViewModel.setBiometricAction(null)
-            }
-            BiometricResult.HardwareUnavailable,
-            BiometricResult.FeatureUnavailable -> {
-                biometricNotice = "Biometric sign-in is unavailable right now. Use your password or passcode to continue."
-                appViewModel.setBiometricAction(null)
-            }
-            is BiometricResult.AuthenticationError -> {
-                biometricNotice = if (result.error.contains("lockout", ignoreCase = true)) {
-                    "Biometric sign-in is temporarily locked. Try again later or use your password or passcode."
-                } else {
-                    "Biometric sign-in was not completed. Use your password or passcode to continue."
-                }
-                appViewModel.setBiometricAction(null)
-            }
-            BiometricResult.AuthenticationFailed -> {
-                biometricNotice = "We could not verify your biometric. Try again or use your password or passcode."
-                appViewModel.setBiometricAction(null)
-            }
-            else -> {}
-        }
-    }
-
     // Handle back press globally
     BackHandler(enabled = true) {
         val onRoot = backStack.isEmpty() ||
             backStack.last() == Screen.Dashboard ||
             backStack.last() == Screen.Login ||
-            backStack.last() == Screen.BiometricEnrollment ||
             backStack.last() == Screen.PermissionsPrimer ||
             backStack.last() == Screen.Onboarding
         when {
@@ -202,7 +114,6 @@ fun FieldCRMApp(
             appViewModel.setSession(session)
             NotificationSyncWorker.schedule(context)
             val next: Screen = when {
-                !appUiState.hasSeenBiometricEnrollment -> Screen.BiometricEnrollment
                 !appUiState.hasSeenPermissions -> Screen.PermissionsPrimer
                 !appUiState.hasSeenOnboarding -> Screen.Onboarding
                 else -> Screen.Dashboard
@@ -218,11 +129,38 @@ fun FieldCRMApp(
         return
     }
 
-    // Auto-sync when session becomes active — both applications and borrowers
+    // Observe Lifecycle events to refresh stale data when returning to foreground
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                if (appUiState.session != null) {
+                    applicationViewModel.refreshIfStale()
+                    borrowerViewModel.refreshIfStale()
+                    dashboardViewModel.refreshIfStale()
+                    notificationsViewModel.refreshIfStale()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Auto-sync when session becomes active
     LaunchedEffect(appUiState.session) {
-        if (appUiState.session != null) {
-            applicationViewModel.syncQueue {}
-            borrowerViewModel.refreshBorrowers()
+        val session = appUiState.session
+        if (session != null) {
+            syncViewModel.syncNow { success ->
+                dashboardViewModel.loadMetrics()
+                val role = session.role
+                if (role == UserRole.LOAN_OFFICER) {
+                    borrowerViewModel.refreshBorrowers()
+                }
+                applicationViewModel.refreshApplications()
+                notificationsViewModel.load()
+            }
         }
     }
 
@@ -249,19 +187,29 @@ fun FieldCRMApp(
         backStack = backStack,
         onBack = { backStack.removeLastOrNull() }
     ) { screen ->
+        val activeRole = appUiState.session?.role
+        if (activeRole != null && !RoleAccessPolicy.canAccess(activeRole, screen)) {
+            LaunchedEffect(screen) {
+                android.widget.Toast.makeText(
+                    context,
+                    "This workspace is not available to ${activeRole.displayName}.",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                backStack.removeLastOrNull()
+                if (backStack.isEmpty()) backStack.add(Screen.Dashboard)
+            }
+            Surface(modifier = Modifier.fillMaxSize(), color = FieldTheme.colors.gray950) {}
+        } else {
         when (screen) {
         Screen.Login -> {
             LoginScreenView(
                 viewModel = loginViewModel,
-                hasEnrolledBiometrics = appUiState.hasEnrolledBiometrics,
                 hasPasscode = appUiState.hasPasscode,
-                biometricNotice = biometricNotice,
-                onDismissBiometricNotice = { biometricNotice = null },
                 onLoginSuccess = { session ->
                     appViewModel.setSession(session)
                     NotificationSyncWorker.schedule(context)
+                    com.fieldcrm.android.sync.AndroidSyncWorker.schedulePeriodic(context)
                     val next: Screen = when {
-                        !appUiState.hasSeenBiometricEnrollment -> Screen.BiometricEnrollment
                         !appUiState.hasSeenPermissions -> Screen.PermissionsPrimer
                         !appUiState.hasSeenOnboarding -> Screen.Onboarding
                         else -> Screen.Dashboard
@@ -270,10 +218,6 @@ fun FieldCRMApp(
                     backStack.add(next)
                 },
                 onForgotPasswordClick = { backStack.add(Screen.ForgotPassword) },
-                onBiometricClick = {
-                    appViewModel.setBiometricAction(BiometricAction.LOGIN)
-                    promptManager?.showBiometricPrompt()
-                },
                 onPasscodeClick = { backStack.add(Screen.PasscodeLogin) }
             )
         }
@@ -286,33 +230,6 @@ fun FieldCRMApp(
         Screen.ResetPassword -> ResetPasswordScreen(
             onNavigateToLogin = { _, _ -> backStack.clear(); backStack.add(Screen.Login) }
         )
-
-        Screen.BiometricEnrollment -> {
-            val next: Screen = when {
-                !appUiState.hasSeenPermissions -> Screen.PermissionsPrimer
-                !appUiState.hasSeenOnboarding -> Screen.Onboarding
-                else -> Screen.Dashboard
-            }
-            BiometricEnrollmentScreen(
-                onEnableClick = {
-                    appViewModel.setBiometricAction(BiometricAction.ENROLL)
-                    promptManager?.showBiometricPrompt(
-                        title = "Enable Biometric Login",
-                        description = "Verify your biometric to enable quick sign-in"
-                    ) ?: run {
-                        // No biometric hardware — skip enrollment
-                        appViewModel.markBiometricEnrollmentShown()
-                        backStack.clear()
-                        backStack.add(next)
-                    }
-                },
-                onNotNowClick = {
-                    appViewModel.markBiometricEnrollmentShown()
-                    backStack.clear()
-                    backStack.add(next)
-                }
-            )
-        }
 
         Screen.PermissionsPrimer -> {
             val next: Screen = if (!appUiState.hasSeenOnboarding) Screen.Onboarding else Screen.Dashboard
@@ -365,6 +282,7 @@ fun FieldCRMApp(
             applications = applicationUiState.applications,
             isLoading = applicationUiState.isLoading,
             sessionEmail = appUiState.session?.userEmail,
+            sessionName = appUiState.session?.userName,
             onNavigateToBorrowers = { backStack.add(Screen.BorrowerList) },
             onNavigateToCreateApplication = { backStack.add(Screen.CreateApplication) },
             onNavigateToApplication = { appId ->
@@ -394,7 +312,6 @@ fun FieldCRMApp(
             onNavigateToCrmQueue = { backStack.add(Screen.CrmQueue) },
             onNavigateToExecutiveQueue = { backStack.add(Screen.ExecutiveQueue) },
             onNavigateToParDashboard = { servicingViewModel.loadParDashboard(); backStack.add(Screen.ParDashboard) },
-            onNavigateToCommitteeQueue = { backStack.add(Screen.CommitteeQueue) },
             onNavigateToEdQueue = { backStack.add(Screen.EdQueue) },
             onNavigateToMdQueue = { backStack.add(Screen.MdQueue) },
             onNavigateToLegalWorkspace = { backStack.add(Screen.LegalWorkspace) },
@@ -407,13 +324,9 @@ fun FieldCRMApp(
 
         Screen.Settings -> {
             val sessionEmail = appUiState.session?.userEmail ?: ""
-            val settingsName = if (sessionEmail.isNotBlank()) {
-                sessionEmail.substringBefore("@")
-                    .split(".", "_", "-")
-                    .joinToString(" ") { it.replaceFirstChar { c -> c.uppercaseChar() } }
-            } else {
-                appUiState.session?.role?.displayName ?: "User"
-            }
+            val settingsName = appUiState.session?.userName?.takeIf { it.isNotBlank() }
+                ?: appUiState.session?.role?.displayName
+                ?: "User"
             SettingsScreen(
                 userName = settingsName,
                 userEmail = sessionEmail,
@@ -456,6 +369,12 @@ fun FieldCRMApp(
 
         Screen.ApplicationDetail -> appUiState.selectedApplication?.let { app ->
             LaunchedEffect(app.id) { applicationViewModel.loadApplicationDetail(app.id) }
+            val isRelationshipOfficer = appUiState.session?.role in setOf(
+                UserRole.ACCOUNT_OFFICER, UserRole.LOAN_OFFICER
+            )
+            val canEditOfficerWork = !isRelationshipOfficer || app.stage in setOf(
+                "intake", "returned", "ocr_review"
+            )
             ApplicationDetailScreenView(
                 application = app,
                 borrower = borrowerUiState.borrowers.find { it.id == app.id || it.phone == app.phone || it.bvn == app.bvn || it.name == app.applicant_name },
@@ -463,40 +382,43 @@ fun FieldCRMApp(
                 appDetail = applicationUiState.selectedAppDetail,
                 isLoadingDetail = applicationUiState.isLoadingDetail,
                 onBackClick = { backStack.removeLastOrNull() },
-                onNavigateToDocumentUpload = { backStack.add(Screen.DocumentUpload) },
-                onNavigateToPledgeTrust = { backStack.add(Screen.PledgeTrust) },
-                onNavigateToVisitationReport = { backStack.add(Screen.VisitationReport) },
-                onNavigateToGuarantorsForm = { backStack.add(Screen.GuarantorsForm) },
+                onNavigateToDocumentUpload = { if (canEditOfficerWork) backStack.add(Screen.DocumentUpload) },
+                onNavigateToPledgeTrust = { if (canEditOfficerWork) backStack.add(Screen.PledgeTrust) },
+                onNavigateToVisitationReport = { if (canEditOfficerWork) backStack.add(Screen.VisitationReport) },
+                onNavigateToGuarantorsForm = { if (canEditOfficerWork) backStack.add(Screen.GuarantorsForm) },
                 onNavigateToReview = {
                     val reviewScreen: Screen? = when (appUiState.session?.role) {
                         UserRole.BRANCH_MANAGER, UserRole.BRANCH_SUPERVISOR -> Screen.BranchManagerReview
                         UserRole.CREDIT_ANALYST -> Screen.CreditOfficerReview
-                        UserRole.AUDITOR -> Screen.AuditorCompliance
-                        UserRole.CRM -> Screen.CrmReview
-                        UserRole.EXECUTIVE, UserRole.HEAD_CRM -> Screen.ExecutiveApproval
-                        UserRole.COMMITTEE -> Screen.CommitteeReview
+                        UserRole.AUDITOR -> null
+                        UserRole.CRM, UserRole.HEAD_CRM -> Screen.CrmReview
+                        UserRole.EXECUTIVE -> Screen.ExecutiveApproval
                         UserRole.ED -> Screen.EdApproval
                         UserRole.MD -> Screen.MdApproval
-                        UserRole.SYSTEM_ADMIN -> Screen.AdminMcrApproval
+                        UserRole.SYSTEM_ADMIN -> null
                         else -> null
                     }
                     if (reviewScreen != null) backStack.add(reviewScreen)
                 },
                 onNavigateToAuditTrail = { backStack.add(Screen.WorkflowEventAudit) },
-                onNavigateToFormWizard = { backStack.add(Screen.LoanApplicationForm) },
+                onNavigateToFormWizard = { if (canEditOfficerWork) backStack.add(Screen.LoanApplicationForm) },
                 onNavigateToDocumentViewer = { url, name ->
                     selectedDocUrl = url
                     selectedDocName = name
                     backStack.add(Screen.DocumentViewer)
                 },
-                onNavigateToOcrReview = { },
+                onNavigateToOcrReview = {
+                    if (isRelationshipOfficer && app.stage == "ocr_review") {
+                        backStack.add(Screen.OcrReview)
+                    }
+                },
                 onOpenClientSigning = {
-                    applicationViewModel.generateApplicationSigningLink(application.id) { url ->
+                    applicationViewModel.generateApplicationSigningLink(app.id) { url ->
                         CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(url))
                     }
                 },
                 onShareClientSigning = {
-                    applicationViewModel.generateApplicationSigningLink(application.id) { url ->
+                    applicationViewModel.generateApplicationSigningLink(app.id) { url ->
                         val share = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
                             putExtra(Intent.EXTRA_TEXT, url)
@@ -505,13 +427,13 @@ fun FieldCRMApp(
                     }
                 },
                 onOpenGuarantorSigning = { slot ->
-                    applicationViewModel.generateApplicationSigningLink(application.id, slot) { url ->
+                    applicationViewModel.generateApplicationSigningLink(app.id, slot) { url ->
                         CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(url))
                     }
                 },
                 onGenerateOffer = {
-                    applicationViewModel.generateOffer(application.id) {
-                        applicationViewModel.loadApplicationDetail(application.id)
+                    applicationViewModel.generateOffer(app.id) {
+                        applicationViewModel.loadApplicationDetail(app.id)
                     }
                 }
             )
@@ -617,9 +539,15 @@ fun FieldCRMApp(
             val app = appUiState.selectedApplication
             val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name }
             if (app != null) {
+                LaunchedEffect(app.id, appUiState.session?.role) {
+                    applicationViewModel.loadApplicationDetail(app.id)
+                    val context = if (appUiState.session?.role == UserRole.BRANCH_SUPERVISOR) "supervisor_review" else "team_lead_review"
+                    applicationViewModel.loadReviewChecklist(app.id, context)
+                }
                 BranchManagerReviewScreen(
                     application = app,
                     borrower = borrower,
+                    role = appUiState.session?.role ?: UserRole.BRANCH_MANAGER,
                     applicationViewModel = applicationViewModel,
                     onBackClick = { backStack.removeLastOrNull() },
                     onDecisionSubmitted = { backStack.removeLastOrNull() }
@@ -629,31 +557,10 @@ fun FieldCRMApp(
             }
         }
 
-        Screen.AuditorCompliance -> AuditorComplianceScreen(
-            applicationId = appUiState.selectedApplication?.id ?: "",
-            onBackClick = { backStack.removeLastOrNull() },
-            onAuditComplete = { backStack.removeLastOrNull() }
-        )
-
-        Screen.AdminMcrApproval -> {
-            val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name }
-            if (app != null) {
-                AdminMcrApprovalScreen(
-                    application = app,
-                    borrower = borrower,
-                    applicationViewModel = applicationViewModel,
-                    onBackClick = { backStack.removeLastOrNull() },
-                    onDisburseTriggered = { backStack.removeLastOrNull() }
-                )
-            } else {
-                backStack.removeLastOrNull()
-            }
-        }
-
         Screen.DocumentViewer -> DocumentViewerScreen(
+            applicationId = appUiState.selectedApplication?.id ?: "",
             docType = selectedDocName,
-            docUrl = selectedDocUrl,
+            initialDocUrl = selectedDocUrl,
             onBackClick = { backStack.removeLastOrNull() }
         )
 
@@ -713,6 +620,7 @@ fun FieldCRMApp(
         Screen.CreditReviewQueue -> CreditReviewQueueScreen(
             applications = applicationUiState.applications,
             borrowers = borrowerUiState.borrowers,
+            role = appUiState.session?.role,
             onBackClick = { backStack.removeLastOrNull() },
             onReviewApplication = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
@@ -776,7 +684,8 @@ fun FieldCRMApp(
         )
 
         Screen.MccWorkspace -> MccWorkspaceScreen(
-            onBack = { backStack.removeLastOrNull() }
+            onBack = { backStack.removeLastOrNull() },
+            canManage = appUiState.session?.role in setOf(UserRole.ED, UserRole.MD)
         )
 
         Screen.InterestPresets -> InterestPresetScreen(
@@ -788,6 +697,7 @@ fun FieldCRMApp(
         )
 
         Screen.AuditTrail -> AuditTrailScreen(
+            applicationId = appUiState.selectedApplication?.id.orEmpty(),
             onBackClick = { backStack.removeLastOrNull() }
         )
 
@@ -828,6 +738,7 @@ fun FieldCRMApp(
                     onSuccess = { session ->
                         appViewModel.setSession(session)
                         NotificationSyncWorker.schedule(context)
+                        com.fieldcrm.android.sync.AndroidSyncWorker.schedulePeriodic(context)
                         backStack.clear()
                         backStack.add(Screen.Dashboard)
                     },
@@ -840,22 +751,29 @@ fun FieldCRMApp(
         Screen.CrmReview -> {
             val app = appUiState.selectedApplication
             if (app != null) {
+                LaunchedEffect(app.id) { crmReviewViewModel.loadChecklist(app.id) }
                 CrmReviewScreen(
                     application = app,
+                    role = appUiState.session?.role ?: UserRole.CRM,
                     isSubmitting = crmReviewUiState.isSubmitting,
-                    onAdvanceToExecutive = {
+                    savedChecklist = crmReviewUiState.checklist,
+                    onAdvanceToExecutive = { notes, bureau1, bureau2, crms, ncr ->
                         crmReviewViewModel.submitCrmReview(
                             applicationId = app.id,
                             decision = "advance",
-                            notes = "",
+                            notes = notes,
+                            bureau1 = bureau1,
+                            bureau2 = bureau2,
+                            crms = crms,
+                            ncr = ncr,
                             onDone = { backStack.removeLastOrNull() }
                         )
                     },
-                    onReturnToBranchManager = {
+                    onReturnToBranchManager = { notes ->
                         crmReviewViewModel.submitCrmReview(
                             applicationId = app.id,
                             decision = "return",
-                            notes = "",
+                            notes = notes,
                             onDone = { backStack.removeLastOrNull() }
                         )
                     },
@@ -953,44 +871,6 @@ fun FieldCRMApp(
             }
         )
 
-        Screen.CommitteeQueue -> CommitteeQueueScreen(
-            applications = applicationUiState.applications,
-            onBackClick = { backStack.removeLastOrNull() },
-            onReviewApplication = { appId ->
-                val app = applicationUiState.applications.find { it.id == appId }
-                if (app != null) appViewModel.setSelectedApplication(app)
-                backStack.add(Screen.CommitteeReview)
-            }
-        )
-
-        Screen.CommitteeReview -> {
-            val app = appUiState.selectedApplication
-            if (app != null) {
-                CommitteeReviewScreen(
-                    application = app,
-                    isSubmitting = crmReviewUiState.isSubmitting,
-                    onSubmitVote = { recommendation, notes ->
-                        crmReviewViewModel.submitCommitteeVote(
-                            id = app.id,
-                            recommendation = recommendation,
-                            notes = notes,
-                            onDone = { backStack.removeLastOrNull() }
-                        )
-                    },
-                    onCompleteReview = { recommendation ->
-                        crmReviewViewModel.completeCommitteeReview(
-                            id = app.id,
-                            recommendation = recommendation,
-                            onDone = { backStack.removeLastOrNull() }
-                        )
-                    },
-                    onBack = { backStack.removeLastOrNull() }
-                )
-            } else {
-                LaunchedEffect(Unit) { backStack.removeLastOrNull() }
-            }
-        }
-
         Screen.EdQueue -> EdQueueScreen(
             applications = applicationUiState.applications,
             onBackClick = { backStack.removeLastOrNull() },
@@ -1052,6 +932,14 @@ fun FieldCRMApp(
                             onDone = { backStack.removeLastOrNull() }
                         )
                     },
+                    onReturnToEd = { notes ->
+                        crmReviewViewModel.submitMdApprove(
+                            id = app.id,
+                            action = "comment",
+                            notes = notes,
+                            onDone = { backStack.removeLastOrNull() }
+                        )
+                    },
                     onAddBoardReferral = { email, name, notes ->
                         crmReviewViewModel.addBoardReferral(
                             id = app.id,
@@ -1069,6 +957,7 @@ fun FieldCRMApp(
         }
 
             else -> {}
+        }
         }
     }
 }

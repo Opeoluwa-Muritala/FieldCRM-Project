@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
+import com.fieldcrm.android.core.session.SessionStore
 
 @Immutable
 data class BorrowerUiState(
@@ -29,10 +30,23 @@ data class BorrowerUiState(
 
 class BorrowerViewModel(
     application: Application,
-    private val repository: BorrowerRepository
+    private val repository: BorrowerRepository,
+    private val sessionStore: SessionStore
 ) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(BorrowerUiState())
     val uiState: StateFlow<BorrowerUiState> = _uiState.asStateFlow()
+    private var lastRefreshTime = 0L
+
+    fun refreshIfStale() {
+        val now = System.currentTimeMillis()
+        if (now - lastRefreshTime > 30000L) {
+            refreshBorrowers()
+        }
+    }
+
+    fun refreshBorrowers() {
+        loadBorrowers()
+    }
 
     init {
         loadBorrowers()
@@ -42,6 +56,9 @@ class BorrowerViewModel(
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             val list = repository.getAllBorrowers()
+            if (list.isNotEmpty()) {
+                lastRefreshTime = System.currentTimeMillis()
+            }
             _uiState.update { it.copy(borrowers = list, isLoading = false) }
         }
     }
@@ -74,7 +91,7 @@ class BorrowerViewModel(
         _uiState.update { it.copy(isLoading = true) }
         val newBorrower = BorrowerModel(
             id = UUID.randomUUID().toString(),
-            org_id = "org_1",
+            org_id = sessionStore.load()?.orgId ?: "",
             loan_officer_id = "lo_1",
             name = state.newBorrowerName,
             phone = state.newBorrowerPhone,
@@ -120,9 +137,5 @@ class BorrowerViewModel(
                 errorMessage = null
             )
         }
-    }
-
-    fun refreshBorrowers() {
-        loadBorrowers()
     }
 }

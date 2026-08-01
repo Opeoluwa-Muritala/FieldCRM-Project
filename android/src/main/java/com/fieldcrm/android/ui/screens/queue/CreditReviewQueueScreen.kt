@@ -22,6 +22,9 @@ import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
+import com.fieldcrm.android.core.session.UserRole
+import com.fieldcrm.android.ui.viewmodel.DashboardViewModel
+import org.koin.androidx.compose.koinViewModel
 
 private data class CreditReviewItem(
     val applicantName: String,
@@ -31,23 +34,39 @@ private data class CreditReviewItem(
     val appId: String
 )
 
-private val placeholderCreditItems = listOf(
-    CreditReviewItem("Adaeze Okonkwo", "SME Loan", "₦500,000", "6 MO", ""),
-    CreditReviewItem("Emeka Chukwu", "Asset Loan", "₦1,200,000", "12 MO", ""),
-    CreditReviewItem("Ngozi Adeyemi", "Working Capital", "₦350,000", "3 MO", ""),
-    CreditReviewItem("Chukwuemeka Eze", "SME Loan", "₦750,000", "9 MO", ""),
-    CreditReviewItem("Fatima Bello", "Agric Loan", "₦200,000", "6 MO", "")
-)
-
 @Composable
 fun CreditReviewQueueScreen(
     applications: List<LoanApplicationModel> = emptyList(),
     borrowers: List<BorrowerModel> = emptyList(),
+    role: UserRole? = null,
     onBackClick: () -> Unit,
     onReviewApplication: (String) -> Unit = {}
 ) {
-    val reviewItems = remember(applications, borrowers) {
-        if (applications.isNotEmpty()) {
+    val dashboardViewModel: DashboardViewModel = koinViewModel()
+    val dashboardState by dashboardViewModel.uiState.collectAsState()
+    val dashboardQueue = dashboardState.metrics?.data?.queue.orEmpty()
+    val reviewItems = remember(applications, borrowers, dashboardQueue, role) {
+        if (role == UserRole.CREDIT_ANALYST) {
+            dashboardState.metrics?.data?.reviews.orEmpty().map { app ->
+                CreditReviewItem(
+                    applicantName = app.applicant_name,
+                    productType = app.loan_type.replaceFirstChar { it.uppercase() },
+                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount ?: 0.0)}",
+                    tenure = "${app.exception_count} OCR issues",
+                    appId = app.id
+                )
+            }
+        } else if (role == UserRole.BRANCH_SUPERVISOR) {
+            dashboardQueue.map { app ->
+                CreditReviewItem(
+                    applicantName = app.applicant_name,
+                    productType = app.loan_type.replaceFirstChar { it.uppercase() },
+                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount ?: 0.0)}",
+                    tenure = "Supervisory review",
+                    appId = app.id
+                )
+            }
+        } else if (applications.isNotEmpty()) {
             applications.map { app ->
                 val borrower = borrowers.find { it.id == app.id }
                 CreditReviewItem(
@@ -58,9 +77,9 @@ fun CreditReviewQueueScreen(
                     appId = app.id
                 )
             }
-        } else placeholderCreditItems
+        } else emptyList()
     }
-    var isLoading by remember { mutableStateOf(false) }
+    val isLoading = if (role in setOf(UserRole.BRANCH_SUPERVISOR, UserRole.CREDIT_ANALYST)) dashboardState.isLoading else false
 
     Scaffold(
         modifier = Modifier
@@ -68,7 +87,11 @@ fun CreditReviewQueueScreen(
             .background(FieldTheme.colors.gray950),
         topBar = {
             FieldTopAppBar(
-                title = "Review Queue",
+                title = when (role) {
+                    UserRole.BRANCH_SUPERVISOR -> "Supervisory Review Queue"
+                    UserRole.CREDIT_ANALYST -> "Underwriting Queue"
+                    else -> "Review Queue"
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(

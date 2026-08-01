@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.shared.model.LoanApplicationModel
+import com.fieldcrm.android.core.session.UserRole
 
 /**
  * CRM credit file completeness review — CBN §1.6 gate before executive disbursement.
@@ -19,16 +20,18 @@ import com.fieldcrm.shared.model.LoanApplicationModel
 @Composable
 fun CrmReviewScreen(
     application: LoanApplicationModel,
+    role: UserRole = UserRole.CRM,
     isSubmitting: Boolean = false,
-    onAdvanceToExecutive: () -> Unit,
-    onReturnToBranchManager: () -> Unit,
+    savedChecklist: Map<String, Boolean> = emptyMap(),
+    onAdvanceToExecutive: (String, Boolean, Boolean, Boolean, Boolean) -> Unit,
+    onReturnToBranchManager: (String) -> Unit,
     onUploadDocument: () -> Unit = {},
     onBack: () -> Unit,
 ) {
-    var bureau1 by remember { mutableStateOf(false) }
-    var bureau2 by remember { mutableStateOf(false) }
-    var crmsSearch by remember { mutableStateOf(false) }
-    var ncrReg by remember { mutableStateOf(false) }
+    var bureau1 by remember(savedChecklist) { mutableStateOf(savedChecklist["bureau_1_verified"] == true) }
+    var bureau2 by remember(savedChecklist) { mutableStateOf(savedChecklist["bureau_2_verified"] == true) }
+    var crmsSearch by remember(savedChecklist) { mutableStateOf(savedChecklist["crms_verified"] == true) }
+    var ncrReg by remember(savedChecklist) { mutableStateOf(savedChecklist["ncr_verified"] == true) }
     var notes by remember { mutableStateOf("") }
     var showReturnDialog by remember { mutableStateOf(false) }
 
@@ -36,11 +39,11 @@ fun CrmReviewScreen(
 
     if (showReturnDialog) {
         ReviewDecisionSheet(
-            title = "Return this file to the Branch Manager?",
-            message = "The Branch Manager will receive the file for correction. Add review notes before returning it.",
+            title = if (role == UserRole.HEAD_CRM) "Return this file to the CRM Officer?" else "Return this file to the Credit Analyst?",
+            message = if (role == UserRole.HEAD_CRM) "The CRM Officer will receive the file for correction." else "The Credit Analyst will receive the file for correction.",
             confirmLabel = "Return for correction",
             destructive = true,
-            onConfirm = { showReturnDialog = false; onReturnToBranchManager() },
+            onConfirm = { showReturnDialog = false; onReturnToBranchManager(notes) },
             onDismiss = { showReturnDialog = false }
         )
     }
@@ -48,7 +51,7 @@ fun CrmReviewScreen(
     Scaffold(
         topBar = { 
             FieldTopAppBar(
-                title = "CRM Review",
+                title = if (role == UserRole.HEAD_CRM) "Head CRM Approval" else "CRM Review",
                 navigationIcon = {
                     androidx.compose.material3.IconButton(onClick = onBack) {
                         androidx.compose.material3.Icon(
@@ -81,22 +84,26 @@ fun CrmReviewScreen(
                 ChecklistItem(
                     label = "Credit Bureau 1 (CRC / FirstCentral) search obtained",
                     checked = bureau1,
-                    onCheckedChange = { bureau1 = it }
+                    onCheckedChange = { bureau1 = it },
+                    enabled = role == UserRole.CRM
                 )
                 ChecklistItem(
                     label = "Credit Bureau 2 (CreditRegistry) search obtained",
                     checked = bureau2,
-                    onCheckedChange = { bureau2 = it }
+                    onCheckedChange = { bureau2 = it },
+                    enabled = role == UserRole.CRM
                 )
                 ChecklistItem(
                     label = "CRMS (CBN Credit Risk Management System) search done",
                     checked = crmsSearch,
-                    onCheckedChange = { crmsSearch = it }
+                    onCheckedChange = { crmsSearch = it },
+                    enabled = role == UserRole.CRM
                 )
                 ChecklistItem(
                     label = "NCR (National Collateral Registry) registration verified",
                     checked = ncrReg,
-                    onCheckedChange = { ncrReg = it }
+                    onCheckedChange = { ncrReg = it },
+                    enabled = role == UserRole.CRM
                 )
             }
 
@@ -129,14 +136,14 @@ fun CrmReviewScreen(
             }
 
             PrimaryButton(
-                text = if (isSubmitting) "Submitting…" else "Advance to Executive Approval",
-                onClick = onAdvanceToExecutive,
+                text = if (isSubmitting) "Submitting…" else if (role == UserRole.HEAD_CRM) "Approve and Send to ED" else "Send to Head CRM",
+                    onClick = { onAdvanceToExecutive(notes, bureau1, bureau2, crmsSearch, ncrReg) },
                 enabled = allChecked && !isSubmitting,
                 modifier = Modifier.fillMaxWidth()
             )
 
             SecondaryButton(
-                text = "Return to Branch Manager",
+                text = if (role == UserRole.HEAD_CRM) "Return to CRM Officer" else "Return to Credit Analyst",
                 onClick = { showReturnDialog = true },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -150,7 +157,8 @@ fun CrmReviewScreen(
 private fun ChecklistItem(
     label: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true
 ) {
     Row(
         modifier = Modifier
@@ -161,6 +169,7 @@ private fun ChecklistItem(
         Checkbox(
             checked = checked,
             onCheckedChange = onCheckedChange,
+            enabled = enabled,
             colors = CheckboxDefaults.colors(
                 checkedColor = FieldTheme.colors.purple600,
                 uncheckedColor = FieldTheme.colors.gray600

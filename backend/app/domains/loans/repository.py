@@ -277,38 +277,6 @@ class LoanRepository(BaseRepository):
         )
         return LoanRow(**row) if row else None
 
-    async def advance_to_committee_review(
-        self, loan_id: UUID, org_id: UUID, crm_user_id: UUID, crm_notes: str
-    ) -> LoanRow | None:
-        row = await self.conn.fetchrow(
-            self.sql("advance_to_committee_review"), loan_id, org_id, crm_user_id, crm_notes
-        )
-        return LoanRow(**row) if row else None
-
-    async def list_committee_queue(self, org_id: UUID, limit: int = 50, offset: int = 0) -> list[dict]:
-        rows = await self.conn.fetch(self.sql("list_committee_queue"), org_id, limit, offset)
-        return [dict(r) for r in rows]
-
-    async def insert_committee_vote(
-        self, loan_id: UUID, org_id: UUID, member_id: UUID, recommendation: str, notes: str
-    ) -> dict:
-        row = await self.conn.fetchrow(
-            self.sql("insert_committee_vote"), loan_id, org_id, member_id, recommendation, notes
-        )
-        return dict(row)
-
-    async def get_committee_votes(self, loan_id: UUID, org_id: UUID) -> list[dict]:
-        rows = await self.conn.fetch(self.sql("get_committee_votes"), loan_id, org_id)
-        return [dict(r) for r in rows]
-
-    async def complete_committee_review(
-        self, loan_id: UUID, org_id: UUID, recommendation: str
-    ) -> LoanRow | None:
-        row = await self.conn.fetchrow(
-            self.sql("complete_committee_review"), loan_id, org_id, recommendation
-        )
-        return LoanRow(**row) if row else None
-
     async def ed_approve(self, loan_id: UUID, org_id: UUID, ed_user_id: UUID) -> LoanRow | None:
         row = await self.conn.fetchrow(self.sql("ed_approve"), loan_id, org_id, ed_user_id)
         return LoanRow(**row) if row else None

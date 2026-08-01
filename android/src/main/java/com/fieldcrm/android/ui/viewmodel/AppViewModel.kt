@@ -25,8 +25,6 @@ sealed class Screen : NavKey {
     @Serializable
     data object ResetPassword : Screen()
     @Serializable
-    data object BiometricEnrollment : Screen()
-    @Serializable
     data object PermissionsPrimer : Screen()
     @Serializable
     data object Notifications : Screen()
@@ -62,10 +60,6 @@ sealed class Screen : NavKey {
     data object BranchManagerReview : Screen()
     @Serializable
     data object CreditOfficerReview : Screen()
-    @Serializable
-    data object AuditorCompliance : Screen()
-    @Serializable
-    data object AdminMcrApproval : Screen()
     @Serializable
     data object DocumentViewer : Screen()
     @Serializable
@@ -117,10 +111,6 @@ sealed class Screen : NavKey {
     @Serializable
     data object CrmQueue : Screen()
     @Serializable
-    data object CommitteeQueue : Screen()
-    @Serializable
-    data object CommitteeReview : Screen()
-    @Serializable
     data object EdQueue : Screen()
     @Serializable
     data object EdApproval : Screen()
@@ -138,10 +128,6 @@ sealed class Screen : NavKey {
     data object ParDashboard : Screen()
 }
 
-// ── Biometric action intent ────────────────────────────────────────────────────
-
-enum class BiometricAction { ENROLL, LOGIN }
-
 // ── App-level UI state (session + selection only — nav lives in the back stack) ──
 
 @Immutable
@@ -150,14 +136,10 @@ data class AppUiState(
     val selectedBorrower: BorrowerModel? = null,
     val selectedApplication: LoanApplicationModel? = null,
     val isSessionExpired: Boolean = false,
-    val hasEnrolledBiometrics: Boolean = false,
-    val hasSeenBiometricEnrollment: Boolean = false,
     val hasSeenOnboarding: Boolean = false,
     val hasSeenPermissions: Boolean = false,
     val hasPasscode: Boolean = false,
     val passcodeHash: String? = null,
-    val pendingBiometricAction: BiometricAction? = null,
-    val isDarkMode: Boolean = false,
     val successTitle: String = "",
     val successSubtitle: String = "",
     val successDestination: Screen = Screen.Dashboard,
@@ -167,13 +149,10 @@ data class AppUiState(
 class AppViewModel(private val sessionStore: SessionStore) : ViewModel() {
     private val _uiState = MutableStateFlow(
         AppUiState(
-            hasEnrolledBiometrics = sessionStore.isBiometricEnrolled(),
-            hasSeenBiometricEnrollment = sessionStore.hasBiometricEnrollmentBeenShown(),
             hasSeenOnboarding = sessionStore.hasSeenOnboarding(),
             hasSeenPermissions = sessionStore.hasSeenPermissions(),
             hasPasscode = sessionStore.hasPasscode(),
-            passcodeHash = sessionStore.getPasscodeHash(),
-            isDarkMode = sessionStore.isDarkMode()
+            passcodeHash = sessionStore.getPasscodeHash()
         )
     )
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
@@ -194,11 +173,6 @@ class AppViewModel(private val sessionStore: SessionStore) : ViewModel() {
         _uiState.update { it.copy(isSessionExpired = expired) }
     }
 
-    fun setBiometricsEnrolled(enrolled: Boolean) {
-        sessionStore.setBiometricEnrolled(enrolled)
-        _uiState.update { it.copy(hasEnrolledBiometrics = enrolled) }
-    }
-
     fun setOnboardingSeen(seen: Boolean) {
         if (seen) sessionStore.setOnboardingSeen()
         _uiState.update { it.copy(hasSeenOnboarding = seen) }
@@ -207,11 +181,6 @@ class AppViewModel(private val sessionStore: SessionStore) : ViewModel() {
     fun setPermissionsSeen(seen: Boolean) {
         if (seen) sessionStore.setPermissionsSeen()
         _uiState.update { it.copy(hasSeenPermissions = seen) }
-    }
-
-    fun markBiometricEnrollmentShown() {
-        sessionStore.markBiometricEnrollmentShown()
-        _uiState.update { it.copy(hasSeenBiometricEnrollment = true) }
     }
 
     fun setPasscodeHash(hash: String) {
@@ -224,14 +193,7 @@ class AppViewModel(private val sessionStore: SessionStore) : ViewModel() {
         _uiState.update { it.copy(hasPasscode = false, passcodeHash = null) }
     }
 
-    fun setBiometricAction(action: BiometricAction?) {
-        _uiState.update { it.copy(pendingBiometricAction = action) }
-    }
 
-    fun setDarkMode(enabled: Boolean) {
-        sessionStore.setDarkMode(enabled)
-        _uiState.update { it.copy(isDarkMode = enabled) }
-    }
 
     fun preselectBorrower(borrowerId: String?) {
         _uiState.update { it.copy(preselectedBorrowerId = borrowerId) }
@@ -244,13 +206,10 @@ class AppViewModel(private val sessionStore: SessionStore) : ViewModel() {
     fun logout() {
         sessionStore.clear()
         _uiState.value = AppUiState(
-            hasEnrolledBiometrics = sessionStore.isBiometricEnrolled(),
-            hasSeenBiometricEnrollment = sessionStore.hasBiometricEnrollmentBeenShown(),
             hasSeenOnboarding = sessionStore.hasSeenOnboarding(),
             hasSeenPermissions = sessionStore.hasSeenPermissions(),
             hasPasscode = sessionStore.hasPasscode(),
-            passcodeHash = sessionStore.getPasscodeHash(),
-            isDarkMode = sessionStore.isDarkMode()
+            passcodeHash = sessionStore.getPasscodeHash()
         )
     }
 }

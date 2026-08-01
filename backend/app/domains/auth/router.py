@@ -53,7 +53,7 @@ async def login_mobile(
     form_data: OAuth2PasswordRequestForm = Depends(),
     service: AuthService = Depends(get_auth_service)
 ):
-    """Mobile/biometric login — issues a 30-day token stored in encrypted device storage."""
+    """Mobile credential login that issues a token stored in encrypted device storage."""
     await enforce_login_limits(request, form_data.username)
     token = await service.authenticate_user(
         form_data.username, form_data.password, session_type="mobile"

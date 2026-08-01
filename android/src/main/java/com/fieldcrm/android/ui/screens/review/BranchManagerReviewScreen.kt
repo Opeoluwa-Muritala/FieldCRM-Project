@@ -25,11 +25,13 @@ import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import org.koin.androidx.compose.koinViewModel
 import java.util.Locale
+import com.fieldcrm.android.core.session.UserRole
 
 @Composable
 fun BranchManagerReviewScreen(
     application: LoanApplicationModel,
     borrower: BorrowerModel?,
+    role: UserRole = UserRole.BRANCH_MANAGER,
     applicationViewModel: ApplicationViewModel,
     onBackClick: () -> Unit,
     onDecisionSubmitted: () -> Unit
@@ -48,16 +50,25 @@ fun BranchManagerReviewScreen(
         if (selectedReason !in reviewReasons) selectedReason = reviewReasons.first()
     }
 
-    // Interactive Attestations
-    var isKycAttested by remember { mutableStateOf(false) }
-    var isCollateralAttested by remember { mutableStateOf(false) }
-
     val appState by applicationViewModel.uiState.collectAsState()
+    var isKycAttested by remember(appState.reviewChecklist) { mutableStateOf(appState.reviewChecklist["kyc_attested"] == true) }
+    var isCollateralAttested by remember(appState.reviewChecklist) { mutableStateOf(appState.reviewChecklist["collateral_attested"] == true) }
+    val readiness = appState.selectedAppDetail?.readiness.orEmpty()
+    val verifiedDocuments = (readiness["verified_docs"] as? Number)?.toInt() ?: 0
+    val totalDocuments = (readiness["total_docs"] as? Number)?.toInt() ?: 0
+    val verifiedGuarantors = (readiness["guarantors_verified"] as? Number)?.toInt() ?: 0
+    val requiredGuarantors = (readiness["guarantors_required"] as? Number)?.toInt() ?: 0
+    val baseFileReady = readiness["loan_form_submitted"] == true &&
+        totalDocuments > 0 && verifiedDocuments == totalDocuments &&
+        requiredGuarantors > 0 && verifiedGuarantors == requiredGuarantors &&
+        readiness["critical_unverified"] == 0 && readiness["low_confidence_unverified"] == 0 &&
+        readiness["consent_credit_bureau"] == true && readiness["consent_gsi"] == true &&
+        readiness["officer_signed_visitation"] == true
 
     Scaffold(
         topBar = {
             FieldTopAppBar(
-                title = "Manager Review Console",
+                title = if (role == UserRole.BRANCH_SUPERVISOR) "Supervisor Review" else "Team Lead Review",
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -79,40 +90,30 @@ fun BranchManagerReviewScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 PrimaryButton(
-                    text = if (appState.isLoading) "Processing Approval..." else "Approve & Push to Board",
+                    text = if (appState.isLoading) "Processing Approval..." else if (role == UserRole.BRANCH_SUPERVISOR) "Approve & Send to Credit Analyst" else "Approve & Send to Supervisor",
                     onClick = {
-                        applicationViewModel.approveApplication(application.id) {
+                        applicationViewModel.approveApplication(
+                            application.id,
+                            managerComment,
+                            isKycAttested,
+                            isCollateralAttested
+                        ) {
                             onDecisionSubmitted()
                         }
                     },
-                    enabled = isKycAttested && isCollateralAttested && managerComment.isNotEmpty() && !appState.isLoading,
+                    enabled = baseFileReady && isKycAttested && isCollateralAttested && managerComment.isNotEmpty() && !appState.isLoading,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    SecondaryButton(
-                        text = "Return to Pool",
+                SecondaryButton(
+                        text = if (role == UserRole.BRANCH_SUPERVISOR) "Return to Team Lead" else "Return to Relationship Officer",
                         onClick = {
                             applicationViewModel.returnApplication(application.id, selectedReason, emptyList(), managerComment) {
                                 onDecisionSubmitted()
                             }
                         },
                         enabled = !appState.isLoading,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    DangerButton(
-                        text = "Reject Dossier",
-                        onClick = {
-                            applicationViewModel.returnApplication(application.id, "REJECTED: $selectedReason", emptyList(), managerComment) {
-                                onDecisionSubmitted()
-                            }
-                        },
-                        enabled = !appState.isLoading,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
             }
         },
         containerColor = FieldTheme.colors.gray950
@@ -171,7 +172,7 @@ fun BranchManagerReviewScreen(
                             
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    DetailItem(label = "Applicant", value = borrower?.name ?: "Adaeze Okonkwo")
+                                    DetailItem(label = "Applicant", value = borrower?.name ?: application.applicant_name.ifBlank { "Applicant unavailable" })
                                     DetailItem(label = "Requested Amount", value = "₦${String.format(Locale.US, "%,.0f", application.amount)}", isMono = true)
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
@@ -187,19 +188,34 @@ fun BranchManagerReviewScreen(
                             ReadinessChecklist(
                                 gates = listOf(
                                     ChecklistGate(
-                                        label = "Collateral Valuation Registered",
-                                        isVerified = application.purpose != null,
-                                        variant = if (application.purpose != null) StatusChipVariant.Verified else StatusChipVariant.Missing
+                                        label = "Loan Form Submitted",
+                                        isVerified = readiness["loan_form_submitted"] == true,
+                                        variant = if (readiness["loan_form_submitted"] == true) StatusChipVariant.Verified else StatusChipVariant.Missing
                                     ),
                                     ChecklistGate(
-                                        label = "GPS Visitation Coordinates Logged",
-                                        isVerified = borrower?.gps_coordinates != null,
-                                        variant = if (borrower?.gps_coordinates != null) StatusChipVariant.Verified else StatusChipVariant.Missing
+                                        label = "All Documents Verified",
+                                        isVerified = totalDocuments > 0 && verifiedDocuments == totalDocuments,
+                                        variant = if (totalDocuments > 0 && verifiedDocuments == totalDocuments) StatusChipVariant.Verified else StatusChipVariant.Missing
                                     ),
                                     ChecklistGate(
-                                        label = "Guarantor Profile Completed",
-                                        isVerified = borrower?.guarantor_name != null,
-                                        variant = if (borrower?.guarantor_name != null) StatusChipVariant.Verified else StatusChipVariant.Missing
+                                        label = "Required Guarantors Verified",
+                                        isVerified = requiredGuarantors > 0 && verifiedGuarantors == requiredGuarantors,
+                                        variant = if (requiredGuarantors > 0 && verifiedGuarantors == requiredGuarantors) StatusChipVariant.Verified else StatusChipVariant.Missing
+                                    ),
+                                    ChecklistGate(
+                                        label = "Required Consents Recorded",
+                                        isVerified = readiness["consent_credit_bureau"] == true && readiness["consent_gsi"] == true,
+                                        variant = if (readiness["consent_credit_bureau"] == true && readiness["consent_gsi"] == true) StatusChipVariant.Verified else StatusChipVariant.Missing
+                                    ),
+                                    ChecklistGate(
+                                        label = "OCR Exceptions Resolved",
+                                        isVerified = readiness["critical_unverified"] == 0 && readiness["low_confidence_unverified"] == 0,
+                                        variant = if (readiness["critical_unverified"] == 0 && readiness["low_confidence_unverified"] == 0) StatusChipVariant.Verified else StatusChipVariant.Missing
+                                    ),
+                                    ChecklistGate(
+                                        label = "Visitation Signed by Officer",
+                                        isVerified = readiness["officer_signed_visitation"] == true,
+                                        variant = if (readiness["officer_signed_visitation"] == true) StatusChipVariant.Verified else StatusChipVariant.Missing
                                     )
                                 )
                             )
@@ -265,7 +281,7 @@ fun BranchManagerReviewScreen(
                             
                             Spacer(modifier = Modifier.height(16.dp))
                             
-                            FieldTextField(
+                            FieldMultilineNotes(
                                 value = managerComment,
                                 onValueChange = { managerComment = it },
                                 label = "Manager Review Notes",

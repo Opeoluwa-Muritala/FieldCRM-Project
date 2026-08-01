@@ -95,7 +95,7 @@ fun EdApprovalScreen(
                     text = if (isSmallLoan)
                         "This loan is within your direct approval authority (< ₦10M). You may approve directly or forward to the MD."
                     else
-                        "This loan exceeds ₦10M. You may still forward to the MD for final approval.",
+                        "This loan exceeds the ED escalation threshold and cannot be forwarded through this action.",
                     style = FieldTheme.typography.body,
                     color = FieldTheme.colors.gray400
                 )
@@ -113,7 +113,7 @@ fun EdApprovalScreen(
                 SecondaryButton(
                     text = if (isSubmitting) "Processing…" else "Forward to MD for Final Approval",
                     onClick = { showForwardDialog = true },
-                    enabled = !isSubmitting,
+                    enabled = isSmallLoan && !isSubmitting,
                     modifier = Modifier.fillMaxWidth()
                 )
             }

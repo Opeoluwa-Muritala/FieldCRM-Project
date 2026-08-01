@@ -28,6 +28,11 @@ import com.fieldcrm.android.ui.components.AnimatedSuccessCheckmark
 import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.FieldTextField
 import com.fieldcrm.android.ui.components.PrimaryButton
+import com.fieldcrm.android.ui.components.FieldPassword
+import com.fieldcrm.android.ui.components.KeyboardAwareForm
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
 import com.fieldcrm.android.ui.components.SecondaryButton
 import com.fieldcrm.android.data.api.MobileApiService
 import com.fieldcrm.android.ui.theme.FieldTheme
@@ -370,7 +375,11 @@ fun ResetPasswordFormContent(
     onSubmit: () -> Unit,
     onCancel: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val newPasswordFocusRequester = remember { FocusRequester() }
+    val confirmPasswordFocusRequester = remember { FocusRequester() }
+
+    KeyboardAwareForm(modifier = Modifier.fillMaxWidth()) {
         // Shield brand mark circle
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -408,21 +417,14 @@ fun ResetPasswordFormContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        FieldTextField(
+        FieldPassword(
             value = newPassword,
             onValueChange = onNewPasswordChange,
             label = "New Password",
             placeholder = "Enter new password",
-            visualTransformation = if (showNewPassword) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { onToggleShowNewPassword() }) {
-                    Icon(
-                        imageVector = if (showNewPassword) FieldIcons.EyeOutlined else FieldIcons.EyeOffOutlined,
-                        contentDescription = "Toggle password visibility",
-                        tint = FieldTheme.colors.gray400
-                    )
-                }
-            }
+            focusRequester = newPasswordFocusRequester,
+            imeAction = ImeAction.Next,
+            keyboardActions = KeyboardActions(onNext = { confirmPasswordFocusRequester.requestFocus() })
         )
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -489,19 +491,29 @@ fun ResetPasswordFormContent(
         
         Spacer(modifier = Modifier.height(24.dp))
 
-        FieldTextField(
+        FieldPassword(
             value = confirmPassword,
             onValueChange = onConfirmPasswordChange,
             label = "Confirm password",
             placeholder = "Re-enter new password",
-            visualTransformation = PasswordVisualTransformation(),
-            errorText = confirmPasswordError
+            errorText = confirmPasswordError,
+            focusRequester = confirmPasswordFocusRequester,
+            imeAction = ImeAction.Done,
+            keyboardActions = KeyboardActions(onDone = {
+                focusManager.clearFocus()
+                if (newPassword.isNotEmpty() && confirmPassword.isNotEmpty()) {
+                    onSubmit()
+                }
+            })
         )
         Spacer(modifier = Modifier.height(24.dp))
 
         PrimaryButton(
             text = if (isLoading) "Updating..." else "Reset Password",
-            onClick = onSubmit,
+            onClick = {
+                focusManager.clearFocus()
+                onSubmit()
+            },
             enabled = !isLoading && newPassword.isNotEmpty() && confirmPassword.isNotEmpty(),
             modifier = Modifier.fillMaxWidth()
         )

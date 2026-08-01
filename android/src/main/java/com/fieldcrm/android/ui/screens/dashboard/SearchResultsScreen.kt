@@ -7,6 +7,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,7 +45,7 @@ fun SearchResultsScreen(
         searchViewModel.search(searchQuery)
     }
 
-    val recentSearches = listOf("Kalu", "MMFB-041", "Adaeze", "Guarantor")
+    val recentSearches = searchState.history
 
     val filteredApps = searchState.results?.applications?.map {
         SearchResultApplication(name = it.applicant_name, refNo = it.ref_no, id = it.id)
@@ -98,6 +102,15 @@ fun SearchResultsScreen(
                             unfocusedBorderColor = Color.Transparent
                         ),
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text,
+                            imeAction = ImeAction.Search
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onSearch = {
+                                searchViewModel.search(searchQuery)
+                            }
+                        ),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(searchBarHeight)
@@ -144,25 +157,33 @@ fun SearchResultsScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        recentSearches.forEach { search ->
-                            Box(
-                                modifier = Modifier
-                                    .background(
-                                        color = FieldTheme.colors.gray900,
-                                        shape = RoundedCornerShape(16.dp)
+                    if (recentSearches.isEmpty()) {
+                        Text(
+                            text = "No recent searches.",
+                            style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                            color = FieldTheme.colors.gray500
+                        )
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            recentSearches.forEach { search ->
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            color = FieldTheme.colors.gray900,
+                                            shape = RoundedCornerShape(16.dp)
+                                        )
+                                        .clickable { searchQuery = search }
+                                        .padding(horizontal = 16.dp, vertical = 8.dp) // Accessible padding
+                                ) {
+                                    Text(
+                                        text = search,
+                                        style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                                        color = FieldTheme.colors.gray300
                                     )
-                                    .clickable { searchQuery = search }
-                                    .padding(horizontal = 16.dp, vertical = 8.dp) // Accessible padding
-                            ) {
-                                Text(
-                                    text = search,
-                                    style = FieldTheme.typography.body.copy(fontSize = 13.sp),
-                                    color = FieldTheme.colors.gray300
-                                )
+                                }
                             }
                         }
                     }

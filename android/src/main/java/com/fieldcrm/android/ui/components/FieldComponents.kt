@@ -1,6 +1,10 @@
 package com.fieldcrm.android.ui.components
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -12,6 +16,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -279,6 +293,9 @@ fun FieldTextField(
     readOnly: Boolean = false,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    singleLine: Boolean = true,
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     errorText: String? = null,
     helperText: String? = null,
     leadingIcon: @Composable (() -> Unit)? = null,
@@ -327,6 +344,9 @@ fun FieldTextField(
             readOnly = readOnly,
             visualTransformation = visualTransformation,
             keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
+            singleLine = singleLine,
+            maxLines = maxLines,
             leadingIcon = leadingIcon,
             trailingIcon = trailingIcon,
             textStyle = FieldTheme.typography.bodyStrong.copy(color = FieldTheme.colors.gray100),
@@ -338,9 +358,11 @@ fun FieldTextField(
                 unfocusedBorderColor = Color.Transparent,
                 disabledBorderColor = Color.Transparent,
             ),
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .heightIn(min = 48.dp)
+                .bringIntoViewOnFocus()
+                .onFocusChanged { isFocused = it.isFocused }
                 .border(borderThickness, borderColor, RoundedCornerShape(FieldTheme.shapes.inputRadius))
                 .clip(RoundedCornerShape(FieldTheme.shapes.inputRadius))
         )
@@ -837,6 +859,8 @@ fun PrimaryButton(
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null
 ) {
+    val disabledContainer = FieldTheme.colors.gray700
+    val disabledContent = FieldTheme.colors.gray500
     Button(
         onClick = onClick,
         enabled = enabled,
@@ -844,8 +868,8 @@ fun PrimaryButton(
         colors = ButtonDefaults.buttonColors(
             containerColor = FieldTheme.colors.purple600,
             contentColor = Color.White,
-            disabledContainerColor = FieldTheme.colors.gray700,
-            disabledContentColor = FieldTheme.colors.gray500
+            disabledContainerColor = disabledContainer,
+            disabledContentColor = disabledContent
         ),
         modifier = modifier
             .fillMaxWidth()
@@ -881,14 +905,16 @@ fun SecondaryButton(
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null
 ) {
+    val outlineColor = if (enabled) FieldTheme.colors.purple600 else FieldTheme.colors.gray700
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(FieldTheme.shapes.inputRadius),
-        border = BorderStroke(1.dp, FieldTheme.colors.purple600), // Shield Purple border (1px)
+        border = BorderStroke(1.dp, outlineColor),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = Color.Transparent,
-            contentColor = FieldTheme.colors.purple600 // Shield Purple text
+            contentColor = FieldTheme.colors.purple600,
+            disabledContentColor = FieldTheme.colors.gray600
         ),
         modifier = modifier
             .fillMaxWidth()
@@ -1369,7 +1395,7 @@ fun RoleBadge(
         "branch manager" -> FieldTheme.colors.statusInfo.copy(alpha = 0.15f) to FieldTheme.colors.statusInfo
         "credit officer" -> FieldTheme.colors.statusWarning.copy(alpha = 0.15f) to FieldTheme.colors.statusWarning
         "auditor" -> FieldTheme.colors.gray400.copy(alpha = 0.15f) to FieldTheme.colors.gray400
-        "system admin", "mcr" -> FieldTheme.colors.statusSuccess.copy(alpha = 0.15f) to FieldTheme.colors.statusSuccess
+        "system admin" -> FieldTheme.colors.statusSuccess.copy(alpha = 0.15f) to FieldTheme.colors.statusSuccess
         else -> FieldTheme.colors.gray500.copy(alpha = 0.15f) to FieldTheme.colors.gray500
     }
 
@@ -1513,5 +1539,401 @@ fun AnimatedSuccessCheckmark(
                 )
             }
         }
+    }
+}
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun Modifier.bringIntoViewOnFocus(): Modifier {
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
+    return this
+        .bringIntoViewRequester(bringIntoViewRequester)
+        .onFocusChanged { focusState ->
+            if (focusState.isFocused) {
+                coroutineScope.launch {
+                    bringIntoViewRequester.bringIntoView()
+                }
+            }
+        }
+}
+
+class FormFocusController(val focusRequesters: List<FocusRequester>) {
+    fun requestFocus(index: Int) {
+        if (index in focusRequesters.indices) {
+            focusRequesters[index].requestFocus()
+        }
+    }
+}
+
+@Composable
+fun KeyboardAwareForm(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .imePadding()
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus()
+                })
+            }
+            .verticalScroll(rememberScrollState())
+    ) {
+        content()
+    }
+}
+
+@Composable
+fun FieldFormText(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    placeholder: String = "",
+    isRequired: Boolean = false,
+    enabled: Boolean = true,
+    focusRequester: FocusRequester? = null,
+    imeAction: ImeAction = ImeAction.Next,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    errorText: String? = null,
+    helperText: String? = null
+) {
+    FieldTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label,
+        modifier = modifier.run { focusRequester?.let { focusRequester(it) } ?: this }.bringIntoViewOnFocus(),
+        placeholder = placeholder,
+        isRequired = isRequired,
+        enabled = enabled,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Text,
+            imeAction = imeAction,
+            capitalization = KeyboardCapitalization.Words
+        ),
+        keyboardActions = keyboardActions,
+        errorText = errorText,
+        helperText = helperText
+    )
+}
+
+@Composable
+fun FieldEmail(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    placeholder: String = "",
+    isRequired: Boolean = false,
+    enabled: Boolean = true,
+    focusRequester: FocusRequester? = null,
+    imeAction: ImeAction = ImeAction.Next,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    errorText: String? = null,
+    helperText: String? = null
+) {
+    FieldTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label,
+        modifier = modifier.run { focusRequester?.let { focusRequester(it) } ?: this }.bringIntoViewOnFocus(),
+        placeholder = placeholder,
+        isRequired = isRequired,
+        enabled = enabled,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Email,
+            imeAction = imeAction,
+            capitalization = KeyboardCapitalization.None,
+            autoCorrect = false
+        ),
+        keyboardActions = keyboardActions,
+        errorText = errorText,
+        helperText = helperText
+    )
+}
+
+@Composable
+fun FieldPhone(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    placeholder: String = "",
+    isRequired: Boolean = false,
+    enabled: Boolean = true,
+    focusRequester: FocusRequester? = null,
+    imeAction: ImeAction = ImeAction.Next,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    errorText: String? = null,
+    helperText: String? = null
+) {
+    FieldTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label,
+        modifier = modifier.run { focusRequester?.let { focusRequester(it) } ?: this }.bringIntoViewOnFocus(),
+        placeholder = placeholder,
+        isRequired = isRequired,
+        enabled = enabled,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Phone,
+            imeAction = imeAction
+        ),
+        keyboardActions = keyboardActions,
+        errorText = errorText,
+        helperText = helperText
+    )
+}
+
+@Composable
+fun FieldInteger(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    placeholder: String = "",
+    isRequired: Boolean = false,
+    enabled: Boolean = true,
+    focusRequester: FocusRequester? = null,
+    imeAction: ImeAction = ImeAction.Next,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    errorText: String? = null,
+    helperText: String? = null
+) {
+    FieldTextField(
+        value = value,
+        onValueChange = { input ->
+            val cleaned = input.filter { it.isDigit() }
+            onValueChange(cleaned)
+        },
+        label = label,
+        modifier = modifier.run { focusRequester?.let { focusRequester(it) } ?: this }.bringIntoViewOnFocus(),
+        placeholder = placeholder,
+        isRequired = isRequired,
+        enabled = enabled,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Number,
+            imeAction = imeAction
+        ),
+        keyboardActions = keyboardActions,
+        errorText = errorText,
+        helperText = helperText
+    )
+}
+
+@Composable
+fun FieldDecimal(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    placeholder: String = "",
+    isRequired: Boolean = false,
+    enabled: Boolean = true,
+    focusRequester: FocusRequester? = null,
+    imeAction: ImeAction = ImeAction.Next,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    errorText: String? = null,
+    helperText: String? = null
+) {
+    FieldTextField(
+        value = value,
+        onValueChange = { input ->
+            val cleaned = input.filter { it.isDigit() || it == '.' }
+            val dotCount = cleaned.count { it == '.' }
+            if (dotCount <= 1) {
+                onValueChange(cleaned)
+            }
+        },
+        label = label,
+        modifier = modifier.run { focusRequester?.let { focusRequester(it) } ?: this }.bringIntoViewOnFocus(),
+        placeholder = placeholder,
+        isRequired = isRequired,
+        enabled = enabled,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Number,
+            imeAction = imeAction
+        ),
+        keyboardActions = keyboardActions,
+        errorText = errorText,
+        helperText = helperText
+    )
+}
+
+@Composable
+fun FieldMoney(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    placeholder: String = "0.00",
+    isRequired: Boolean = false,
+    enabled: Boolean = true,
+    focusRequester: FocusRequester? = null,
+    imeAction: ImeAction = ImeAction.Next,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    errorText: String? = null,
+    helperText: String? = null
+) {
+    FieldDecimal(
+        value = value,
+        onValueChange = onValueChange,
+        label = label,
+        modifier = modifier,
+        placeholder = placeholder,
+        isRequired = isRequired,
+        enabled = enabled,
+        focusRequester = focusRequester,
+        imeAction = imeAction,
+        keyboardActions = keyboardActions,
+        errorText = errorText,
+        helperText = helperText
+    )
+}
+
+@Composable
+fun FieldPassword(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    placeholder: String = "••••••••",
+    isRequired: Boolean = false,
+    enabled: Boolean = true,
+    focusRequester: FocusRequester? = null,
+    imeAction: ImeAction = ImeAction.Done,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    errorText: String? = null,
+    helperText: String? = null
+) {
+    var passwordVisible by remember { mutableStateOf(false) }
+    FieldTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label,
+        modifier = modifier.run { focusRequester?.let { focusRequester(it) } ?: this }.bringIntoViewOnFocus(),
+        placeholder = placeholder,
+        isRequired = isRequired,
+        enabled = enabled,
+        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Password,
+            imeAction = imeAction,
+            capitalization = KeyboardCapitalization.None,
+            autoCorrect = false
+        ),
+        keyboardActions = keyboardActions,
+        errorText = errorText,
+        helperText = helperText,
+        trailingIcon = {
+            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                Icon(
+                    imageVector = if (passwordVisible) FieldIcons.EyeOutlined else FieldIcons.EyeOffOutlined,
+                    contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                    tint = FieldTheme.colors.gray500
+                )
+            }
+        }
+    )
+}
+
+@Composable
+fun FieldMultilineNotes(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    placeholder: String = "",
+    isRequired: Boolean = false,
+    enabled: Boolean = true,
+    focusRequester: FocusRequester? = null,
+    errorText: String? = null,
+    helperText: String? = null
+) {
+    FieldTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label,
+        modifier = modifier.run { focusRequester?.let { focusRequester(it) } ?: this }.bringIntoViewOnFocus(),
+        placeholder = placeholder,
+        isRequired = isRequired,
+        enabled = enabled,
+        singleLine = false,
+        maxLines = 5,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Text,
+            imeAction = ImeAction.Default,
+            capitalization = KeyboardCapitalization.Sentences
+        ),
+        errorText = errorText,
+        helperText = helperText
+    )
+}
+
+@Composable
+fun FieldSearch(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    placeholder: String = "Search...",
+    focusRequester: FocusRequester? = null,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    onClear: (() -> Unit)? = null
+) {
+    FieldTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label,
+        modifier = modifier.run { focusRequester?.let { focusRequester(it) } ?: this }.bringIntoViewOnFocus(),
+        placeholder = placeholder,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Text,
+            imeAction = ImeAction.Search
+        ),
+        keyboardActions = keyboardActions,
+        leadingIcon = {
+            Icon(
+                imageVector = FieldIcons.SearchOutlined,
+                contentDescription = "Search",
+                tint = FieldTheme.colors.gray500
+            )
+        },
+        trailingIcon = if (value.isNotEmpty() && onClear != null) {
+            {
+                IconButton(onClick = onClear) {
+                    Icon(
+                        imageVector = FieldIcons.CloseOutlined,
+                        contentDescription = "Clear search query",
+                        tint = FieldTheme.colors.gray500
+                    )
+                }
+            }
+        } else null
+    )
+}
+
+@Composable
+fun FieldReadOnlyValue(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Text(
+            text = label.uppercase(Locale.getDefault()),
+            style = FieldTheme.typography.label.copy(fontSize = 10.sp),
+            color = FieldTheme.colors.gray500
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = value.ifBlank { "—" },
+            style = FieldTheme.typography.bodyStrong,
+            color = FieldTheme.colors.gray100
+        )
     }
 }

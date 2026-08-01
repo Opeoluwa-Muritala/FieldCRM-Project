@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from app.core.audit import AuditService
 from app.core.database import db_conn
 from app.core.dependencies import get_current_user
-from app.core.workflow import NEXT_STAGE, ROLE_LABELS, STAGE_ROLE
+from app.core.workflow import NEXT_STAGE, ROLE_LABELS, STAGE_ROLE, WORKFLOW_STAGES
 from app.domains.documents.repository import DocumentRepository
 from app.domains.documents.service import DocumentService
 from app.domains.documents.direct_upload import DirectDocumentUploadService
@@ -164,6 +164,12 @@ class MccFinalizeRequest(BaseModel):
     final_amount: float = Field(gt=0)
 
 
+class ReviewApprovalRequest(BaseModel):
+    notes: str = Field(min_length=1)
+    kyc_attested: bool
+    collateral_attested: bool
+
+
 class InterestPresetRequest(BaseModel):
     loan_type: str = Field(min_length=1, max_length=50)
     rate: float = Field(gt=0)
@@ -187,8 +193,6 @@ def _role(user) -> str:
 def _mobile_role(user) -> str:
     role = _role(user)
     role_map = {
-        "admin_mcr": "system_admin",
-        "mcr":       "system_admin",
         "admin":     "system_admin",
     }
     return role_map.get(role, role)
@@ -201,7 +205,6 @@ def _stage_number(stage: str | None) -> int:
         "credit_review": 3,
         "branch_approval": 4,
         "crm_review": 5,
-        "committee_review": 6,
         "ed_approval": 7,
         "md_approval": 8,
         "executive_approval": 7,
@@ -219,7 +222,6 @@ def _stage_status(stage: str | None) -> str:
         "credit_review": "Credit Review",
         "branch_approval": "Branch Approval",
         "crm_review": "CRM Review",
-        "committee_review": "Committee Review",
         "ed_approval": "ED Approval",
         "md_approval": "MD Approval",
         "executive_approval": "Executive Approval",
@@ -282,9 +284,9 @@ def _mobile_dashboard_metrics(data: dict[str, Any]) -> dict[str, Any]:
     metrics = data.get("metrics", {}) if data else {}
     return {
         "apps_today": metrics.get("my_applications", metrics.get("total_applications", 0)),
-        "pending_sync": 0,
+        "pending_sync": metrics.get("pending_upload", 0),
         "visits_due": metrics.get("visits_due", 0),
-        "missing_docs": metrics.get("pending_upload", 0),
+        "missing_docs": metrics.get("returned", metrics.get("returned_count", 0)),
         "branch_disbursed": float(metrics.get("ready_amount", 0) or 0),
         "target_met_pct": int(metrics.get("target_met_pct", 0) or 0),
         "awaiting_signoff": metrics.get("pending_signoffs", metrics.get("awaiting_concurrence", 0)),
@@ -297,7 +299,6 @@ def _mobile_dashboard_metrics(data: dict[str, Any]) -> dict[str, Any]:
         "policy_breaches": metrics.get("policy_breaches", 0),
         "audited_today": metrics.get("audited_today", 0),
         "board_tickets": metrics.get("board_tickets", 0),
-        "mcr_disbursed": float(metrics.get("mcr_disbursed", 0) or 0),
         "alert_escalations": metrics.get("alert_escalations", 0),
         "decisions_signed": metrics.get("decisions_signed", metrics.get("approved_today", 0)),
     }
@@ -319,19 +320,35 @@ def _stage_from_query(stage: str | None) -> str | None:
     return stage_map.get(stage, stage)
 
 
-async def _get_application_or_404(conn, application_id: UUID, current_user):
+async def _get_application_or_404(
+    conn, application_id: UUID, current_user, *, enforce_officer_scope: bool = True
+):
     repo = LoanRepository(conn)
     app = await repo.get_by_id(application_id, current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
+    if enforce_officer_scope and _role(current_user) == "system_admin":
+        raise HTTPException(status_code=403, detail="System Admin does not have access to loan dossiers")
+    if (
+        enforce_officer_scope
+        and _role(current_user) in {"account_officer", "loan_officer"}
+        and str(app.created_by) != str(current_user.id)
+    ):
+        raise HTTPException(status_code=403, detail="You do not have permission to access this application")
+    if (
+        enforce_officer_scope
+        and _role(current_user) == "branch_manager"
+        and str(getattr(app, "branch_id", "")) != str(getattr(current_user, "branch_id", ""))
+    ):
+        raise HTTPException(status_code=403, detail="You do not have permission to access applications outside your branch")
     return app
 
 
 def _ensure_intake_writer(app, current_user) -> None:
     user_role = _role(current_user)
-    if user_role not in ("system_admin", "loan_officer"):
+    if user_role not in ("system_admin", "account_officer", "loan_officer"):
         raise HTTPException(status_code=403, detail="Insufficient permissions for this action")
-    if user_role == "loan_officer" and app.created_by != current_user.id:
+    if user_role in {"account_officer", "loan_officer"} and app.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="You do not have permission to modify this application")
 
 
@@ -356,6 +373,7 @@ def _mobile_document(document: dict) -> dict:
     """Never expose a Cloudinary delivery URL directly to mobile clients."""
     payload = dict(document)
     if payload.get("cloud_public_id"):
+        payload["preview_url"] = f"/api/v1/documents/{payload['id']}/preview"
         payload["download_url"] = f"/api/v1/documents/{payload['id']}/download"
         payload.pop("stored_path", None)
         payload.pop("cloud_preview_url", None)
@@ -438,7 +456,7 @@ async def get_mobile_legal_queue_exact(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"legal", "system_admin"})
+    _ensure_roles(current_user, {"legal"})
     rows = await conn.fetch(
         """
         SELECT id, ref_no, applicant_name, amount, stage, updated_at,
@@ -475,7 +493,6 @@ async def get_mobile_queue(
         "compliance-flags",
         "system-control",
         "crm-review",
-        "committee-review",
         "ed-approval",
         "md-approval",
         "executive-approval",
@@ -489,52 +506,49 @@ async def get_mobile_queue(
 ):
     dashboard = DashboardService(conn)
     if queue_name == "loan-officer":
-        _ensure_roles(current_user, {"account_officer", "system_admin"})
+        _ensure_roles(current_user, {"account_officer"})
         items = await dashboard.get_loan_officer_queue(current_user, stage=_stage_from_query(stage), limit=limit, offset=offset)
     elif queue_name == "visits-due":
-        _ensure_roles(current_user, {"account_officer", "system_admin"})
+        _ensure_roles(current_user, {"account_officer"})
         items = await dashboard.get_visits_due_today(current_user)
     elif queue_name == "awaiting-concurrence":
-        _ensure_roles(current_user, {"branch_manager", "system_admin"})
+        _ensure_roles(current_user, {"branch_manager"})
         items = await dashboard.get_awaiting_concurrence(current_user, limit=limit, offset=offset)
     elif queue_name == "pending-signoffs":
-        _ensure_roles(current_user, {"branch_manager", "system_admin"})
+        _ensure_roles(current_user, {"branch_manager"})
         items = await dashboard.get_pending_signoffs(current_user, limit=limit, offset=offset)
     elif queue_name == "branch-supervisor-review":
-        _ensure_roles(current_user, {"branch_supervisor", "system_admin"})
+        _ensure_roles(current_user, {"branch_supervisor"})
         items = await dashboard.get_supervisory_review_queue(current_user, limit=limit, offset=offset)
     elif queue_name == "credit-analyst-review":
-        _ensure_roles(current_user, {"credit_analyst", "system_admin"})
+        _ensure_roles(current_user, {"credit_analyst"})
         items = await dashboard.get_credit_reviews(current_user, limit=limit, offset=offset)
     elif queue_name == "head-crm-review":
-        _ensure_roles(current_user, {"head_crm", "system_admin"})
+        _ensure_roles(current_user, {"head_crm"})
         items = await dashboard.get_crm_queue(current_user, limit=limit, offset=offset)
     elif queue_name == "credit-reviews":
-        _ensure_roles(current_user, {"branch_manager", "system_admin"})
+        _ensure_roles(current_user, {"branch_manager"})
         items = await dashboard.get_credit_reviews(current_user, limit=limit, offset=offset)
     elif queue_name == "ocr-exceptions":
-        _ensure_roles(current_user, {"branch_manager", "system_admin"})
+        _ensure_roles(current_user, {"branch_manager"})
         items = await dashboard.get_credit_ocr_exceptions(current_user, limit=limit, offset=offset)
     elif queue_name == "compliance-flags":
-        _ensure_roles(current_user, {"auditor", "system_admin"})
+        _ensure_roles(current_user, {"auditor"})
         items = await dashboard.get_compliance_flags(current_user, limit=limit, offset=offset)
     elif queue_name == "crm-review":
-        _ensure_roles(current_user, {"crm", "system_admin"})
+        _ensure_roles(current_user, {"crm", "head_crm"})
         items = await dashboard.get_crm_queue(current_user)
-    elif queue_name == "committee-review":
-        _ensure_roles(current_user, {"committee", "system_admin"})
-        items = await dashboard.get_committee_queue(current_user)
     elif queue_name == "ed-approval":
-        _ensure_roles(current_user, {"ed", "system_admin"})
+        _ensure_roles(current_user, {"ed"})
         items = await dashboard.get_ed_queue(current_user)
     elif queue_name == "md-approval":
-        _ensure_roles(current_user, {"md", "system_admin"})
+        _ensure_roles(current_user, {"md"})
         items = await dashboard.get_md_queue(current_user)
     elif queue_name == "executive-approval":
-        _ensure_roles(current_user, {"md", "ed", "system_admin"})
+        _ensure_roles(current_user, {"md", "ed"})
         items = await dashboard.get_executive_queue(current_user)
     elif queue_name == "legal":
-        _ensure_roles(current_user, {"legal", "system_admin"})
+        _ensure_roles(current_user, {"legal"})
         items = await conn.fetch(
             """
             SELECT id, ref_no, applicant_name, amount, stage, updated_at
@@ -563,6 +577,11 @@ async def list_mobile_borrowers(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
+    if _role(current_user) == "system_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="System Admin does not have access to borrower records",
+        )
     repo = LoanRepository(conn)
     officer_id = current_user.id if _role(current_user) == "account_officer" else None
     applications, total = await repo.list_by_stage(
@@ -588,7 +607,7 @@ async def create_mobile_borrower(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"account_officer", "loan_officer", "system_admin"})
+    _ensure_roles(current_user, {"account_officer", "loan_officer"})
     app = await _loan_service(conn).create_loan(
         org_id=current_user.org_id,
         customer_type="new",
@@ -618,12 +637,19 @@ async def list_mobile_applications(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
+    if _role(current_user) == "system_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="System Admin does not have access to loan applications",
+        )
     repo = LoanRepository(conn)
-    officer_id = current_user.id if _role(current_user) == "loan_officer" else None
+    officer_id = current_user.id if _role(current_user) in {"account_officer", "loan_officer"} else None
+    branch_id = current_user.branch_id if _role(current_user) == "branch_manager" else None
     applications, total = await repo.list_by_stage(
         org_id=current_user.org_id,
         stage=_stage_from_query(stage),
         officer_id=officer_id,
+        branch_id=branch_id,
         page=page,
         size=size,
     )
@@ -642,7 +668,7 @@ async def create_mobile_application(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"account_officer", "system_admin"})
+    _ensure_roles(current_user, {"account_officer"})
     if payload.client_request_id:
         existing = await conn.fetchrow(
             """
@@ -1032,16 +1058,33 @@ async def submit_mobile_credit_review(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"account_officer", "branch_manager", "system_admin"})
+    _ensure_roles(current_user, {"credit_analyst"})
     app = await _get_application_or_404(conn, application_id, current_user)
+    if app.stage != "credit_analyst_review":
+        raise HTTPException(status_code=409, detail="Application is not awaiting Credit Analyst review")
+    notes = payload.recommendation_notes.strip()
+    if not notes:
+        raise HTTPException(status_code=422, detail="Provide underwriting recommendation notes")
     if payload.recommendation_decision == "Recommend Approval":
-        stage = "branch_approval"
+        stage = "crm_review"
     elif payload.recommendation_decision == "Return for Correction":
         stage = "returned"
     else:
         stage = "rejected"
 
-    updated = await LoanRepository(conn).advance_stage(application_id, current_user.org_id, stage)
+    repo = LoanRepository(conn)
+    await repo.save_stage_data(
+        application_id,
+        "credit_analyst_review",
+        {
+            "recommendation_decision": payload.recommendation_decision,
+            "recommendation_notes": notes,
+        },
+        current_user.id,
+    )
+    updated = await repo.advance_stage(application_id, current_user.org_id, stage)
+    if not updated:
+        raise HTTPException(status_code=409, detail="Application could not be advanced")
     await AuditService(conn).log(
         application_id=str(application_id),
         org_id=str(current_user.org_id),
@@ -1050,7 +1093,7 @@ async def submit_mobile_credit_review(
         to_stage=stage,
         actor_id=str(current_user.id),
         actor_role=current_user.role,
-        reason=payload.recommendation_notes,
+        reason=notes,
     )
     # Notify loan officer of credit review outcome
     try:
@@ -1084,21 +1127,74 @@ async def get_mobile_approval_readiness(
 @router.post("/applications/{application_id}/approve")
 async def approve_mobile_application(
     application_id: UUID,
+    payload: ReviewApprovalRequest,
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"branch_manager", "system_admin"})
-    app = await LoanRepository(conn).approve(application_id, current_user.org_id, current_user.id)
+    _ensure_roles(current_user, {"branch_manager", "branch_supervisor", "system_admin"})
+    existing = await _get_application_or_404(conn, application_id, current_user)
+    role = _role(current_user)
+    expected_stage, next_stage, action = (
+        ("branch_supervisor_review", "credit_analyst_review", "Supervisor Concurrence")
+        if role == "branch_supervisor"
+        else ("branch_manager_review", "branch_supervisor_review", "Team Lead Concurrence")
+    )
+    if existing.stage != expected_stage:
+        raise HTTPException(status_code=409, detail="Application is not awaiting your review")
+    if not payload.kyc_attested or not payload.collateral_attested:
+        raise HTTPException(status_code=422, detail="Complete both review attestations before approval")
+    readiness = await LoanRepository(conn).get_readiness_summary(application_id, current_user.org_id)
+    base_file_ready = (
+        readiness.loan_form_submitted
+        and readiness.total_docs > 0
+        and readiness.unverified_docs == 0
+        and readiness.critical_unverified == 0
+        and readiness.low_confidence_unverified == 0
+        and readiness.guarantors_required > 0
+        and readiness.guarantors_verified == readiness.guarantors_required
+        and readiness.consent_credit_bureau
+        and readiness.consent_gsi
+        and readiness.officer_signed_visitation
+    )
+    if not base_file_ready:
+        raise HTTPException(
+            status_code=422,
+            detail="The dossier is incomplete. Resolve document, guarantor, consent, OCR, and visitation readiness items before concurrence.",
+        )
+    context = "supervisor_review" if role == "branch_supervisor" else "team_lead_review"
+    for key, label, checked in (
+        ("kyc_attested", "KYC requirements verified", payload.kyc_attested),
+        ("collateral_attested", "Collateral requirements verified", payload.collateral_attested),
+    ):
+        await conn.execute(
+            """
+            INSERT INTO checklist_items
+                (loan_application_id, context, item_key, item_label, is_checked, checked_by, checked_at)
+            VALUES ($1,$2,$3,$4,$5,$6,NOW())
+            ON CONFLICT (loan_application_id, context, item_key)
+            DO UPDATE SET is_checked=EXCLUDED.is_checked, checked_by=EXCLUDED.checked_by,
+                          checked_at=NOW()
+            """,
+            application_id, context, key, label, checked, current_user.id,
+        )
+    app = await LoanRepository(conn).approve(
+        application_id,
+        current_user.org_id,
+        current_user.id,
+        expected_stage=expected_stage,
+        next_stage=next_stage,
+    )
     if not app:
-        raise HTTPException(status_code=404, detail="Loan Application not found or not in branch_approval stage")
+        raise HTTPException(status_code=409, detail="Application is no longer awaiting your review")
     await AuditService(conn).log(
         application_id=str(application_id),
         org_id=str(current_user.org_id),
-        action="Branch Final Approval",
-        from_stage="branch_approval",
-        to_stage="disbursement_ready",
+        action=action,
+        from_stage=expected_stage,
+        to_stage=next_stage,
         actor_id=str(current_user.id),
         actor_role=current_user.role,
+        reason=payload.notes.strip(),
     )
     # Notify loan officer of approval
     try:
@@ -1108,8 +1204,12 @@ async def approve_mobile_application(
                 user_id=created_by,
                 org_id=current_user.org_id,
                 application_id=application_id,
-                title="Application Approved",
-                message="Your loan application has been approved and is ready for disbursement.",
+                title=f"{action} Complete",
+                message=(
+                    "Your application has been sent to the Credit Analyst."
+                    if role == "branch_supervisor"
+                    else "Your application has been sent to the Supervisor."
+                ),
                 notification_type="approval",
             )
     except Exception:
@@ -1124,27 +1224,44 @@ async def return_mobile_application(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    await _get_application_or_404(conn, application_id, current_user)
+    _ensure_roles(current_user, {"branch_manager", "branch_supervisor", "system_admin"})
+    existing = await _get_application_or_404(conn, application_id, current_user)
+    expected_stage = (
+        "branch_supervisor_review"
+        if _role(current_user) == "branch_supervisor"
+        else "branch_manager_review"
+    )
+    if existing.stage != expected_stage:
+        raise HTTPException(status_code=409, detail="Application is not awaiting your review")
     reason_parts = [payload.reason_category]
     if payload.corrections:
         reason_parts.append("Corrections: " + ", ".join(payload.corrections))
     reason_parts.append(payload.notes)
     return_reason = " | ".join(part for part in reason_parts if part)
 
-    returned = await LoanRepository(conn).mark_returned(
-        application_id,
-        current_user.org_id,
-        return_reason,
-        current_user.id,
+    previous_stages = {
+        stage: WORKFLOW_STAGES[index - 1][0]
+        for index, (stage, _) in enumerate(WORKFLOW_STAGES)
+        if index > 0
+    }
+    target_stage = previous_stages[expected_stage]
+    returned = await LoanRepository(conn).advance_stage(
+        application_id, current_user.org_id, target_stage
     )
     if not returned:
-        raise HTTPException(status_code=404, detail="Loan Application not found")
+        raise HTTPException(status_code=400, detail="Unable to return the application")
+    await conn.execute(
+        "UPDATE loan_applications SET return_reason = $1, returned_at = NOW() WHERE id = $2 AND org_id = $3",
+        return_reason,
+        application_id,
+        current_user.org_id,
+    )
     await AuditService(conn).log(
         application_id=str(application_id),
         org_id=str(current_user.org_id),
         action="Return Application",
-        from_stage=None,
-        to_stage="returned",
+        from_stage=expected_stage,
+        to_stage=target_stage,
         actor_id=str(current_user.id),
         actor_role=current_user.role,
         reason=return_reason,
@@ -1213,11 +1330,16 @@ async def search_mobile(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
+    if _role(current_user) == "system_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="System Admin does not have access to borrower or application search",
+        )
     if len(q.strip()) < 2:
         return {"applications": [], "borrowers": []}
     term = f"%{q.strip()}%"
     role = _role(current_user)
-    if role == "loan_officer":
+    if role in {"account_officer", "loan_officer"}:
         apps = await conn.fetch(
             """
             SELECT id, ref_no, applicant_name, stage
@@ -1270,6 +1392,30 @@ async def search_mobile(
     }
 
 
+@router.get("/audit-trail")
+async def get_mobile_global_audit_trail(
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"auditor"})
+    rows = await DashboardService(conn).get_recent_audit_activity(current_user, limit=limit, offset=offset)
+    return [
+        {
+            "id": str(row.get("id", "")),
+            "timestamp": row.get("created_at").isoformat() if row.get("created_at") else "",
+            "actor_name": row.get("user_name") or "",
+            "actor_role": row.get("user_role") or "",
+            "action": row.get("action") or "",
+            "state_diff": row.get("field_name") or row.get("entity_type") or "",
+            "notes": row.get("notes") or "",
+            "is_mine": str(row.get("user_id", "")) == str(current_user.id),
+        }
+        for row in rows
+    ]
+
+
 @router.get("/applications/{application_id}/audit")
 @cache_response(ttl_seconds=60, application_scoped=True)
 async def get_mobile_audit_trail(
@@ -1300,7 +1446,6 @@ async def get_mobile_audit_trail(
         "credit_review": "Credit Review",
         "branch_approval": "Branch Approval",
         "crm_review": "CRM Review",
-        "committee_review": "Committee Review",
         "ed_approval": "ED Approval",
         "md_approval": "MD Approval",
         "disbursement_ready": "Disbursement Ready",
@@ -1354,26 +1499,6 @@ async def get_mobile_bureau(
     }
 
 
-@router.get("/applications/{application_id}/committee-votes")
-@cache_response(ttl_seconds=60, application_scoped=True)
-async def get_mobile_committee_votes(
-    application_id: UUID,
-    conn=Depends(db_conn),
-    current_user=Depends(get_current_user),
-):
-    await _get_application_or_404(conn, application_id, current_user)
-    rows = await conn.fetch(
-        """
-        SELECT notes FROM workflow_events
-        WHERE loan_id = $1 AND org_id = $2 AND event_type = 'committee_vote'
-        """,
-        application_id, current_user.org_id,
-    )
-    total = len(rows)
-    yes_votes = sum(1 for r in rows if (r["notes"] or "").lower().startswith("yes"))
-    return {"yes_votes": yes_votes, "total_votes": total, "quorum": 3}
-
-
 @router.get("/applications/{application_id}/audit-checklist")
 @cache_response(ttl_seconds=60, application_scoped=True)
 async def get_mobile_audit_checklist(
@@ -1398,14 +1523,13 @@ async def get_mobile_audit_checklist(
     }
 
 
-@router.patch("/applications/{application_id}/audit-checklist")
 async def save_mobile_audit_checklist(
     application_id: UUID,
     payload: AuditChecklistRequest,
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"auditor", "system_admin"})
+    _ensure_roles(current_user, {"system_admin"})
     await _get_application_or_404(conn, application_id, current_user)
     data = json.dumps({
         "consent_verified": payload.consent_verified,
@@ -1440,7 +1564,7 @@ async def get_mobile_faqs(current_user=Depends(get_current_user)):
         },
         {
             "question": "What is the DTI limit for loan approval?",
-            "answer": "The Debt-to-Income ratio limit is 40%. Applications above this threshold require additional review and committee approval before disbursement.",
+            "answer": "The Debt-to-Income ratio limit is 40%. Applications above this threshold require the additional review configured in the production approval workflow.",
         },
         {
             "question": "How do I escalate a compliance flag?",
@@ -1583,6 +1707,10 @@ async def save_mobile_ocr_corrections(
 class CrmReviewRequest(BaseModel):
     decision: Literal["advance", "return"]
     notes: str = ""
+    bureau_1_verified: bool = False
+    bureau_2_verified: bool = False
+    crms_verified: bool = False
+    ncr_verified: bool = False
 
 
 @router.get("/applications/{application_id}/crm-review")
@@ -1591,10 +1719,10 @@ async def get_mobile_crm_review(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"crm", "system_admin"})
+    _ensure_roles(current_user, {"crm", "head_crm"})
     app = await _get_application_or_404(conn, application_id, current_user)
     documents = await DocumentRepository(conn).get_by_loan(application_id, current_user.org_id)
-    return {"application": app, "documents": documents}
+    return {"application": app, "documents": [_mobile_document(document) for document in documents]}
 
 
 @router.post("/applications/{application_id}/crm-review")
@@ -1604,20 +1732,58 @@ async def submit_mobile_crm_review(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"crm", "system_admin"})
+    _ensure_roles(current_user, {"crm", "head_crm"})
     app = await _get_application_or_404(conn, application_id, current_user)
+    role = _role(current_user)
+    expected_stage = "head_crm_review" if role == "head_crm" else "crm_review"
+    if app.stage != expected_stage:
+        raise HTTPException(status_code=409, detail="Application is not awaiting your review")
     repo = LoanRepository(conn)
     if payload.decision == "advance":
-        updated = await repo.advance_to_committee_review(
-            loan_id=application_id,
-            org_id=current_user.org_id,
-            crm_user_id=current_user.id,
-            crm_notes=payload.notes,
-        )
-        next_stage = "committee_review"
+        if role == "crm":
+            checks = {
+                "bureau_1_verified": payload.bureau_1_verified,
+                "bureau_2_verified": payload.bureau_2_verified,
+                "crms_verified": payload.crms_verified,
+                "ncr_verified": payload.ncr_verified,
+            }
+            if not all(checks.values()):
+                raise HTTPException(status_code=422, detail="Complete the CRM credit-file checklist before advancing")
+            for key, checked in checks.items():
+                await conn.execute(
+                    """
+                    INSERT INTO checklist_items
+                        (loan_application_id, context, item_key, item_label, is_checked, checked_by, checked_at)
+                    VALUES ($1,'crm_review',$2,$3,$4,$5,NOW())
+                    ON CONFLICT (loan_application_id, context, item_key)
+                    DO UPDATE SET is_checked=EXCLUDED.is_checked, checked_by=EXCLUDED.checked_by,
+                                  checked_at=NOW()
+                    """,
+                    application_id, key, key.replace("_", " ").title(), checked, current_user.id,
+                )
+        else:
+            completed_checks = await conn.fetchval(
+                """
+                SELECT COUNT(*) FROM checklist_items
+                WHERE loan_application_id=$1 AND context='crm_review'
+                  AND item_key = ANY($2::text[]) AND is_checked=TRUE
+                """,
+                application_id,
+                ["bureau_1_verified", "bureau_2_verified", "crms_verified", "ncr_verified"],
+            )
+            if completed_checks != 4:
+                raise HTTPException(status_code=422, detail="The CRM credit-file checklist is incomplete")
+        next_stage = "ed_approval" if role == "head_crm" else "head_crm_review"
+        updated = await repo.advance_stage(application_id, current_user.org_id, next_stage)
     else:
-        updated = await repo.mark_returned(application_id, current_user.org_id, payload.notes, current_user.id)
-        next_stage = "returned"
+        next_stage = "crm_review" if role == "head_crm" else "credit_analyst_review"
+        updated = await repo.advance_stage(application_id, current_user.org_id, next_stage)
+        await conn.execute(
+            "UPDATE loan_applications SET return_reason = $1, returned_at = NOW() WHERE id = $2 AND org_id = $3",
+            payload.notes,
+            application_id,
+            current_user.org_id,
+        )
     await AuditService(conn).log(
         application_id=str(application_id),
         org_id=str(current_user.org_id),
@@ -1675,85 +1841,6 @@ async def submit_mobile_executive_approve(
 
 
 # ---------------------------------------------------------------------------
-# Committee review endpoints
-# ---------------------------------------------------------------------------
-
-class CommitteeVoteRequest(BaseModel):
-    recommendation: Literal["approve", "return", "reject"]
-    notes: str = ""
-
-
-class CommitteeCompleteRequest(BaseModel):
-    recommendation: Literal["approve", "return", "reject"]
-
-
-@router.get("/applications/{application_id}/committee-votes-full")
-@cache_response(ttl_seconds=60, application_scoped=True)
-async def get_mobile_committee_votes(
-    application_id: UUID,
-    conn=Depends(db_conn),
-    current_user=Depends(get_current_user),
-):
-    _ensure_roles(current_user, {"committee", "ed", "md", "system_admin"})
-    repo = LoanRepository(conn)
-    votes = await repo.get_committee_votes(application_id, current_user.org_id)
-    last_loan = await repo.get_last_loan(
-        current_user.org_id,
-        (await _get_application_or_404(conn, application_id, current_user)).applicant_name,
-        None, application_id
-    )
-    return {"votes": votes, "last_loan": last_loan}
-
-
-@router.post("/applications/{application_id}/committee-vote")
-async def submit_mobile_committee_vote(
-    application_id: UUID,
-    payload: CommitteeVoteRequest,
-    conn=Depends(db_conn),
-    current_user=Depends(get_current_user),
-):
-    _ensure_roles(current_user, {"committee", "system_admin"})
-    await _get_application_or_404(conn, application_id, current_user)
-    vote = await LoanRepository(conn).insert_committee_vote(
-        application_id, current_user.org_id, current_user.id,
-        payload.recommendation, payload.notes
-    )
-    await AuditService(conn).log(
-        application_id=str(application_id),
-        org_id=str(current_user.org_id),
-        action=f"Committee Vote: {payload.recommendation}",
-        from_stage="committee_review", to_stage="committee_review",
-        actor_id=str(current_user.id), actor_role=current_user.role,
-        reason=payload.notes,
-    )
-    return {"vote": vote}
-
-
-@router.post("/applications/{application_id}/committee-complete")
-async def submit_mobile_committee_complete(
-    application_id: UUID,
-    payload: CommitteeCompleteRequest,
-    conn=Depends(db_conn),
-    current_user=Depends(get_current_user),
-):
-    _ensure_roles(current_user, {"committee", "system_admin"})
-    app = await _get_application_or_404(conn, application_id, current_user)
-    updated = await LoanRepository(conn).complete_committee_review(
-        application_id, current_user.org_id, payload.recommendation
-    )
-    if not updated:
-        raise HTTPException(status_code=409, detail="Application not in committee_review stage")
-    await AuditService(conn).log(
-        application_id=str(application_id),
-        org_id=str(current_user.org_id),
-        action=f"Committee Review Complete — {payload.recommendation}",
-        from_stage="committee_review", to_stage=updated.stage,
-        actor_id=str(current_user.id), actor_role=current_user.role,
-    )
-    return {"application": updated, "stage": updated.stage}
-
-
-# ---------------------------------------------------------------------------
 # ED approval endpoints
 # ---------------------------------------------------------------------------
 
@@ -1767,11 +1854,10 @@ async def get_mobile_ed_review(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"ed", "system_admin"})
+    _ensure_roles(current_user, {"ed"})
     app = await _get_application_or_404(conn, application_id, current_user)
-    votes = await LoanRepository(conn).get_committee_votes(application_id, current_user.org_id)
     documents = await DocumentRepository(conn).get_by_loan(application_id, current_user.org_id)
-    return {"application": app, "votes": votes, "documents": documents}
+    return {"application": app, "documents": documents}
 
 
 @router.post("/applications/{application_id}/ed-approve")
@@ -1781,7 +1867,7 @@ async def submit_mobile_ed_approve(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"ed", "system_admin"})
+    _ensure_roles(current_user, {"ed"})
     app = await _get_application_or_404(conn, application_id, current_user)
     repo = LoanRepository(conn)
     if payload.action == "approve":
@@ -1789,6 +1875,8 @@ async def submit_mobile_ed_approve(
         next_stage = "disbursement_ready"
         action_label = "ED Final Approval — Disbursement Instruction"
     else:
+        if (app.amount or 0) > 10_000_000:
+            raise HTTPException(status_code=409, detail="MD input can only be requested for loans of ₦10,000,000 or less")
         updated = await repo.ed_escalate_to_md(application_id, current_user.org_id, current_user.id)
         next_stage = "md_approval"
         action_label = "ED Escalated to MD"
@@ -1829,13 +1917,12 @@ async def get_mobile_md_review(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"md", "system_admin"})
+    _ensure_roles(current_user, {"md"})
     app = await _get_application_or_404(conn, application_id, current_user)
     repo = LoanRepository(conn)
-    votes = await repo.get_committee_votes(application_id, current_user.org_id)
     board_referrals = await repo.get_board_referrals(application_id, current_user.org_id)
     documents = await DocumentRepository(conn).get_by_loan(application_id, current_user.org_id)
-    return {"application": app, "votes": votes, "board_referrals": board_referrals, "documents": documents}
+    return {"application": app, "board_referrals": board_referrals, "documents": [_mobile_document(document) for document in documents]}
 
 
 @router.post("/applications/{application_id}/md-approve")
@@ -1845,7 +1932,7 @@ async def submit_mobile_md_approve(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"md", "system_admin"})
+    _ensure_roles(current_user, {"md"})
     app = await _get_application_or_404(conn, application_id, current_user)
     repo = LoanRepository(conn)
     if payload.action == "approve":
@@ -1878,7 +1965,7 @@ async def submit_mobile_board_referral(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"md", "system_admin"})
+    _ensure_roles(current_user, {"md"})
     app = await _get_application_or_404(conn, application_id, current_user)
     referral = await LoanRepository(conn).insert_board_referral(
         application_id, current_user.org_id, current_user.id,
@@ -2389,7 +2476,7 @@ async def get_mobile_par_dashboard(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"crm", "md", "ed", "auditor", "system_admin"})
+    _ensure_roles(current_user, {"crm", "head_crm", "md", "ed", "auditor", "system_admin"})
     from app.services.loan_servicing_service import LoanServicingService
     svc = LoanServicingService(conn)
     par = await svc.get_par_summary(org_id=current_user.org_id)
@@ -2453,7 +2540,7 @@ async def get_mobile_legal_queue(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"legal", "system_admin"})
+    _ensure_roles(current_user, {"legal"})
     rows = await conn.fetch(
         """
         SELECT la.id, la.ref_no, la.applicant_name, la.amount, la.stage, la.updated_at,
@@ -2484,7 +2571,7 @@ async def get_mobile_valuation(
     current_user=Depends(get_current_user),
 ):
     app = await _get_application_or_404(conn, application_id, current_user)
-    _ensure_roles(current_user, {"legal", "system_admin"})
+    _ensure_roles(current_user, {"legal"})
     items = await conn.fetch(
         """
         SELECT id, item_number, item_name, serial_number, description, estimated_value,
@@ -2507,7 +2594,7 @@ async def update_mobile_valuation(
     current_user=Depends(get_current_user),
 ):
     app = await _get_application_or_404(conn, application_id, current_user)
-    _ensure_roles(current_user, {"legal", "system_admin"})
+    _ensure_roles(current_user, {"legal"})
     updated = []
     for item in payload.items:
         value = Decimal(str(item.appraised_value))
@@ -2538,111 +2625,81 @@ async def update_mobile_valuation(
 
 @router.get("/mcc")
 async def get_mobile_mcc_queue(
-    page: int = Query(1, ge=1),
-    size: int = Query(50, ge=1, le=100),
-    conn=Depends(db_conn),
-    current_user=Depends(get_current_user),
+    page: int = Query(1, ge=1), size: int = Query(50, ge=1, le=100),
+    conn=Depends(db_conn), current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"ed", "md", "system_admin"})
+    _ensure_roles(current_user, {"ed", "md"})
     rows = await conn.fetch(
-        """
-        SELECT id, ref_no, applicant_name, amount, stage, updated_at,
-               COUNT(*) OVER() AS total_count
-        FROM loan_applications
-        WHERE org_id=$1 AND deleted_at IS NULL AND stage IN ('ed_approval','md_approval')
-        ORDER BY updated_at DESC
-        LIMIT $2 OFFSET $3
-        """,
+        """SELECT id, ref_no, applicant_name, amount, stage, updated_at, COUNT(*) OVER() AS total_count
+           FROM loan_applications WHERE org_id=$1 AND deleted_at IS NULL
+             AND stage IN ('ed_approval','md_approval')
+           ORDER BY updated_at DESC LIMIT $2 OFFSET $3""",
         current_user.org_id, size, (page - 1) * size,
     )
     total = int(rows[0]["total_count"]) if rows else 0
-    return {
-        "items": [{k: v for k, v in dict(row).items() if k != "total_count"} for row in rows],
-        "page": page, "size": size, "total": total,
-    }
+    return {"items": [{k: v for k, v in dict(row).items() if k != "total_count"} for row in rows],
+            "page": page, "size": size, "total": total}
 
 
 @router.get("/applications/{application_id}/mcc")
 async def get_mobile_mcc_application(
-    application_id: UUID,
-    conn=Depends(db_conn),
-    current_user=Depends(get_current_user),
+    application_id: UUID, conn=Depends(db_conn), current_user=Depends(get_current_user),
 ):
-    app = await _get_application_or_404(conn, application_id, current_user)
-    _ensure_roles(current_user, {"ed", "md", "system_admin"})
+    _ensure_roles(current_user, {"ed", "md"})
+    app = await _get_application_or_404(conn, application_id, current_user, enforce_officer_scope=False)
     if app.stage not in {"ed_approval", "md_approval"}:
         raise HTTPException(status_code=409, detail="This dossier is not available for MCC review")
     votes = await conn.fetch(
-        """
-        SELECT cv.id, cv.member_id, u.full_name AS member_name, cv.recommendation,
-               cv.recommended_amount, cv.notes, cv.created_at
-        FROM committee_votes cv
-        JOIN users u ON u.id=cv.member_id AND u.org_id=cv.org_id
-        WHERE cv.loan_id=$1 AND cv.org_id=$2
-        ORDER BY cv.created_at
-        """,
+        """SELECT cv.id, cv.member_id, u.full_name AS member_name, cv.recommendation,
+                  cv.recommended_amount, cv.notes, cv.created_at
+           FROM committee_votes cv JOIN users u ON u.id=cv.member_id AND u.org_id=cv.org_id
+           WHERE cv.loan_id=$1 AND cv.org_id=$2 ORDER BY cv.created_at""",
         application_id, current_user.org_id,
     )
-    valuation = await conn.fetch(
-        "SELECT * FROM pledged_items WHERE loan_id=$1 ORDER BY item_number", application_id
-    )
-    return {
-        "application": _mobile_application(app, current_user),
-        "votes": [dict(vote) for vote in votes],
-        "valuation": [dict(item) for item in valuation],
-    }
+    valuation = await conn.fetch("SELECT * FROM pledged_items WHERE loan_id=$1 ORDER BY item_number", application_id)
+    return {"application": _mobile_application(app, current_user), "votes": [dict(v) for v in votes],
+            "valuation": [dict(item) for item in valuation]}
 
 
 @router.post("/applications/{application_id}/mcc-vote", status_code=status.HTTP_201_CREATED)
 async def submit_mobile_mcc_vote(
-    application_id: UUID,
-    payload: MccVoteRequest,
-    conn=Depends(db_conn),
-    current_user=Depends(get_current_user),
+    application_id: UUID, payload: MccVoteRequest,
+    conn=Depends(db_conn), current_user=Depends(get_current_user),
 ):
-    app = await _get_application_or_404(conn, application_id, current_user)
-    _ensure_roles(current_user, {"ed", "md", "system_admin"})
+    _ensure_roles(current_user, {"ed", "md"})
+    app = await _get_application_or_404(conn, application_id, current_user, enforce_officer_scope=False)
     if app.stage not in {"ed_approval", "md_approval"}:
         raise HTTPException(status_code=409, detail="This dossier is not available for MCC voting")
     try:
         vote = await conn.fetchrow(
-            """
-            INSERT INTO committee_votes
-                (loan_id, org_id, member_id, recommendation, notes, recommended_amount)
-            VALUES ($1,$2,$3,'approve',$4,$5)
-            RETURNING *
-            """,
+            """INSERT INTO committee_votes
+                   (loan_id, org_id, member_id, recommendation, notes, recommended_amount)
+               VALUES ($1,$2,$3,'approve',$4,$5) RETURNING *""",
             application_id, current_user.org_id, current_user.id,
-            payload.notes, payload.recommended_amount,
+            payload.notes.strip(), Decimal(str(payload.recommended_amount)),
         )
     except Exception as exc:
-        raise HTTPException(status_code=409, detail="You have already voted on this dossier") from exc
+        raise HTTPException(status_code=409, detail="You have already submitted an MCC recommendation") from exc
     return {"vote": dict(vote)}
 
 
 @router.post("/applications/{application_id}/mcc-finalize")
 async def finalize_mobile_mcc(
-    application_id: UUID,
-    payload: MccFinalizeRequest,
-    conn=Depends(db_conn),
-    current_user=Depends(get_current_user),
+    application_id: UUID, payload: MccFinalizeRequest,
+    conn=Depends(db_conn), current_user=Depends(get_current_user),
 ):
-    await _get_application_or_404(conn, application_id, current_user)
     _ensure_roles(current_user, {"ed", "md"})
+    await _get_application_or_404(conn, application_id, current_user, enforce_officer_scope=False)
     row = await conn.fetchrow(
-        """
-        UPDATE loan_applications
-        SET amount=$1, mcc_finalized_by=$2, mcc_finalized_at=NOW(), updated_at=NOW()
-        WHERE id=$3 AND org_id=$4 AND stage IN ('ed_approval','md_approval')
-        RETURNING *
-        """,
+        """UPDATE loan_applications SET amount=$1, mcc_finalized_by=$2,
+                  mcc_finalized_at=NOW(), updated_at=NOW()
+           WHERE id=$3 AND org_id=$4 AND stage IN ('ed_approval','md_approval') RETURNING *""",
         Decimal(str(payload.final_amount)), current_user.id, application_id, current_user.org_id,
     )
     if not row:
         raise HTTPException(status_code=409, detail="Final MCC amount could not be set")
     return {"application": _mobile_application(
-        await LoanRepository(conn).get_by_id(application_id, current_user.org_id), current_user
-    )}
+        await LoanRepository(conn).get_by_id(application_id, current_user.org_id), current_user)}
 
 
 @router.get("/admin/interest-presets")
@@ -2830,7 +2887,7 @@ async def generate_share_link_mobile(
 class MobileCreateUserRequest(BaseModel):
     full_name: str
     email: str
-    role: str  # loan_officer, branch_manager, auditor, crm, committee, ed, md, system_admin
+    role: str
     password: str = Field(..., min_length=8)
 
 
@@ -2864,7 +2921,6 @@ async def list_mobile_users(
                 "crm": "CRM Officer",
                 "md": "Managing Director",
                 "ed": "Executive Director",
-                "committee": "Committee Member",
             }.get(r["role"], r["role"].replace("_", " ").title()),
             "active": r["active"],
         }

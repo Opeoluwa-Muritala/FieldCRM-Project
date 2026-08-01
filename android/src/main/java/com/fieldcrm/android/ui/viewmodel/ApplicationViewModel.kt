@@ -19,6 +19,7 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 import com.fieldcrm.android.core.network.ApiResult
 import kotlinx.serialization.json.JsonElement
+import com.fieldcrm.android.core.session.SessionStore
 
 @Immutable
 data class ApplicationUiState(
@@ -44,19 +45,57 @@ data class ApplicationUiState(
     val shareUrl: String? = null,
     val isGeneratingLink: Boolean = false,
     val isMutating: Boolean = false,
-    val bureauReport: JsonElement? = null
+    val bureauReport: JsonElement? = null,
+    val bureauData: com.fieldcrm.android.data.api.BureauData? = null,
+    val reviewChecklist: Map<String, Boolean> = emptyMap(),
+    val ocrFields: List<com.fieldcrm.android.data.api.OcrExtractedField> = emptyList()
 )
 
 class ApplicationViewModel(
     application: Application,
     private val repository: ApplicationRepository,
-    private val borrowerRepository: BorrowerRepository
+    private val borrowerRepository: BorrowerRepository,
+    private val sessionStore: SessionStore
 ) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(ApplicationUiState())
     val uiState: StateFlow<ApplicationUiState> = _uiState.asStateFlow()
+    private var lastRefreshTime = 0L
+
+    fun refreshIfStale() {
+        val now = System.currentTimeMillis()
+        if (now - lastRefreshTime > 30000L) {
+            refreshApplications()
+        }
+    }
 
     init {
         loadApplications()
+    }
+
+    fun loadBureauData(applicationId: String) {
+        viewModelScope.launch {
+            val data = repository.getBureauData(applicationId)
+            _uiState.update { it.copy(bureauData = data) }
+        }
+    }
+
+    fun loadReviewChecklist(applicationId: String, context: String) {
+        viewModelScope.launch {
+            when (val result = repository.getCreditChecklist(applicationId, context)) {
+                is ApiResult.Success -> _uiState.update { state ->
+                    state.copy(reviewChecklist = result.data.items.associate { it.item_key to it.is_checked })
+                }
+                else -> Unit
+            }
+        }
+    }
+
+    fun loadOcrFields(applicationId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            val response = repository.getOcrFields(applicationId)
+            _uiState.update { it.copy(ocrFields = response?.items ?: emptyList(), isLoading = false) }
+        }
     }
 
     private fun loadApplications() {
@@ -67,6 +106,9 @@ class ApplicationViewModel(
             }
             _uiState.update { it.copy(isLoading = cached.isEmpty()) }
             val fresh = repository.getAllApplications()
+            if (fresh.isNotEmpty()) {
+                lastRefreshTime = System.currentTimeMillis()
+            }
             _uiState.update {
                 it.copy(
                     applications = if (fresh.isNotEmpty()) fresh else it.applications,
@@ -262,7 +304,7 @@ class ApplicationViewModel(
             val borrower = if (isNew) {
                 val newBorrower = BorrowerModel(
                     id = UUID.randomUUID().toString(),
-                    org_id = "org_1",
+                    org_id = sessionStore.load()?.orgId ?: "",
                     loan_officer_id = "lo_1",
                     name = state.newCustomerName,
                     phone = state.newCustomerPhone,
@@ -283,7 +325,7 @@ class ApplicationViewModel(
 
             val newApp = LoanApplicationModel(
                 id = UUID.randomUUID().toString(),
-                org_id = "org_1",
+                org_id = sessionStore.load()?.orgId ?: "",
                 applicant_name = borrower.name,
                 phone = if (isNew) state.newCustomerPhone else borrower.phone,
                 bvn = if (isNew) state.newCustomerBvn else borrower.bvn,
@@ -353,33 +395,49 @@ class ApplicationViewModel(
         }
     }
 
-    fun approveApplication(id: String, onComplete: () -> Unit = {}) {
+    fun approveApplication(
+        id: String,
+        notes: String,
+        kycAttested: Boolean,
+        collateralAttested: Boolean,
+        onComplete: () -> Unit = {}
+    ) {
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            repository.approveApplication(id)
-            loadApplications()
+            val success = repository.approveApplication(id, notes, kycAttested, collateralAttested)
+            if (success) loadApplications()
             _uiState.update { it.copy(isLoading = false) }
-            onComplete()
+            if (success) onComplete()
         }
     }
 
     fun returnApplication(id: String, reason: String, corrections: List<String> = emptyList(), notes: String, onComplete: () -> Unit = {}) {
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            repository.returnApplication(id, reason, corrections, notes)
-            loadApplications()
+            val success = repository.returnApplication(id, reason, corrections, notes)
+            if (success) loadApplications()
             _uiState.update { it.copy(isLoading = false) }
-            onComplete()
+            if (success) onComplete()
         }
     }
 
     fun submitCreditReview(id: String, decision: String, notes: String, onComplete: () -> Unit = {}) {
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            repository.submitCreditReview(id, decision, notes)
-            loadApplications()
+            val success = repository.submitCreditReview(id, decision, notes)
+            if (success) loadApplications()
             _uiState.update { it.copy(isLoading = false) }
-            onComplete()
+            if (success) onComplete()
+        }
+    }
+
+    fun advanceWorkflow(id: String, notes: String, onComplete: () -> Unit = {}) {
+        _uiState.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            val response = repository.advanceWorkflow(id, notes)
+            if (response != null) loadApplications()
+            _uiState.update { it.copy(isLoading = false) }
+            if (response != null) onComplete()
         }
     }
 

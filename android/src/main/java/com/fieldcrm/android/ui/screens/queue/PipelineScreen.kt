@@ -30,17 +30,6 @@ private data class PipelineEntry(
     val appId: String
 )
 
-private val placeholderPipelineEntries = listOf(
-    PipelineEntry("Adaeze Okonkwo", "₦250,000", "Intake", ""),
-    PipelineEntry("Fatima Bello", "₦320,000", "Intake", ""),
-    PipelineEntry("Emeka Chukwu", "₦1,200,000", "OCR Review", ""),
-    PipelineEntry("Chinedu Obi", "₦450,000", "OCR Review", ""),
-    PipelineEntry("Ngozi Adeyemi", "₦350,000", "Credit Review", ""),
-    PipelineEntry("Chukwuemeka Eze", "₦750,000", "Credit Review", ""),
-    PipelineEntry("Amaka Okafor", "₦600,000", "Approved", ""),
-    PipelineEntry("Bola Tinubu-Adeyemi", "₦900,000", "Disbursed", "")
-)
-
 private val stageOrder = listOf("Intake", "OCR Review", "Review", "Approval", "Disbursed")
 
 private val stageMapping = mapOf(
@@ -74,13 +63,13 @@ fun PipelineScreen(
             applications.map { app ->
                 val borrower = borrowers.find { it.id == app.id }
                 PipelineEntry(
-                    applicantName = borrower?.name ?: "Unknown Applicant",
+                    applicantName = borrower?.name ?: "Applicant details unavailable",
                     amount = "₦${String.format(Locale.US, "%,.0f", app.amount ?: 0.0)}",
                     stage = stageMapping[app.stage] ?: "Intake",
                     appId = app.id
                 )
             }
-        } else placeholderPipelineEntries
+        } else emptyList()
     }
 
     val groupedByStage = remember(pipelineEntries) {

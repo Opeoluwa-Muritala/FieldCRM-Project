@@ -23,20 +23,14 @@ import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
+import com.fieldcrm.android.ui.viewmodel.DashboardViewModel
+import org.koin.androidx.compose.koinViewModel
 
 private data class MyQueueItem(
     val applicantName: String,
     val stage: String,
     val amount: String,
     val appId: String
-)
-
-private val placeholderItems = listOf(
-    MyQueueItem("Adaeze Okonkwo", "Intake", "₦250,000", ""),
-    MyQueueItem("Emeka Chukwu", "OCR Review", "₦1,200,000", ""),
-    MyQueueItem("Ngozi Adeyemi", "Intake", "₦500,000", ""),
-    MyQueueItem("Chukwuemeka Eze", "Needs Review", "₦750,000", ""),
-    MyQueueItem("Fatima Bello", "Intake", "₦320,000", "")
 )
 
 @Composable
@@ -46,20 +40,20 @@ fun MyQueueScreen(
     onBackClick: () -> Unit,
     onViewApplication: (String) -> Unit = {}
 ) {
-    val queueItems = remember(applications, borrowers) {
-        if (applications.isNotEmpty()) {
-            applications.map { app ->
-                val borrower = borrowers.find { it.id == app.id }
+    val dashboardViewModel: DashboardViewModel = koinViewModel()
+    val dashboardState by dashboardViewModel.uiState.collectAsState()
+    val productionQueue = dashboardState.metrics?.data?.queue.orEmpty()
+    val queueItems = remember(productionQueue) {
+        productionQueue.map { app ->
                 MyQueueItem(
-                    applicantName = borrower?.name ?: "Unknown Applicant",
-                    stage = app.displayStatus,
+                    applicantName = app.applicant_name,
+                    stage = app.status.ifBlank { app.stage.replace('_', ' ').replaceFirstChar { it.uppercase() } },
                     amount = "₦${String.format(Locale.US, "%,.0f", app.amount ?: 0.0)}",
                     appId = app.id
                 )
             }
-        } else placeholderItems
     }
-    var isLoading by remember { mutableStateOf(false) }
+    val isLoading = dashboardState.isLoading
 
     Scaffold(
         modifier = Modifier

@@ -17,6 +17,8 @@ import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.ui.viewmodel.AuditTrailViewModel
+import org.koin.androidx.compose.koinViewModel
 
 private data class AuditEvent(
     val action: String,
@@ -27,54 +29,29 @@ private data class AuditEvent(
     val diff: String?
 )
 
-private val placeholderAuditEvents = listOf(
-    AuditEvent(
-        action = "Application submitted for OCR processing",
-        actorName = "Samuel Okeke",
-        actorRole = "Loan Officer",
-        timestamp = "2026-07-01 09:14",
-        stageChange = "Intake → OCR Review",
-        diff = null
-    ),
-    AuditEvent(
-        action = "OCR fields extracted and confidence scores assigned",
-        actorName = "System",
-        actorRole = "System Admin",
-        timestamp = "2026-07-01 09:15",
-        stageChange = null,
-        diff = "BVN: 42% | Full Name: 88% | Loan Amount: 91%"
-    ),
-    AuditEvent(
-        action = "BVN field flagged as low confidence — manual review required",
-        actorName = "Aisha Mohammed",
-        actorRole = "Credit Officer",
-        timestamp = "2026-07-01 10:02",
-        stageChange = null,
-        diff = null
-    ),
-    AuditEvent(
-        action = "BVN manually corrected and verified",
-        actorName = "Aisha Mohammed",
-        actorRole = "Credit Officer",
-        timestamp = "2026-07-01 10:18",
-        stageChange = "OCR Review → Credit Review",
-        diff = "BVN: 22244455566 → 22244455567"
-    ),
-    AuditEvent(
-        action = "Credit review completed — application recommended for approval",
-        actorName = "Chidi Okafor",
-        actorRole = "Branch Manager",
-        timestamp = "2026-07-01 14:30",
-        stageChange = "Credit Review → Approved",
-        diff = null
-    )
-)
-
 @Composable
 fun AuditTrailScreen(
+    applicationId: String,
     onBackClick: () -> Unit
 ) {
-    var isLoading by remember { mutableStateOf(false) }
+    val viewModel: AuditTrailViewModel = koinViewModel()
+    val state by viewModel.uiState.collectAsState()
+    LaunchedEffect(applicationId) {
+        if (applicationId.isNotBlank()) viewModel.load(applicationId) else viewModel.loadGlobal()
+    }
+    val events = remember(state.events) {
+        state.events.map { event ->
+            AuditEvent(
+                action = event.action,
+                actorName = event.actor_name,
+                actorRole = event.actor_role,
+                timestamp = event.timestamp,
+                stageChange = null,
+                diff = event.state_diff.ifBlank { event.notes }.takeIf { it.isNotBlank() }
+            )
+        }
+    }
+    val isLoading = state.isLoading
 
     Scaffold(
         modifier = Modifier
@@ -107,7 +84,7 @@ fun AuditTrailScreen(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "${placeholderAuditEvents.size} EVENTS",
+                            text = "${events.size} EVENTS",
                             style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
                             color = FieldTheme.colors.purple400
                         )
@@ -153,7 +130,10 @@ fun AuditTrailScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(placeholderAuditEvents) { event ->
+                    if (events.isEmpty()) {
+                        item { EmptyState(text = if (applicationId.isBlank()) "Select an application to view its audit trail." else "No audit events found.") }
+                    }
+                    items(events) { event ->
                         Column {
                             AuditTrailEntry(
                                 timestamp = event.timestamp,
@@ -205,6 +185,6 @@ fun AuditTrailScreen(
 @Composable
 fun PreviewAuditTrailScreen() {
     FieldCRMTheme {
-        AuditTrailScreen(onBackClick = {})
+        AuditTrailScreen(applicationId = "", onBackClick = {})
     }
 }

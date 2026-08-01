@@ -166,11 +166,12 @@ fun ValuationEditorScreen(applicationId: String, onBack: () -> Unit) {
 }
 
 @Composable
-fun MccWorkspaceScreen(onBack: () -> Unit) {
+fun MccWorkspaceScreen(onBack: () -> Unit, canManage: Boolean = true) {
     val api: MobileApiService = koinInject()
     val scope = rememberCoroutineScope()
     var dossiers by remember { mutableStateOf<List<JsonObject>>(emptyList()) }
     var selected by remember { mutableStateOf<JsonObject?>(null) }
+    var mccDetail by remember { mutableStateOf<JsonObject?>(null) }
     var amount by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
@@ -187,6 +188,21 @@ fun MccWorkspaceScreen(onBack: () -> Unit) {
     }
     LaunchedEffect(Unit) { refresh() }
 
+    LaunchedEffect(selected) {
+        mccDetail = null
+        val sel = selected
+        if (sel != null) {
+            scope.launch {
+                when (val result = api.getMccApplication(sel.text("id"))) {
+                    is ApiResult.Success -> {
+                        mccDetail = result.data as? JsonObject
+                    }
+                    else -> Unit
+                }
+            }
+        }
+    }
+
     SpecialistScaffold("Management Credit Committee", onBack) {
         error?.let { Text(it, color = FieldTheme.colors.statusDanger) }
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -194,7 +210,11 @@ fun MccWorkspaceScreen(onBack: () -> Unit) {
                 FieldCard {
                     Text(dossier.text("applicant_name"), style = FieldTheme.typography.title)
                     Text("${dossier.text("ref_no")} · ${dossier.text("stage")}", color = FieldTheme.colors.gray400)
-                    PrimaryButton("Review / vote", { selected = dossier }, Modifier.fillMaxWidth())
+                    PrimaryButton(
+                        if (canManage) "Review / vote" else "View dossier",
+                        { selected = dossier },
+                        Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
@@ -205,13 +225,37 @@ fun MccWorkspaceScreen(onBack: () -> Unit) {
             title = { Text("MCC recommendation") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(amount, { amount = it }, label = { Text("Recommended/final amount") })
-                    OutlinedTextField(notes, { notes = it }, label = { Text("Notes") })
+                    Text(dossier.text("applicant_name"), style = FieldTheme.typography.title)
+                    Text("${dossier.text("ref_no")} · ${dossier.text("stage")}")
+                    Text("Requested Amount: " + dossier.text("amount").ifBlank { "Amount unavailable" })
+                    
+                    Text("MCC Votes Cast:", style = FieldTheme.typography.label, color = FieldTheme.colors.gray400)
+                    val votesArray = mccDetail?.get("votes")?.jsonArray
+                    if (votesArray != null && votesArray.isNotEmpty()) {
+                        votesArray.forEach { voteEl ->
+                            val v = voteEl.jsonObject
+                            val name = v["member_name"]?.jsonPrimitive?.content ?: ""
+                            val amt = v["recommended_amount"]?.jsonPrimitive?.content ?: "0"
+                            val note = v["notes"]?.jsonPrimitive?.content ?: ""
+                            Text("· $name: NGN $amt (Notes: $note)", style = FieldTheme.typography.body, color = FieldTheme.colors.gray300)
+                        }
+                    } else {
+                        Text("No votes cast yet.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray500)
+                    }
+
+                    if (canManage) {
+                        OutlinedTextField(amount, { amount = it }, label = { Text("Recommended/final amount") })
+                        OutlinedTextField(notes, { notes = it }, label = { Text("Notes") })
+                    } else {
+                        Text("Relationship Officers have read-only MCC access.", color = FieldTheme.colors.gray400)
+                    }
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    scope.launch {
+                    if (!canManage) {
+                        selected = null
+                    } else scope.launch {
                         when (val result = api.submitMccVote(
                             dossier.text("id"), amount.toDoubleOrNull() ?: 0.0, notes
                         )) {
@@ -221,10 +265,10 @@ fun MccWorkspaceScreen(onBack: () -> Unit) {
                             ApiResult.Loading -> Unit
                         }
                     }
-                }) { Text("Submit vote") }
+                }) { Text(if (canManage) "Submit vote" else "Close") }
             },
             dismissButton = {
-                TextButton(onClick = {
+                if (canManage) TextButton(onClick = {
                     scope.launch {
                         when (val result = api.finalizeMcc(dossier.text("id"), amount.toDoubleOrNull() ?: 0.0)) {
                             is ApiResult.Success -> { selected = null; refresh() }

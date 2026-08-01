@@ -17,6 +17,13 @@ import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.data.api.MobileApiService
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import org.koin.compose.koinInject
 
 private data class ComplianceFlag(
     val flagType: String,
@@ -26,22 +33,41 @@ private data class ComplianceFlag(
     val flagId: String
 )
 
-private val placeholderFlags = listOf(
-    ComplianceFlag("BVN Mismatch", "Adaeze Okonkwo", "Open", "2026-07-01 09:20", "flag_001"),
-    ComplianceFlag("Missing Guarantor Signature", "Emeka Chukwu", "Open", "2026-07-01 08:55", "flag_002"),
-    ComplianceFlag("Duplicate Application", "Ngozi Adeyemi", "Resolved", "2026-06-30 17:10", "flag_003"),
-    ComplianceFlag("Income Verification Failed", "Chukwuemeka Eze", "Open", "2026-06-30 15:40", "flag_004"),
-    ComplianceFlag("Document Expiry", "Fatima Bello", "Resolved", "2026-06-29 11:00", "flag_005")
-)
-
 @Composable
 fun ComplianceFlagsScreen(
     onBackClick: () -> Unit,
     onViewFlag: (String) -> Unit = {}
 ) {
-    var isLoading by remember { mutableStateOf(false) }
+    val api: MobileApiService = koinInject()
+    var flags by remember { mutableStateOf<List<ComplianceFlag>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var loadError by remember { mutableStateOf<String?>(null) }
 
-    val openCount = placeholderFlags.count { it.status == "Open" }
+    LaunchedEffect(Unit) {
+        isLoading = true
+        loadError = null
+        val response = api.getQueue("compliance-flags")
+        flags = try {
+            val root = response?.let(Json::parseToJsonElement)?.jsonObject
+            root?.get("items")?.jsonArray.orEmpty().map { element ->
+                val item = element.jsonObject
+                fun text(key: String) = item[key]?.jsonPrimitive?.contentOrNull.orEmpty()
+                ComplianceFlag(
+                    flagType = text("flag_label").ifBlank { text("flag_type") },
+                    applicantName = text("applicant_name"),
+                    status = text("flag_status"),
+                    raisedAt = text("created_at"),
+                    flagId = text("loan_id")
+                )
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+        if (response == null) loadError = "Unable to load compliance flags."
+        isLoading = false
+    }
+
+    val openCount = flags.size
 
     Scaffold(
         modifier = Modifier
@@ -118,10 +144,13 @@ fun ComplianceFlagsScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(placeholderFlags) { flag ->
+                    loadError?.let { message -> item { Text(message, color = FieldTheme.colors.statusDanger) } }
+                    if (flags.isEmpty() && loadError == null) {
+                        item { EmptyState(text = "No compliance flags found.") }
+                    }
+                    items(flags) { flag ->
                         val chipVariant = when (flag.status) {
-                            "Open" -> StatusChipVariant.NeedsReview
-                            "Resolved" -> StatusChipVariant.Verified
+                            "resolved", "verified" -> StatusChipVariant.Verified
                             else -> StatusChipVariant.NeedsReview
                         }
 
@@ -135,7 +164,7 @@ fun ComplianceFlagsScreen(
                                     Text(
                                         text = flag.flagType,
                                         style = FieldTheme.typography.bodyStrong,
-                                        color = if (flag.status == "Open") FieldTheme.colors.statusDanger
+                                        color = if (flag.status !in setOf("resolved", "verified")) FieldTheme.colors.statusDanger
                                         else FieldTheme.colors.gray100
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
