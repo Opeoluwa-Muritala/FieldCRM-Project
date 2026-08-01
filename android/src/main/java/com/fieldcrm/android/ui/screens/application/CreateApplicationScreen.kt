@@ -9,6 +9,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
 import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -137,11 +140,16 @@ fun CreateApplicationContent(
         },
         containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
-        Column(
+        val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+        val nameFocusRequester = remember { FocusRequester() }
+        val phoneFocusRequester = remember { FocusRequester() }
+        val bvnFocusRequester = remember { FocusRequester() }
+        val ninFocusRequester = remember { FocusRequester() }
+
+        KeyboardAwareForm(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
         ) {
             // Rich Header
             Column(
@@ -341,48 +349,47 @@ fun CreateApplicationContent(
                     )
                 } else {
                     // New Customer Embedded Fields
-                    FieldTextField(
+                    FieldFormText(
                         value = newCustomerName,
                         onValueChange = onNewCustomerNameChange,
                         label = "Legal Full Name",
                         placeholder = "Adaeze Okonkwo",
                         isRequired = true,
-                        leadingIcon = {
-                            Icon(imageVector = FieldIcons.PersonOutlined, contentDescription = null, tint = FieldTheme.colors.gray500)
-                        }
+                        focusRequester = nameFocusRequester,
+                        imeAction = ImeAction.Next,
+                        keyboardActions = KeyboardActions(onNext = { phoneFocusRequester.requestFocus() })
                     )
-                    FieldTextField(
+                    FieldPhone(
                         value = newCustomerPhone,
                         onValueChange = onNewCustomerPhoneChange,
                         label = "Primary Phone",
-                        placeholder = "e.g. +234 80...",
+                        placeholder = "08012345678",
                         isRequired = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone),
-                        leadingIcon = {
-                            Icon(imageVector = FieldIcons.PhoneOutlined, contentDescription = null, tint = FieldTheme.colors.gray500)
-                        }
+                        focusRequester = phoneFocusRequester,
+                        imeAction = ImeAction.Next,
+                        keyboardActions = KeyboardActions(onNext = { bvnFocusRequester.requestFocus() })
                     )
-                    FieldTextField(
+                    FieldInteger(
                         value = newCustomerBvn,
-                        onValueChange = onNewCustomerBvnChange,
+                        onValueChange = { if (it.length <= 11) onNewCustomerBvnChange(it) },
                         label = "Bank Verification Number (BVN)",
                         placeholder = "11-digit BVN",
                         isRequired = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                        leadingIcon = {
-                            Icon(imageVector = FieldIcons.FingerprintOutlined, contentDescription = null, tint = FieldTheme.colors.gray500)
-                        }
+                        focusRequester = bvnFocusRequester,
+                        imeAction = ImeAction.Next,
+                        keyboardActions = KeyboardActions(onNext = { ninFocusRequester.requestFocus() })
                     )
-                    FieldTextField(
+                    FieldInteger(
                         value = newCustomerNin,
-                        onValueChange = onNewCustomerNinChange,
+                        onValueChange = { if (it.length <= 11) onNewCustomerNinChange(it) },
                         label = "National Identification Number (NIN)",
                         placeholder = "11-digit NIN",
                         isRequired = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                        leadingIcon = {
-                            Icon(imageVector = FieldIcons.BadgeOutlined, contentDescription = null, tint = FieldTheme.colors.gray500)
-                        }
+                        focusRequester = ninFocusRequester,
+                        imeAction = ImeAction.Done,
+                        keyboardActions = KeyboardActions(onDone = {
+                            focusManager.clearFocus()
+                        })
                     )
                 }
 

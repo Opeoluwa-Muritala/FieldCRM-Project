@@ -35,7 +35,7 @@ class AndroidSyncWorker(
             val client = FieldCRMClient(baseUrl = BuildConfig.API_BASE_URL)
             client.setToken(session.token)
 
-            val mobileApi = MobileApiServiceImpl(client.httpClient, BuildConfig.API_BASE_URL)
+            val mobileApi = MobileApiServiceImpl(client.httpClient, BuildConfig.API_BASE_URL, SessionStore(applicationContext))
             mobileApi.setToken(session.token)
             if (mobileApi.getMe() == null) {
                 return@withContext Result.failure()
@@ -109,6 +109,56 @@ class AndroidSyncWorker(
             if (pushSuccess) Result.success() else Result.retry()
         } catch (e: Exception) {
             Result.failure()
+        }
+    }
+
+    companion object {
+        private const val UNIQUE_WORK_NAME = "AndroidSyncWorker"
+
+        fun scheduleOneTime(context: Context) {
+            val constraints = androidx.work.Constraints.Builder()
+                .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                .build()
+
+            val workRequest = androidx.work.OneTimeWorkRequestBuilder<AndroidSyncWorker>()
+                .setConstraints(constraints)
+                .setBackoffCriteria(
+                    androidx.work.BackoffPolicy.EXPONENTIAL,
+                    androidx.work.WorkRequest.MIN_BACKOFF_MILLIS,
+                    java.util.concurrent.TimeUnit.MILLISECONDS
+                )
+                .build()
+
+            androidx.work.WorkManager.getInstance(context)
+                .enqueueUniqueWork(
+                    "AndroidSyncWorker_OneTime_" + java.util.UUID.randomUUID().toString(),
+                    androidx.work.ExistingWorkPolicy.REPLACE,
+                    workRequest
+                )
+        }
+
+        fun schedulePeriodic(context: Context) {
+            val constraints = androidx.work.Constraints.Builder()
+                .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                .build()
+
+            val workRequest = androidx.work.PeriodicWorkRequestBuilder<AndroidSyncWorker>(
+                15, java.util.concurrent.TimeUnit.MINUTES
+            )
+                .setConstraints(constraints)
+                .setBackoffCriteria(
+                    androidx.work.BackoffPolicy.EXPONENTIAL,
+                    androidx.work.WorkRequest.MIN_BACKOFF_MILLIS,
+                    java.util.concurrent.TimeUnit.MILLISECONDS
+                )
+                .build()
+
+            androidx.work.WorkManager.getInstance(context)
+                .enqueueUniquePeriodicWork(
+                    UNIQUE_WORK_NAME,
+                    androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+                    workRequest
+                )
         }
     }
 }

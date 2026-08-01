@@ -56,12 +56,6 @@ class AuditorComplianceCheck(BaseModel):
     document_checklist_verified: bool
     regulatory_flags_triggered: bool = False
 
-class CommitteeApproval(BaseModel):
-    approve: bool
-    note: str = Field(..., min_length=5)
-    approval_conditions: Optional[str] = None
-    vote_record: str  # E.g. "3-0 Approved"
-
 # Bidirectional returns
 class WorkflowReturnRequest(BaseModel):
     target_stage: int = Field(..., ge=1, le=5, description="1: Loan Officer, 2: Branch Manager, 3: Credit Officer, 4: Auditor")

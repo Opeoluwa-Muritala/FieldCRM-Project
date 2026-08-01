@@ -13,7 +13,6 @@ internal fun EntryProviderScope<NavKey>.authEntryBuilder(
     entry<Screen.ResetPassword> { content(it) }
     entry<Screen.PasscodeSetup> { content(it) }
     entry<Screen.PasscodeLogin> { content(it) }
-    entry<Screen.BiometricEnrollment> { content(it) }
 }
 
 internal fun EntryProviderScope<NavKey>.onboardingEntryBuilder(
@@ -72,22 +71,18 @@ internal fun EntryProviderScope<NavKey>.reviewEntryBuilder(
     entry<Screen.MccWorkspace> { content(it) }
     entry<Screen.InterestPresets> { content(it) }
     entry<Screen.BranchManagement> { content(it) }
-    entry<Screen.AuditorCompliance> { content(it) }
-    entry<Screen.AdminMcrApproval> { content(it) }
     entry<Screen.WorkflowEventAudit> { content(it) }
     entry<Screen.AuditTrail> { content(it) }
     entry<Screen.ComplianceFlags> { content(it) }
     entry<Screen.CrmReview> { content(it) }
-    entry<Screen.CommitteeReview> { content(it) }
     entry<Screen.EdApproval> { content(it) }
     entry<Screen.MdApproval> { content(it) }
     entry<Screen.ExecutiveApproval> { content(it) }
 }
 
-internal fun EntryProviderScope<NavKey>.committeeEntryBuilder(
+internal fun EntryProviderScope<NavKey>.executiveEntryBuilder(
     content: @Composable (Screen) -> Unit
 ) {
-    entry<Screen.CommitteeQueue> { content(it) }
     entry<Screen.EdQueue> { content(it) }
     entry<Screen.MdQueue> { content(it) }
 }

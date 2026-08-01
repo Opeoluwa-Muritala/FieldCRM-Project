@@ -48,7 +48,7 @@ fun UsersScreen(
     val roles = listOf(
         "account_officer" to "Account Officer",
         "branch_manager" to "Branch Manager",
-        "branch_supervisor" to "Branch Supervisor",
+        "branch_supervisor" to "Supervisor",
         "credit_analyst" to "Credit Analyst",
         "auditor" to "Auditor",
         "crm" to "CRM Officer",

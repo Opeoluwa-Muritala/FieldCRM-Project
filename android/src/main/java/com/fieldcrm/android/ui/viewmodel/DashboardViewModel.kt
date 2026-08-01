@@ -19,6 +19,14 @@ class DashboardViewModel(private val repo: DashboardRepository) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+    private var lastRefreshTime = 0L
+
+    fun refreshIfStale() {
+        val now = System.currentTimeMillis()
+        if (now - lastRefreshTime > 30000L) {
+            loadMetrics()
+        }
+    }
 
     init {
         loadMetrics()
@@ -28,6 +36,9 @@ class DashboardViewModel(private val repo: DashboardRepository) : ViewModel() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             val metrics = repo.getMetrics()
+            if (metrics != null) {
+                lastRefreshTime = System.currentTimeMillis()
+            }
             _uiState.value = if (metrics != null) {
                 _uiState.value.copy(metrics = metrics, isLoading = false)
             } else {

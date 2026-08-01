@@ -296,17 +296,6 @@ data class RepaymentScheduleResponse(
 )
 
 @Serializable
-data class CommitteeVoteRequest(
-    val recommendation: String,
-    val notes: String = ""
-)
-
-@Serializable
-data class CommitteeCompleteRequest(
-    val recommendation: String
-)
-
-@Serializable
 data class EdApproveRequest(
     val action: String
 )
@@ -322,21 +311,6 @@ data class BoardReferralRequest(
     val board_member_email: String,
     val board_member_name: String,
     val notes: String = ""
-)
-
-@Serializable
-data class CommitteeVoteItem(
-    val member_name: String,
-    val recommendation: String,
-    val notes: String? = null,
-    val voted_at: String
-)
-
-@Serializable
-data class CommitteeVotesFullResponse(
-    val votes: List<CommitteeVoteItem> = emptyList(),
-    val loan_amount: Double? = null,
-    val committee_recommendation: String? = null
 )
 
 @Serializable
@@ -356,4 +330,12 @@ data class ParSummary(
     val substandard_count: Int = 0,
     val doubtful_count: Int = 0,
     val lost_count: Int = 0
+)
+
+@Serializable
+data class ApplicationDetailResponse(
+    val readiness: Map<String, JsonElement>? = null,
+    val documents: List<Map<String, JsonElement>>? = null,
+    val intake: Map<String, JsonElement>? = null,
+    val visitation: Map<String, JsonElement>? = null
 )

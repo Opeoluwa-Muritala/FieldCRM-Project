@@ -19,6 +19,8 @@ import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
+import com.fieldcrm.android.ui.viewmodel.DashboardViewModel
+import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun EdQueueScreen(
@@ -26,8 +28,11 @@ fun EdQueueScreen(
     onBackClick: () -> Unit,
     onReviewApplication: (String) -> Unit = {}
 ) {
-    val queueItems = remember(applications) {
-        applications.filter { it.stage == "ed_approval" }
+    val dashboardViewModel: DashboardViewModel = koinViewModel()
+    val dashboardState by dashboardViewModel.uiState.collectAsState()
+    val apiQueue = dashboardState.metrics?.data?.ed_queue.orEmpty()
+    val queueItems = remember(applications, apiQueue) {
+        apiQueue.mapNotNull { item -> applications.find { it.id == item.id } }
     }
 
     Scaffold(

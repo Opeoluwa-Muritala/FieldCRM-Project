@@ -28,7 +28,7 @@
     {% for item in ed_queue[:5] %}
     <a href="/applications/{{ item.id }}/ed-approve" class="queue-card">
       <span class="queue-card-name">{{ item.applicant_name }}</span>
-      <span class="queue-card-meta">{{ item.ref_no }} | Committee: {{ item.committee_recommendation|title if item.committee_recommendation else '—' }}</span>
+      <span class="queue-card-meta">{{ item.ref_no }} | {{ item.stage|replace('_', ' ')|title }}</span>
       <span class="queue-card-amount">{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}No amount{% endif %}</span>
       <span class="status-badge queue-card-badge needs-review">{{ item.days_waiting }}d</span>
     </a>

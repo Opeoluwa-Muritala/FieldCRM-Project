@@ -22,20 +22,18 @@ import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
+import com.fieldcrm.android.data.api.MobileApiService
+import com.fieldcrm.android.core.network.ApiResult
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import org.koin.compose.koinInject
 
 private data class ControlQueueItem(
     val applicantName: String,
     val amount: String,
     val currentStage: String,
-    val handledBy: String,
-    val appId: String
-)
-
-private val placeholderControlItems = listOf(
-    ControlQueueItem("Amaka Okafor", "₦600,000", "Final Control", "Kemi Adeleke", ""),
-    ControlQueueItem("Bola Adeyemi", "₦900,000", "Final Control", "Kemi Adeleke", ""),
-    ControlQueueItem("Ifeanyi Obi", "₦1,500,000", "Final Control", "Tunde Bakare", ""),
-    ControlQueueItem("Chioma Eze", "₦250,000", "Final Control", "Kemi Adeleke", "")
+    val handledBy: String
 )
 
 @Composable
@@ -45,21 +43,24 @@ fun SystemActivityScreen(
     onBackClick: () -> Unit,
     onViewApplication: (String) -> Unit = {}
 ) {
-    var isLoading by remember { mutableStateOf(false) }
-
-    val controlItems = remember(applications, borrowers) {
-        if (applications.isNotEmpty()) {
-            applications.map { app ->
-                val borrower = borrowers.find { it.id == app.id }
+    val api: MobileApiService = koinInject()
+    var isLoading by remember { mutableStateOf(true) }
+    var controlItems by remember { mutableStateOf<List<ControlQueueItem>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        when (val result = api.getSystemActivity()) {
+            is ApiResult.Success -> controlItems = result.data.items.map { element ->
+                val item = element.jsonObject
+                fun text(key: String) = item[key]?.jsonPrimitive?.contentOrNull.orEmpty()
                 ControlQueueItem(
-                    applicantName = borrower?.name ?: "Unknown Applicant",
-                    amount = "₦${String.format(Locale.US, "%,.0f", app.amount)}",
-                    currentStage = "Final Control",
-                    handledBy = "Control Officer",
-                    appId = app.id
+                    applicantName = text("event_type").ifBlank { text("action") },
+                    amount = text("created_at"),
+                    currentStage = listOf(text("from_stage"), text("to_stage")).filter { it.isNotBlank() }.joinToString(" → "),
+                    handledBy = text("actor_name").ifBlank { text("actor_role") }
                 )
             }
-        } else placeholderControlItems
+            else -> controlItems = emptyList()
+        }
+        isLoading = false
     }
 
     Scaffold(
@@ -139,9 +140,7 @@ fun SystemActivityScreen(
                 ) {
                     items(controlItems) { item ->
                         FieldCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = item.appId.isNotEmpty()) { onViewApplication(item.appId) }
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),

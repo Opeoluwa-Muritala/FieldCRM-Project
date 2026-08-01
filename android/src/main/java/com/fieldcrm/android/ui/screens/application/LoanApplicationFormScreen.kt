@@ -295,6 +295,23 @@ fun LoanApplicationFormContent(
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         if (currentTab == 8) {
+                            val docs = appDetail?.documents ?: emptyList()
+                            val hasOfferAcceptance = docs.any { (it["doc_type"] as? String)?.equals("offer_acceptance", ignoreCase = true) == true }
+                            val hasDisbursementMandate = docs.any { (it["doc_type"] as? String)?.equals("disbursement_mandate", ignoreCase = true) == true }
+                            val hasDirectDebitMandate = docs.any { (it["doc_type"] as? String)?.equals("direct_debit_mandate", ignoreCase = true) == true }
+                            val hasRequiredDocs = hasOfferAcceptance && hasDisbursementMandate && hasDirectDebitMandate
+
+                            val ocrVerified = (appDetail?.readiness?.get("ocr_verified") as? Boolean) ?: true
+
+                            val isGuarantorRequired = productInput.equals("MSEF", ignoreCase = true) || productInput.equals("Enterprise Loan", ignoreCase = true)
+                            val guarantorComplete = !isGuarantorRequired || ((appDetail?.readiness?.get("guarantor_form_submitted") as? Boolean) == true)
+
+                            val visitationSigned = (appDetail?.readiness?.get("visitation_status") as? String)?.let { it == "completed" || it == "concurred" }
+                                ?: (appDetail?.visitation?.get("status") as? String)?.let { it == "completed" || it == "concurred" }
+                                ?: false
+
+                            val compliesAllGates = hasRequiredDocs && ocrVerified && guarantorComplete && visitationSigned
+
                             SecondaryButton(
                                 text = "Save Draft",
                                 onClick = {
@@ -318,7 +335,7 @@ fun LoanApplicationFormContent(
                                         bankInput, accInput
                                     )
                                 },
-                                enabled = consentBureauDisclosure && consentCreditCheck && consentChequeRecovery && consentGsi && step9SignatureData != null,
+                                enabled = consentBureauDisclosure && consentCreditCheck && consentChequeRecovery && consentGsi && step9SignatureData != null && compliesAllGates,
                                 modifier = Modifier.weight(1f)
                             )
                         } else {
@@ -504,7 +521,8 @@ fun LoanApplicationFormContent(
                             consentCreditCheck = consentCreditCheck, onConsentCreditCheckChange = { consentCreditCheck = it },
                             consentChequeRecovery = consentChequeRecovery, onConsentChequeRecoveryChange = { consentChequeRecovery = it },
                             consentGsi = consentGsi, onConsentGsiChange = { consentGsi = it },
-                            step9SignatureData = step9SignatureData, onStep9SignatureConfirm = { step9SignatureData = it }, onStep9SignatureClear = { step9SignatureData = null }
+                            step9SignatureData = step9SignatureData, onStep9SignatureConfirm = { step9SignatureData = it }, onStep9SignatureClear = { step9SignatureData = null },
+                            appDetail = appDetail
                         )
                     }
                 }
@@ -574,7 +592,8 @@ fun WizardTabContent(
     consentCreditCheck: Boolean, onConsentCreditCheckChange: (Boolean) -> Unit,
     consentChequeRecovery: Boolean, onConsentChequeRecoveryChange: (Boolean) -> Unit,
     consentGsi: Boolean, onConsentGsiChange: (Boolean) -> Unit,
-    step9SignatureData: String?, onStep9SignatureConfirm: (String) -> Unit, onStep9SignatureClear: () -> Unit
+    step9SignatureData: String?, onStep9SignatureConfirm: (String) -> Unit, onStep9SignatureClear: () -> Unit,
+    appDetail: ApplicationDetailResult? = null
 ) {
     when (tabIndex) {
         0 -> {
@@ -1336,6 +1355,21 @@ fun WizardTabContent(
             }
         }
         else -> {
+            val docs = appDetail?.documents ?: emptyList()
+            val hasOfferAcceptance = docs.any { (it["doc_type"] as? String)?.equals("offer_acceptance", ignoreCase = true) == true }
+            val hasDisbursementMandate = docs.any { (it["doc_type"] as? String)?.equals("disbursement_mandate", ignoreCase = true) == true }
+            val hasDirectDebitMandate = docs.any { (it["doc_type"] as? String)?.equals("direct_debit_mandate", ignoreCase = true) == true }
+            val hasRequiredDocs = hasOfferAcceptance && hasDisbursementMandate && hasDirectDebitMandate
+
+            val ocrVerified = (appDetail?.readiness?.get("ocr_verified") as? Boolean) ?: true
+
+            val isGuarantorRequired = product.equals("MSEF", ignoreCase = true) || product.equals("Enterprise Loan", ignoreCase = true)
+            val guarantorComplete = !isGuarantorRequired || ((appDetail?.readiness?.get("guarantor_form_submitted") as? Boolean) == true)
+
+            val visitationSigned = (appDetail?.readiness?.get("visitation_status") as? String)?.let { it == "completed" || it == "concurred" }
+                ?: (appDetail?.visitation?.get("status") as? String)?.let { it == "completed" || it == "concurred" }
+                ?: false
+
             FieldCard {
                 Text("Dossier Summary Review", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1345,7 +1379,13 @@ fun WizardTabContent(
                     gates = listOf(
                         ChecklistGate("Applicant Name Provided", name.isNotEmpty(), if (name.isNotEmpty()) StatusChipVariant.Verified else StatusChipVariant.Missing),
                         ChecklistGate("Requested Loan Principal Captured", amount.isNotEmpty(), if (amount.isNotEmpty()) StatusChipVariant.Verified else StatusChipVariant.Missing),
-                        ChecklistGate("Pledge Collateral Specified", collateralDesc.isNotEmpty(), if (collateralDesc.isNotEmpty()) StatusChipVariant.Verified else StatusChipVariant.Missing)
+                        ChecklistGate("Pledge Collateral Specified", collateralDesc.isNotEmpty(), if (collateralDesc.isNotEmpty()) StatusChipVariant.Verified else StatusChipVariant.Missing),
+                        ChecklistGate("Offer Acceptance Uploaded", hasOfferAcceptance, if (hasOfferAcceptance) StatusChipVariant.Verified else StatusChipVariant.Missing),
+                        ChecklistGate("Disbursement Mandate Uploaded", hasDisbursementMandate, if (hasDisbursementMandate) StatusChipVariant.Verified else StatusChipVariant.Missing),
+                        ChecklistGate("Direct Debit Mandate Uploaded", hasDirectDebitMandate, if (hasDirectDebitMandate) StatusChipVariant.Verified else StatusChipVariant.Missing),
+                        ChecklistGate("OCR Exception List Resolved", ocrVerified, if (ocrVerified) StatusChipVariant.Verified else StatusChipVariant.Missing),
+                        ChecklistGate("Guarantor Profiling & Signature Logged", guarantorComplete, if (guarantorComplete) StatusChipVariant.Verified else StatusChipVariant.Missing),
+                        ChecklistGate("Signed GPS Visitation Report Logged", visitationSigned, if (visitationSigned) StatusChipVariant.Verified else StatusChipVariant.Missing)
                     )
                 )
             }

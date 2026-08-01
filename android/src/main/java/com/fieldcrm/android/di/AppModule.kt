@@ -51,11 +51,11 @@ val appModule = module {
     single { FieldCRMClient(BuildConfig.API_BASE_URL) }
 
     // HttpClient and MobileApiService
-    single<MobileApiService> { MobileApiServiceImpl(get<FieldCRMClient>().httpClient, BuildConfig.API_BASE_URL) }
+    single<MobileApiService> { MobileApiServiceImpl(get<FieldCRMClient>().httpClient, BuildConfig.API_BASE_URL, get()) }
 
     // Repositories
-    single { BorrowerRepository(get(), get()) }
-    single { ApplicationRepository(get(), get(), get()) }
+    single { BorrowerRepository(get(), get(), androidContext()) }
+    single { ApplicationRepository(get(), get(), get(), androidContext()) }
     single { AuthRepository(get(), get()) }
     single { NotificationsRepository(get()) }
     single { ConfigRepository(get()) }
@@ -65,12 +65,12 @@ val appModule = module {
     // ViewModels
     viewModel { AppViewModel(get()) }
     viewModel { LoginViewModel(get(), get()) }
-    viewModel { BorrowerViewModel(androidApplication(), get()) }
-    viewModel { ApplicationViewModel(androidApplication(), get(), get()) }
+    viewModel { BorrowerViewModel(androidApplication(), get<BorrowerRepository>(), get<SessionStore>()) }
+    viewModel { ApplicationViewModel(androidApplication(), get<ApplicationRepository>(), get<BorrowerRepository>(), get<SessionStore>()) }
     viewModel { NotificationsViewModel(get()) }
     viewModel { ConfigViewModel(get()) }
     viewModel { DashboardViewModel(get()) }
-    viewModel { SearchViewModel(get()) }
+    viewModel { SearchViewModel(get(), androidContext()) }
     viewModel { AuditTrailViewModel(get()) }
     viewModel { com.fieldcrm.android.ui.viewmodel.DocumentUploadViewModel(get()) }
     viewModel { com.fieldcrm.android.ui.viewmodel.SyncViewModel(get(), get()) }

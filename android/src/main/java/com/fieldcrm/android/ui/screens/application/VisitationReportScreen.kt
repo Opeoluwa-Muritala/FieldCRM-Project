@@ -445,9 +445,9 @@ private fun querySystemGps(context: Context, onResult: (String) -> Unit) {
         if (provider != null) {
             val location = locationManager.getLastKnownLocation(provider)
             if (location != null) {
-                onResult(String.format(Locale.US, "Lat: %.6f° N, Lon: %.6f° E (Real GPS)", location.latitude, location.longitude))
+                onResult(String.format(Locale.US, "Latitude: %.6f, Longitude: %.6f", location.latitude, location.longitude))
             } else {
-                onResult("Lat: 6.524451° N, Lon: 3.379219° E (Mock: Searching...)")
+                onResult("Location unavailable. Move outdoors and refresh GPS.")
             }
         } else {
             onResult("GPS Disabled on Device")

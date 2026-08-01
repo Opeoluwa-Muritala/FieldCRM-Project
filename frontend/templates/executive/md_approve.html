@@ -28,24 +28,10 @@
 </div>
 {% endif %}
 
-{# ── Committee Votes ── #}
-{% if votes %}
-<div class="page-card csp-s-3c4a3d440074">
-  <h3 class="csp-s-4636770b4968">Committee Recommendations</h3>
-  <table class="custom-table">
-    <thead><tr><th>Member</th><th>Recommendation</th><th>Notes</th></tr></thead>
-    <tbody>
-    {% for v in votes %}
-    <tr>
-      <td>{{ v.member_name }}</td>
-      <td><span class="status-badge {% if v.recommendation == 'approve' %}approved{% elif v.recommendation == 'reject' %}rejected{% else %}needs-review{% endif %}">{{ v.recommendation|title }}</span></td>
-      <td class="csp-s-fc12bffd31c0">{{ v.notes or '—' }}</td>
-    </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% endif %}
+{% if mcc_votes %}<div class="page-card"><h3>MCC Recommendations</h3><table class="custom-table">
+<thead><tr><th>Member</th><th>Recommended Amount</th><th>Notes</th></tr></thead><tbody>
+{% for vote in mcc_votes %}<tr><td>{{ vote.member_name }}</td><td>&#x20A6;{{ "{:,.0f}".format(vote.recommended_amount or 0) }}</td><td>{{ vote.notes or '—' }}</td></tr>{% endfor %}
+</tbody></table></div>{% endif %}
 
 {# ── Documents ── #}
 <div class="page-card csp-s-3c4a3d440074">

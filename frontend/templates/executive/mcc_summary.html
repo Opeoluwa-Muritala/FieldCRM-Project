@@ -1,0 +1,19 @@
+{% extends "base/desktop_shell.html" %}
+{% block title %}MCC Review - FieldCRM{% endblock %}
+{% block page_title %}MCC Review{% endblock %}
+{% block content %}
+<div class="page-card"><h2 class="page-card-title">{{ app.applicant_name }}</h2>
+  <p>{{ app.ref_no }} · &#x20A6;{{ "{:,.0f}".format(app.amount or 0) }} · {{ app.stage|replace('_',' ')|title }}</p>
+</div>
+<div class="page-card"><h3>Recommendations</h3>
+  <table class="custom-table"><thead><tr><th>Member</th><th>Amount</th><th>Notes</th></tr></thead>
+  <tbody>{% for vote in votes %}<tr><td>{{ vote.member_name }}</td><td>&#x20A6;{{ "{:,.0f}".format(vote.recommended_amount or 0) }}</td><td>{{ vote.notes or '—' }}</td></tr>
+  {% else %}<tr><td colspan="3">No recommendations submitted.</td></tr>{% endfor %}</tbody></table>
+</div>
+<div class="page-card"><h3>Submit Recommendation</h3>
+  <form method="post" action="/applications/{{ app_id }}/mcc-vote"><input class="field-input" type="number" name="recommended_amount" min="1" required><textarea class="field-input" name="notes" placeholder="Recommendation notes"></textarea><button class="btn btn-secondary" type="submit">Submit</button></form>
+</div>
+<div class="page-card"><h3>Finalize Amount</h3>
+  <form method="post" action="/applications/{{ app_id }}/mcc-finalize"><input class="field-input" type="number" name="final_amount" min="1" required><button class="btn btn-primary" type="submit">Set Final Amount</button></form>
+</div>
+{% endblock %}

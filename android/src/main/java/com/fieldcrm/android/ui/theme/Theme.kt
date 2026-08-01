@@ -87,35 +87,7 @@ val DarkFieldColors = FieldColors(
     statusInfo = Color(0xFF4C7EB8)
 )
 
-// Desktop-matched Light Mode (Warm cream background, pure white cards, brand text)
-val LightFieldColors = FieldColors(
-    isLight = true,
-    
-    gray950 = Color(0xFFF7F9FB), // surface background
-    gray900 = Color(0xFFFFFFFF), // card surface, lowest container
-    gray850 = Color(0xFFF2F4F6), // secondary card surface, low container
-    gray800 = Color(0xFFCEC3D3), // outline-variant (dividers)
-    gray700 = Color(0xFF7D7483), // outline (input borders)
-    gray600 = Color(0xFF4C4451),
-    gray500 = Color(0xFF4C4451), // on-surface-variant (muted labels)
-    gray400 = Color(0xFF4C4451), // on-surface-variant (medium text)
-    gray300 = Color(0xFF1E293B), // on-background (secondary body text)
-    gray100 = Color(0xFF191C1E), // on-surface (primary title text)
 
-    purple950 = Color(0xFFF0DBFF),
-    purple900 = Color(0xFF4B0082), // primary container
-    purple700 = Color(0xFF622599), // primary hover
-    purple600 = Color(0xFF2E0052), // primary brand color (Shield Purple)
-    purple500 = Color(0xFF4B0082),
-    purple400 = Color(0xFFDDB7FF),
-    purple200 = Color(0xFFBA7EF4),
-    purple100 = Color(0xFFF0DBFF),
-
-    statusSuccess = Color(0xFF10B981), // success-green
-    statusWarning = Color(0xFFF59E0B), // warning-amber
-    statusDanger = Color(0xFFEF4444), // danger-red
-    statusInfo = Color(0xFF54647A)
-)
 
 // ==========================================
 // TYPOGRAPHY SYSTEM (Editorial Serif + Sans)
@@ -192,14 +164,11 @@ val LocalFieldTypography = staticCompositionLocalOf { FieldTypo }
 val LocalFieldShapes = staticCompositionLocalOf { FieldShapes() }
 
 // Dynamic theme resolution base on user role and system mode
-fun getRoleColors(@Suppress("UNUSED_PARAMETER") role: UserRole?, darkTheme: Boolean): FieldColors {
-    val base = if (darkTheme) DarkFieldColors else LightFieldColors
+fun getRoleColors(@Suppress("UNUSED_PARAMETER") role: UserRole?, darkTheme: Boolean = true): FieldColors {
+    val base = DarkFieldColors
     
-    val (primaryColor, primaryHover, primaryLight, primaryTint) = if (darkTheme) {
+    val (primaryColor, primaryHover, primaryLight, primaryTint) = 
         listOf(Color(0xFF7B52B3), Color(0xFF8E63C7), Color(0xFFA67EDB), Color(0xFF1E152A))
-    } else {
-        listOf(Color(0xFF2E0052), Color(0xFF622599), Color(0xFFDDB7FF), Color(0xFFF0DBFF))
-    }
     
     return base.copy(
         purple950 = primaryTint,
@@ -216,42 +185,25 @@ fun getRoleColors(@Suppress("UNUSED_PARAMETER") role: UserRole?, darkTheme: Bool
 @Composable
 fun FieldCRMTheme(
     role: UserRole? = null,
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colors = getRoleColors(role, darkTheme)
+    val colors = getRoleColors(role, true)
     
-    val m3ColorScheme = if (darkTheme) {
-        darkColorScheme(
-            primary = colors.purple600,
-            onPrimary = Color.White,
-            background = colors.gray950,
-            onBackground = colors.gray300,
-            surface = colors.gray900,
-            onSurface = colors.gray300,
-            surfaceVariant = colors.gray850,
-            onSurfaceVariant = colors.gray400,
-            outline = colors.gray700,
-            outlineVariant = colors.gray600,
-            error = colors.statusDanger,
-            onError = Color.White
-        )
-    } else {
-        lightColorScheme(
-            primary = colors.purple600,
-            onPrimary = Color.White,
-            background = colors.gray950,
-            onBackground = colors.gray300,
-            surface = colors.gray900,
-            onSurface = colors.gray300,
-            surfaceVariant = colors.gray850,
-            onSurfaceVariant = colors.gray400,
-            outline = colors.gray700,
-            outlineVariant = colors.gray600,
-            error = colors.statusDanger,
-            onError = Color.White
-        )
-    }
+    val m3ColorScheme = darkColorScheme(
+        primary = colors.purple600,
+        onPrimary = Color.White,
+        background = colors.gray950,
+        onBackground = colors.gray300,
+        surface = colors.gray900,
+        onSurface = colors.gray300,
+        surfaceVariant = colors.gray850,
+        onSurfaceVariant = colors.gray400,
+        outline = colors.gray700,
+        outlineVariant = colors.gray600,
+        error = colors.statusDanger,
+        onError = Color.White
+    )
 
     CompositionLocalProvider(
         LocalFieldColors provides colors,

@@ -51,9 +51,8 @@ fun SettingsScreen(
     val appViewModel: AppViewModel = koinViewModel()
     val appUiState by appViewModel.uiState.collectAsState()
 
-    var faceIdEnabled by remember { mutableStateOf(true) }
     var pushEnabled by remember { mutableStateOf(true) }
-    val darkModeEnabled = appUiState.isDarkMode
+
     var showSignOutConfirmation by remember { mutableStateOf(false) }
 
     // Active modal overlay: "PASSWORD", "PHONE", "HELP", "IT", "REPORT"
@@ -301,24 +300,10 @@ fun SettingsScreen(
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 SettingsToggleRow(
-                                    label = "Enable Face ID",
-                                    leadingIcon = FieldIcons.FingerprintOutlined,
-                                    checked = faceIdEnabled,
-                                    onCheckedChange = { faceIdEnabled = it }
-                                )
-                                FieldDivider()
-                                SettingsToggleRow(
                                     label = "Push Notifications",
                                     leadingIcon = FieldIcons.BellFilled,
                                     checked = pushEnabled,
                                     onCheckedChange = { pushEnabled = it }
-                                )
-                                FieldDivider()
-                                SettingsToggleRow(
-                                    label = "Dark Mode",
-                                    leadingIcon = FieldIcons.SettingsOutlined,
-                                    checked = darkModeEnabled,
-                                    onCheckedChange = { appViewModel.setDarkMode(it) }
                                 )
                             }
 
@@ -344,16 +329,23 @@ fun SettingsScreen(
                                 }
                             }
 
-                            // Version Label
-                            Text(
-                                text = "App Version 2.4.1",
-                                style = FieldTheme.typography.body.copy(fontSize = 12.sp),
-                                color = FieldTheme.colors.gray500,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                textAlign = TextAlign.Center
-                            )
+                            // About & Diagnostics Section
+                            FieldCard {
+                                Text(
+                                    text = "ABOUT & DIAGNOSTICS",
+                                    style = FieldTheme.typography.label,
+                                    color = FieldTheme.colors.gray500
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                DetailItem(label = "API Base URL", value = com.fieldcrm.android.BuildConfig.API_BASE_URL, isMono = true)
+                                FieldDivider()
+                                DetailItem(label = "Git Revision", value = "main-adab47", isMono = true)
+                                FieldDivider()
+                                DetailItem(label = "Version Code", value = "1", isMono = true)
+                                FieldDivider()
+                                DetailItem(label = "Build Time", value = "2026-08-01 19:20:00 UTC", isMono = true)
+                            }
 
                             // Sign Out Button
                             Button(

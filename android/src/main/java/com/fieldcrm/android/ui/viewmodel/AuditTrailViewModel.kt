@@ -31,6 +31,14 @@ class AuditTrailViewModel(private val apiService: MobileApiService) : ViewModel(
         }
     }
 
+    fun loadGlobal() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            val events = apiService.getGlobalAuditTrail()
+            _uiState.value = _uiState.value.copy(events = events, isLoading = false)
+        }
+    }
+
     fun loadChecklist(applicationId: String) {
         viewModelScope.launch {
             val checklist = apiService.getAuditChecklist(applicationId)

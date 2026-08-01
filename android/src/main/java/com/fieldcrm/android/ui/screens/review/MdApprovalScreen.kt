@@ -18,6 +18,7 @@ fun MdApprovalScreen(
     application: LoanApplicationModel,
     isSubmitting: Boolean = false,
     onApprove: () -> Unit,
+    onReturnToEd: (String) -> Unit,
     onAddBoardReferral: (email: String, name: String, notes: String) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -125,6 +126,13 @@ fun MdApprovalScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+
+            SecondaryButton(
+                text = "Return Comment to ED",
+                onClick = { onReturnToEd(boardNotes) },
+                enabled = boardNotes.isNotBlank() && !isSubmitting,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             SectionCard(title = "Board Advisory (Optional)") {
                 Text(

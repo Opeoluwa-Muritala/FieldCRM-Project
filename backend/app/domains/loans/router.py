@@ -1788,18 +1788,11 @@ async def render_read_only_application_view(
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
     documents = await get_document_service(conn).repo.get_by_loan(UUID(application_id), current_user.org_id)
-    mcc_votes = await conn.fetch(
-        """SELECT cv.recommended_amount, cv.notes, cv.voted_at, u.full_name
-           FROM committee_votes cv JOIN users u ON u.id = cv.member_id
-           WHERE cv.loan_id = $1 AND cv.org_id = $2 ORDER BY cv.voted_at""",
-        UUID(application_id), current_user.org_id,
-    )
     ctx = build_template_context(
         request,
         current_user,
         app=app,
         documents=documents,
-        mcc_votes=[dict(vote) for vote in mcc_votes],
         active_tab="borrowers",
         active_page="borrowers",
     )
@@ -2043,7 +2036,7 @@ async def process_crm_review(
         await audit.log(
             application_id=application_id,
             org_id=str(current_user.org_id),
-            action="CRM Dossier Review Complete — Sent to Committee",
+            action="CRM Dossier Review Complete",
             from_stage=application.stage,
             to_stage=next_stage,
             actor_id=str(current_user.id),
@@ -2128,113 +2121,6 @@ async def process_executive_approve(
 
 
 # =============================================================================
-# COMMITTEE REVIEW QUEUE
-# =============================================================================
-
-@router.get("/committee-queue")
-async def render_committee_queue(
-    request: Request,
-    conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["committee"])),
-):
-    dashboard_svc = DashboardService(conn)
-    queue = await dashboard_svc.get_committee_queue(current_user)
-    ctx = build_template_context(
-        request, current_user,
-        queue=queue,
-        active_tab="committee_queue", active_page="committee_queue",
-        today_label=datetime.now().strftime("%A, %d %B %Y"),
-    )
-    return templates.TemplateResponse(request, "committee/committee_queue.html", ctx)
-
-
-@router.get("/applications/{application_id}/committee-review")
-async def render_committee_review(
-    request: Request,
-    application_id: str,
-    conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["committee"])),
-):
-    repo = LoanRepository(conn)
-    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
-    if not app:
-        raise HTTPException(status_code=404, detail="Loan Application not found")
-    votes = await repo.get_committee_votes(UUID(application_id), current_user.org_id)
-    last_loan = await repo.get_last_loan(
-        current_user.org_id, app.applicant_name, app.phone, UUID(application_id)
-    )
-    repayments = []
-    if last_loan:
-        from app.services.loan_servicing_service import LoanServicingService
-        svc = LoanServicingService(conn)
-        repayments = await svc.get_payments(UUID(str(last_loan["id"])), current_user.org_id)
-    my_vote = next((v for v in votes if str(v["member_id"]) == str(current_user.id)), None)
-    ctx = build_template_context(
-        request, current_user,
-        app=app, app_id=application_id,
-        votes=votes, my_vote=my_vote,
-        last_loan=last_loan, repayments=repayments,
-        active_tab="committee_queue", active_page="committee_queue",
-    )
-    return templates.TemplateResponse(request, "committee/committee_review.html", ctx)
-
-
-@router.post("/applications/{application_id}/committee-vote")
-async def process_committee_vote(
-    application_id: str,
-    recommendation: str = Form(...),
-    notes: str = Form(""),
-    conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["committee"])),
-):
-    repo = LoanRepository(conn)
-    await repo.insert_committee_vote(
-        UUID(application_id), current_user.org_id, current_user.id, recommendation, notes
-    )
-    audit = AuditService(conn)
-    await audit.log(
-        application_id=application_id,
-        org_id=str(current_user.org_id),
-        action=f"Committee Vote: {recommendation}",
-        from_stage="committee_review",
-        to_stage="committee_review",
-        actor_id=str(current_user.id),
-        actor_role=current_user.role,
-        reason=notes,
-    )
-    return RedirectResponse(
-        url=f"/applications/{application_id}/committee-review",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
-
-
-@router.post("/applications/{application_id}/committee-complete")
-async def process_committee_complete(
-    application_id: str,
-    recommendation: str = Form(...),
-    conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["committee"])),
-):
-    repo = LoanRepository(conn)
-    app = await repo.complete_committee_review(
-        UUID(application_id), current_user.org_id, recommendation
-    )
-    if not app:
-        raise HTTPException(status_code=400, detail="Application not in committee_review stage")
-    audit = AuditService(conn)
-    await audit.log(
-        application_id=application_id,
-        org_id=str(current_user.org_id),
-        action=f"Committee Review Complete — {recommendation}",
-        from_stage="committee_review",
-        to_stage=app.stage,
-        actor_id=str(current_user.id),
-        actor_role=current_user.role,
-    )
-    return RedirectResponse(url="/committee-queue", status_code=status.HTTP_303_SEE_OTHER)
-
-
-# =============================================================================
 # ED APPROVAL QUEUE
 # =============================================================================
 
@@ -2267,14 +2153,19 @@ async def render_ed_approve(
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
-    votes = await repo.get_committee_votes(UUID(application_id), current_user.org_id)
     doc_svc = get_document_service(conn)
     documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
     head_crm_data = await repo.get_stage_data(UUID(application_id), "head_crm_review")
+    mcc_votes = await conn.fetch(
+        """SELECT cv.recommended_amount, cv.notes, u.full_name AS member_name
+           FROM committee_votes cv JOIN users u ON u.id=cv.member_id AND u.org_id=cv.org_id
+           WHERE cv.loan_id=$1 AND cv.org_id=$2 ORDER BY cv.created_at""",
+        UUID(application_id), current_user.org_id)
     ctx = build_template_context(
         request, current_user,
         app=app, app_id=application_id,
-        votes=votes, documents=documents,
+        documents=documents,
+        mcc_votes=[dict(v) for v in mcc_votes],
         head_crm_notes=(head_crm_data or {}).get("data_json", {}).get("notes", ""),
         active_tab="ed_queue", active_page="ed_queue",
     )
@@ -2364,14 +2255,18 @@ async def render_md_approve(
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
-    votes = await repo.get_committee_votes(UUID(application_id), current_user.org_id)
     board_referrals = await repo.get_board_referrals(UUID(application_id), current_user.org_id)
     doc_svc = get_document_service(conn)
     documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
+    mcc_votes = await conn.fetch(
+        """SELECT cv.recommended_amount, cv.notes, u.full_name AS member_name
+           FROM committee_votes cv JOIN users u ON u.id=cv.member_id AND u.org_id=cv.org_id
+           WHERE cv.loan_id=$1 AND cv.org_id=$2 ORDER BY cv.created_at""",
+        UUID(application_id), current_user.org_id)
     ctx = build_template_context(
         request, current_user,
         app=app, app_id=application_id,
-        votes=votes, documents=documents, board_referrals=board_referrals,
+        documents=documents, board_referrals=board_referrals, mcc_votes=[dict(v) for v in mcc_votes],
         active_tab="md_queue", active_page="md_queue",
     )
     return templates.TemplateResponse(request, "executive/md_approve.html", ctx)
@@ -2780,125 +2675,63 @@ async def process_valuation_submission(
     )
 
 
-# =============================================================================
-# MANAGEMENT CREDIT COMMITTEE (MCC)
-# =============================================================================
+@router.get("/mcc")
+async def render_mcc_index(request: Request, conn=Depends(db_conn), current_user=Depends(get_current_user)):
+    if current_user.role not in {"ed", "md"}:
+        raise HTTPException(status_code=403, detail="MCC is restricted to ED and MD")
+    dossiers = await conn.fetch(
+        """SELECT id, ref_no, applicant_name, amount, stage, updated_at FROM loan_applications
+           WHERE org_id=$1 AND deleted_at IS NULL AND stage IN ('ed_approval','md_approval')
+           ORDER BY updated_at DESC""", current_user.org_id)
+    ctx = build_template_context(request, current_user, dossiers=[dict(row) for row in dossiers],
+                                 active_tab="mcc", active_page="mcc")
+    return templates.TemplateResponse(request, "executive/mcc_index.html", ctx)
+
 
 @router.get("/applications/{application_id}/mcc")
-async def render_mcc_summary(
-    request: Request,
-    application_id: str,
-    conn = Depends(db_conn),
-    current_user = Depends(get_current_user)
-):
-    repo = LoanRepository(conn)
-    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
-    if not app:
-        raise HTTPException(status_code=404, detail="Loan Application not found")
-        
-    if app.stage not in {'ed_approval', 'md_approval'}:
-        raise HTTPException(status_code=403, detail="MCC is available only for ED and MD approval dossiers")
-        
-    # Fetch audit / workflow history
-    all_audit_events = await repo.list_workflow_events(current_user.org_id)
-    audit_events = [e for e in all_audit_events if str(e.get("loan_id")) == application_id]
-    
-    # Fetch valuation details (pledged items)
-    items = await conn.fetch(
-        """
-        SELECT id, item_number, item_name, serial_number, description, estimated_value, 
-               appraised_value, valuer_name, valuer_license_no, valuation_date, loan_to_value_ratio
-        FROM pledged_items
-        WHERE loan_id = $1
-        ORDER BY item_number;
-        """,
-        UUID(application_id)
-    )
-    
-    # Fetch integration status (latest checks)
-    ver_check = await conn.fetchrow(
-        "SELECT status, is_valid, checked_at FROM verification_checks WHERE loan_application_id = $1 ORDER BY checked_at DESC LIMIT 1;",
-        UUID(application_id)
-    )
-    bureau_sub = await conn.fetchrow(
-        "SELECT status, registry_id, raw_response, provider, submitted_at FROM bureau_submissions WHERE loan_application_id = $1 ORDER BY submitted_at DESC LIMIT 1;",
-        UUID(application_id)
-    )
-    aml_check = await conn.fetchrow(
-        "SELECT status, category_count, checked_at FROM sanctions_checks WHERE loan_application_id = $1 ORDER BY checked_at DESC LIMIT 1;",
-        UUID(application_id)
-    )
-    documents = await get_document_service(conn).repo.get_by_loan(UUID(application_id), current_user.org_id)
-
-    crc_configured = bool(settings.CRC_API_KEY)
-    cr_configured = bool(settings.CREDIT_REGISTRY_USERNAME and settings.CREDIT_REGISTRY_PASSWORD)
-    bureau_multiple_configured = crc_configured and cr_configured
-    active_bureau_provider = "CRC" if crc_configured else "CreditRegistry"
-
-    ctx = build_template_context(
-        request,
-        current_user,
-        app=app,
-        app_id=application_id,
-        borrower_name=app.applicant_name,
-        amount=app.amount or 500000,
-        tenure=app.tenure or 12,
-        product_type=app.product_type or "MSEF",
-        documents=documents,
-        audit_events=audit_events,
-        items=[dict(i) for i in items],
-        ver_check=dict(ver_check) if ver_check else None,
-        bureau_sub=dict(bureau_sub) if bureau_sub else None,
-        bureau_multiple_configured=bureau_multiple_configured,
-        active_bureau_provider=active_bureau_provider,
-        aml_check=dict(aml_check) if aml_check else None,
-        VERIFICATION_ENABLED=settings.VERIFICATION_ENABLED,
-        BUREAU_REPORTING_ENABLED=settings.BUREAU_REPORTING_ENABLED,
-        AML_SCREENING_ENABLED=settings.AML_SCREENING_ENABLED,
-        active_tab="mcc",
-        active_page="mcc"
-    )
-    return templates.TemplateResponse(request, "committee/mcc_summary.html", ctx)
-
-
-@router.get("/mcc")
-async def render_mcc_index(
-    request: Request,
-    conn=Depends(db_conn),
-    current_user=Depends(get_current_user),
-):
-    dossiers = await conn.fetch(
-        """
-        SELECT id, ref_no, applicant_name, amount, stage, updated_at
-        FROM loan_applications
-        WHERE org_id = $1 AND deleted_at IS NULL AND stage IN ('ed_approval', 'md_approval')
-        ORDER BY updated_at DESC
-        """,
-        current_user.org_id,
-    )
-    ctx = build_template_context(request, current_user, dossiers=[dict(row) for row in dossiers], active_tab="mcc", active_page="mcc")
-    return templates.TemplateResponse(request, "committee/mcc_index.html", ctx)
+async def render_mcc_summary(request: Request, application_id: str, conn=Depends(db_conn), current_user=Depends(get_current_user)):
+    if current_user.role not in {"ed", "md"}:
+        raise HTTPException(status_code=403, detail="MCC is restricted to ED and MD")
+    app = await LoanRepository(conn).get_by_id(UUID(application_id), current_user.org_id)
+    if not app or app.stage not in {"ed_approval", "md_approval"}:
+        raise HTTPException(status_code=404, detail="MCC dossier not found")
+    votes = await conn.fetch(
+        """SELECT cv.recommended_amount, cv.notes, cv.created_at, u.full_name AS member_name
+           FROM committee_votes cv JOIN users u ON u.id=cv.member_id AND u.org_id=cv.org_id
+           WHERE cv.loan_id=$1 AND cv.org_id=$2 ORDER BY cv.created_at""",
+        UUID(application_id), current_user.org_id)
+    ctx = build_template_context(request, current_user, app=app, app_id=application_id,
+                                 votes=[dict(v) for v in votes], active_tab="mcc", active_page="mcc")
+    return templates.TemplateResponse(request, "executive/mcc_summary.html", ctx)
 
 
 @router.post("/applications/{application_id}/mcc-vote")
 async def submit_mcc_vote(application_id: str, recommended_amount: float = Form(...), notes: str = Form(""), conn=Depends(db_conn), current_user=Depends(get_current_user)):
+    if current_user.role not in {"ed", "md"}:
+        raise HTTPException(status_code=403, detail="MCC is restricted to ED and MD")
     app = await LoanRepository(conn).get_by_id(UUID(application_id), current_user.org_id)
-    if not app or app.stage not in {'ed_approval', 'md_approval'}:
-        raise HTTPException(status_code=403, detail="This dossier is not available for MCC voting")
+    if not app or app.stage not in {"ed_approval", "md_approval"}:
+        raise HTTPException(status_code=409, detail="This dossier is not available for MCC voting")
     try:
-        await conn.execute("INSERT INTO committee_votes (loan_id, org_id, member_id, recommendation, notes, recommended_amount) VALUES ($1,$2,$3,'approve',$4,$5)", UUID(application_id), current_user.org_id, current_user.id, notes, recommended_amount)
+        await conn.execute(
+            """INSERT INTO committee_votes (loan_id, org_id, member_id, recommendation, notes, recommended_amount)
+               VALUES ($1,$2,$3,'approve',$4,$5)""",
+            UUID(application_id), current_user.org_id, current_user.id, notes.strip(), recommended_amount)
     except Exception as exc:
-        raise HTTPException(status_code=409, detail="You have already submitted an MCC recommendation for this dossier") from exc
+        raise HTTPException(status_code=409, detail="You have already submitted an MCC recommendation") from exc
     return RedirectResponse(url=f"/applications/{application_id}/mcc", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/applications/{application_id}/mcc-finalize")
 async def finalize_mcc_amount(application_id: str, final_amount: float = Form(...), conn=Depends(db_conn), current_user=Depends(get_current_user)):
-    if current_user.role not in {'ed', 'md'}:
-        raise HTTPException(status_code=403, detail="Only ED or MD can set the final MCC amount")
-    result = await conn.execute("UPDATE loan_applications SET amount=$1, mcc_finalized_by=$2, mcc_finalized_at=NOW(), updated_at=NOW() WHERE id=$3 AND org_id=$4 AND stage IN ('ed_approval','md_approval')", final_amount, current_user.id, UUID(application_id), current_user.org_id)
-    if result != 'UPDATE 1':
-        raise HTTPException(status_code=409, detail="Final amount could not be set")
+    if current_user.role not in {"ed", "md"}:
+        raise HTTPException(status_code=403, detail="MCC is restricted to ED and MD")
+    result = await conn.execute(
+        """UPDATE loan_applications SET amount=$1, mcc_finalized_by=$2, mcc_finalized_at=NOW(), updated_at=NOW()
+           WHERE id=$3 AND org_id=$4 AND stage IN ('ed_approval','md_approval')""",
+        final_amount, current_user.id, UUID(application_id), current_user.org_id)
+    if result != "UPDATE 1":
+        raise HTTPException(status_code=409, detail="Final MCC amount could not be set")
     return RedirectResponse(url=f"/applications/{application_id}/mcc", status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -3289,25 +3122,6 @@ async def render_md_dashboard(
         today_label=datetime.now().strftime("%A, %d %B %Y"),
     )
     return templates.TemplateResponse(request, "executive/md_dashboard.html", ctx)
-
-
-@router.get("/committee-dashboard")
-async def render_committee_dashboard(
-    request: Request,
-    conn=Depends(db_conn),
-    current_user=Depends(RoleChecker(["committee"])),
-):
-    dashboard_svc = DashboardService(conn)
-    data = await dashboard_svc.get_dashboard_data(current_user)
-    ctx = build_template_context(
-        request, current_user,
-        data=data,
-        committee_queue=data.get("committee_queue", []),
-        metrics=data.get("metrics", {}),
-        active_tab="dashboard", active_page="dashboard",
-        today_label=datetime.now().strftime("%A, %d %B %Y"),
-    )
-    return templates.TemplateResponse(request, "committee/dashboard.html", ctx)
 
 
 # =============================================================================

@@ -13,24 +13,22 @@ enum class UserRole {
     AUDITOR,
     SYSTEM_ADMIN,
     CRM,
-    COMMITTEE,
     ED,
     MD,
     EXECUTIVE;
 
     val displayName: String
         get() = when (this) {
-            ACCOUNT_OFFICER -> "Account Officer"
-            BRANCH_SUPERVISOR -> "Branch Supervisor"
+            ACCOUNT_OFFICER -> "Relationship Officer"
+            BRANCH_SUPERVISOR -> "Supervisor"
             CREDIT_ANALYST -> "Credit Analyst"
             HEAD_CRM -> "Head CRM"
             LEGAL -> "Legal"
-            LOAN_OFFICER   -> "Loan Officer"
-            BRANCH_MANAGER -> "Branch Manager"
-            AUDITOR        -> "Auditor"
+            LOAN_OFFICER   -> "Relationship Officer"
+            BRANCH_MANAGER -> "Team Lead"
+            AUDITOR        -> "Audit"
             SYSTEM_ADMIN   -> "System Admin"
             CRM            -> "CRM Officer"
-            COMMITTEE      -> "Committee Member"
             ED             -> "Executive Director"
             MD             -> "Managing Director"
             EXECUTIVE      -> "Executive"
@@ -48,27 +46,15 @@ enum class UserRole {
             "branch_supervisor", "branchsupervisor" -> BRANCH_SUPERVISOR
             "credit_analyst", "creditanalyst" -> CREDIT_ANALYST
             "auditor"                          -> AUDITOR
-            "system_admin", "admin", "admin_mcr", "mcr" -> SYSTEM_ADMIN
+            "system_admin", "admin" -> SYSTEM_ADMIN
             "crm"                              -> CRM
             "head_crm", "headcrm" -> HEAD_CRM
             "legal" -> LEGAL
-            // Restored sessions from versions that predate the website workflow.
-            "committee" -> COMMITTEE
             "ed"                               -> ED
             "md"                               -> MD
             "executive"                        -> EXECUTIVE
-            else -> ACCOUNT_OFFICER
+            else -> EXECUTIVE
         }
 
-        @Deprecated("Use fromServerRole — role must come from the API, not the email")
-        fun fromLoginIdentifier(identifier: String): UserRole {
-            val normalized = identifier.trim().lowercase()
-            return when {
-                "adebayo" in normalized -> BRANCH_MANAGER
-                "samuel" in normalized -> AUDITOR
-                "admin" in normalized -> SYSTEM_ADMIN
-                else -> ACCOUNT_OFFICER
-            }
-        }
     }
 }

@@ -20,6 +20,8 @@ import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
+import com.fieldcrm.android.ui.viewmodel.DashboardViewModel
+import org.koin.androidx.compose.koinViewModel
 
 private val CRM_STATUSES = setOf(
     "crm_review", "disbursement_ready"
@@ -32,13 +34,13 @@ fun CrmQueueScreen(
     onBackClick: () -> Unit,
     onReviewApplication: (String) -> Unit = {}
 ) {
-    val queueItems = remember(applications, borrowers) {
-        applications
-            .filter { it.stage in CRM_STATUSES }
-            .map { app ->
-                val borrower = borrowers.find { it.id == app.id }
+    val dashboardViewModel: DashboardViewModel = koinViewModel()
+    val dashboardState by dashboardViewModel.uiState.collectAsState()
+    val apiQueue = dashboardState.metrics?.data?.crm_queue.orEmpty()
+    val queueItems = remember(apiQueue) {
+        apiQueue.map { app ->
                 Triple(
-                    borrower?.name ?: app.applicant_name,
+                    app.applicant_name,
                     "₦${String.format(Locale.US, "%,.0f", app.amount ?: 0.0)}",
                     app.id
                 )
@@ -51,7 +53,7 @@ fun CrmQueueScreen(
             .background(FieldTheme.colors.gray950),
         topBar = {
             FieldTopAppBar(
-                title = "CRM Review Queue",
+                title = "Dossier Review Queue",
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(

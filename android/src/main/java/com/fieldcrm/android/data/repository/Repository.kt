@@ -27,7 +27,8 @@ data class ApplicationDetailResult(
 
 class BorrowerRepository(
     private val database: AppDatabase,
-    private val client: FieldCRMClient
+    private val client: FieldCRMClient,
+    private val context: android.content.Context
 ) {
     private val queries = database.appDatabaseQueries
 
@@ -55,7 +56,7 @@ class BorrowerRepository(
             current_owner_id = borrower.loan_officer_id,
             created_at = borrower.created_at
         )
-        return ApplicationRepository(database, client, apiService = NoopMobileApiService).createApplication(application)
+        return ApplicationRepository(database, client, apiService = NoopMobileApiService, context).createApplication(application)
     }
 
     suspend fun getBorrowerById(id: String): BorrowerModel? {
@@ -108,14 +109,15 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun getGuarantorData(id: String, slot: Int): String? = null
     override suspend fun saveGuarantorStep(id: String, slot: Int, step: Int, data: Map<String, JsonElement>): String? = null
     override suspend fun uploadDocument(id: String, category: String, fileBytes: ByteArray?, fileName: String): String? = null
+    override suspend fun fetchDocumentPreview(url: String): ByteArray? = null
     override suspend fun getOcrFields(id: String): com.fieldcrm.android.data.api.OcrFieldsResponse? = null
     override suspend fun submitOcrReview(id: String, corrections: Map<String, String>): String? = null
     override suspend fun getVisitationReport(id: String): String? = null
     override suspend fun submitVisitationReport(id: String, metWith: String, premises: String, direction: String): String? = null
     override suspend fun submitVisitationSignoff(id: String, decision: String, notes: String): String? = null
     override suspend fun submitCreditReview(id: String, decision: String, notes: String): String? = null
-    override suspend fun submitCrmReview(id: String, decision: String, notes: String): String? = null
-    override suspend fun approveApplication(id: String): String? = null
+    override suspend fun submitCrmReview(id: String, decision: String, notes: String, bureau1: Boolean, bureau2: Boolean, crms: Boolean, ncr: Boolean): String? = null
+    override suspend fun approveApplication(id: String, notes: String, kycAttested: Boolean, collateralAttested: Boolean): String? = null
     override suspend fun returnApplication(id: String, reason: String, corrections: List<String>, notes: String): String? = null
     override suspend fun getBorrowers(): String? = null
     override suspend fun createBorrower(data: Map<String, JsonElement>): String? = null
@@ -125,8 +127,8 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun getConfig() = null
     override suspend fun search(query: String) = null
     override suspend fun getAuditTrail(applicationId: String) = emptyList<com.fieldcrm.android.data.api.AuditTrailEvent>()
+    override suspend fun getGlobalAuditTrail() = emptyList<com.fieldcrm.android.data.api.AuditTrailEvent>()
     override suspend fun getBureauData(applicationId: String) = null
-    override suspend fun getCommitteeVotes(applicationId: String) = null
     override suspend fun getAuditChecklist(applicationId: String) = null
     override suspend fun saveAuditChecklist(applicationId: String, checklist: com.fieldcrm.android.data.api.AuditChecklist) = false
     override suspend fun getFaqs() = emptyList<com.fieldcrm.android.data.api.FaqItem>()
@@ -138,9 +140,6 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun recordPayment(id: String, amountPaid: Double, channel: String, bankRef: String?, paymentDate: String?): String? = null
     override suspend fun getParDashboard(): String? = null
     override suspend fun uploadDocumentPdf(id: String, category: String, pdfBytes: ByteArray, fileName: String): String? = null
-    override suspend fun getCommitteeVotesFull(applicationId: String): com.fieldcrm.android.data.api.CommitteeVotesFullResponse? = null
-    override suspend fun submitCommitteeVote(id: String, recommendation: String, notes: String): String? = null
-    override suspend fun completeCommitteeReview(id: String, recommendation: String): String? = null
     override suspend fun getEdReview(id: String): String? = null
     override suspend fun submitEdApprove(id: String, action: String): String? = null
     override suspend fun getMdReview(id: String): String? = null
@@ -150,7 +149,7 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun listUsers() = emptyList<com.fieldcrm.android.data.api.MobileUserItem>()
     override suspend fun createUser(fullName: String, email: String, role: String, password: String) = false
     override suspend fun pullCreditBureau(id: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
-    override suspend fun getCreditChecklist(id: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
+    override suspend fun getCreditChecklist(id: String, context: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
     override suspend fun updateCreditChecklist(id: String, request: com.fieldcrm.android.data.api.CreditChecklistUpdateRequest) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
     override suspend fun generateClientLink(id: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
     override suspend fun generateGuarantorLink(id: String, slot: Int) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
@@ -182,10 +181,17 @@ private object NoopMobileApiService : MobileApiService {
 class ApplicationRepository(
     private val database: AppDatabase,
     private val client: FieldCRMClient,
-    private val apiService: MobileApiService
+    private val apiService: MobileApiService,
+    private val context: android.content.Context
 ) {
     private val queries = database.appDatabaseQueries
     private val syncRepository = SyncRepository(database, client)
+
+    suspend fun advanceWorkflow(id: String, notes: String) = apiService.advanceWorkflow(id, notes)
+
+    suspend fun getBureauData(id: String) = apiService.getBureauData(id)
+
+    suspend fun getCreditChecklist(id: String, context: String) = apiService.getCreditChecklist(id, context)
 
     fun getCachedApplications(): List<LoanApplicationModel> {
         return queries.selectAllApplications().executeAsList().map { it.toModel() }
@@ -194,7 +200,10 @@ class ApplicationRepository(
     suspend fun getFullDetail(id: String): ApplicationDetailResult? {
         val json = apiService.getApplicationDetail(id) ?: return null
         return try {
-            val root = Json.parseToJsonElement(json).jsonObject
+            val response = Json.decodeFromString<com.fieldcrm.android.data.api.ApplicationDetailResponse>(json)
+            if (response.readiness == null || response.intake == null) {
+                throw IllegalStateException("Missing critical API fields")
+            }
 
             fun safeValue(el: JsonElement): Any? = when (el) {
                 is JsonNull -> null
@@ -211,13 +220,12 @@ class ApplicationRepository(
 
             fun JsonElement.asObjEntries() = (this as? JsonObject)?.entries
 
-            val readiness: Map<String, Any> = root["readiness"]?.asObjEntries()
-                ?.mapNotNull { (k, v) -> safeValue(v)?.let { k to it } }
-                ?.toMap() ?: emptyMap()
+            val readiness: Map<String, Any> = response.readiness.mapNotNull { (k, v) -> safeValue(v)?.let { k to it } }.toMap()
 
-            val documents: List<Map<String, Any>> = (root["documents"] as? JsonArray)?.mapNotNull { docEl ->
+            val documents: List<Map<String, Any>> = response.documents?.mapNotNull { docEl ->
                 val d = docEl as? JsonObject ?: return@mapNotNull null
-                val url = (d["secure_url"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
+                val url = (d["preview_url"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
+                    ?: (d["secure_url"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
                     ?: (d["file_url"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
                     ?: (d["cloud_preview_url"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
                     ?: (d["stored_path"] as? JsonPrimitive)?.content ?: ""
@@ -229,9 +237,7 @@ class ApplicationRepository(
                 )
             } ?: emptyList()
 
-            var intake: Map<String, Any> = root["intake"]?.asObjEntries()
-                ?.mapNotNull { (k, v) -> safeValue(v)?.let { k to it } }
-                ?.toMap() ?: emptyMap()
+            var intake: Map<String, Any> = response.intake.mapNotNull { (k, v) -> safeValue(v)?.let { k to it } }.toMap()
 
             // If intake lacks flat guarantor keys, fetch from guarantor endpoint and merge
             if (!intake.containsKey("guarantor_1_name")) {
@@ -262,9 +268,7 @@ class ApplicationRepository(
                 intake = merged
             }
 
-            val visitation: Map<String, Any> = root["visitation"]?.asObjEntries()
-                ?.mapNotNull { (k, v) -> safeValue(v)?.let { k to it } }
-                ?.toMap() ?: emptyMap()
+            val visitation: Map<String, Any> = response.visitation?.mapNotNull { (k, v) -> safeValue(v)?.let { k to it } }?.toMap() ?: emptyMap()
 
             ApplicationDetailResult(readiness, documents, intake, visitation)
         } catch (e: Exception) {
@@ -297,6 +301,10 @@ class ApplicationRepository(
     suspend fun generateOffer(id: String) = apiService.generateOffer(id)
 
     suspend fun pullCreditBureau(id: String) = apiService.pullCreditBureau(id)
+
+    suspend fun getOcrFields(id: String): com.fieldcrm.android.data.api.OcrFieldsResponse? {
+        return apiService.getOcrFields(id)
+    }
 
     suspend fun recordDisbursement(
         id: String,
@@ -346,8 +354,8 @@ class ApplicationRepository(
         }
     }
 
-    suspend fun approveApplication(id: String): Boolean {
-        return apiService.approveApplication(id) != null
+    suspend fun approveApplication(id: String, notes: String, kycAttested: Boolean, collateralAttested: Boolean): Boolean {
+        return apiService.approveApplication(id, notes, kycAttested, collateralAttested) != null
     }
 
     suspend fun returnApplication(id: String, reason: String, corrections: List<String> = emptyList(), notes: String): Boolean {
@@ -375,6 +383,7 @@ class ApplicationRepository(
             timestamp = System.currentTimeMillis(),
             attempts = 0
         )
+        com.fieldcrm.android.sync.AndroidSyncWorker.scheduleOneTime(context)
     }
 
     suspend fun submitIntakeToServer(

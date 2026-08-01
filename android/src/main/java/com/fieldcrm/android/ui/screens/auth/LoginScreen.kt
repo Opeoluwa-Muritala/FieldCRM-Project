@@ -35,6 +35,12 @@ import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.FieldTextField
 import com.fieldcrm.android.ui.components.PrimaryButton
 import com.fieldcrm.android.ui.components.SecondaryButton
+import com.fieldcrm.android.ui.components.FieldEmail
+import com.fieldcrm.android.ui.components.FieldPassword
+import com.fieldcrm.android.ui.components.KeyboardAwareForm
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.viewmodel.LoginUiState
@@ -44,35 +50,20 @@ import kotlinx.coroutines.delay
 @Composable
 fun LoginScreenView(
     viewModel: LoginViewModel,
-    hasEnrolledBiometrics: Boolean,
     hasPasscode: Boolean,
-    biometricNotice: String? = null,
-    onDismissBiometricNotice: () -> Unit = {},
     onLoginSuccess: (UserSession) -> Unit,
     onForgotPasswordClick: () -> Unit,
-    onBiometricClick: () -> Unit,
     onPasscodeClick: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(hasEnrolledBiometrics) {
-        if (hasEnrolledBiometrics) {
-            kotlinx.coroutines.delay(400)
-            onBiometricClick()
-        }
-    }
-
     LoginScreenContent(
         state = state,
-        hasEnrolledBiometrics = hasEnrolledBiometrics,
         hasPasscode = hasPasscode,
-        biometricNotice = biometricNotice,
-        onDismissBiometricNotice = onDismissBiometricNotice,
         onEmailChange = { viewModel.setEmail(it) },
         onPasswordChange = { viewModel.setPassword(it) },
         onLoginClick = { viewModel.login(onSuccess = onLoginSuccess) },
         onForgotPasswordClick = onForgotPasswordClick,
-        onBiometricClick = onBiometricClick,
         onPasscodeClick = onPasscodeClick
     )
 }
@@ -80,15 +71,11 @@ fun LoginScreenView(
 @Composable
 fun LoginScreenContent(
     state: LoginUiState,
-    hasEnrolledBiometrics: Boolean,
     hasPasscode: Boolean = false,
-    biometricNotice: String? = null,
-    onDismissBiometricNotice: () -> Unit = {},
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onLoginClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
-    onBiometricClick: () -> Unit = {},
     onPasscodeClick: () -> Unit = {}
 ) {
     var emailError by remember { mutableStateOf<String?>(null) }
@@ -101,6 +88,8 @@ fun LoginScreenContent(
     var triggerShake by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
+    val emailFocusRequester = remember { FocusRequester() }
+    val passwordFocusRequester = remember { FocusRequester() }
 
     // Error shake animation sequence
     LaunchedEffect(triggerShake) {
@@ -137,14 +126,16 @@ fun LoginScreenContent(
             .background(FieldTheme.colors.gray950),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+        KeyboardAwareForm(
+            modifier = Modifier.fillMaxSize()
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
             Box(
                 modifier = Modifier
                     .widthIn(max = 420.dp)
@@ -195,46 +186,6 @@ fun LoginScreenContent(
  
                         Spacer(modifier = Modifier.height(if (isNetworkError) 16.dp else 32.dp))
 
-                        if (biometricNotice != null) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(
-                                        FieldTheme.colors.statusWarning.copy(alpha = 0.1f),
-                                        RoundedCornerShape(8.dp)
-                                    )
-                                    .border(
-                                        1.dp,
-                                        FieldTheme.colors.statusWarning.copy(alpha = 0.45f),
-                                        RoundedCornerShape(8.dp)
-                                    )
-                                    .clickable(onClick = onDismissBiometricNotice)
-                                    .padding(horizontal = 12.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = FieldIcons.FingerprintOutlined,
-                                    contentDescription = "Biometric sign-in notice",
-                                    tint = FieldTheme.colors.statusWarning,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = biometricNotice,
-                                    style = FieldTheme.typography.body.copy(fontSize = 13.sp),
-                                    color = FieldTheme.colors.gray100,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Icon(
-                                    imageVector = FieldIcons.CloseOutlined,
-                                    contentDescription = "Dismiss biometric sign-in notice",
-                                    tint = FieldTheme.colors.gray400,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-
                         // Network / server error banner (shown above fields, not tied to a specific input)
                         if (isNetworkError) {
                             Row(
@@ -265,7 +216,7 @@ fun LoginScreenContent(
                         }
 
                         // Email or Staff ID Field with Blur Validation
-                        FieldTextField(
+                        FieldEmail(
                             value = state.email,
                             onValueChange = {
                                 onEmailChange(it)
@@ -275,13 +226,9 @@ fun LoginScreenContent(
                             placeholder = "e.g. staff@mainstreetmfb.com",
                             enabled = !state.isLoading,
                             errorText = emailError,
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = FieldIcons.PersonOutlined,
-                                    contentDescription = null,
-                                    tint = FieldTheme.colors.gray400
-                                )
-                            },
+                            focusRequester = emailFocusRequester,
+                            imeAction = ImeAction.Next,
+                            keyboardActions = KeyboardActions(onNext = { passwordFocusRequester.requestFocus() }),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .onFocusChanged { focusState ->
@@ -296,7 +243,7 @@ fun LoginScreenContent(
                         Spacer(modifier = Modifier.height(16.dp))
  
                         // Password Field with Show/Hide toggle
-                        FieldTextField(
+                        FieldPassword(
                             value = state.password,
                             onValueChange = {
                                 onPasswordChange(it)
@@ -304,25 +251,14 @@ fun LoginScreenContent(
                             },
                             label = "Password",
                             placeholder = "••••••••",
-                            visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                             enabled = !state.isLoading,
                             errorText = passwordError,
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = FieldIcons.LockOutlined,
-                                    contentDescription = null,
-                                    tint = FieldTheme.colors.gray400
-                                )
-                            },
-                            trailingIcon = {
-                                IconButton(onClick = { showPassword = !showPassword }) {
-                                    Icon(
-                                        imageVector = if (showPassword) FieldIcons.EyeOutlined else FieldIcons.EyeOffOutlined,
-                                        contentDescription = "Toggle password visibility",
-                                        tint = FieldTheme.colors.gray400
-                                    )
-                                }
-                            },
+                            focusRequester = passwordFocusRequester,
+                            imeAction = ImeAction.Done,
+                            keyboardActions = KeyboardActions(onDone = {
+                                focusManager.clearFocus()
+                                onLoginClick()
+                            }),
                             modifier = Modifier.fillMaxWidth()
                         )
  
@@ -360,23 +296,6 @@ fun LoginScreenContent(
                                 .alpha(if (inputsFilled) 1f else 0.4f)
                         )
  
-                        // Biometric option (shown after first login + enrollment)
-                        if (hasEnrolledBiometrics) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            SecondaryButton(
-                                text = "Use Face ID / Touch ID",
-                                onClick = onBiometricClick,
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = FieldIcons.FingerprintOutlined,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-
                         // Passcode option
                         if (hasPasscode) {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -447,4 +366,5 @@ fun LoginScreenContent(
             }
         }
     }
+}
 }

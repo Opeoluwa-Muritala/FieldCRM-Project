@@ -22,6 +22,14 @@ class NotificationsViewModel(
 
     private val _uiState = MutableStateFlow(NotificationsUiState())
     val uiState: StateFlow<NotificationsUiState> = _uiState.asStateFlow()
+    private var lastRefreshTime = 0L
+
+    fun refreshIfStale() {
+        val now = System.currentTimeMillis()
+        if (now - lastRefreshTime > 30000L) {
+            load()
+        }
+    }
 
     init {
         load()
@@ -31,6 +39,9 @@ class NotificationsViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             val result = repository.getNotifications()
+            if (result.isNotEmpty()) {
+                lastRefreshTime = System.currentTimeMillis()
+            }
             _uiState.update { it.copy(notifications = result, isLoading = false) }
         }
     }

@@ -35,18 +35,24 @@ fun CreditOfficerReviewScreen(
     onBackClick: () -> Unit,
     onCompleteReview: () -> Unit
 ) {
-    var incomeStatement by remember { mutableStateOf("") }
-    var dtiRatio by remember { mutableFloatStateOf(0.32f) } // 32%
+    var dtiRatio by remember { mutableFloatStateOf(0f) }
     var recommendationDecision by remember { mutableStateOf("Recommend Approval") } // "Recommend Approval", "Recommend Rejection", "Return for Correction"
-    var recommendationNotes by remember { mutableStateOf("Applicant leverage index fits normal limits. Strong guarantor signature match verified.") }
+    var recommendationNotes by remember { mutableStateOf("") }
 
     val isDtiLimitExceeded = dtiRatio > 0.40f
     val appState by applicationViewModel.uiState.collectAsState()
+    LaunchedEffect(application.id) {
+        applicationViewModel.loadBureauData(application.id)
+        applicationViewModel.loadOcrFields(application.id)
+    }
+    LaunchedEffect(appState.bureauData) {
+        dtiRatio = appState.bureauData?.dti_ratio?.toFloat() ?: 0f
+    }
 
     Scaffold(
         topBar = {
             FieldTopAppBar(
-                title = "Risk Underwriting Center",
+                title = "Credit Analysis",
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -73,7 +79,7 @@ fun CreditOfficerReviewScreen(
                             onCompleteReview()
                         }
                     },
-                    enabled = !isDtiLimitExceeded && creditScores[creditScoreIndex].second != StatusChipVariant.Missing && recommendationNotes.isNotEmpty() && !appState.isLoading,
+                    enabled = appState.bureauData != null && !isDtiLimitExceeded && recommendationNotes.isNotEmpty() && !appState.isLoading,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -184,7 +190,8 @@ fun CreditOfficerReviewScreen(
                             
                             Slider(
                                 value = dtiRatio,
-                                onValueChange = { dtiRatio = it },
+                                onValueChange = {},
+                                enabled = false,
                                 valueRange = 0.1f..0.7f,
                                 colors = SliderDefaults.colors(
                                     thumbColor = if (isDtiLimitExceeded) FieldTheme.colors.statusDanger else FieldTheme.colors.purple600,
@@ -232,22 +239,18 @@ fun CreditOfficerReviewScreen(
                             FieldDivider()
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            // Affordability Table
+                            // Bureau assessment supplied by the server
                             Text(
-                                text = "AFFORDABILITY TABLE",
+                                text = "BUREAU ASSESSMENT",
                                 style = FieldTheme.typography.label,
                                 color = FieldTheme.colors.gray500
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            val monthlyIncome = (application.amount ?: 1.0) / (application.tenor_months ?: 1).coerceAtLeast(1)
-                            val monthlyInstalment = monthlyIncome * (1 + (application.interest_rate ?: 0.0) / 100 / 12)
-                            val estimatedExpenses = monthlyIncome * 0.30
-                            val netDisposable = monthlyIncome - estimatedExpenses - monthlyInstalment
                             val affordabilityRows = listOf(
-                                Triple("Monthly Income (Est.)", "₦ ${String.format(Locale.US, "%,.0f", monthlyIncome * 3)}", FieldTheme.colors.statusSuccess),
-                                Triple("Monthly Instalment", "₦ ${String.format(Locale.US, "%,.0f", monthlyInstalment)}", FieldTheme.colors.statusWarning),
-                                Triple("Est. Living Expenses (30%)", "₦ ${String.format(Locale.US, "%,.0f", estimatedExpenses * 3)}", FieldTheme.colors.gray400),
-                                Triple("Net Disposable Income", "₦ ${String.format(Locale.US, "%,.0f", netDisposable * 3)}", if (netDisposable > 0) FieldTheme.colors.statusSuccess else FieldTheme.colors.statusDanger)
+                                Triple("Credit Score", appState.bureauData?.credit_score?.toString() ?: "Unavailable", FieldTheme.colors.gray300),
+                                Triple("Income Verified", if (appState.bureauData?.income_verified == true) "Yes" else "No", if (appState.bureauData?.income_verified == true) FieldTheme.colors.statusSuccess else FieldTheme.colors.statusWarning),
+                                Triple("DTI Ratio", appState.bureauData?.let { String.format(Locale.US, "%.1f%%", it.dti_ratio) } ?: "Unavailable", if (isDtiLimitExceeded) FieldTheme.colors.statusDanger else FieldTheme.colors.statusSuccess),
+                                Triple("Bureau Source", appState.bureauData?.source?.takeIf { it.isNotBlank() } ?: "Unavailable", FieldTheme.colors.gray300)
                             )
                             affordabilityRows.forEachIndexed { idx, (label, value, color) ->
                                 Row(
@@ -300,13 +303,10 @@ fun CreditOfficerReviewScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 DetailItem(
-                                    label = "Latest server response",
-                                    value = appState.bureauReport?.toString() ?: "No report loaded"
+                                    label = "Report status",
+                                    value = if (appState.bureauData != null) "Loaded from database" else "No report loaded"
                                 )
                             }
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            DetailItem(label = "Income Statement Verification", value = incomeStatement)
                         }
 
                         // Guarantor Matrix Card
@@ -347,10 +347,10 @@ fun CreditOfficerReviewScreen(
                             }
                             
                             // Matrix rows
-                            val guarantors = listOf(
-                                Triple(borrower?.guarantor_name ?: "Tunde Bakare", "Matched", StatusChipVariant.Verified),
-                                Triple("Adaeze Okonkwo", "High Confidence", StatusChipVariant.Approved)
-                            )
+                            val guarantors = borrower?.guarantor_name
+                                ?.takeIf { it.isNotBlank() }
+                                ?.let { listOf(Triple(it, "Recorded", StatusChipVariant.Verified)) }
+                                .orEmpty()
                             
                             guarantors.forEachIndexed { index, item ->
                                 Row(
@@ -472,10 +472,16 @@ fun CreditOfficerReviewScreen(
                                 Text("Action", style = FieldTheme.typography.label.copy(fontSize = 10.sp), color = FieldTheme.colors.gray400, modifier = Modifier.weight(1f))
                             }
 
-                            val ocrExceptions = listOf(
-                                Triple("CAC Certificate", "42%", StatusChipVariant.Missing),
-                                Triple("Collateral Doc", "61%", StatusChipVariant.NeedsReview)
-                            )
+                            val ocrExceptions = appState.ocrFields.filter { (it.confidence ?: 0f) < 0.8f || !it.verified }.map { field ->
+                                val docName = field.field_name.replace("_", " ").replaceFirstChar { it.uppercase() }
+                                val confVal = "${((field.confidence ?: 0f) * 100).toInt()}%"
+                                val variant = when {
+                                    field.verified -> StatusChipVariant.Verified
+                                    (field.confidence ?: 0f) < 0.5f -> StatusChipVariant.Missing
+                                    else -> StatusChipVariant.LowConfidence
+                                }
+                                Triple(docName, confVal, variant)
+                            }
 
                             if (ocrExceptions.isEmpty()) {
                                 Spacer(modifier = Modifier.height(12.dp))
@@ -543,7 +549,7 @@ fun CreditOfficerReviewScreen(
 
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            FieldTextField(
+                            FieldMultilineNotes(
                                 value = recommendationNotes,
                                 onValueChange = { recommendationNotes = it },
                                 label = "Underwriter Review Notes",

@@ -20,20 +20,14 @@ import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
+import com.fieldcrm.android.ui.viewmodel.DashboardViewModel
+import org.koin.androidx.compose.koinViewModel
 
 private data class OcrExceptionItem(
     val fieldName: String,
     val applicantName: String,
     val confidencePct: Int,
     val exceptionId: String
-)
-
-private val placeholderOcrExceptions = listOf(
-    OcrExceptionItem("BVN", "Adaeze Okonkwo", 42, ""),
-    OcrExceptionItem("Guarantor Signature", "Emeka Chukwu", 28, ""),
-    OcrExceptionItem("Loan Amount", "Ngozi Adeyemi", 55, ""),
-    OcrExceptionItem("Applicant Full Name", "Fatima Bello", 38, ""),
-    OcrExceptionItem("NIN", "Chukwuemeka Eze", 47, "")
 )
 
 @Composable
@@ -43,20 +37,20 @@ fun OcrExceptionsScreen(
     onBackClick: () -> Unit,
     onResolveException: (String) -> Unit = {}
 ) {
-    val exceptions = remember(applications, borrowers) {
-        if (applications.isNotEmpty()) {
-            applications.map { app ->
-                val borrower = borrowers.find { it.id == app.id }
+    val dashboardViewModel: DashboardViewModel = koinViewModel()
+    val dashboardState by dashboardViewModel.uiState.collectAsState()
+    val apiExceptions = dashboardState.metrics?.data?.exceptions.orEmpty()
+    val exceptions = remember(apiExceptions) {
+            apiExceptions.map { item ->
                 OcrExceptionItem(
-                    fieldName = "Document Review",
-                    applicantName = borrower?.name ?: "Unknown Applicant",
-                    confidencePct = 45,
-                    exceptionId = app.id
+                    fieldName = "${item.doc_type} · ${item.field_name}",
+                    applicantName = item.applicant_name,
+                    confidencePct = (item.confidence ?: 0.0).toInt(),
+                    exceptionId = item.loan_id
                 )
             }
-        } else placeholderOcrExceptions
     }
-    var isLoading by remember { mutableStateOf(false) }
+    val isLoading = dashboardState.isLoading
 
     Scaffold(
         modifier = Modifier

@@ -21,7 +21,7 @@ sealed interface LoginOutcome {
 
 interface MobileApiService {
     fun setToken(token: String)
-    /** Full credential login — calls /auth/login-mobile and returns a 30-day token for biometric reuse. */
+    /** Full credential login through /auth/login-mobile. */
     suspend fun login(username: String, password: String): TokenResponse?
     suspend fun loginWithResult(username: String, password: String): LoginOutcome
     suspend fun getMe(): MobileUser?
@@ -33,6 +33,7 @@ interface MobileApiService {
     suspend fun generateShareLink(): ShareLinkResponse?
     suspend fun createApplication(customerType: String, loanType: String, applicantName: String): String?
     suspend fun getApplicationDetail(id: String): String?
+    suspend fun fetchDocumentPreview(url: String): ByteArray?
     suspend fun saveIntakeStep(id: String, step: Int, data: Map<String, JsonElement>): String?
     suspend fun getGuarantorData(id: String, slot: Int): String?
     suspend fun saveGuarantorStep(id: String, slot: Int, step: Int, data: Map<String, JsonElement>): String?
@@ -43,7 +44,7 @@ interface MobileApiService {
     suspend fun submitVisitationReport(id: String, metWith: String, premises: String, direction: String): String?
     suspend fun submitVisitationSignoff(id: String, decision: String, notes: String): String?
     suspend fun submitCreditReview(id: String, decision: String, notes: String): String?
-    suspend fun approveApplication(id: String): String?
+    suspend fun approveApplication(id: String, notes: String, kycAttested: Boolean, collateralAttested: Boolean): String?
     suspend fun returnApplication(id: String, reason: String, corrections: List<String> = emptyList(), notes: String): String?
     suspend fun getNotifications(): List<ApiNotification>
     suspend fun markNotificationRead(id: String): Boolean
@@ -51,8 +52,8 @@ interface MobileApiService {
     suspend fun getConfig(): AppConfig?
     suspend fun search(query: String): SearchResponse?
     suspend fun getAuditTrail(applicationId: String): List<AuditTrailEvent>
+    suspend fun getGlobalAuditTrail(): List<AuditTrailEvent>
     suspend fun getBureauData(applicationId: String): BureauData?
-    suspend fun getCommitteeVotes(applicationId: String): CommitteeVotes?
     suspend fun getAuditChecklist(applicationId: String): AuditChecklist?
     suspend fun saveAuditChecklist(applicationId: String, checklist: AuditChecklist): Boolean
     suspend fun getFaqs(): List<FaqItem>
@@ -61,7 +62,7 @@ interface MobileApiService {
     suspend fun resetPassword(token: String, newPassword: String): Boolean
 
     // CRM review
-    suspend fun submitCrmReview(id: String, decision: String, notes: String): String?
+    suspend fun submitCrmReview(id: String, decision: String, notes: String, bureau1: Boolean, bureau2: Boolean, crms: Boolean, ncr: Boolean): String?
 
     // Executive approval
     suspend fun submitExecutiveApprove(id: String): String?
@@ -75,11 +76,6 @@ interface MobileApiService {
 
     // Multi-page document upload (PDF assembled on device)
     suspend fun uploadDocumentPdf(id: String, category: String, pdfBytes: ByteArray, fileName: String): String?
-
-    // Committee review
-    suspend fun getCommitteeVotesFull(applicationId: String): CommitteeVotesFullResponse?
-    suspend fun submitCommitteeVote(id: String, recommendation: String, notes: String): String?
-    suspend fun completeCommitteeReview(id: String, recommendation: String): String?
 
     // ED approval
     suspend fun getEdReview(id: String): String?
@@ -98,7 +94,7 @@ interface MobileApiService {
     suspend fun createUser(fullName: String, email: String, role: String, password: String): Boolean
 
     suspend fun pullCreditBureau(id: String): ApiResult<JsonElement>
-    suspend fun getCreditChecklist(id: String): ApiResult<CreditChecklistResponse>
+    suspend fun getCreditChecklist(id: String, context: String = "credit"): ApiResult<CreditChecklistResponse>
     suspend fun updateCreditChecklist(id: String, request: CreditChecklistUpdateRequest): ApiResult<CreditChecklistItem>
     suspend fun generateClientLink(id: String): ApiResult<SigningLinkResponse>
     suspend fun generateGuarantorLink(id: String, slot: Int): ApiResult<SigningLinkResponse>
@@ -162,9 +158,148 @@ data class DashboardMetrics(
     val policy_breaches: Int = 0,
     val audited_today: Int = 0,
     val board_tickets: Int = 0,
-    val mcr_disbursed: Double = 0.0,
     val alert_escalations: Int = 0,
-    val decisions_signed: Int = 0
+    val decisions_signed: Int = 0,
+    val user: DashboardUser? = null,
+    val data: DashboardData? = null
+)
+
+@kotlinx.serialization.Serializable
+data class DashboardUser(
+    val id: String = "",
+    val full_name: String = "",
+    val role: String = "",
+    val display_role: String = ""
+)
+
+@kotlinx.serialization.Serializable
+data class RelationshipOfficerMetrics(
+    val my_applications: Int = 0,
+    val pending_upload: Int = 0,
+    val visits_due: Int = 0,
+    val returned: Int = 0,
+    val ocr_review: Int = 0,
+    val drafts: Int = 0,
+    val awaiting_concurrence: Int = 0,
+    val pending_signoffs: Int = 0,
+    val approved_today: Int = 0,
+    val returned_this_week: Int = 0,
+    val supervisory_reviews: Int = 0,
+    val reviews_due: Int = 0,
+    val ocr_exceptions: Int = 0,
+    val reviewed_today: Int = 0,
+    val crm_queue: Int = 0,
+    val disbursed_total: Int = 0,
+    val par30_pct: Double = 0.0,
+    val unverified_documents: Int = 0,
+    val critical_ocr_gaps: Int = 0,
+    val workflow_exceptions: Int = 0,
+    val audit_events_today: Int = 0,
+    val ed_queue: Int = 0,
+    val md_queue: Int = 0,
+    val legal_queue: Int = 0,
+    val active_users: Int = 0,
+    val system_events: Int = 0,
+    val failed_jobs: Int = 0,
+    val config_alerts: Int = 0,
+    val active_loans: Int = 0,
+    val blocked_files: Int = 0,
+    val ready_for_disbursement: Int = 0,
+    val active_assigned: Int = 0,
+    val ready_amount: Double = 0.0
+)
+
+@kotlinx.serialization.Serializable
+data class DashboardTask(
+    val loan_id: String = "",
+    val ref_no: String = "",
+    val applicant_name: String = "",
+    val amount: Double? = null,
+    val stage: String = "",
+    val task_type: String = "",
+    val task_description: String = "",
+    val updated_at: String = ""
+)
+
+@kotlinx.serialization.Serializable
+data class DashboardQueueEntry(
+    val id: String = "",
+    val ref_no: String = "",
+    val applicant_name: String = "",
+    val loan_type: String = "",
+    val amount: Double? = null,
+    val stage: String = "",
+    val status: String = "",
+    val updated_at: String = "",
+    val officer_name: String? = null,
+    val visitation_status: String? = null,
+    val days_waiting: Int = 0
+)
+
+@kotlinx.serialization.Serializable
+data class DashboardSignoff(
+    val id: String = "",
+    val loan_id: String = "",
+    val ref_no: String = "",
+    val applicant_name: String = "",
+    val amount: Double? = null,
+    val visit_date: String? = null,
+    val met_with: String? = null,
+    val status: String = "",
+    val updated_at: String = "",
+    val visiting_officer_name: String? = null
+)
+
+@kotlinx.serialization.Serializable
+data class DashboardPipelineStage(
+    val stage: String = "",
+    val count: Int = 0
+)
+
+@kotlinx.serialization.Serializable
+data class DashboardCreditReview(
+    val id: String = "",
+    val ref_no: String = "",
+    val applicant_name: String = "",
+    val loan_type: String = "",
+    val amount: Double? = null,
+    val exception_count: Int = 0
+)
+
+@kotlinx.serialization.Serializable
+data class DashboardOcrException(
+    val id: String = "",
+    val loan_id: String = "",
+    val applicant_name: String = "",
+    val doc_type: String = "",
+    val field_name: String = "",
+    val confidence: Double? = null
+)
+
+@kotlinx.serialization.Serializable
+data class DashboardVisit(
+    val loan_id: String = "",
+    val ref_no: String = "",
+    val applicant_name: String = "",
+    val amount: Double? = null,
+    val stage: String = "",
+    val application_date: String = ""
+)
+
+@kotlinx.serialization.Serializable
+data class DashboardData(
+    val metrics: RelationshipOfficerMetrics = RelationshipOfficerMetrics(),
+    val tasks: List<DashboardTask> = emptyList(),
+    val queue: List<DashboardQueueEntry> = emptyList(),
+    val visits_due: List<DashboardVisit> = emptyList(),
+    val signoffs: List<DashboardSignoff> = emptyList(),
+    val pipeline: List<DashboardPipelineStage> = emptyList(),
+    val reviews: List<DashboardCreditReview> = emptyList(),
+    val exceptions: List<DashboardOcrException> = emptyList(),
+    val crm_queue: List<DashboardQueueEntry> = emptyList(),
+    val ed_queue: List<DashboardQueueEntry> = emptyList(),
+    val md_queue: List<DashboardQueueEntry> = emptyList(),
+    val legal_queue: List<DashboardQueueEntry> = emptyList()
 )
 
 @kotlinx.serialization.Serializable
@@ -233,13 +368,6 @@ data class BureauData(
 )
 
 @kotlinx.serialization.Serializable
-data class CommitteeVotes(
-    val yes_votes: Int = 0,
-    val total_votes: Int = 0,
-    val quorum: Int = 3
-)
-
-@kotlinx.serialization.Serializable
 data class AuditChecklist(
     val consent_verified: Boolean = false,
     val signature_matched: Boolean = false,
@@ -272,8 +400,15 @@ data class CreateUserRequest(
 
 class MobileApiServiceImpl(
     private val client: HttpClient,
-    private val baseUrl: String
+    private val baseUrl: String,
+    private val sessionStore: com.fieldcrm.android.core.session.SessionStore
 ) : MobileApiService {
+
+    private fun checkAdminDenial() {
+        if (sessionStore.load()?.role == com.fieldcrm.android.core.session.UserRole.SYSTEM_ADMIN) {
+            throw IllegalStateException("403 Forbidden: System Admin cannot access loan processing endpoints")
+        }
+    }
 
     private var token: String? = null
 
@@ -284,6 +419,24 @@ class MobileApiServiceImpl(
     private fun HttpRequestBuilder.authHeader() {
         token?.let {
             header(HttpHeaders.Authorization, "Bearer $it")
+        }
+        if (sessionStore.load()?.role == com.fieldcrm.android.core.session.UserRole.SYSTEM_ADMIN) {
+            val path = url.encodedPath
+            val allowedPaths = setOf(
+                "/api/v1/mobile/me",
+                "/api/v1/mobile/dashboard",
+                "/api/v1/mobile/system-activity",
+                "/api/v1/mobile/users",
+                "/api/v1/mobile/notifications",
+                "/api/v1/mobile/config",
+                "/api/v1/mobile/audit-trail",
+                "/api/v1/mobile/faqs",
+                "/api/v1/mobile/onboarding"
+            )
+            val isAllowed = allowedPaths.any { path.startsWith(it) } || path.startsWith("/api/v1/auth")
+            if (!isAllowed) {
+                throw IllegalStateException("403 Forbidden: System Admin cannot access loan processing endpoints ($path)")
+            }
         }
     }
 
@@ -430,6 +583,16 @@ class MobileApiServiceImpl(
             }
             if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
         } catch (e: Exception) {
+            null
+        }
+    }
+
+    override suspend fun fetchDocumentPreview(url: String): ByteArray? {
+        return try {
+            val resolvedUrl = if (url.startsWith("http://") || url.startsWith("https://")) url else "$baseUrl${if (url.startsWith('/')) url else "/$url"}"
+            val response: HttpResponse = client.get(resolvedUrl) { authHeader() }
+            if (response.status == HttpStatusCode.OK) response.body<ByteArray>() else null
+        } catch (_: Exception) {
             null
         }
     }
@@ -645,10 +808,16 @@ class MobileApiServiceImpl(
         }
     }
 
-    override suspend fun approveApplication(id: String): String? {
+    override suspend fun approveApplication(id: String, notes: String, kycAttested: Boolean, collateralAttested: Boolean): String? {
         return try {
             val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/applications/$id/approve") {
                 authHeader()
+                contentType(ContentType.Application.Json)
+                setBody(mapOf(
+                    "notes" to notes,
+                    "kyc_attested" to kycAttested,
+                    "collateral_attested" to collateralAttested
+                ))
             }
             if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
         } catch (e: Exception) {
@@ -728,18 +897,16 @@ class MobileApiServiceImpl(
         } catch (e: Exception) { emptyList() }
     }
 
+    override suspend fun getGlobalAuditTrail(): List<AuditTrailEvent> {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/audit-trail") { authHeader() }
+            if (response.status == HttpStatusCode.OK) response.body() else emptyList()
+        } catch (_: Exception) { emptyList() }
+    }
+
     override suspend fun getBureauData(applicationId: String): BureauData? {
         return try {
             val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/applications/$applicationId/bureau") {
-                authHeader()
-            }
-            if (response.status == HttpStatusCode.OK) response.body() else null
-        } catch (e: Exception) { null }
-    }
-
-    override suspend fun getCommitteeVotes(applicationId: String): CommitteeVotes? {
-        return try {
-            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/applications/$applicationId/committee-votes") {
                 authHeader()
             }
             if (response.status == HttpStatusCode.OK) response.body() else null
@@ -803,12 +970,16 @@ class MobileApiServiceImpl(
         } catch (e: Exception) { false }
     }
 
-    override suspend fun submitCrmReview(id: String, decision: String, notes: String): String? {
+    override suspend fun submitCrmReview(id: String, decision: String, notes: String, bureau1: Boolean, bureau2: Boolean, crms: Boolean, ncr: Boolean): String? {
         return try {
             val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/applications/$id/crm-review") {
                 authHeader()
                 contentType(ContentType.Application.Json)
-                setBody(CrmReviewRequest(decision, notes))
+                setBody(mapOf(
+                    "decision" to decision, "notes" to notes,
+                    "bureau_1_verified" to bureau1, "bureau_2_verified" to bureau2,
+                    "crms_verified" to crms, "ncr_verified" to ncr
+                ))
             }
             if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
         } catch (e: Exception) { null }
@@ -857,37 +1028,6 @@ class MobileApiServiceImpl(
 
     override suspend fun uploadDocumentPdf(id: String, category: String, pdfBytes: ByteArray, fileName: String): String? {
         return uploadDocument(id, category, pdfBytes, fileName)
-    }
-
-    override suspend fun getCommitteeVotesFull(applicationId: String): CommitteeVotesFullResponse? {
-        return try {
-            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/applications/$applicationId/committee-votes-full") {
-                authHeader()
-            }
-            if (response.status == HttpStatusCode.OK) response.body() else null
-        } catch (e: Exception) { null }
-    }
-
-    override suspend fun submitCommitteeVote(id: String, recommendation: String, notes: String): String? {
-        return try {
-            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/applications/$id/committee-vote") {
-                authHeader()
-                contentType(ContentType.Application.Json)
-                setBody(CommitteeVoteRequest(recommendation, notes))
-            }
-            if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
-        } catch (e: Exception) { null }
-    }
-
-    override suspend fun completeCommitteeReview(id: String, recommendation: String): String? {
-        return try {
-            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/applications/$id/committee-complete") {
-                authHeader()
-                contentType(ContentType.Application.Json)
-                setBody(CommitteeCompleteRequest(recommendation))
-            }
-            if (response.status == HttpStatusCode.OK) response.bodyAsText() else null
-        } catch (e: Exception) { null }
     }
 
     override suspend fun getEdReview(id: String): String? {
@@ -976,8 +1116,11 @@ class MobileApiServiceImpl(
         client.post("$baseUrl/api/v1/mobile/applications/$id/credit-bureau-pull") { authHeader() }
     }
 
-    override suspend fun getCreditChecklist(id: String) = resultOf<CreditChecklistResponse> {
-        client.get("$baseUrl/api/v1/mobile/applications/$id/credit-checklist") { authHeader() }
+    override suspend fun getCreditChecklist(id: String, context: String) = resultOf<CreditChecklistResponse> {
+        client.get("$baseUrl/api/v1/mobile/applications/$id/credit-checklist") {
+            authHeader()
+            parameter("context", context)
+        }
     }
 
     override suspend fun updateCreditChecklist(id: String, request: CreditChecklistUpdateRequest) =

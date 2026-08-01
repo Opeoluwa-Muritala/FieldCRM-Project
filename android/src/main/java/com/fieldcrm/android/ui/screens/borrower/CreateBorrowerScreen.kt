@@ -8,6 +8,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
 import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -66,6 +70,7 @@ fun CreateBorrowerContent(
     onCreateClick: () -> Unit,
     onBackClick: () -> Unit
 ) {
+    val focusManager = LocalFocusManager.current
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
@@ -102,11 +107,15 @@ fun CreateBorrowerContent(
         },
         containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
-        Column(
+        val nameFocusRequester = remember { FocusRequester() }
+        val phoneFocusRequester = remember { FocusRequester() }
+        val bvnFocusRequester = remember { FocusRequester() }
+        val ninFocusRequester = remember { FocusRequester() }
+
+        KeyboardAwareForm(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
         ) {
             // Rich Header Section
             Column(
@@ -165,37 +174,28 @@ fun CreateBorrowerContent(
                     style = FieldTheme.typography.label.copy(color = FieldTheme.colors.purple400)
                 )
 
-                FieldTextField(
+                FieldFormText(
                     value = newBorrowerName,
                     onValueChange = onNameChange,
                     label = "Legal Full Name",
                     placeholder = "e.g. Adaeze Okonkwo",
                     isRequired = true,
                     enabled = !isLoading,
-                    leadingIcon = {
-                        Icon(
-                            imageVector = FieldIcons.PersonOutlined,
-                            contentDescription = "Name",
-                            tint = FieldTheme.colors.gray500
-                        )
-                    }
+                    focusRequester = nameFocusRequester,
+                    imeAction = ImeAction.Next,
+                    keyboardActions = KeyboardActions(onNext = { phoneFocusRequester.requestFocus() })
                 )
 
-                FieldTextField(
+                FieldPhone(
                     value = newBorrowerPhone,
                     onValueChange = onPhoneChange,
                     label = "Primary Mobile Number",
                     placeholder = "08012345678",
                     isRequired = true,
                     enabled = !isLoading,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    leadingIcon = {
-                        Icon(
-                            imageVector = FieldIcons.PhoneOutlined,
-                            contentDescription = "Phone",
-                            tint = FieldTheme.colors.gray500
-                        )
-                    }
+                    focusRequester = phoneFocusRequester,
+                    imeAction = ImeAction.Next,
+                    keyboardActions = KeyboardActions(onNext = { bvnFocusRequester.requestFocus() })
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -205,38 +205,30 @@ fun CreateBorrowerContent(
                     style = FieldTheme.typography.label.copy(color = FieldTheme.colors.purple400)
                 )
 
-                FieldTextField(
+                FieldInteger(
                     value = newBorrowerBvn,
-                    onValueChange = onBvnChange,
+                    onValueChange = { if (it.length <= 11) onBvnChange(it) },
                     label = "Bank Verification Number (BVN)",
                     placeholder = "11-digit BVN",
                     isRequired = true,
                     enabled = !isLoading,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    leadingIcon = {
-                        Icon(
-                            imageVector = FieldIcons.FingerprintOutlined,
-                            contentDescription = "BVN",
-                            tint = FieldTheme.colors.gray500
-                        )
-                    }
+                    focusRequester = bvnFocusRequester,
+                    imeAction = ImeAction.Next,
+                    keyboardActions = KeyboardActions(onNext = { ninFocusRequester.requestFocus() })
                 )
 
-                FieldTextField(
+                FieldInteger(
                     value = newBorrowerNin,
-                    onValueChange = onNinChange,
+                    onValueChange = { if (it.length <= 11) onNinChange(it) },
                     label = "National Identification Number (NIN)",
                     placeholder = "11-digit NIN",
                     isRequired = true,
                     enabled = !isLoading,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    leadingIcon = {
-                        Icon(
-                            imageVector = FieldIcons.BadgeOutlined, // Reusing PersonOutlined or another if Badge missing. Let's assume Badge exists or I use PersonOutlined. But let's check what I have. Wait, in previous search BadgeOutlined wasn't visible but maybe it is. Wait, I will use ShieldOutlined if Badge isn't guaranteed. Wait, I'll just use FingerprintOutlined again or ShieldOutlined for NIN just to be safe. Actually, I saw BadgeOutlined used in original! Ah yes, line 186 in original had BadgeOutlined. So it exists.
-                            contentDescription = "NIN",
-                            tint = FieldTheme.colors.gray500
-                        )
-                    }
+                    focusRequester = ninFocusRequester,
+                    imeAction = ImeAction.Done,
+                    keyboardActions = KeyboardActions(onDone = {
+                        focusManager.clearFocus()
+                    })
                 )
 
                 if (errorMessage != null) {

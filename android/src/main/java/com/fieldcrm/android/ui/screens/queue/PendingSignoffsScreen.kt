@@ -20,20 +20,14 @@ import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
+import com.fieldcrm.android.ui.viewmodel.DashboardViewModel
+import org.koin.androidx.compose.koinViewModel
 
 private data class PendingSignoffItem(
     val applicantName: String,
     val loanOfficer: String,
     val visitDate: String,
     val reportId: String
-)
-
-private val placeholderSignoffItems = listOf(
-    PendingSignoffItem("Adaeze Okonkwo", "Samuel Okeke", "2026-07-01", ""),
-    PendingSignoffItem("Ngozi Adeyemi", "Grace Nwosu", "2026-06-30", ""),
-    PendingSignoffItem("Emeka Chukwu", "Samuel Okeke", "2026-06-30", ""),
-    PendingSignoffItem("Chinedu Obi", "Aisha Mohammed", "2026-06-29", ""),
-    PendingSignoffItem("Fatima Bello", "Grace Nwosu", "2026-06-29", "")
 )
 
 @Composable
@@ -43,20 +37,20 @@ fun PendingSignoffsScreen(
     onBackClick: () -> Unit,
     onViewReport: (String) -> Unit = {}
 ) {
-    val signoffItems = remember(applications, borrowers) {
-        if (applications.isNotEmpty()) {
-            applications.map { app ->
-                val borrower = borrowers.find { it.id == app.id }
+    val dashboardViewModel: DashboardViewModel = koinViewModel()
+    val dashboardState by dashboardViewModel.uiState.collectAsState()
+    val signoffs = dashboardState.metrics?.data?.signoffs.orEmpty()
+    val signoffItems = remember(signoffs) {
+            signoffs.map { app ->
                 PendingSignoffItem(
-                    applicantName = borrower?.name ?: "Unknown Applicant",
-                    loanOfficer = "Loan Officer",
-                    visitDate = "2026-07-02",
-                    reportId = app.id
+                    applicantName = app.applicant_name,
+                    loanOfficer = app.visiting_officer_name ?: "Relationship Officer",
+                    visitDate = app.visit_date ?: "Date unavailable",
+                    reportId = app.loan_id.ifBlank { app.id }
                 )
             }
-        } else placeholderSignoffItems
     }
-    var isLoading by remember { mutableStateOf(false) }
+    val isLoading = dashboardState.isLoading
 
     Scaffold(
         modifier = Modifier
