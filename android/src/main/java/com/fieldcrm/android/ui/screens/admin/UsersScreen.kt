@@ -43,6 +43,7 @@ fun UsersScreen(
     val scope = rememberCoroutineScope()
 
     var pageState by remember { mutableStateOf<UsersPageState>(UsersPageState.Loading) }
+    // Search text can contain user identifiers, so keep it out of saved instance state.
     var searchQuery by remember { mutableStateOf("") }
     var branches by remember { mutableStateOf<List<JsonObject>>(emptyList()) }
     var selectedUserForDetail by remember { mutableStateOf<MobileUserItem?>(null) }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -50,8 +51,8 @@ fun GuarantorsFormContent(
     onSaveComplete: (name: String, phone: String) -> Unit
 ) {
     // Wizard navigation
-    var currentSlot by remember { mutableIntStateOf(1) }   // 1 or 2
-    var currentStep by remember { mutableIntStateOf(1) }   // 1–8
+    var currentSlot by rememberSaveable(application.id) { mutableIntStateOf(1) }   // 1 or 2
+    var currentStep by rememberSaveable(application.id) { mutableIntStateOf(1) }   // 1–8
 
     // ── Slot 1 fields ──────────────────────────────────────────────────────────
     var g1FullName       by remember { mutableStateOf(borrower.guarantor_name ?: "") }

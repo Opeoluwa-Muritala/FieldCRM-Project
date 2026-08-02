@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.fieldcrm.android.core.network.ApiResult
@@ -31,7 +32,7 @@ private sealed interface ActivityPageState {
 @Composable
 fun SystemActivityScreen(onBackClick: (() -> Unit)? = null) {
     val api: MobileApiService = koinInject()
-    var page by remember { mutableIntStateOf(1) }
+    var page by rememberSaveable { mutableIntStateOf(1) }
     var state by remember { mutableStateOf<ActivityPageState>(ActivityPageState.Loading) }
     var selected by remember { mutableStateOf<SystemActivityItem?>(null) }
 

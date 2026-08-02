@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -107,9 +108,9 @@ fun LoanApplicationFormContent(
         bank: String, acc: String
     ) -> Unit
 ) {
-    var currentTab by remember { mutableIntStateOf(0) }
-    var isDirty by remember { mutableStateOf(false) }
-    var showUnsavedDialog by remember { mutableStateOf(false) }
+    var currentTab by rememberSaveable(application.id) { mutableIntStateOf(0) }
+    var isDirty by rememberSaveable(application.id) { mutableStateOf(false) }
+    var showUnsavedDialog by rememberSaveable(application.id) { mutableStateOf(false) }
 
     val intake = appDetail?.intake ?: emptyMap()
     fun intakeStr(vararg keys: String): String {
@@ -283,7 +284,7 @@ fun LoanApplicationFormContent(
                             val hasDirectDebitMandate = docs.any { (it["doc_type"] as? String)?.equals("direct_debit_mandate", ignoreCase = true) == true }
                             val hasRequiredDocs = hasOfferAcceptance && hasDisbursementMandate && hasDirectDebitMandate
 
-                            val ocrVerified = (appDetail?.readiness?.get("ocr_verified") as? Boolean) ?: true
+                            val ocrVerified = (appDetail?.readiness?.get("ocr_verified") as? Boolean) ?: false
 
                             val isGuarantorRequired = productInput.equals("MSEF", ignoreCase = true) || productInput.equals("Enterprise Loan", ignoreCase = true)
                             val guarantorComplete = !isGuarantorRequired || ((appDetail?.readiness?.get("guarantor_form_submitted") as? Boolean) == true)
