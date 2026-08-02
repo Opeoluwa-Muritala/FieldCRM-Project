@@ -20,6 +20,12 @@ import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.LoadingSkeleton
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.viewmodel.Screen
+import com.fieldcrm.android.data.api.DashboardCreditReview
+import com.fieldcrm.android.data.api.DashboardOcrException
+import com.fieldcrm.android.data.api.DashboardQueueEntry
+import com.fieldcrm.android.data.api.DashboardSignoff
+import com.fieldcrm.android.data.api.DashboardTask
+import com.fieldcrm.android.data.api.DashboardVisit
 
 data class WorkspaceMetric(val label: String, val value: String)
 data class WorkspaceAction(
@@ -27,6 +33,27 @@ data class WorkspaceAction(
     val destination: Screen,
     val previewItems: List<String> = emptyList()
 )
+
+fun List<DashboardQueueEntry>.workspaceLines(): List<String> = take(4).map {
+    listOf(it.applicant_name, it.ref_no, it.status.ifBlank { it.stage }).filter(String::isNotBlank).joinToString(" · ")
+}
+fun List<DashboardTask>.taskWorkspaceLines(): List<String> = take(4).map {
+    listOf(it.applicant_name, it.ref_no, it.task_description).filter(String::isNotBlank).joinToString(" · ")
+}
+fun List<DashboardCreditReview>.reviewWorkspaceLines(): List<String> = take(4).map {
+    listOf(it.applicant_name, it.ref_no, "${it.exception_count} exceptions").filter(String::isNotBlank).joinToString(" · ")
+}
+fun List<DashboardOcrException>.exceptionWorkspaceLines(): List<String> = take(4).map {
+    listOf(it.applicant_name, it.doc_type, it.field_name).filter(String::isNotBlank).joinToString(" · ")
+}
+fun List<DashboardVisit>.visitWorkspaceLines(): List<String> = take(4).map {
+    listOf(it.applicant_name, it.ref_no, it.stage).filter(String::isNotBlank).joinToString(" · ")
+}
+fun List<DashboardSignoff>.signoffWorkspaceLines(): List<String> = take(4).map {
+    listOf(it.applicant_name, it.ref_no, it.visit_date.orEmpty()).filter(String::isNotBlank).joinToString(" · ")
+}
+fun workspaceSummary(vararg values: Pair<String, String>): List<String> =
+    values.map { (label, value) -> "$label: $value" }.take(4)
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
