@@ -51,8 +51,8 @@ fun GuarantorsFormContent(
     onSaveComplete: (name: String, phone: String) -> Unit
 ) {
     // Wizard navigation
-    var currentSlot by rememberSaveable(application.id) { mutableIntStateOf(1) }   // 1 or 2
-    var currentStep by rememberSaveable(application.id) { mutableIntStateOf(1) }   // 1–8
+    var currentSlot by rememberSaveable(borrower.id) { mutableIntStateOf(1) }   // 1 or 2
+    var currentStep by rememberSaveable(borrower.id) { mutableIntStateOf(1) }   // 1–8
 
     // ── Slot 1 fields ──────────────────────────────────────────────────────────
     var g1FullName       by remember { mutableStateOf(borrower.guarantor_name ?: "") }

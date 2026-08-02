@@ -68,8 +68,9 @@ fun WorkspaceDashboardPage(
                 isLoading -> item {
                     BoxWithConstraints(Modifier.fillMaxWidth()) {
                         val columns = when { maxWidth < 400.dp -> 1; maxWidth < 840.dp -> 2; else -> 3 }
+                        val cardWidth = (maxWidth - 12.dp * (columns - 1)) / columns
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), maxItemsInEachRow = columns) {
-                            repeat(4) { LoadingSkeleton(modifier = Modifier.width((maxWidth - 12.dp * (columns - 1)) / columns), height = 104.dp, width = 320.dp) }
+                            repeat(4) { LoadingSkeleton(modifier = Modifier.width(cardWidth), height = 104.dp, width = 320.dp) }
                         }
                     }
                 }

@@ -94,18 +94,9 @@ fun DashboardScreenView(
         }
         ctx as? android.app.Activity
     }
-    val isTablet = remember(activity) {
-        if (activity != null) {
-            try {
-                val windowSizeClass = calculateWindowSizeClass(activity)
-                windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
-            } catch (_: Exception) {
-                false
-            }
-        } else {
-            false
-        }
-    }
+    val isTablet = activity?.let {
+        calculateWindowSizeClass(it).widthSizeClass != WindowWidthSizeClass.Compact
+    } ?: false
 
     var selectedTab by remember { mutableStateOf(0) }
     val tabHistory = remember { mutableStateListOf<Int>() }

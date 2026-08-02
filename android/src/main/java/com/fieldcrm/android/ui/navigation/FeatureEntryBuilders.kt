@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi::class)
+
 package com.fieldcrm.android.ui.navigation.impl
 
 import androidx.compose.runtime.Composable
