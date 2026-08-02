@@ -22,6 +22,7 @@ MIGRATION_FILES = [
     "024_branch_scoping.sql",
     "025_mobile_creation_idempotency.sql",
     "026_document_upload_intents.sql",
+    "027_auth_refresh_sessions.sql",
 ]
 
 

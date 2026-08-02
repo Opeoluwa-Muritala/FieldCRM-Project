@@ -63,7 +63,7 @@ val appModule = module {
     single { SearchRepository(get()) }
 
     // ViewModels
-    viewModel { AppViewModel(get()) }
+    viewModel { AppViewModel(get(), get()) }
     viewModel { LoginViewModel(get(), get()) }
     viewModel { BorrowerViewModel(androidApplication(), get<BorrowerRepository>(), get<SessionStore>()) }
     viewModel { ApplicationViewModel(androidApplication(), get<ApplicationRepository>(), get<BorrowerRepository>(), get<SessionStore>()) }

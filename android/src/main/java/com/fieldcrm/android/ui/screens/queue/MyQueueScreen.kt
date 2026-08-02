@@ -37,7 +37,7 @@ private data class MyQueueItem(
 fun MyQueueScreen(
     applications: List<LoanApplicationModel> = emptyList(),
     borrowers: List<BorrowerModel> = emptyList(),
-    onBackClick: () -> Unit,
+    onBackClick: (() -> Unit)? = null,
     onViewApplication: (String) -> Unit = {}
 ) {
     val dashboardViewModel: DashboardViewModel = koinViewModel()
@@ -62,15 +62,17 @@ fun MyQueueScreen(
         topBar = {
             FieldTopAppBar(
                 title = "Action Required",
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = FieldIcons.ArrowBackOutlined,
-                            contentDescription = "Back",
-                            tint = FieldTheme.colors.gray400
-                        )
+                navigationIcon = if (onBackClick != null) {
+                    {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = FieldIcons.ArrowBackOutlined,
+                                contentDescription = "Back",
+                                tint = FieldTheme.colors.gray400
+                            )
+                        }
                     }
-                }
+                } else null
             )
         },
         containerColor = FieldTheme.colors.gray950

@@ -1,9 +1,7 @@
 package com.fieldcrm.android.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -164,7 +162,7 @@ val LocalFieldTypography = staticCompositionLocalOf { FieldTypo }
 val LocalFieldShapes = staticCompositionLocalOf { FieldShapes() }
 
 // Dynamic theme resolution base on user role and system mode
-fun getRoleColors(@Suppress("UNUSED_PARAMETER") role: UserRole?, darkTheme: Boolean = true): FieldColors {
+fun getRoleColors(@Suppress("UNUSED_PARAMETER") role: UserRole?, @Suppress("UNUSED_PARAMETER") darkTheme: Boolean = true): FieldColors {
     val base = DarkFieldColors
     
     val (primaryColor, primaryHover, primaryLight, primaryTint) = 
@@ -185,7 +183,7 @@ fun getRoleColors(@Suppress("UNUSED_PARAMETER") role: UserRole?, darkTheme: Bool
 @Composable
 fun FieldCRMTheme(
     role: UserRole? = null,
-    darkTheme: Boolean = true,
+    @Suppress("UNUSED_PARAMETER") darkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colors = getRoleColors(role, true)

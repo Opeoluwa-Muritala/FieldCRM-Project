@@ -31,7 +31,7 @@ private val CRM_STATUSES = setOf(
 fun CrmQueueScreen(
     applications: List<LoanApplicationModel> = emptyList(),
     borrowers: List<BorrowerModel> = emptyList(),
-    onBackClick: () -> Unit,
+    onBackClick: (() -> Unit)? = null,
     onReviewApplication: (String) -> Unit = {}
 ) {
     val dashboardViewModel: DashboardViewModel = koinViewModel()
@@ -54,15 +54,17 @@ fun CrmQueueScreen(
         topBar = {
             FieldTopAppBar(
                 title = "Dossier Review Queue",
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = FieldIcons.ArrowBackOutlined,
-                            contentDescription = "Back",
-                            tint = FieldTheme.colors.gray400
-                        )
+                navigationIcon = if (onBackClick != null) {
+                    {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = FieldIcons.ArrowBackOutlined,
+                                contentDescription = "Back",
+                                tint = FieldTheme.colors.gray400
+                            )
+                        }
                     }
-                },
+                } else null,
                 actions = {
                     Box(
                         modifier = Modifier

@@ -11,6 +11,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import com.fieldcrm.android.core.network.ApiResult
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 sealed interface LoginOutcome {
     data class Success(val token: String) : LoginOutcome
@@ -24,12 +26,15 @@ interface MobileApiService {
     /** Full credential login through /auth/login-mobile. */
     suspend fun login(username: String, password: String): TokenResponse?
     suspend fun loginWithResult(username: String, password: String): LoginOutcome
+    suspend fun revokeSession(refreshToken: String?): Boolean
     suspend fun getMe(): MobileUser?
     suspend fun getDashboard(): String?
     suspend fun getDashboardMetrics(): DashboardMetrics?
     suspend fun getQueue(queueName: String): String?
     suspend fun getBorrowers(): String?
     suspend fun createBorrower(data: Map<String, JsonElement>): String?
+    suspend fun searchExistingCustomers(query: String, limit: Int = 20): ApiResult<ExistingCustomerSearchResponse>
+    suspend fun getApplicationProfile(borrowerId: String): ApiResult<ApplicationProfileResponse>
     suspend fun generateShareLink(): ShareLinkResponse?
     suspend fun createApplication(customerType: String, loanType: String, applicantName: String): String?
     suspend fun getApplicationDetail(id: String): String?
@@ -90,7 +95,7 @@ interface MobileApiService {
     suspend fun advanceWorkflow(id: String, notes: String): WorkflowAdvanceResponse?
 
     // User management (admin only)
-    suspend fun listUsers(): List<MobileUserItem>
+    suspend fun listUsers(): ApiResult<List<MobileUserItem>>
     suspend fun createUser(fullName: String, email: String, role: String, password: String): Boolean
 
     suspend fun pullCreditBureau(id: String): ApiResult<JsonElement>
@@ -387,7 +392,10 @@ data class MobileUserItem(
     val email: String,
     val role: String,
     val display_role: String = "",
-    val active: Boolean = true
+    val active: Boolean = true,
+    val organization_name: String? = null,
+    val branch_name: String? = null,
+    val last_activity_at: String? = null
 )
 
 @kotlinx.serialization.Serializable
@@ -403,6 +411,7 @@ class MobileApiServiceImpl(
     private val baseUrl: String,
     private val sessionStore: com.fieldcrm.android.core.session.SessionStore
 ) : MobileApiService {
+    private val refreshMutex = Mutex()
 
     private fun checkAdminDenial() {
         if (sessionStore.load()?.role == com.fieldcrm.android.core.session.UserRole.SYSTEM_ADMIN) {
@@ -427,9 +436,7 @@ class MobileApiServiceImpl(
                 "/api/v1/mobile/dashboard",
                 "/api/v1/mobile/system-activity",
                 "/api/v1/mobile/users",
-                "/api/v1/mobile/notifications",
                 "/api/v1/mobile/config",
-                "/api/v1/mobile/audit-trail",
                 "/api/v1/mobile/faqs",
                 "/api/v1/mobile/onboarding"
             )
@@ -443,16 +450,36 @@ class MobileApiServiceImpl(
     private suspend inline fun <reified T> resultOf(crossinline request: suspend () -> HttpResponse): ApiResult<T> {
         return try {
             val response = request()
-            if (response.status.value in 200..299) {
-                ApiResult.Success(response.body<T>(), response.status.value)
+            val resolved = if (response.status == HttpStatusCode.Unauthorized && refreshAccessToken()) request() else response
+            if (resolved.status.value in 200..299) {
+                ApiResult.Success(resolved.body<T>(), resolved.status.value)
             } else {
-                ApiResult.Error(response.status.value, response.bodyAsText())
+                ApiResult.Error(resolved.status.value, resolved.bodyAsText())
             }
         } catch (e: java.io.IOException) {
             ApiResult.NetworkError(e.message ?: "Network unavailable", e)
         } catch (e: Exception) {
             ApiResult.NetworkError(e.message ?: "Request failed", e)
         }
+    }
+
+    private suspend fun refreshAccessToken(): Boolean = refreshMutex.withLock {
+        val refresh = sessionStore.refreshToken() ?: return@withLock false
+        try {
+            val response = client.post("$baseUrl/api/v1/auth/refresh-mobile") {
+                contentType(ContentType.Application.Json)
+                setBody(RefreshTokenRequest(refresh))
+            }
+            if (response.status != HttpStatusCode.OK) {
+                sessionStore.clear()
+                false
+            } else {
+                val bundle = response.body<TokenResponse>()
+                setToken(bundle.access_token)
+                sessionStore.saveTokenBundle(bundle.access_token, bundle.refresh_token, bundle.access_expires_in, bundle.session_expires_at)
+                true
+            }
+        } catch (_: Exception) { false }
     }
 
     override suspend fun login(username: String, password: String): TokenResponse? {
@@ -467,6 +494,7 @@ class MobileApiServiceImpl(
             if (response.status == HttpStatusCode.OK) {
                 val tokenResponse = response.body<TokenResponse>()
                 setToken(tokenResponse.access_token)
+                sessionStore.saveTokenBundle(tokenResponse.access_token, tokenResponse.refresh_token, tokenResponse.access_expires_in, tokenResponse.session_expires_at)
                 tokenResponse
             } else {
                 null
@@ -489,6 +517,7 @@ class MobileApiServiceImpl(
                 response.status == HttpStatusCode.OK -> {
                     val tokenResponse = response.body<TokenResponse>()
                     setToken(tokenResponse.access_token)
+                    sessionStore.saveTokenBundle(tokenResponse.access_token, tokenResponse.refresh_token, tokenResponse.access_expires_in, tokenResponse.session_expires_at)
                     LoginOutcome.Success(tokenResponse.access_token)
                 }
                 response.status == HttpStatusCode.Unauthorized || response.status == HttpStatusCode.Forbidden ->
@@ -507,6 +536,14 @@ class MobileApiServiceImpl(
             LoginOutcome.NetworkError
         }
     }
+
+    override suspend fun revokeSession(refreshToken: String?): Boolean = try {
+        val response = client.post("$baseUrl/api/v1/auth/logout-mobile") {
+            contentType(ContentType.Application.Json)
+            setBody(LogoutTokenRequest(refreshToken))
+        }
+        response.status.value in 200..299
+    } catch (_: Exception) { false }
 
     override suspend fun getMe(): MobileUser? {
         return try {
@@ -550,6 +587,18 @@ class MobileApiServiceImpl(
         } catch (e: Exception) {
             null
         }
+    }
+
+    override suspend fun searchExistingCustomers(query: String, limit: Int) = resultOf<ExistingCustomerSearchResponse> {
+        client.get("$baseUrl/api/v1/mobile/borrowers/search") {
+            authHeader()
+            parameter("q", query)
+            parameter("limit", limit)
+        }
+    }
+
+    override suspend fun getApplicationProfile(borrowerId: String) = resultOf<ApplicationProfileResponse> {
+        client.get("$baseUrl/api/v1/mobile/borrowers/$borrowerId/application-profile") { authHeader() }
     }
 
     override suspend fun generateShareLink(): ShareLinkResponse? {
@@ -1094,11 +1143,8 @@ class MobileApiServiceImpl(
         }
     }
 
-    override suspend fun listUsers(): List<MobileUserItem> {
-        return try {
-            val response: HttpResponse = client.get("$baseUrl/api/v1/mobile/users") { authHeader() }
-            if (response.status == HttpStatusCode.OK) response.body() else emptyList()
-        } catch (e: Exception) { emptyList() }
+    override suspend fun listUsers() = resultOf<List<MobileUserItem>> {
+        client.get("$baseUrl/api/v1/mobile/users") { authHeader() }
     }
 
     override suspend fun createUser(fullName: String, email: String, role: String, password: String): Boolean {

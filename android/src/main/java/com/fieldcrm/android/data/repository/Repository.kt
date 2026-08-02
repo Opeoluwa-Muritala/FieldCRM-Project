@@ -98,6 +98,7 @@ private object NoopMobileApiService : MobileApiService {
     override fun setToken(token: String) = Unit
     override suspend fun login(username: String, password: String) = null
     override suspend fun loginWithResult(username: String, password: String) = com.fieldcrm.android.data.api.LoginOutcome.NetworkError
+    override suspend fun revokeSession(refreshToken: String?) = false
     override suspend fun getMe() = null
     override suspend fun getDashboard(): String? = null
     override suspend fun getDashboardMetrics() = null
@@ -121,6 +122,10 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun returnApplication(id: String, reason: String, corrections: List<String>, notes: String): String? = null
     override suspend fun getBorrowers(): String? = null
     override suspend fun createBorrower(data: Map<String, JsonElement>): String? = null
+    override suspend fun searchExistingCustomers(query: String, limit: Int) =
+        ApiResult.NetworkError("Customer search requires a network connection")
+    override suspend fun getApplicationProfile(borrowerId: String) =
+        ApiResult.NetworkError("Customer profile requires a network connection")
     override suspend fun getNotifications() = emptyList<com.fieldcrm.android.data.api.ApiNotification>()
     override suspend fun markNotificationRead(id: String) = false
     override suspend fun clearNotifications() = false
@@ -146,7 +151,8 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun submitMdApprove(id: String, action: String, notes: String): String? = null
     override suspend fun addBoardReferral(id: String, email: String, name: String, notes: String): String? = null
     override suspend fun advanceWorkflow(id: String, notes: String): com.fieldcrm.android.data.api.WorkflowAdvanceResponse? = null
-    override suspend fun listUsers() = emptyList<com.fieldcrm.android.data.api.MobileUserItem>()
+    override suspend fun listUsers(): ApiResult<List<com.fieldcrm.android.data.api.MobileUserItem>> =
+        ApiResult.NetworkError("User administration is unavailable offline")
     override suspend fun createUser(fullName: String, email: String, role: String, password: String) = false
     override suspend fun pullCreditBureau(id: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
     override suspend fun getCreditChecklist(id: String, context: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
@@ -185,6 +191,10 @@ class ApplicationRepository(
     private val context: android.content.Context
 ) {
     private val queries = database.appDatabaseQueries
+
+    suspend fun searchExistingCustomers(query: String) = apiService.searchExistingCustomers(query)
+
+    suspend fun getApplicationProfile(borrowerId: String) = apiService.getApplicationProfile(borrowerId)
     private val syncRepository = SyncRepository(database, client)
 
     suspend fun advanceWorkflow(id: String, notes: String) = apiService.advanceWorkflow(id, notes)
@@ -311,10 +321,10 @@ class ApplicationRepository(
         request: com.fieldcrm.android.data.api.DisbursementRequest
     ) = apiService.recordDisbursement(id, request)
 
-    suspend fun createApplication(application: LoanApplicationModel): Boolean {
+    suspend fun createApplication(application: LoanApplicationModel, borrowerId: String? = null): Boolean {
         queries.upsert(application)
         return try {
-            client.createApplication(application)
+            client.createApplication(application, borrowerId)
             true
         } catch (e: Exception) {
             queries.insertQueueItem(
@@ -499,6 +509,8 @@ class AuthRepository(
         client.setToken(token)
         apiService.setToken(token)
     }
+
+    suspend fun revokeSession(refreshToken: String?) = apiService.revokeSession(refreshToken)
 
     suspend fun validateToken(token: String): Boolean? {
         return try {

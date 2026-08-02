@@ -590,17 +590,42 @@ async def process_new_application(
     request: Request,
     customer_type: str = Form(...),
     loan_type: str = Form(...),
+    borrower_id: str | None = Form(None),
+    conn = Depends(db_conn),
     service: LoanService = Depends(get_loan_service),
     current_user = Depends(RoleChecker(["Account Officer"]))
 ):
     """Initializes a new borrower and loan application in draft stage."""
+    selected = None
+    profile = None
+    if customer_type == "existing":
+        if not borrower_id:
+            raise HTTPException(status_code=422, detail="Select an existing customer")
+        try:
+            selected_id = UUID(borrower_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="Invalid borrower_id") from exc
+        from app.api.v1.mobile import _customer_record
+        selected, profile = await _customer_record(conn, selected_id, current_user.org_id)
+    elif borrower_id:
+        raise HTTPException(status_code=422, detail="New customer applications cannot include borrower_id")
     app = await service.create_loan(
         org_id=current_user.org_id,
         customer_type=customer_type,
         loan_type=loan_type,
-        applicant_name="New Applicant",
+        applicant_name=profile["applicant_name"] if profile else "New Applicant",
         user_id=current_user.id
     )
+    if profile:
+        snapshot = dict(profile)
+        snapshot.update({
+            "borrower_id": str(selected.id),
+            "profile_snapshot_source": "customer_profile",
+            "profile_snapshot_created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        await LoanService(LoanRepository(conn), AuditService(conn)).save_wizard_step(
+            app.id, 1, snapshot, current_user.id, current_user.org_id
+        )
     return RedirectResponse(url=f"/applications/{app.id}/step/1", status_code=status.HTTP_303_SEE_OTHER)
 
 def _verify_loan_scope(app, current_user):

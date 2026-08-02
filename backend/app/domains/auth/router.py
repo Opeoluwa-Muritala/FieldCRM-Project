@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from app.core.database import db_conn
 from app.domains.auth.repository import AuthRepository
 from app.domains.auth.service import AuthService
-from app.domains.auth.schemas import Token
+from app.domains.auth.schemas import Token, RefreshRequest, LogoutRequest
 from app.config import settings
 from app.core.rate_limit import enforce_login_limits
 
@@ -55,10 +55,16 @@ async def login_mobile(
 ):
     """Mobile credential login that issues a token stored in encrypted device storage."""
     await enforce_login_limits(request, form_data.username)
-    token = await service.authenticate_user(
-        form_data.username, form_data.password, session_type="mobile"
-    )
-    return {"access_token": token, "token_type": "bearer"}
+    return await service.authenticate_mobile(form_data.username, form_data.password)
+
+@router.post("/refresh-mobile", response_model=Token)
+async def refresh_mobile(payload: RefreshRequest, service: AuthService = Depends(get_auth_service)):
+    return await service.rotate_mobile_session(payload.refresh_token)
+
+@router.post("/logout-mobile")
+async def logout_mobile(payload: LogoutRequest, service: AuthService = Depends(get_auth_service)):
+    await service.revoke_mobile_session(payload.refresh_token)
+    return {"status": "logged_out"}
 
 @router.post("/logout")
 def logout(response: Response):

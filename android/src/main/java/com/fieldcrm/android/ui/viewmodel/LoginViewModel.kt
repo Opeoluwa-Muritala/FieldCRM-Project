@@ -58,7 +58,7 @@ class LoginViewModel(
             // Background validation: only act on a definitive server rejection.
             val result = authRepository.validateToken(stored.token)
             when (result) {
-                true -> sessionStore.extendSession()
+                true -> Unit
                 false -> {
                     sessionStore.clear()
                     _restoredSession.value = null
@@ -115,7 +115,8 @@ class LoginViewModel(
                         orgId = me?.org_id ?: "",
                         userEmail = me?.email ?: state.email,
                         userName = me?.full_name ?: state.email.substringBefore("@"),
-                        loginExpiresAt = System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000
+                        loginExpiresAt = sessionStore.load()?.loginExpiresAt
+                            ?: (System.currentTimeMillis() + 48L * 60 * 60 * 1000)
                     )
                     sessionStore.save(session)
                     _uiState.update { it.copy(isLoading = false) }
@@ -138,7 +139,7 @@ class LoginViewModel(
         val stored = sessionStore.load() ?: return
         viewModelScope.launch {
             when (authRepository.validateToken(stored.token)) {
-                true -> sessionStore.extendSession()
+                true -> Unit
                 false -> { sessionStore.clear(); onExpired() }
                 null -> { /* network error — keep session alive via local expiry */ }
             }

@@ -27,12 +27,12 @@ private fun JsonObject.text(key: String): String =
 @Composable
 private fun SpecialistScaffold(
     title: String,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Scaffold(topBar = { FieldTopAppBar(title = title, navigationIcon = {
-        TextButton(onClick = onBack) { Text("Back") }
-    }) }) { padding ->
+    Scaffold(topBar = { FieldTopAppBar(title = title, navigationIcon = if (onBack != null) {
+        { TextButton(onClick = onBack) { Text("Back") } }
+    } else null) }) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -43,7 +43,7 @@ private fun SpecialistScaffold(
 
 @Composable
 fun LegalWorkspaceScreen(
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
     onOpenApplication: (String) -> Unit
 ) {
     val api: MobileApiService = koinInject()

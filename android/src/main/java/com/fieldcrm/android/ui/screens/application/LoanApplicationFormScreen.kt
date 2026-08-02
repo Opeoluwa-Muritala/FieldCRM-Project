@@ -56,7 +56,8 @@ fun LoanApplicationFormScreen(
         onBackClick = onBackClick,
         onNavigateToGuarantorsForm = onNavigateToGuarantorsForm,
         onSubmit = { name, phone, bvn, address, _, _, employment, employer, income, amount, tenure, product, collateralDesc, collateralVal, gName, gPhone, bank, acc ->
-            val updatedBorrower = borrower?.copy(
+            val currentBorrower = borrower ?: return@LoanApplicationFormContent
+            val updatedBorrower = currentBorrower.copy(
                 name = name,
                 phone = phone,
                 bvn = bvn,
@@ -68,32 +69,13 @@ fun LoanApplicationFormScreen(
                 account_number = acc,
                 guarantor_name = gName,
                 guarantor_phone = gPhone
-            ) ?: BorrowerModel(
-                id = java.util.UUID.randomUUID().toString(),
-                org_id = "org_1",
-                loan_officer_id = "lo_1",
-                name = name,
-                phone = phone,
-                bvn = bvn,
-                nin = "12345678901",
-                status = "ACTIVE",
-                physical_address = address,
-                employment_status = employment,
-                employer_name = employer,
-                monthly_income = income.toDoubleOrNull() ?: 0.0,
-                bank_name = bank,
-                account_number = acc,
-                guarantor_name = gName,
-                guarantor_phone = gPhone,
-                created_at = System.currentTimeMillis().toString()
             )
 
             val updatedApp = application.copy(
                 amount = amount.toDoubleOrNull() ?: 0.0,
                 tenor_months = tenure.toIntOrNull(),
                 loan_type = product,
-                purpose = collateralDesc.ifBlank { null },
-                stage = "branch_manager_review"
+                purpose = collateralDesc.ifBlank { null }
             )
 
             borrowerViewModel.updateBorrowerLocal(updatedBorrower) {
@@ -102,7 +84,7 @@ fun LoanApplicationFormScreen(
                     appViewModel.setSelectedBorrower(updatedBorrower)
                     appViewModel.triggerSuccessScreen(
                         title = "Intake Complete",
-                        subtitle = "Application dossier successfully sent to Branch Manager review.",
+                        subtitle = "Application dossier successfully sent to Team Lead review.",
                         destination = Screen.ApplicationDetail
                     )
                 }
@@ -295,7 +277,7 @@ fun LoanApplicationFormContent(
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         if (currentTab == 8) {
-                            val docs = appDetail?.documents ?: emptyList()
+                            val docs: List<Map<String, Any>> = appDetail?.documents ?: emptyList()
                             val hasOfferAcceptance = docs.any { (it["doc_type"] as? String)?.equals("offer_acceptance", ignoreCase = true) == true }
                             val hasDisbursementMandate = docs.any { (it["doc_type"] as? String)?.equals("disbursement_mandate", ignoreCase = true) == true }
                             val hasDirectDebitMandate = docs.any { (it["doc_type"] as? String)?.equals("direct_debit_mandate", ignoreCase = true) == true }
@@ -1355,7 +1337,7 @@ fun WizardTabContent(
             }
         }
         else -> {
-            val docs = appDetail?.documents ?: emptyList()
+            val docs: List<Map<String, Any>> = appDetail?.documents ?: emptyList()
             val hasOfferAcceptance = docs.any { (it["doc_type"] as? String)?.equals("offer_acceptance", ignoreCase = true) == true }
             val hasDisbursementMandate = docs.any { (it["doc_type"] as? String)?.equals("disbursement_mandate", ignoreCase = true) == true }
             val hasDirectDebitMandate = docs.any { (it["doc_type"] as? String)?.equals("direct_debit_mandate", ignoreCase = true) == true }

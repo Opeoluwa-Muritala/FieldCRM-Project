@@ -33,6 +33,9 @@ import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
+import com.fieldcrm.android.data.api.ExistingCustomerSearchItem
+import com.fieldcrm.android.data.api.PersonalProfileSnapshot
+import kotlinx.coroutines.delay
 
 @Composable
 fun CreateApplicationScreenView(
@@ -42,6 +45,13 @@ fun CreateApplicationScreenView(
     onBackClick: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(state.customerSearchQuery, state.customerType) {
+        if (state.customerType == "existing" && state.customerSearchQuery.trim().length >= 3) {
+            delay(350)
+            viewModel.searchExistingCustomers()
+        }
+    }
 
     CreateApplicationContent(
         isLoading = state.isLoading,
@@ -69,7 +79,14 @@ fun CreateApplicationScreenView(
             }
         },
         onGenerateLinkClick = { viewModel.generateClientIntakeLink() },
-        onBackClick = onBackClick
+        onBackClick = onBackClick,
+        customerSearchQuery = state.customerSearchQuery,
+        customerSearchResults = state.customerSearchResults,
+        isSearchingCustomers = state.isSearchingCustomers,
+        selectedCustomerProfile = state.selectedCustomerProfile,
+        onCustomerSearchQueryChange = viewModel::setCustomerSearchQuery,
+        onSearchCustomer = viewModel::searchExistingCustomers,
+        onExistingCustomerSelected = viewModel::selectExistingCustomer
     )
 }
 
@@ -96,9 +113,16 @@ fun CreateApplicationContent(
     onBorrowerSelected: (BorrowerModel) -> Unit,
     onCreateClick: () -> Unit,
     onGenerateLinkClick: () -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    customerSearchQuery: String = "",
+    customerSearchResults: List<ExistingCustomerSearchItem> = emptyList(),
+    isSearchingCustomers: Boolean = false,
+    selectedCustomerProfile: PersonalProfileSnapshot? = null,
+    onCustomerSearchQueryChange: (String) -> Unit = {},
+    onSearchCustomer: () -> Unit = {},
+    onExistingCustomerSelected: (ExistingCustomerSearchItem) -> Unit = {}
 ) {
-    val isFormValid = if (customerType == "New Customer") {
+    val isFormValid = if (customerType == "new") {
         newCustomerName.isNotEmpty() && newCustomerPhone.isNotEmpty() && newCustomerBvn.isNotEmpty() && newCustomerNin.isNotEmpty()
     } else {
         selectedBorrower != null
@@ -225,7 +249,7 @@ fun CreateApplicationContent(
                 )
 
                 // Tabs for Customer Type
-                val activeTab = if (customerType == "New Customer") 0 else 1
+                val activeTab = if (customerType == "new") 0 else 1
                 TabRow(
                     selectedTabIndex = activeTab,
                     containerColor = FieldTheme.colors.gray900,
@@ -334,19 +358,27 @@ fun CreateApplicationContent(
                     HorizontalDivider(modifier = Modifier.weight(1f), color = FieldTheme.colors.gray800)
                 }
 
-                if (customerType == "Existing Customer") {
-                    val borrowerNames = borrowers.map { it.name }
-                    val selectedName = selectedBorrower?.name ?: ""
-
-                    FieldDropdown(
-                        value = selectedName,
-                        options = borrowerNames,
-                        onOptionSelected = { name ->
-                            borrowers.find { it.name == name }?.let { onBorrowerSelected(it) }
-                        },
-                        label = "Select Registered Profile",
-                        isRequired = true
+                if (customerType == "existing") {
+                    FieldTextField(
+                        value = customerSearchQuery,
+                        onValueChange = onCustomerSearchQueryChange,
+                        label = "Search Organization Customers",
+                        placeholder = "Name, BVN, NIN, phone, or reference",
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { onSearchCustomer() }),
+                        trailingIcon = {
+                            if (isSearchingCustomers) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                            else Icon(FieldIcons.SearchOutlined, "Search customers", tint = FieldTheme.colors.gray500)
+                        }
                     )
+
+                    customerSearchResults.forEach { customer ->
+                        ExistingCustomerRow(customer = customer, onClick = { onExistingCustomerSelected(customer) })
+                    }
+
+                    if (selectedBorrower != null) {
+                        SelectedCustomerCard(selectedBorrower, selectedCustomerProfile)
+                    }
                 } else {
                     // New Customer Embedded Fields
                     FieldFormText(
@@ -426,6 +458,44 @@ fun CreateApplicationContent(
 
                 Spacer(modifier = Modifier.height(32.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun ExistingCustomerRow(customer: ExistingCustomerSearchItem, onClick: () -> Unit) {
+    FieldCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(customer.legal_name, style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray100)
+                Text(if (customer.active) "ACTIVE" else "INACTIVE", style = FieldTheme.typography.label, color = if (customer.active) FieldTheme.colors.statusSuccess else FieldTheme.colors.gray500)
+            }
+            Text(customer.customer_reference ?: "No customer reference", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray400)
+            Text(
+                listOfNotNull(customer.masked_phone, customer.masked_bvn ?: customer.masked_nin).joinToString(" | ").ifBlank { "Identifiers not available" },
+                style = FieldTheme.typography.body,
+                color = FieldTheme.colors.gray500
+            )
+            val ownership = listOfNotNull(customer.branch, customer.relationship_owner).joinToString(" | ")
+            if (ownership.isNotBlank()) Text(ownership, style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+        }
+    }
+}
+
+@Composable
+private fun SelectedCustomerCard(customer: BorrowerModel, profile: PersonalProfileSnapshot?) {
+    FieldCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Text("Selected Customer", style = FieldTheme.typography.label, color = FieldTheme.colors.purple400)
+            Text(customer.name, style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray100)
+            listOfNotNull(profile?.phone, profile?.email, profile?.residential_address).forEach {
+                Text(it, style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+            }
+            Text(
+                "Personal information is copied into this application. Changes affect this application only.",
+                style = FieldTheme.typography.body,
+                color = FieldTheme.colors.statusWarning
+            )
         }
     }
 }

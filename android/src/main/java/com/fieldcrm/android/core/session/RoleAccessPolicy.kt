@@ -1,6 +1,7 @@
 package com.fieldcrm.android.core.session
 
 import com.fieldcrm.android.ui.viewmodel.Screen
+import com.fieldcrm.android.ui.navigation.RouteGuard
 
 /** Client-side visibility guard. The API remains the authorization boundary. */
 object RoleAccessPolicy {
@@ -69,21 +70,7 @@ object RoleAccessPolicy {
 
     private val systemAdmin = common + setOf(Screen.Users, Screen.SystemActivity)
 
-    fun canAccess(role: UserRole, screen: Screen): Boolean = when (role) {
-        UserRole.ACCOUNT_OFFICER, UserRole.LOAN_OFFICER -> screen in relationshipOfficer
-        UserRole.BRANCH_MANAGER -> screen in teamLead
-        UserRole.BRANCH_SUPERVISOR -> screen in supervisor
-        UserRole.CREDIT_ANALYST -> screen in creditAnalyst
-        UserRole.CRM -> screen in crmOfficer
-        UserRole.HEAD_CRM -> screen in crmOfficer
-        UserRole.AUDITOR -> screen in audit
-        UserRole.ED -> screen in executiveDirector
-        UserRole.MD -> screen in managingDirector
-        UserRole.LEGAL -> screen in legal
-        UserRole.SYSTEM_ADMIN -> screen in systemAdmin
-        UserRole.EXECUTIVE -> screen in common
-        else -> screen in common
-    }
+    fun canAccess(role: UserRole, screen: Screen): Boolean = RouteGuard.canOpen(role, screen)
 
     fun canCreateApplications(role: UserRole): Boolean =
         role == UserRole.ACCOUNT_OFFICER || role == UserRole.LOAN_OFFICER

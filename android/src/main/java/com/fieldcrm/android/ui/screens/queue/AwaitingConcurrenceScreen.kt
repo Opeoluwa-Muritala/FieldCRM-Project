@@ -37,7 +37,7 @@ private data class ConcurrenceItem(
 fun AwaitingConcurrenceScreen(
     applications: List<LoanApplicationModel> = emptyList(),
     borrowers: List<BorrowerModel> = emptyList(),
-    onBackClick: () -> Unit,
+    onBackClick: (() -> Unit)? = null,
     onViewApplication: (String) -> Unit = {}
 ) {
     val dashboardViewModel: DashboardViewModel = koinViewModel()
@@ -63,15 +63,17 @@ fun AwaitingConcurrenceScreen(
         topBar = {
             FieldTopAppBar(
                 title = "Awaiting Concurrence",
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = FieldIcons.ArrowBackOutlined,
-                            contentDescription = "Back",
-                            tint = FieldTheme.colors.gray400
-                        )
+                navigationIcon = if (onBackClick != null) {
+                    {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = FieldIcons.ArrowBackOutlined,
+                                contentDescription = "Back",
+                                tint = FieldTheme.colors.gray400
+                            )
+                        }
                     }
-                },
+                } else null,
                 actions = {
                     Box(
                         modifier = Modifier
