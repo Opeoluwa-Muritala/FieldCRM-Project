@@ -22,7 +22,11 @@ import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.viewmodel.Screen
 
 data class WorkspaceMetric(val label: String, val value: String)
-data class WorkspaceAction(val label: String, val destination: Screen)
+data class WorkspaceAction(
+    val label: String,
+    val destination: Screen,
+    val previewItems: List<String> = emptyList()
+)
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
@@ -143,14 +147,24 @@ private fun WorkspacePreviewCard(action: WorkspaceAction, onOpen: (Screen) -> Un
     }
     FieldCard(
         modifier = Modifier
-            .width(230.dp)
-            .height(112.dp)
+            .width(280.dp)
+            .heightIn(min = 150.dp, max = 230.dp)
             .clickable { onOpen(action.destination) }
     ) {
-        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(action.label, style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray100)
-            Text(summary, style = FieldTheme.typography.label, color = FieldTheme.colors.gray400, maxLines = 2)
-            Text("View", style = FieldTheme.typography.label, color = FieldTheme.colors.purple400)
+            if (action.previewItems.isEmpty()) {
+                Text(summary, style = FieldTheme.typography.label, color = FieldTheme.colors.gray400, maxLines = 2)
+            } else {
+                action.previewItems.take(4).forEach { item ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("•", style = FieldTheme.typography.label, color = FieldTheme.colors.purple400)
+                        Text(item, style = FieldTheme.typography.label, color = FieldTheme.colors.gray300, maxLines = 1)
+                    }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Text("View all", style = FieldTheme.typography.label, color = FieldTheme.colors.purple400)
         }
     }
 }

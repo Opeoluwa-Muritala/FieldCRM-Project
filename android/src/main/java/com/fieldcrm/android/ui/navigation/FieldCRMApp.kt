@@ -6,9 +6,8 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -21,6 +20,7 @@ import androidx.compose.ui.Modifier
 import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.navigation3.runtime.rememberNavBackStack
 import com.fieldcrm.android.core.notification.NotificationSyncWorker
 import com.fieldcrm.android.core.session.UserRole
@@ -83,6 +83,10 @@ fun FieldCRMApp(
     val crmReviewUiState by crmReviewViewModel.uiState.collectAsState()
     val syncUiState by syncViewModel.uiState.collectAsState()
     val dashboardUiState by dashboardViewModel.uiState.collectAsState()
+
+    LaunchedEffect(appUiState.session) {
+        if (appUiState.session == null) loginViewModel.retainEmailOnly()
+    }
 
     val backStack = rememberNavBackStack(Screen.Login)
 
@@ -150,8 +154,11 @@ fun FieldCRMApp(
                 !appUiState.hasSeenOnboarding -> Screen.Onboarding
                 else -> Screen.Dashboard
             }
-            backStack.clear()
-            backStack.add(next)
+            val hasRestoredDestination = backStack.any { it != Screen.Login }
+            if (!hasRestoredDestination || next != Screen.Dashboard) {
+                backStack.clear()
+                backStack.add(next)
+            }
         }
     }
 
@@ -357,9 +364,13 @@ fun FieldCRMApp(
                 if (selectedTab !in bottomBarItems.indices) selectedTab = 0
             }
 
-            val adaptiveInfo = currentWindowAdaptiveInfo()
+            val useNavigationRail = LocalConfiguration.current.screenWidthDp >= 600
             NavigationSuiteScaffold(
-                layoutType = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo),
+                layoutType = if (useNavigationRail) {
+                    NavigationSuiteType.NavigationRail
+                } else {
+                    NavigationSuiteType.NavigationBar
+                },
                 navigationSuiteItems = {
                     bottomBarItems.forEachIndexed { index, navigationItem ->
                         item(
