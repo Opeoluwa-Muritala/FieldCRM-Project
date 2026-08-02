@@ -110,6 +110,8 @@ sealed class Screen : NavKey {
     @Serializable
     data object PasscodeLogin : Screen()
     @Serializable
+    data object BiometricEnrollment : Screen()
+    @Serializable
     data object CrmReview : Screen()
     @Serializable
     data object CrmQueue : Screen()
@@ -129,6 +131,8 @@ sealed class Screen : NavKey {
     data object RepaymentSchedule : Screen()
     @Serializable
     data object ParDashboard : Screen()
+    @Serializable
+    data object DisbursementForm : Screen()
 }
 
 // ── App-level UI state (session + selection only — nav lives in the back stack) ──

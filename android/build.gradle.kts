@@ -118,6 +118,7 @@ dependencies {
 
     // Encrypted storage — session tokens and document files
     implementation(libs.androidx.security.crypto)
+    implementation(libs.androidx.biometric)
 
     // Background execution
     implementation(libs.androidx.work.ktx)

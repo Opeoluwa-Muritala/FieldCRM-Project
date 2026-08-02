@@ -1,5 +1,8 @@
 package com.fieldcrm.android.ui.roles.shared
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.components.EmptyState
 import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.LoadingSkeleton
@@ -18,17 +22,19 @@ import com.fieldcrm.android.ui.viewmodel.Screen
 data class WorkspaceMetric(val label: String, val value: String)
 data class WorkspaceAction(val label: String, val destination: Screen)
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun WorkspaceDashboardPage(
     title: String,
     subtitle: String,
+    userName: String,
+    userRole: String,
     metrics: List<WorkspaceMetric>,
     actions: List<WorkspaceAction>,
     isLoading: Boolean,
     error: String?,
     onOpen: (Screen) -> Unit,
-    onSignOut: () -> Unit
+    onNavigateToSettings: () -> Unit
 ) {
     val filteredActions = remember(actions) {
         actions.filter { action ->
@@ -50,10 +56,40 @@ fun WorkspaceDashboardPage(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(title, color = FieldTheme.colors.gray100) },
-                actions = { TextButton(onClick = onSignOut) { Text("Sign out", color = FieldTheme.colors.statusDanger) } },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = FieldTheme.colors.gray950)
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            text = if (userName.isNotBlank()) userName else "User",
+                            style = FieldTheme.typography.bodyStrong,
+                            color = FieldTheme.colors.gray100
+                        )
+                        Text(
+                            text = userRole,
+                            style = FieldTheme.typography.label.copy(fontSize = 11.sp),
+                            color = FieldTheme.colors.purple400
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(FieldTheme.colors.purple900.copy(alpha = 0.2f), androidx.compose.foundation.shape.CircleShape)
+                                .border(1.dp, FieldTheme.colors.purple600, androidx.compose.foundation.shape.CircleShape),
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = com.fieldcrm.android.ui.theme.FieldIcons.SettingsOutlined,
+                                contentDescription = "Settings",
+                                tint = FieldTheme.colors.purple400,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = FieldTheme.colors.gray950)
             )
         },
         containerColor = FieldTheme.colors.gray950

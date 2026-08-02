@@ -184,7 +184,7 @@ fun ApplicationListContent(
                     .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val stages = listOf("All Stages", "Intake", "OCR Review", "Credit Review", "BM Approved")
+                val stages = listOf("All Stages", "Draft", "OCR Review", "Credit Review", "Branch Approval", "CRM Review", "Disbursed", "Returned")
                 stages.forEach { stage ->
                     val isSelected = selectedFilterStage == stage
                     val chipBg = if (isSelected) FieldTheme.colors.purple600.copy(alpha = 0.2f) else FieldTheme.colors.gray900

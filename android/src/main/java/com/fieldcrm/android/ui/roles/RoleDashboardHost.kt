@@ -20,24 +20,25 @@ import com.fieldcrm.android.ui.viewmodel.Screen
 @Composable
 fun RoleDashboardHost(
     role: UserRole,
+    userName: String,
     metrics: DashboardMetrics?,
     isLoading: Boolean,
     error: String?,
     onOpen: (Screen) -> Unit,
-    onSignOut: () -> Unit
+    onNavigateToSettings: () -> Unit
 ) {
     when (role) {
-        UserRole.ACCOUNT_OFFICER, UserRole.LOAN_OFFICER -> RelationshipOfficerDashboard(metrics,isLoading,error,onOpen,onSignOut)
-        UserRole.BRANCH_MANAGER -> TeamLeadDashboard(metrics,isLoading,error,onOpen,onSignOut)
-        UserRole.BRANCH_SUPERVISOR -> SupervisorDashboard(metrics,isLoading,error,onOpen,onSignOut)
-        UserRole.CREDIT_ANALYST -> CreditAnalystDashboard(metrics,isLoading,error,onOpen,onSignOut)
-        UserRole.CRM -> CrmDashboard(metrics,isLoading,error,onOpen,onSignOut)
-        UserRole.HEAD_CRM -> HeadCrmDashboard(metrics,isLoading,error,onOpen,onSignOut)
-        UserRole.AUDITOR -> AuditDashboard(metrics,isLoading,error,onOpen,onSignOut)
-        UserRole.ED -> ExecutiveDirectorDashboard(metrics,isLoading,error,onOpen,onSignOut)
-        UserRole.MD -> ManagingDirectorDashboard(metrics,isLoading,error,onOpen,onSignOut)
-        UserRole.LEGAL -> LegalDashboard(metrics,isLoading,error,onOpen,onSignOut)
-        UserRole.SYSTEM_ADMIN -> SystemAdminDashboard(metrics,isLoading,error,onOpen,onSignOut)
-        UserRole.EXECUTIVE -> ExecutiveDashboard(metrics,isLoading,error,onOpen,onSignOut)
+        UserRole.ACCOUNT_OFFICER, UserRole.LOAN_OFFICER -> RelationshipOfficerDashboard(userName,metrics,isLoading,error,onOpen,onNavigateToSettings)
+        UserRole.BRANCH_MANAGER -> TeamLeadDashboard(userName,metrics,isLoading,error,onOpen,onNavigateToSettings)
+        UserRole.BRANCH_SUPERVISOR -> SupervisorDashboard(userName,metrics,isLoading,error,onOpen,onNavigateToSettings)
+        UserRole.CREDIT_ANALYST -> CreditAnalystDashboard(userName,metrics,isLoading,error,onOpen,onNavigateToSettings)
+        UserRole.CRM -> CrmDashboard(userName,metrics,isLoading,error,onOpen,onNavigateToSettings)
+        UserRole.HEAD_CRM -> HeadCrmDashboard(userName,metrics,isLoading,error,onOpen,onNavigateToSettings)
+        UserRole.AUDITOR -> AuditDashboard(userName,metrics,isLoading,error,onOpen,onNavigateToSettings)
+        UserRole.ED -> ExecutiveDirectorDashboard(userName,metrics,isLoading,error,onOpen,onNavigateToSettings)
+        UserRole.MD -> ManagingDirectorDashboard(userName,metrics,isLoading,error,onOpen,onNavigateToSettings)
+        UserRole.LEGAL -> LegalDashboard(userName,metrics,isLoading,error,onOpen,onNavigateToSettings)
+        UserRole.SYSTEM_ADMIN -> SystemAdminDashboard(userName,metrics,isLoading,error,onOpen,onNavigateToSettings)
+        UserRole.EXECUTIVE -> ExecutiveDashboard(userName,metrics,isLoading,error,onOpen,onNavigateToSettings)
     }
 }

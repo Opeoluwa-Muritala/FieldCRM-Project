@@ -215,7 +215,12 @@ fun FieldCRMApp(
     if (appUiState.isSessionExpired) {
         SessionExpiredScreen(
             userEmail = appUiState.session?.userEmail ?: "",
-            onReauthSuccess = { appViewModel.setSessionExpired(false) }
+            onLoginAgainClick = {
+                appViewModel.logout()
+                appViewModel.setSessionExpired(false)
+                backStack.clear()
+                backStack.add(Screen.Login)
+            }
         )
         return
     }
@@ -375,6 +380,7 @@ fun FieldCRMApp(
                     when (selectedTab) {
                         0 -> RoleDashboardHost(
                             role = resolvedRole,
+                            userName = appUiState.session?.userName.orEmpty(),
                             metrics = dashboardUiState.metrics,
                             isLoading = dashboardUiState.isLoading,
                             error = dashboardUiState.error,
@@ -384,11 +390,8 @@ fun FieldCRMApp(
                                     backStack.add(destination)
                                 }
                             },
-                            onSignOut = {
-                                appViewModel.logout()
-                                NotificationSyncWorker.cancel(context)
-                                backStack.clear()
-                                backStack.add(Screen.Login)
+                            onNavigateToSettings = {
+                                backStack.add(Screen.Settings)
                             }
                         )
                         1 -> {
@@ -545,6 +548,7 @@ fun FieldCRMApp(
 
         Screen.BorrowerList -> BorrowerListScreenView(
             viewModel = borrowerViewModel,
+            applications = applicationUiState.applications,
             onBorrowerSelected = { borrower ->
                 appViewModel.setSelectedBorrower(borrower)
                 backStack.add(Screen.BorrowerDetail)
@@ -556,7 +560,14 @@ fun FieldCRMApp(
         Screen.BorrowerDetail -> appUiState.selectedBorrower?.let { borrower ->
             BorrowerDetailScreenView(
                 borrower = borrower,
+                applications = applicationUiState.applications,
+                role = appUiState.session?.role,
                 onBackClick = { backStack.removeLastOrNull() },
+                onViewApplication = { appId ->
+                    val app = applicationUiState.applications.find { it.id == appId }
+                    if (app != null) appViewModel.setSelectedApplication(app)
+                    backStack.add(Screen.ApplicationDetail)
+                },
                 onCreateApplication = {
                     applicationViewModel.setSelectedBorrowerForApp(borrower)
                     backStack.add(Screen.CreateApplication)
@@ -955,6 +966,17 @@ fun FieldCRMApp(
             onBackClick = { backStack.removeLastOrNull() }
         )
 
+        Screen.BiometricEnrollment -> {
+            BiometricEnrollmentScreen(
+                onComplete = {
+                    backStack.removeLastOrNull()
+                    if (backStack.isEmpty()) {
+                        backStack.add(Screen.Dashboard)
+                    }
+                }
+            )
+        }
+
         Screen.CrmReview -> {
             val app = appUiState.selectedApplication
             if (app != null) {
@@ -1054,6 +1076,31 @@ fun FieldCRMApp(
                     }
                 }
             )
+        }
+
+        Screen.DisbursementForm -> {
+            val app = appUiState.selectedApplication
+            if (app != null) {
+                DisbursementFormScreen(
+                    application = app,
+                    isSubmitting = appUiState.isLoading,
+                    onRecordDisbursement = { amount, date, method, reference ->
+                        applicationViewModel.recordDisbursement(
+                            applicationId = app.id,
+                            request = com.fieldcrm.android.data.api.DisbursementRequest(
+                                actual_amount = amount,
+                                disbursement_date = date,
+                                payment_method = method,
+                                bank_reference = reference
+                            ),
+                            onDone = { backStack.removeLastOrNull() }
+                        )
+                    },
+                    onBack = { backStack.removeLastOrNull() }
+                )
+            } else {
+                LaunchedEffect(Unit) { backStack.removeLastOrNull() }
+            }
         }
 
         Screen.CrmQueue -> RoleCrmQueueHost(

@@ -234,26 +234,42 @@ fun OfflineQueueScreen(onBackClick: () -> Unit) {
     }
 }
 
+enum class SyncDisplayStatus {
+    LOCALLY_DRAFTED,
+    PENDING_SYNC,
+    SYNC_ERROR
+}
+
 @Composable
 private fun SyncQueueCard(
     item: SyncItem,
     isSyncing: Boolean,
     onRetry: () -> Unit
 ) {
+    val displayStatus = remember(item) {
+        when {
+            item.status == SyncItemStatus.FAILED -> SyncDisplayStatus.SYNC_ERROR
+            item.attempts == 0L -> SyncDisplayStatus.LOCALLY_DRAFTED
+            else -> SyncDisplayStatus.PENDING_SYNC
+        }
+    }
+
     FieldCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = when (item.status) {
-                    SyncItemStatus.PENDING -> FieldIcons.ClockOutlined
-                    SyncItemStatus.FAILED  -> FieldIcons.AlertOutlined
+                imageVector = when (displayStatus) {
+                    SyncDisplayStatus.LOCALLY_DRAFTED -> FieldIcons.PenOutlined
+                    SyncDisplayStatus.PENDING_SYNC -> FieldIcons.ClockOutlined
+                    SyncDisplayStatus.SYNC_ERROR -> FieldIcons.AlertOutlined
                 },
-                contentDescription = item.status.name,
-                tint = when (item.status) {
-                    SyncItemStatus.PENDING -> FieldTheme.colors.statusWarning
-                    SyncItemStatus.FAILED  -> FieldTheme.colors.statusDanger
+                contentDescription = displayStatus.name,
+                tint = when (displayStatus) {
+                    SyncDisplayStatus.LOCALLY_DRAFTED -> FieldTheme.colors.purple400
+                    SyncDisplayStatus.PENDING_SYNC -> FieldTheme.colors.statusWarning
+                    SyncDisplayStatus.SYNC_ERROR -> FieldTheme.colors.statusDanger
                 },
                 modifier = Modifier.size(22.dp)
             )
@@ -265,11 +281,16 @@ private fun SyncQueueCard(
                     color = FieldTheme.colors.gray100
                 )
                 Text(
-                    text = item.status.name.lowercase(),
+                    text = when (displayStatus) {
+                        SyncDisplayStatus.LOCALLY_DRAFTED -> "locally-drafted"
+                        SyncDisplayStatus.PENDING_SYNC -> "pending sync"
+                        SyncDisplayStatus.SYNC_ERROR -> "sync error"
+                    },
                     style = FieldTheme.typography.mono.copy(fontSize = 11.sp),
-                    color = when (item.status) {
-                        SyncItemStatus.PENDING -> FieldTheme.colors.statusWarning
-                        SyncItemStatus.FAILED  -> FieldTheme.colors.statusDanger
+                    color = when (displayStatus) {
+                        SyncDisplayStatus.LOCALLY_DRAFTED -> FieldTheme.colors.purple400
+                        SyncDisplayStatus.PENDING_SYNC -> FieldTheme.colors.statusWarning
+                        SyncDisplayStatus.SYNC_ERROR -> FieldTheme.colors.statusDanger
                     }
                 )
                 if (item.errorMsg != null) {
@@ -283,7 +304,7 @@ private fun SyncQueueCard(
             }
         }
 
-        if (item.status == SyncItemStatus.FAILED) {
+        if (displayStatus == SyncDisplayStatus.SYNC_ERROR) {
             Spacer(modifier = Modifier.height(10.dp))
             SecondaryButton(
                 text = "Retry",
