@@ -135,6 +135,10 @@ fun CrmReviewScreen(
                 )
             }
 
+            DecisionImpactNotice(
+                if (role == UserRole.HEAD_CRM) "Approval records Head CRM authorization and routes the dossier to the executive decision stage." else "Submission records CRM completeness review and routes the dossier to Head CRM."
+            )
+            Spacer(Modifier.height(12.dp))
             PrimaryButton(
                 text = if (isSubmitting) "Submitting…" else if (role == UserRole.HEAD_CRM) "Approve and Send to ED" else "Send to Head CRM",
                     onClick = { onAdvanceToExecutive(notes, bureau1, bureau2, crmsSearch, ncrReg) },
