@@ -30,23 +30,39 @@ private data class PipelineEntry(
     val appId: String
 )
 
-private val stageOrder = listOf("Intake", "OCR Review", "Review", "Approval", "Disbursed")
+private val stageOrder = listOf(
+    "Relationship Officer Intake",
+    "Team Lead Review",
+    "Supervisor Review",
+    "Credit Analysis",
+    "CRM Dossier Review",
+    "Head CRM Approval",
+    "Executive Director Approval",
+    "Managing Director Input",
+    "CRM Disbursement",
+    "Disbursed",
+    "Returned"
+)
 
 private val stageMapping = mapOf(
-    "intake" to "Intake",
-    "ocr_review" to "OCR Review",
-    "branch_manager_review" to "Review",
-    "branch_supervisor_review" to "Review",
-    "credit_analyst_review" to "Review",
-    "crm_review" to "Review",
-    "head_crm_review" to "Review",
-    "audit_review" to "Review",
-    "ed_approval" to "Approval",
-    "md_approval" to "Approval",
-    "disbursement_ready" to "Approval",
+    "intake" to "Relationship Officer Intake",
+    "branch_manager_review" to "Team Lead Review",
+    "branch_supervisor_review" to "Supervisor Review",
+    "credit_analyst_review" to "Credit Analysis",
+    "crm_review" to "CRM Dossier Review",
+    "head_crm_review" to "Head CRM Approval",
+    "ed_approval" to "Executive Director Approval",
+    "executive_approval" to "Executive Director Approval",
+    "md_approval" to "Managing Director Input",
+    "disbursement_ready" to "CRM Disbursement",
     "disbursed" to "Disbursed",
     "returned" to "Returned",
-    "rejected" to "Returned"
+    "rejected" to "Returned",
+    // Historical stages are shown at their closest active workflow position.
+    "ocr_review" to "Relationship Officer Intake",
+    "credit_review" to "Credit Analysis",
+    "branch_approval" to "Team Lead Review",
+    "committee_review" to "Executive Director Approval"
 )
 
 @Composable
@@ -65,7 +81,7 @@ fun PipelineScreen(
                 PipelineEntry(
                     applicantName = borrower?.name ?: "Applicant details unavailable",
                     amount = "₦${String.format(Locale.US, "%,.0f", app.amount ?: 0.0)}",
-                    stage = stageMapping[app.stage] ?: "Intake",
+                    stage = stageMapping[app.stage] ?: "Relationship Officer Intake",
                     appId = app.id
                 )
             }
@@ -198,11 +214,10 @@ fun PipelineScreen(
 
                             items(stageItems) { entry ->
                                 val chipVariant = when (stage) {
-                                    "Intake" -> StatusChipVariant.Verified
-                                    "OCR Review" -> StatusChipVariant.NeedsReview
-                                    "Credit Review" -> StatusChipVariant.NeedsReview
-                                    "Approved" -> StatusChipVariant.Approved
+                                    "Relationship Officer Intake" -> StatusChipVariant.Verified
+                                    "Executive Director Approval", "Managing Director Input", "CRM Disbursement" -> StatusChipVariant.Approved
                                     "Disbursed" -> StatusChipVariant.Signed
+                                    "Returned" -> StatusChipVariant.Returned
                                     else -> StatusChipVariant.NeedsReview
                                 }
 

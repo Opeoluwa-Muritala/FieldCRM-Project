@@ -7,7 +7,6 @@ WORKFLOW_STAGES = (
     ("credit_analyst_review", "credit_analyst"),
     ("crm_review", "crm"),
     ("head_crm_review", "head_crm"),
-    ("audit_review", "auditor"),
     ("ed_approval", "ed"),
     ("md_approval", "md"),
     ("disbursement_ready", "crm"),

@@ -76,4 +76,5 @@ val appModule = module {
     viewModel { com.fieldcrm.android.ui.viewmodel.SyncViewModel(get(), get()) }
     viewModel { ServicingViewModel(get()) }
     viewModel { CrmReviewViewModel(get()) }
+    viewModel { com.fieldcrm.android.ui.viewmodel.MccEvidenceViewModel(get()) }
 }

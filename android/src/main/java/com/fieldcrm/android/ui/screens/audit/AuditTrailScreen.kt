@@ -141,7 +141,7 @@ fun AuditTrailScreen(
                                 actorRole = event.actorRole,
                                 action = event.action,
                                 diff = event.diff,
-                                isCurrentUserAction = event.actorRole == "Loan Officer"
+                                isCurrentUserAction = event.actorRole in setOf("Relationship Officer", "account_officer", "loan_officer")
                             )
                             if (event.stageChange != null) {
                                 Spacer(modifier = Modifier.height(4.dp))

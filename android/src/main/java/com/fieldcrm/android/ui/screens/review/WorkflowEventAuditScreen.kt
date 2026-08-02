@@ -65,7 +65,7 @@ fun WorkflowEventAuditScreen(
     var showActorDropdown by remember { mutableStateOf(false) }
     var showDateDropdown by remember { mutableStateOf(false) }
 
-    val actors = listOf("All Actors", "Tunde Yusuf", "Adebayo Coker", "Chidi Okafor", "Officer Yusuf")
+    val actors = listOf("All Actors") + events.map { it.actor }.filter { it.isNotBlank() }.distinct().sorted()
     val dateRanges = listOf("All Dates", "Today", "Last 7 Days", "Last 30 Days")
 
     Scaffold(

@@ -18,8 +18,10 @@ import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.screens.common.DetailItem
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.ui.viewmodel.MccEvidenceViewModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +33,9 @@ fun MdApprovalScreen(
     onAddBoardReferral: (email: String, name: String, notes: String) -> Unit,
     onBack: () -> Unit,
 ) {
+    val mccViewModel: MccEvidenceViewModel = koinViewModel()
+    val mccState by mccViewModel.uiState.collectAsState()
+    LaunchedEffect(application.id) { mccViewModel.load(application.id) }
     var finalAmount by remember { mutableStateOf(application.amount?.toString() ?: "") }
     var approvalNotes by remember { mutableStateOf("") }
     
@@ -38,7 +43,7 @@ fun MdApprovalScreen(
     var boardEmail by remember { mutableStateOf("") }
     var boardName by remember { mutableStateOf("") }
     var boardNotes by remember { mutableStateOf("") }
-    var referralList by remember { mutableStateOf(listOf("Referral to Dr. Adeyemi — PENDING")) }
+    var referralList by remember { mutableStateOf(emptyList<String>()) }
     
     var showApproveDialog by remember { mutableStateOf(false) }
     var showReturnDialog by remember { mutableStateOf(false) }
@@ -220,11 +225,12 @@ fun MdApprovalScreen(
             // Z4.1 MCC Recommendations (Votes, amounts, notes)
             SectionCard(title = "MCC Recommendations & Votes") {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    listOf(
-                        Triple("Credit Officer (Tunde Yusuf)", "₦9,500,000.00", "Approved - Recommended due to solid cash flow metrics and strong collateral coverage."),
-                        Triple("Branch Manager (Adebayo Coker)", "₦10,000,000.00", "Approved - Endorsed full amount, client is an established trader in this branch market."),
-                        Triple("CRM Officer (Chidi Okafor)", "₦9,500,000.00", "Approved - CRC searches pulled and NCR registered. Clean record confirmed.")
-                    ).forEach { (voter, amt, comment) ->
+                    if (mccState.isLoading) LoadingSkeleton(height = 72.dp, width = 280.dp)
+                    mccState.errorMessage?.let { Text(it, style = FieldTheme.typography.body, color = FieldTheme.colors.statusDanger) }
+                    if (!mccState.isLoading && mccState.errorMessage == null && mccState.recommendations.isEmpty()) {
+                        Text("No MCC recommendations have been recorded.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+                    }
+                    mccState.recommendations.forEach { vote ->
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -236,10 +242,11 @@ fun MdApprovalScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(voter, style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray100)
-                                Text(amt, style = FieldTheme.typography.mono, color = FieldTheme.colors.purple400)
+                                Text(vote.memberName, style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray100)
+                                Text(vote.recommendedAmount?.let { "NGN ${String.format(Locale.US, "%,.2f", it)}" } ?: "Amount not available", style = FieldTheme.typography.mono, color = FieldTheme.colors.purple400)
                             }
-                            Text(comment, style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+                            Text(vote.recommendation, style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray300)
+                            if (vote.notes.isNotBlank()) Text(vote.notes, style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
                         }
                     }
                 }
@@ -247,12 +254,7 @@ fun MdApprovalScreen(
 
             // Z4.2 Document Summary (Evidence list)
             SectionCard(title = "Document Evidence Summary") {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DetailItem(label = "Government ID Checked", value = "PASSED (CRM Review)")
-                    DetailItem(label = "Utility Bill Checked", value = "PASSED (CRM Review)")
-                    DetailItem(label = "6-Month Bank Statement", value = "PASSED (CRC Evaluated)")
-                    DetailItem(label = "NCR Registry Attestation", value = "REGISTERED")
-                }
+                Text("Open the dossier Documents section for current database-backed evidence.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
             }
 
             // Z4.3 Editable Final Amount formulation
@@ -314,7 +316,7 @@ fun MdApprovalScreen(
                         value = boardName,
                         onValueChange = { boardName = it },
                         label = { Text("Board Member Name") },
-                        placeholder = { Text("Dr. Adeyemi") },
+                        placeholder = { Text("Board member name") },
                         modifier = Modifier.fillMaxWidth(),
                         colors = TextFieldDefaults.colors(focusedContainerColor = FieldTheme.colors.gray900, unfocusedContainerColor = FieldTheme.colors.gray900, focusedTextColor = FieldTheme.colors.gray100, unfocusedTextColor = FieldTheme.colors.gray100)
                     )

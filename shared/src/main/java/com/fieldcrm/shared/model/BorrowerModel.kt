@@ -27,9 +27,10 @@ data class BorrowerModel(
 
 /**
  * Mirrors the backend loan_applications table columns.
- * Stage values: intake, ocr_review, credit_review, branch_approval, crm_review,
- *               committee_review, ed_approval, md_approval,
- *               disbursement_ready, disbursed, returned, rejected
+ * Active web workflow: intake -> branch_manager_review -> branch_supervisor_review
+ * -> credit_analyst_review -> crm_review -> head_crm_review -> ed_approval
+ * -> optional md_approval -> disbursement_ready -> disbursed.
+ * Audit and Legal inspect applications but are not mandatory workflow stages.
  * Loan type values: enterprise, msef, payee, other
  * Customer type values: new, existing
  */
@@ -59,7 +60,7 @@ data class LoanApplicationModel(
     val interest_rate: Double? = null,
     val repayment_frequency: String? = null,
     val schedule_method: String? = null,
-    val classification: String? = "current",
+    val classification: String? = null,
     val days_past_due: Int = 0,
     val crm_notes: String? = null,
     val crm_reviewed_by: String? = null,
@@ -73,34 +74,44 @@ data class LoanApplicationModel(
     val updated_at: String? = null,
 ) {
     val displayStatus: String get() = when (stage) {
-        "intake" -> "Draft"
-        "ocr_review" -> "OCR Review"
-        "credit_review" -> "Credit Review"
-        "branch_approval" -> "Branch Approval"
-        "crm_review" -> "CRM Review"
-        "committee_review" -> "Committee Review"
-        "ed_approval" -> "ED Approval"
-        "md_approval" -> "MD Approval"
-        "disbursement_ready" -> "Disbursement Ready"
+        "intake" -> "Relationship Officer Intake"
+        "branch_manager_review" -> "Team Lead Review"
+        "branch_supervisor_review" -> "Supervisor Review"
+        "credit_analyst_review" -> "Credit Analysis"
+        "crm_review" -> "CRM Dossier Review"
+        "head_crm_review" -> "Head CRM Approval"
+        "ed_approval", "executive_approval" -> "Executive Director Approval"
+        "md_approval" -> "Managing Director Input"
+        "disbursement_ready" -> "CRM Disbursement"
         "disbursed" -> "Disbursed"
         "returned" -> "Returned"
         "rejected" -> "Rejected"
+        // Labels retained for historical records created by the retired workflow.
+        "ocr_review" -> "Legacy OCR Review"
+        "credit_review" -> "Legacy Credit Review"
+        "branch_approval" -> "Legacy Branch Approval"
+        "committee_review" -> "Legacy Committee Review"
         else -> stage.replace('_', ' ').replaceFirstChar { it.uppercase() }
     }
 
     val isActive: Boolean get() = stage !in setOf("disbursed", "returned", "rejected")
 
     val stageIndex: Int get() = when (stage) {
-        "intake" -> 1
-        "ocr_review" -> 2
+        "intake" -> 0
+        "branch_manager_review" -> 1
+        "branch_supervisor_review" -> 2
+        "credit_analyst_review" -> 3
+        "crm_review" -> 4
+        "head_crm_review" -> 5
+        "ed_approval", "executive_approval" -> 6
+        "md_approval" -> 7
+        "disbursement_ready" -> 8
+        "disbursed" -> 9
+        "ocr_review" -> 0
         "credit_review" -> 3
-        "branch_approval" -> 4
-        "crm_review" -> 5
+        "branch_approval" -> 1
         "committee_review" -> 6
-        "ed_approval" -> 7
-        "md_approval" -> 8
-        "disbursement_ready", "disbursed" -> 9
-        else -> 1
+        else -> 0
     }
 }
 

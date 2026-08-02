@@ -39,7 +39,7 @@ fun BorrowerDetailScreenView(
     }
     
     val isActive = borrower.status.lowercase(Locale.getDefault()) == "active"
-    val isAuthorizedToEdit = role == UserRole.LOAN_OFFICER || role == UserRole.SYSTEM_ADMIN // Edit allowed for Loan Officer and Admin
+    val isAuthorizedToEdit = role in setOf(UserRole.ACCOUNT_OFFICER, UserRole.LOAN_OFFICER, UserRole.SYSTEM_ADMIN)
 
     // Filter applications belonging to this borrower
     val borrowerApps = remember(applications, borrower) {
@@ -257,16 +257,16 @@ fun BorrowerDetailScreenView(
                         items = listOf(
                             Triple("BVN Reference", borrower.bvn, true),
                             Triple("NIN Reference", borrower.nin, true),
-                            Triple("Physical Address", borrower.physical_address ?: "Lagos LGA", false)
+                            Triple("Physical Address", borrower.physical_address ?: "Not available", false)
                         )
                     )
 
                     DetailSectionCard(
                         title = "Employment & Income Profile",
                         items = listOf(
-                            Triple("Employment Status", borrower.employment_status ?: "Self Employed", false),
-                            Triple("Employer/Business Name", borrower.employer_name ?: "Private Retail", false),
-                            Triple("Monthly Net Income", "₦ ${borrower.monthly_income ?: 0.0}", true)
+                            Triple("Employment Status", borrower.employment_status ?: "Not available", false),
+                            Triple("Employer/Business Name", borrower.employer_name ?: "Not available", false),
+                            Triple("Monthly Net Income", borrower.monthly_income?.let { "NGN $it" } ?: "Not available", true)
                         )
                     )
 
