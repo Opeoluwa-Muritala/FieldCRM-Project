@@ -105,7 +105,9 @@ fun MyQueueScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (isLoading) {
+            if (dashboardState.error != null) {
+                FinanceErrorState(dashboardState.error ?: "Unable to load application work.", dashboardViewModel::loadMetrics)
+            } else if (isLoading) {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 100.dp),
@@ -129,6 +131,8 @@ fun MyQueueScreen(
                         }
                     }
                 }
+            } else if (queueItems.isEmpty()) {
+                FinanceEmptyState("No application work", "You have no applications requiring attention.")
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),

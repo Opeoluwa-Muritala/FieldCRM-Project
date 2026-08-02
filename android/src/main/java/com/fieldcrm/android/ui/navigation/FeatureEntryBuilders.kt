@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.fieldcrm.android.ui.viewmodel.Screen
+import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 
 internal fun EntryProviderScope<NavKey>.authEntryBuilder(
     content: @Composable (Screen) -> Unit
@@ -27,7 +28,7 @@ internal fun EntryProviderScope<NavKey>.shellEntryBuilder(
 ) {
     entry<Screen.Dashboard> { content(it) }
     entry<Screen.Settings> { content(it) }
-    entry<Screen.Notifications> { content(it) }
+    entry<Screen.Notifications>(metadata = ListDetailSceneStrategy.listPane()) { content(it) }
     entry<Screen.SearchResults> { content(it) }
     entry<Screen.Confirmation> { content(it) }
 }
@@ -43,7 +44,7 @@ internal fun EntryProviderScope<NavKey>.borrowerEntryBuilder(
 internal fun EntryProviderScope<NavKey>.applicationEntryBuilder(
     content: @Composable (Screen) -> Unit
 ) {
-    entry<Screen.ApplicationDetail> { content(it) }
+    entry<Screen.ApplicationDetail>(metadata = ListDetailSceneStrategy.detailPane()) { content(it) }
     entry<Screen.CreateApplication> { content(it) }
     entry<Screen.LoanApplicationForm> { content(it) }
     entry<Screen.GuarantorsForm> { content(it) }
@@ -51,8 +52,8 @@ internal fun EntryProviderScope<NavKey>.applicationEntryBuilder(
     entry<Screen.VisitationReport> { content(it) }
     entry<Screen.OfflineQueue> { content(it) }
     entry<Screen.OcrReview> { content(it) }
-    entry<Screen.RepaymentSchedule> { content(it) }
-    entry<Screen.ParDashboard> { content(it) }
+    entry<Screen.RepaymentSchedule>(metadata = ListDetailSceneStrategy.detailPane("servicing")) { content(it) }
+    entry<Screen.ParDashboard>(metadata = ListDetailSceneStrategy.listPane("servicing")) { content(it) }
 }
 
 internal fun EntryProviderScope<NavKey>.documentEntryBuilder(
@@ -68,12 +69,12 @@ internal fun EntryProviderScope<NavKey>.reviewEntryBuilder(
     entry<Screen.BranchManagerReview> { content(it) }
     entry<Screen.LegalWorkspace> { content(it) }
     entry<Screen.ValuationEditor> { content(it) }
-    entry<Screen.MccWorkspace> { content(it) }
+    entry<Screen.MccWorkspace>(metadata = ListDetailSceneStrategy.listPane("mcc")) { content(it) }
     entry<Screen.InterestPresets> { content(it) }
     entry<Screen.BranchManagement> { content(it) }
     entry<Screen.WorkflowEventAudit> { content(it) }
-    entry<Screen.AuditTrail> { content(it) }
-    entry<Screen.ComplianceFlags> { content(it) }
+    entry<Screen.AuditTrail>(metadata = ListDetailSceneStrategy.listPane("audit")) { content(it) }
+    entry<Screen.ComplianceFlags>(metadata = ListDetailSceneStrategy.listPane()) { content(it) }
     entry<Screen.CrmReview> { content(it) }
     entry<Screen.EdApproval> { content(it) }
     entry<Screen.MdApproval> { content(it) }
@@ -90,20 +91,20 @@ internal fun EntryProviderScope<NavKey>.executiveEntryBuilder(
 internal fun EntryProviderScope<NavKey>.queueEntryBuilder(
     content: @Composable (Screen) -> Unit
 ) {
-    entry<Screen.MyQueue> { content(it) }
-    entry<Screen.VisitsDue> { content(it) }
-    entry<Screen.AwaitingConcurrence> { content(it) }
-    entry<Screen.PendingSignoffs> { content(it) }
-    entry<Screen.CreditReviewQueue> { content(it) }
-    entry<Screen.OcrExceptions> { content(it) }
-    entry<Screen.Pipeline> { content(it) }
-    entry<Screen.CrmQueue> { content(it) }
-    entry<Screen.ExecutiveQueue> { content(it) }
+    entry<Screen.MyQueue>(metadata = ListDetailSceneStrategy.listPane()) { content(it) }
+    entry<Screen.VisitsDue>(metadata = ListDetailSceneStrategy.listPane()) { content(it) }
+    entry<Screen.AwaitingConcurrence>(metadata = ListDetailSceneStrategy.listPane()) { content(it) }
+    entry<Screen.PendingSignoffs>(metadata = ListDetailSceneStrategy.listPane()) { content(it) }
+    entry<Screen.CreditReviewQueue>(metadata = ListDetailSceneStrategy.listPane()) { content(it) }
+    entry<Screen.OcrExceptions>(metadata = ListDetailSceneStrategy.listPane()) { content(it) }
+    entry<Screen.Pipeline>(metadata = ListDetailSceneStrategy.listPane()) { content(it) }
+    entry<Screen.CrmQueue>(metadata = ListDetailSceneStrategy.listPane()) { content(it) }
+    entry<Screen.ExecutiveQueue>(metadata = ListDetailSceneStrategy.listPane()) { content(it) }
 }
 
 internal fun EntryProviderScope<NavKey>.adminEntryBuilder(
     content: @Composable (Screen) -> Unit
 ) {
-    entry<Screen.Users> { content(it) }
-    entry<Screen.SystemActivity> { content(it) }
+    entry<Screen.Users>(metadata = ListDetailSceneStrategy.listPane("users")) { content(it) }
+    entry<Screen.SystemActivity>(metadata = ListDetailSceneStrategy.listPane("activity")) { content(it) }
 }

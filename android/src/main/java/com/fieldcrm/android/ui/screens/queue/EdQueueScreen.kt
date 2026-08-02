@@ -86,7 +86,11 @@ fun EdQueueScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (queueItems.isEmpty()) {
+            if (dashboardState.error != null) {
+                FinanceErrorState(dashboardState.error ?: "Unable to load Executive Director decisions.", dashboardViewModel::loadMetrics)
+            } else if (dashboardState.isLoading) {
+                FinanceListSkeleton()
+            } else if (queueItems.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         "No applications pending ED approval.",

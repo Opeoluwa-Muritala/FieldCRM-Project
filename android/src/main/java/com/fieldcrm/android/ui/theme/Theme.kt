@@ -137,42 +137,48 @@ val FieldTypo = FieldTypography(
         fontWeight = FontWeight.Bold,
         fontSize = 32.sp, // headline-lg
         letterSpacing = (-0.5).sp,
-        lineHeight = 40.sp
+        lineHeight = 40.sp,
+        fontFeatureSettings = "tnum"
     ),
     title = TextStyle(
         fontFamily = FontFamily.Serif, // Playfair Display Serif
         fontWeight = FontWeight.SemiBold,
         fontSize = 20.sp, // headline-sm
         letterSpacing = (-0.3).sp,
-        lineHeight = 28.sp
+        lineHeight = 28.sp,
+        fontFeatureSettings = "tnum"
     ),
     body = TextStyle(
         fontFamily = FontFamily.SansSerif, // DM Sans SansSerif body
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp, // body-md
         letterSpacing = 0.sp,
-        lineHeight = 24.sp
+        lineHeight = 24.sp,
+        fontFeatureSettings = "tnum"
     ),
     bodyStrong = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
         fontSize = 16.sp, // body-md bold
         letterSpacing = 0.sp,
-        lineHeight = 24.sp
+        lineHeight = 24.sp,
+        fontFeatureSettings = "tnum"
     ),
     label = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.SemiBold,
         fontSize = 12.sp, // label-md
         letterSpacing = 0.5.sp,
-        lineHeight = 16.sp
+        lineHeight = 16.sp,
+        fontFeatureSettings = "tnum"
     ),
     mono = TextStyle(
         fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         letterSpacing = 0.sp,
-        lineHeight = 16.sp
+        lineHeight = 16.sp,
+        fontFeatureSettings = "tnum"
     )
 )
 

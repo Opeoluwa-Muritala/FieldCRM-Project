@@ -101,7 +101,9 @@ fun OcrExceptionsScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (isLoading) {
+            if (dashboardState.error != null) {
+                FinanceErrorState(dashboardState.error ?: "Unable to load OCR exceptions.", dashboardViewModel::loadMetrics)
+            } else if (isLoading) {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
@@ -118,6 +120,8 @@ fun OcrExceptionsScreen(
                         }
                     }
                 }
+            } else if (exceptions.isEmpty()) {
+                FinanceEmptyState("No OCR exceptions", "No document fields require manual verification.")
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(10.dp),

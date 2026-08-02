@@ -107,7 +107,9 @@ fun AwaitingConcurrenceScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (isLoading) {
+            if (dashboardState.error != null) {
+                FinanceErrorState(dashboardState.error ?: "Unable to load concurrence work.", dashboardViewModel::loadMetrics)
+            } else if (isLoading) {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
@@ -128,6 +130,8 @@ fun AwaitingConcurrenceScreen(
                         }
                     }
                 }
+            } else if (concurrenceItems.isEmpty()) {
+                FinanceEmptyState("No files awaiting concurrence", "Your Team Lead concurrence queue is clear.")
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(10.dp),

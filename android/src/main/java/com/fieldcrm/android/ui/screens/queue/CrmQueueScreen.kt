@@ -98,14 +98,12 @@ fun CrmQueueScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (queueItems.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        "No applications pending CRM review.",
-                        color = FieldTheme.colors.gray500,
-                        style = FieldTheme.typography.body
-                    )
-                }
+            if (dashboardState.error != null) {
+                FinanceErrorState(dashboardState.error ?: "Unable to load CRM review work.", dashboardViewModel::loadMetrics)
+            } else if (dashboardState.isLoading) {
+                FinanceListSkeleton()
+            } else if (queueItems.isEmpty()) {
+                FinanceEmptyState("No dossiers awaiting CRM review", "The CRM review queue is clear.")
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
