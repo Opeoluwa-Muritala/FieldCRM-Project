@@ -57,3 +57,12 @@ fun FinanceErrorState(message: String, onRetry: () -> Unit, modifier: Modifier =
         SecondaryButton("Try again", onRetry)
     }
 }
+
+@Composable
+fun DecisionImpactNotice(message: String, modifier: Modifier = Modifier) {
+    FieldCard(modifier.fillMaxWidth()) {
+        Text("Before you continue", style = FieldTheme.typography.label, color = FieldTheme.colors.purple400)
+        Spacer(Modifier.height(4.dp))
+        Text(message, style = FieldTheme.typography.body, color = FieldTheme.colors.gray300)
+    }
+}

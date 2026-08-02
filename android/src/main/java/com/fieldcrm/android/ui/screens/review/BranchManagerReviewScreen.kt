@@ -89,6 +89,9 @@ fun BranchManagerReviewScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                DecisionImpactNotice(
+                    if (role == UserRole.BRANCH_SUPERVISOR) "Approval moves this dossier to Credit Analysis and records your supervisory concurrence." else "Approval records your Team Lead concurrence and moves the dossier to Supervisor Review."
+                )
                 PrimaryButton(
                     text = if (appState.isLoading) "Processing Approval..." else if (role == UserRole.BRANCH_SUPERVISOR) "Approve & Send to Credit Analyst" else "Approve & Send to Supervisor",
                     onClick = {

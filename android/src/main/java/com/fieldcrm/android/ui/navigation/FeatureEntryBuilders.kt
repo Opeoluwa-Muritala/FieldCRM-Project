@@ -5,6 +5,7 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.fieldcrm.android.ui.viewmodel.Screen
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
+import androidx.compose.material3.adaptive.navigation3.SupportingPaneSceneStrategy
 
 internal fun EntryProviderScope<NavKey>.authEntryBuilder(
     content: @Composable (Screen) -> Unit
@@ -44,7 +45,9 @@ internal fun EntryProviderScope<NavKey>.borrowerEntryBuilder(
 internal fun EntryProviderScope<NavKey>.applicationEntryBuilder(
     content: @Composable (Screen) -> Unit
 ) {
-    entry<Screen.ApplicationDetail>(metadata = ListDetailSceneStrategy.detailPane()) { content(it) }
+    entry<Screen.ApplicationDetail>(
+        metadata = ListDetailSceneStrategy.detailPane() + SupportingPaneSceneStrategy.mainPane()
+    ) { content(it) }
     entry<Screen.CreateApplication> { content(it) }
     entry<Screen.LoanApplicationForm> { content(it) }
     entry<Screen.GuarantorsForm> { content(it) }
@@ -66,7 +69,8 @@ internal fun EntryProviderScope<NavKey>.documentEntryBuilder(
 internal fun EntryProviderScope<NavKey>.reviewEntryBuilder(
     content: @Composable (Screen) -> Unit
 ) {
-    entry<Screen.BranchManagerReview> { content(it) }
+    entry<Screen.BranchManagerReview>(metadata = SupportingPaneSceneStrategy.supportingPane()) { content(it) }
+    entry<Screen.CreditOfficerReview>(metadata = SupportingPaneSceneStrategy.supportingPane()) { content(it) }
     entry<Screen.LegalWorkspace> { content(it) }
     entry<Screen.ValuationEditor> { content(it) }
     entry<Screen.MccWorkspace>(metadata = ListDetailSceneStrategy.listPane("mcc")) { content(it) }
@@ -75,10 +79,10 @@ internal fun EntryProviderScope<NavKey>.reviewEntryBuilder(
     entry<Screen.WorkflowEventAudit> { content(it) }
     entry<Screen.AuditTrail>(metadata = ListDetailSceneStrategy.listPane("audit")) { content(it) }
     entry<Screen.ComplianceFlags>(metadata = ListDetailSceneStrategy.listPane()) { content(it) }
-    entry<Screen.CrmReview> { content(it) }
-    entry<Screen.EdApproval> { content(it) }
-    entry<Screen.MdApproval> { content(it) }
-    entry<Screen.ExecutiveApproval> { content(it) }
+    entry<Screen.CrmReview>(metadata = SupportingPaneSceneStrategy.supportingPane()) { content(it) }
+    entry<Screen.EdApproval>(metadata = SupportingPaneSceneStrategy.supportingPane()) { content(it) }
+    entry<Screen.MdApproval>(metadata = SupportingPaneSceneStrategy.supportingPane()) { content(it) }
+    entry<Screen.ExecutiveApproval>(metadata = SupportingPaneSceneStrategy.supportingPane()) { content(it) }
 }
 
 internal fun EntryProviderScope<NavKey>.executiveEntryBuilder(

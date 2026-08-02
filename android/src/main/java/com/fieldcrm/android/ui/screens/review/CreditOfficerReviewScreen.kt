@@ -72,6 +72,7 @@ fun CreditOfficerReviewScreen(
                     .border(width = 0.5.dp, color = FieldTheme.colors.gray800)
                     .padding(16.dp)
             ) {
+                DecisionImpactNotice("Submission records this underwriting recommendation and advances or returns the dossier according to the selected decision.")
                 PrimaryButton(
                     text = if (appState.isLoading) "Submitting Verdict..." else "Submit Credit Evaluation",
                     onClick = {

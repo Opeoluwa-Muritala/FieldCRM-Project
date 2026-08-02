@@ -9,6 +9,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
+import androidx.compose.material3.adaptive.navigation3.rememberSupportingPaneSceneStrategy
 import com.fieldcrm.android.ui.navigation.impl.adminEntryBuilder
 import com.fieldcrm.android.ui.navigation.impl.applicationEntryBuilder
 import com.fieldcrm.android.ui.navigation.impl.authEntryBuilder
@@ -28,6 +29,7 @@ fun FieldCRMNavDisplay(
     content: @Composable (Screen) -> Unit
 ) {
     val listDetailSceneStrategy = rememberListDetailSceneStrategy<NavKey>()
+    val supportingPaneSceneStrategy = rememberSupportingPaneSceneStrategy<NavKey>()
     NavDisplay(
         backStack = backStack,
         onBack = onBack,
@@ -35,7 +37,7 @@ fun FieldCRMNavDisplay(
             rememberSaveableStateHolderNavEntryDecorator<NavKey>(),
             rememberViewModelStoreNavEntryDecorator<NavKey>()
         ),
-        sceneStrategies = listOf(listDetailSceneStrategy),
+        sceneStrategies = listOf(supportingPaneSceneStrategy, listDetailSceneStrategy),
         entryProvider = entryProvider(
             fallback = { unknownScreen ->
                 NavEntry(unknownScreen) {

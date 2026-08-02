@@ -101,6 +101,8 @@ fun EdApprovalScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
+                DecisionImpactNotice("Approval issues the disbursement instruction. Forwarding requests Managing Director input without surrendering the final ED decision.")
+                Spacer(modifier = Modifier.height(12.dp))
                 PrimaryButton(
                     text = if (isSubmitting) "Processing…" else "Approve — Issue Disbursement Instruction",
                     onClick = { showApproveDialog = true },

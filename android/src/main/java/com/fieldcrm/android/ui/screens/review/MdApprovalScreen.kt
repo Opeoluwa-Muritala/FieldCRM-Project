@@ -119,6 +119,8 @@ fun MdApprovalScreen(
                     color = FieldTheme.colors.gray400
                 )
                 Spacer(modifier = Modifier.height(16.dp))
+                DecisionImpactNotice("Approval records the Managing Director decision and issues the final disbursement instruction. Return sends the dossier back to the Executive Director.")
+                Spacer(modifier = Modifier.height(12.dp))
                 PrimaryButton(
                     text = if (isSubmitting) "Processing…" else "Approve — Issue Disbursement Instruction",
                     onClick = { showApproveDialog = true },
