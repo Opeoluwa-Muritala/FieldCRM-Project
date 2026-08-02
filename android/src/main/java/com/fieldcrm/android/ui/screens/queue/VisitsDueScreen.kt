@@ -101,7 +101,9 @@ fun VisitsDueScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (isLoading) {
+            if (dashboardState.error != null) {
+                FinanceErrorState(dashboardState.error ?: "Unable to load visits.", dashboardViewModel::loadMetrics)
+            } else if (isLoading) {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
@@ -118,6 +120,8 @@ fun VisitsDueScreen(
                         }
                     }
                 }
+            } else if (visits.isEmpty()) {
+                FinanceEmptyState("No visits due", "No field visits require attention today.")
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(10.dp),

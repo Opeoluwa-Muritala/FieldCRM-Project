@@ -136,7 +136,9 @@ fun CreditReviewQueueScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (isLoading) {
+            if (dashboardState.error != null) {
+                FinanceErrorState(dashboardState.error ?: "Unable to load review work.", dashboardViewModel::loadMetrics)
+            } else if (isLoading) {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
@@ -157,6 +159,8 @@ fun CreditReviewQueueScreen(
                         }
                     }
                 }
+            } else if (reviewItems.isEmpty()) {
+                FinanceEmptyState("No reviews waiting", "No dossiers currently require this review.")
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(10.dp),

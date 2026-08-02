@@ -101,7 +101,9 @@ fun PendingSignoffsScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (isLoading) {
+            if (dashboardState.error != null) {
+                FinanceErrorState(dashboardState.error ?: "Unable to load sign-offs.", dashboardViewModel::loadMetrics)
+            } else if (isLoading) {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
@@ -116,6 +118,8 @@ fun PendingSignoffsScreen(
                         }
                     }
                 }
+            } else if (signoffItems.isEmpty()) {
+                FinanceEmptyState("No pending sign-offs", "No submitted visits are awaiting your sign-off.")
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
