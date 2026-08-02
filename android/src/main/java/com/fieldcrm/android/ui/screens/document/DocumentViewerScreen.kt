@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -69,8 +70,8 @@ fun DocumentViewerScreen(
         }
     }
 
-    var zoomLevel by remember { mutableFloatStateOf(1.0f) }
-    var rotationAngle by remember { mutableIntStateOf(0) }
+    var zoomLevel by rememberSaveable(applicationId, docType) { mutableFloatStateOf(1.0f) }
+    var rotationAngle by rememberSaveable(applicationId, docType) { mutableIntStateOf(0) }
 
     val displayTitle = if (docType.isNotBlank()) "Document: $docType" else "Document Viewer"
 
@@ -296,18 +297,10 @@ fun ViewerCanvasBox(
         contentAlignment = Alignment.Center
     ) {
         if (isLoading.value) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                CircularProgressIndicator(
-                    color = FieldTheme.colors.purple600,
-                    modifier = Modifier.size(48.dp),
-                    strokeWidth = 3.dp
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Loading document pages...",
-                    style = FieldTheme.typography.body,
-                    color = FieldTheme.colors.gray400
-                )
+            Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                LoadingSkeleton(modifier = Modifier.fillMaxWidth().weight(1f), height = 400.dp, width = 280.dp, cornerRadius = 8.dp)
+                Spacer(modifier = Modifier.height(12.dp))
+                LoadingSkeleton(height = 14.dp, width = 176.dp)
             }
         } else if (hasError.value) {
             Column(

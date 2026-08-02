@@ -3,6 +3,7 @@ package com.fieldcrm.android.ui.roles.shared
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -17,6 +18,7 @@ import com.fieldcrm.android.ui.viewmodel.Screen
 data class WorkspaceMetric(val label: String, val value: String)
 data class WorkspaceAction(val label: String, val destination: Screen)
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun WorkspaceDashboardPage(
     title: String,
@@ -63,9 +65,25 @@ fun WorkspaceDashboardPage(
         ) {
             item { Text(subtitle, style = FieldTheme.typography.body, color = FieldTheme.colors.gray400) }
             when {
-                isLoading -> items(4) { LoadingSkeleton(modifier = Modifier.fillMaxWidth(), height = 76.dp, width = 320.dp) }
+                isLoading -> item {
+                    BoxWithConstraints(Modifier.fillMaxWidth()) {
+                        val columns = when { maxWidth < 400.dp -> 1; maxWidth < 840.dp -> 2; else -> 3 }
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), maxItemsInEachRow = columns) {
+                            repeat(4) { LoadingSkeleton(modifier = Modifier.width((maxWidth - 12.dp * (columns - 1)) / columns), height = 104.dp, width = 320.dp) }
+                        }
+                    }
+                }
                 error != null -> item { EmptyState(error) }
-                else -> items(metrics.size) { index -> PerformanceMetricCard(metrics[index]) }
+                metrics.isEmpty() -> item { EmptyState("No performance data is available for this workspace.") }
+                else -> item {
+                    BoxWithConstraints(Modifier.fillMaxWidth()) {
+                        val columns = when { maxWidth < 400.dp -> 1; maxWidth < 840.dp -> 2; else -> 3 }
+                        val cardWidth = (maxWidth - 12.dp * (columns - 1)) / columns
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), maxItemsInEachRow = columns) {
+                            metrics.take(6).forEach { metric -> PerformanceMetricCard(metric, Modifier.width(cardWidth)) }
+                        }
+                    }
+                }
             }
             if (filteredActions.isNotEmpty()) {
                 item { Text("WORKSPACE", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500) }
@@ -80,11 +98,11 @@ fun WorkspaceDashboardPage(
 }
 
 @Composable
-fun PerformanceMetricCard(metric: WorkspaceMetric) {
-    FieldCard(modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+fun PerformanceMetricCard(metric: WorkspaceMetric, modifier: Modifier = Modifier) {
+    FieldCard(modifier = modifier.heightIn(min = 104.dp)) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(metric.value, style = FieldTheme.typography.display, color = FieldTheme.colors.gray100)
             Text(metric.label, style = FieldTheme.typography.label, color = FieldTheme.colors.gray400)
-            Text(metric.value, style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
         }
     }
 }
