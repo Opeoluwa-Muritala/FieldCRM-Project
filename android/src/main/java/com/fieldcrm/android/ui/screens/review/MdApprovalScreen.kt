@@ -236,7 +236,7 @@ fun MdApprovalScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(voter, style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray200)
+                                Text(voter, style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray100)
                                 Text(amt, style = FieldTheme.typography.mono, color = FieldTheme.colors.purple400)
                             }
                             Text(comment, style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)

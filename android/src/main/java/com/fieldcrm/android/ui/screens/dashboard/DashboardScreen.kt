@@ -19,10 +19,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
-import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
-import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -45,7 +43,6 @@ import androidx.activity.compose.BackHandler
 import org.koin.androidx.compose.koinViewModel
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 @Composable
 fun DashboardScreenView(
     role: UserRole?,
@@ -86,17 +83,8 @@ fun DashboardScreenView(
 ) {
     val resolvedRole = role ?: UserRole.ACCOUNT_OFFICER
     val context = LocalContext.current
-    val activity = remember(context) {
-        var ctx = context
-        while (ctx is android.content.ContextWrapper) {
-            if (ctx is android.app.Activity) break
-            ctx = ctx.baseContext
-        }
-        ctx as? android.app.Activity
-    }
-    val isTablet = activity?.let {
-        calculateWindowSizeClass(it).widthSizeClass != WindowWidthSizeClass.Compact
-    } ?: false
+    val configuration = LocalConfiguration.current
+    val isTablet = configuration.screenWidthDp >= 600
 
     var selectedTab by remember { mutableStateOf(0) }
     val tabHistory = remember { mutableStateListOf<Int>() }

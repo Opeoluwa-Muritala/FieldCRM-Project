@@ -23,7 +23,8 @@ import java.util.Locale
 fun DisbursementFormScreen(
     application: LoanApplicationModel,
     isSubmitting: Boolean = false,
-    onRecordDisbursement: (Double, String, String, String) -> Unit = { _, _, _, _ -> },
+    onRecordDisbursement: (Double, String, String, String, Double, String, String) -> Unit =
+        { _, _, _, _, _, _, _ -> },
     onBack: () -> Unit
 ) {
     var actualAmount by remember { mutableStateOf(application.amount?.toString() ?: "") }
@@ -79,7 +80,15 @@ fun DisbursementFormScreen(
                         onClick = {
                             val amt = actualAmount.toDoubleOrNull() ?: 0.0
                             if (amt > 0.0) {
-                                onRecordDisbursement(amt, disbursementDate, paymentMethod, bankReference)
+                                onRecordDisbursement(
+                                    amt,
+                                    disbursementDate,
+                                    paymentMethod,
+                                    bankReference,
+                                    interestRate.toDoubleOrNull() ?: 0.0,
+                                    repaymentFrequency,
+                                    scheduleMethod
+                                )
                             }
                         },
                         enabled = (actualAmount.toDoubleOrNull() ?: 0.0) > 0.0 && bankReference.isNotBlank() && isOfferGenerated && !isSubmitting,
