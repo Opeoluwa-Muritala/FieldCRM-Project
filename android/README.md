@@ -96,6 +96,7 @@ Run instrumentation tests, when available, with:
 
 The mobile API provides session/user data, dashboards, queues, borrowers, applications and intake steps, documents, OCR fields/review, visits/sign-off, review actions, notifications, search, configuration, audit, servicing, PAR, and user administration.
 
+
 The client can show locally cached data and sync status, but it must not label a local change as synced or approved until the backend confirms it. Camera scanning may use local ML Kit text recognition for staff assistance. The backend independently stores documents, runs its OCR pipeline, returns persisted confidence values, and records verified/corrected fields. UI approval/return actions request backend workflow changes; they do not grant permissions or make decisions by themselves.
 
 ## Development conventions

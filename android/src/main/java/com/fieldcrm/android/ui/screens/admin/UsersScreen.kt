@@ -3,6 +3,8 @@ package com.fieldcrm.android.ui.screens.admin
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -53,7 +55,8 @@ fun UsersScreen(
     var createName by remember { mutableStateOf("") }
     var createEmail by remember { mutableStateOf("") }
     var createRole by remember { mutableStateOf("loan_officer") }
-    var createPassword by remember { mutableStateOf("") }
+    var createBranchId by remember { mutableStateOf("") }
+    var createBranchName by remember { mutableStateOf("") }
     var isCreating by remember { mutableStateOf(false) }
     var createError by remember { mutableStateOf<String?>(null) }
 
@@ -76,6 +79,10 @@ fun UsersScreen(
             val result = api.getBranches()
             if (result is ApiResult.Success) {
                 branches = (result.data as? JsonObject)?.get("items")?.jsonArray?.mapNotNull { it as? JsonObject }.orEmpty()
+                if (branches.isNotEmpty()) {
+                    createBranchId = branches.first()["id"]?.jsonPrimitive?.content.orEmpty()
+                    createBranchName = branches.first()["name"]?.jsonPrimitive?.content.orEmpty()
+                }
             }
         }
         pageState = when (val result = api.listUsers()) {
@@ -119,12 +126,18 @@ fun UsersScreen(
     if (showCreateDialog) {
         AlertDialog(
             onDismissRequest = { if (!isCreating) showCreateDialog = false },
-            title = { Text("Create New User") },
+            title = { Text("Invite New User") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (createError != null) {
                         Text(createError!!, color = FieldTheme.colors.statusDanger, style = FieldTheme.typography.body)
                     }
+                    Text(
+                        text = "Admin does not set passwords. The invited user will receive an email link to set their own secure credentials.",
+                        style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                        color = FieldTheme.colors.purple400
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
                     OutlinedTextField(
                         value = createName,
                         onValueChange = { createName = it },
@@ -139,7 +152,7 @@ fun UsersScreen(
                     OutlinedTextField(
                         value = createEmail,
                         onValueChange = { createEmail = it },
-                        label = { Text("Email") },
+                        label = { Text("Email Address") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
@@ -147,17 +160,44 @@ fun UsersScreen(
                             unfocusedBorderColor = FieldTheme.colors.gray700
                         )
                     )
-                    OutlinedTextField(
-                        value = createPassword,
-                        onValueChange = { createPassword = it },
-                        label = { Text("Password (min 8 chars)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = FieldTheme.colors.purple600,
-                            unfocusedBorderColor = FieldTheme.colors.gray700
+                    
+                    // Branch Selector dropdown
+                    var branchExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = branchExpanded,
+                        onExpandedChange = { branchExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = createBranchName,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Branch Assignment") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = branchExpanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = FieldTheme.colors.purple600,
+                                unfocusedBorderColor = FieldTheme.colors.gray700
+                            )
                         )
-                    )
+                        ExposedDropdownMenu(
+                            expanded = branchExpanded,
+                            onDismissRequest = { branchExpanded = false }
+                        ) {
+                            branches.forEach { br ->
+                                val brId = br["id"]?.jsonPrimitive?.content.orEmpty()
+                                val brName = br["name"]?.jsonPrimitive?.content.orEmpty()
+                                DropdownMenuItem(
+                                    text = { Text(brName) },
+                                    onClick = { 
+                                        createBranchId = brId
+                                        createBranchName = brName
+                                        branchExpanded = false 
+                                    }
+                                )
+                            }
+                        }
+                    }
+
                     var roleExpanded by remember { mutableStateOf(false) }
                     ExposedDropdownMenuBox(
                         expanded = roleExpanded,
@@ -169,7 +209,7 @@ fun UsersScreen(
                             readOnly = true,
                             label = { Text("Role") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = roleExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true),
+                            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = FieldTheme.colors.purple600,
                                 unfocusedBorderColor = FieldTheme.colors.gray700
@@ -191,24 +231,25 @@ fun UsersScreen(
             },
             confirmButton = {
                 TextButton(
-                    enabled = createName.isNotBlank() && createEmail.isNotBlank() && createPassword.length >= 8 && !isCreating,
+                    enabled = createName.isNotBlank() && createEmail.isNotBlank() && createBranchId.isNotBlank() && !isCreating,
                     onClick = {
                         isCreating = true
                         createError = null
                         scope.launch {
-                            val ok = api.createUser(createName.trim(), createEmail.trim(), createRole, createPassword)
+                            val tempPassword = java.util.UUID.randomUUID().toString() + "aA1!"
+                            val ok = api.createUser(createName.trim(), createEmail.trim(), createRole, tempPassword)
                             if (ok) {
                                 showCreateDialog = false
-                                createName = ""; createEmail = ""; createPassword = ""; createRole = "loan_officer"
+                                createName = ""; createEmail = ""; createRole = "loan_officer"
                                 refreshUsers()
                             } else {
-                                createError = "Failed to create user. Email may already exist."
+                                createError = "Failed to send invitation. Email may already exist."
                             }
                             isCreating = false
                         }
                     }
                 ) {
-                    Text(if (isCreating) "Creating…" else "Create", color = FieldTheme.colors.purple600)
+                    Text(if (isCreating) "Sending..." else "Send Invitation", color = FieldTheme.colors.purple600)
                 }
             },
             dismissButton = {
@@ -292,6 +333,54 @@ fun UsersScreen(
                     onClick = { showCreateDialog = true },
                     modifier = Modifier.wrapContentWidth()
                 )
+            }
+
+            // Present / Active Users Horizontal Row Component
+            val activeUsers = users.filter { it.active }
+            if (activeUsers.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "PRESENT USERS",
+                    style = FieldTheme.typography.label,
+                    color = FieldTheme.colors.gray500
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    activeUsers.forEach { activeUser ->
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .background(FieldTheme.colors.purple950.copy(alpha = 0.5f), RoundedCornerShape(22.dp))
+                                    .border(1.5.dp, FieldTheme.colors.statusSuccess, RoundedCornerShape(22.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = activeUser.full_name.take(2).uppercase(),
+                                    style = FieldTheme.typography.bodyStrong,
+                                    color = FieldTheme.colors.gray100
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = activeUser.full_name.split(" ").firstOrNull() ?: activeUser.full_name,
+                                style = FieldTheme.typography.label.copy(fontSize = 11.sp),
+                                color = FieldTheme.colors.gray300
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Divider(color = FieldTheme.colors.gray800)
             }
 
             Spacer(modifier = Modifier.height(16.dp))

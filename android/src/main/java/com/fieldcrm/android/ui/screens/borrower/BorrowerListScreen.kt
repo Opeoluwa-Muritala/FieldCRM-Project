@@ -8,7 +8,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,14 +18,15 @@ import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
 import com.fieldcrm.android.ui.theme.FieldTheme
-import com.fieldcrm.android.ui.viewmodel.BorrowerUiState
+import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.viewmodel.BorrowerViewModel
 import com.fieldcrm.shared.model.BorrowerModel
-import java.util.Locale
+import com.fieldcrm.shared.model.LoanApplicationModel
 
 @Composable
 fun BorrowerListScreenView(
     viewModel: BorrowerViewModel,
+    applications: List<LoanApplicationModel>,
     onBorrowerSelected: (BorrowerModel) -> Unit,
     onAddBorrower: () -> Unit,
     onBackClick: () -> Unit
@@ -37,6 +37,7 @@ fun BorrowerListScreenView(
     BorrowerListContent(
         isLoading = state.isLoading,
         borrowers = state.borrowers,
+        applications = applications,
         searchQuery = searchQuery,
         onSearchQueryChange = { searchQuery = it },
         onBorrowerSelected = onBorrowerSelected,
@@ -49,6 +50,7 @@ fun BorrowerListScreenView(
 fun BorrowerListContent(
     isLoading: Boolean,
     borrowers: List<BorrowerModel>,
+    applications: List<LoanApplicationModel>,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onBorrowerSelected: (BorrowerModel) -> Unit,
@@ -70,7 +72,7 @@ fun BorrowerListContent(
             }
             
             matchesSearch && matchesFilter
-        }.sortedByDescending { it.created_at } // Sort recent first
+        }.sortedByDescending { it.created_at }
     }
 
     val activeCount = borrowers.count { it.status.equals("active", ignoreCase = true) }
@@ -225,8 +227,12 @@ fun BorrowerListContent(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(filteredBorrowers) { borrower ->
+                            val loanCount = applications.count {
+                                it.bvn == borrower.bvn || it.phone == borrower.phone || it.applicant_name == borrower.name
+                            }
                             BorrowerLineupCard(
                                 borrower = borrower,
+                                loanCount = loanCount,
                                 onClick = { onBorrowerSelected(borrower) }
                             )
                         }
@@ -247,7 +253,11 @@ fun StatBox(label: String, value: String, color: Color) {
 }
 
 @Composable
-fun BorrowerLineupCard(borrower: BorrowerModel, onClick: () -> Unit) {
+fun BorrowerLineupCard(
+    borrower: BorrowerModel,
+    loanCount: Int,
+    onClick: () -> Unit
+) {
     val initials = remember(borrower.name) {
         borrower.name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
     }
@@ -297,13 +307,13 @@ fun BorrowerLineupCard(borrower: BorrowerModel, onClick: () -> Unit) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = borrower.phone,
+                        text = maskContact(borrower.phone),
                         style = FieldTheme.typography.body.copy(fontSize = 12.sp),
                         color = FieldTheme.colors.gray400
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "BVN: ${borrower.bvn}",
+                        text = "BVN: ${maskBvn(borrower.bvn)}",
                         style = FieldTheme.typography.mono.copy(fontSize = 11.sp),
                         color = FieldTheme.colors.gray500
                     )
@@ -312,52 +322,28 @@ fun BorrowerLineupCard(borrower: BorrowerModel, onClick: () -> Unit) {
             
             Spacer(modifier = Modifier.width(8.dp))
             
-            // Status & Chevron
+            // Status & Chevron & Loan Count
             Column(horizontalAlignment = Alignment.End) {
                 StatusChip(
                     variant = if (isActive) StatusChipVariant.Verified else StatusChipVariant.NeedsReview
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Icon(
-                    imageVector = FieldIcons.ChevronRightOutlined,
-                    contentDescription = "View Profile",
-                    tint = FieldTheme.colors.gray600,
-                    modifier = Modifier.size(16.dp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (loanCount == 1) "1 Loan" else "$loanCount Loans",
+                    style = FieldTheme.typography.label.copy(fontSize = 10.sp),
+                    color = FieldTheme.colors.purple400
                 )
             }
         }
     }
 }
 
-// ==========================================
-// PREVIEWS
-// ==========================================
+private fun maskContact(phone: String): String {
+    if (phone.length < 5) return phone
+    return phone.take(3) + "****" + phone.takeLast(2)
+}
 
-@Preview(name = "Compact Phone List", widthDp = 411, heightDp = 850)
-@Composable
-fun PreviewBorrowerListCompact() {
-    val demoBorrowers = listOf(
-        BorrowerModel(
-            id = "1", org_id = "org_1", loan_officer_id = "LO_1",
-            name = "Adaeze Okonkwo", phone = "08012345678", bvn = "222333444", nin = "111222333",
-            status = "Active", created_at = "2026-06-18"
-        ),
-        BorrowerModel(
-            id = "2", org_id = "org_1", loan_officer_id = "LO_1",
-            name = "Emeka Chukwu", phone = "08087654321", bvn = "555666777", nin = "999888777",
-            status = "Active", created_at = "2026-06-18"
-        )
-    )
-    
-    FieldCRMTheme {
-        BorrowerListContent(
-            isLoading = false,
-            borrowers = demoBorrowers,
-            searchQuery = "",
-            onSearchQueryChange = {},
-            onBorrowerSelected = {},
-            onAddBorrower = {},
-            onBackClick = {}
-        )
-    }
+private fun maskBvn(bvn: String): String {
+    if (bvn.length < 5) return bvn
+    return bvn.take(3) + "****" + bvn.takeLast(2)
 }

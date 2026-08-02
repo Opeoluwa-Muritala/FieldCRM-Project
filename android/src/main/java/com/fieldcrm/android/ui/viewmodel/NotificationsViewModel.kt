@@ -67,4 +67,15 @@ class NotificationsViewModel(
         _uiState.update { it.copy(notifications = emptyList()) }
         viewModelScope.launch { repository.clearAll() }
     }
+
+    fun markAllRead() {
+        val unreads = _uiState.value.notifications.filter { !it.is_read }
+        if (unreads.isEmpty()) return
+        _uiState.update { state ->
+            state.copy(notifications = state.notifications.map { it.copy(is_read = true) })
+        }
+        viewModelScope.launch {
+            unreads.forEach { repository.markRead(it.id) }
+        }
+    }
 }

@@ -8,25 +8,24 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.screens.common.DetailItem
-import com.fieldcrm.android.ui.theme.FieldCRMTheme
+import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.viewmodel.ApplicationViewModel
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreditOfficerReviewScreen(
     application: LoanApplicationModel,
@@ -35,24 +34,35 @@ fun CreditOfficerReviewScreen(
     onBackClick: () -> Unit,
     onCompleteReview: () -> Unit
 ) {
-    var dtiRatio by remember { mutableFloatStateOf(0f) }
-    var recommendationDecision by remember { mutableStateOf("Recommend Approval") } // "Recommend Approval", "Recommend Rejection", "Return for Correction"
-    var recommendationNotes by remember { mutableStateOf("") }
-
-    val isDtiLimitExceeded = dtiRatio > 0.40f
     val appState by applicationViewModel.uiState.collectAsState()
+
+    // Screen-level states
+    var selectedTab by remember { mutableStateOf(0) }
+    val tabLabels = listOf("Affordability", "Documents", "OCR Fields", "Bureau Report", "Recommendation")
+
+    // Tab 1: Affordability inputs
+    var affordabilityNotes by remember { mutableStateOf("") }
+    
+    // Tab 3: OCR Overrides
+    var overrideBvn by remember { mutableStateOf("") }
+    var overrideBvnReason by remember { mutableStateOf("") }
+    var overrideName by remember { mutableStateOf("") }
+    var overrideNameReason by remember { mutableStateOf("") }
+
+    // Tab 5: Recommendation inputs
+    var recommendedAmount by remember { mutableStateOf(application.amount?.toString() ?: "") }
+    var recommendationNotes by remember { mutableStateOf("") }
+    var recommendationDecision by remember { mutableStateOf("Recommend Approval") } // "Recommend Approval", "Recommend Rejection"
+
     LaunchedEffect(application.id) {
         applicationViewModel.loadBureauData(application.id)
         applicationViewModel.loadOcrFields(application.id)
-    }
-    LaunchedEffect(appState.bureauData) {
-        dtiRatio = appState.bureauData?.dti_ratio?.toFloat() ?: 0f
     }
 
     Scaffold(
         topBar = {
             FieldTopAppBar(
-                title = "Credit Analysis",
+                title = "Credit Evaluation",
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -65,499 +75,360 @@ fun CreditOfficerReviewScreen(
             )
         },
         bottomBar = {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(FieldTheme.colors.gray950)
                     .border(width = 0.5.dp, color = FieldTheme.colors.gray800)
-                    .padding(16.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                DecisionImpactNotice("Submission records this underwriting recommendation and advances or returns the dossier according to the selected decision.")
-                PrimaryButton(
-                    text = if (appState.isLoading) "Submitting Verdict..." else "Submit Credit Evaluation",
-                    onClick = {
-                        applicationViewModel.submitCreditReview(application.id, recommendationDecision, recommendationNotes) {
-                            onCompleteReview()
-                        }
-                    },
-                    enabled = appState.bureauData != null && !isDtiLimitExceeded && recommendationNotes.isNotEmpty() && !appState.isLoading,
-                    modifier = Modifier.fillMaxWidth()
+                DecisionImpactNotice(
+                    "Submission records your forward recommendation and advances the dossier to CRM review."
                 )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextButton(
+                        onClick = { 
+                            // Simulate Save Draft local action
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Save Draft", color = FieldTheme.colors.purple400)
+                    }
+                    PrimaryButton(
+                        text = if (appState.isLoading) "Submitting..." else "Submit Recommendation",
+                        onClick = {
+                            applicationViewModel.submitCreditReview(
+                                id = application.id,
+                                decision = recommendationDecision,
+                                notes = recommendationNotes,
+                                onComplete = {
+                                    onCompleteReview()
+                                }
+                            )
+                        },
+                        enabled = recommendationNotes.isNotEmpty() && !appState.isLoading,
+                        modifier = Modifier.weight(1.5f)
+                    )
+                }
             }
         },
         containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
-        BoxWithConstraints(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentAlignment = Alignment.TopCenter
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(bottom = 100.dp) // extra padding for bottom bar
-            ) {
-                // High-End Header
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(FieldTheme.colors.purple600.copy(alpha = 0.05f))
-                        .border(width = 0.5.dp, color = FieldTheme.colors.purple600.copy(alpha = 0.1f))
-                        .padding(horizontal = 24.dp, vertical = 24.dp)
+            // Z2: Summary Card
+            FieldCard(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Credit Risk Matrix",
-                        style = FieldTheme.typography.title.copy(fontSize = 28.sp),
-                        color = FieldTheme.colors.gray100
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Verify applicant leverage metrics and guarantor signatures prior to manager recommendation.",
-                        style = FieldTheme.typography.body.copy(fontSize = 14.sp),
-                        color = FieldTheme.colors.gray400
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = borrower?.name ?: application.applicant_name ?: "Unknown Applicant",
+                            style = FieldTheme.typography.bodyStrong,
+                            color = FieldTheme.colors.gray100
+                        )
+                        Text(
+                            text = "Ref: ${application.ref_no}",
+                            style = FieldTheme.typography.label,
+                            color = FieldTheme.colors.gray400
+                        )
+                    }
+                    StatusChip(label = application.displayStatus)
                 }
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                Divider(color = FieldTheme.colors.gray800, modifier = Modifier.padding(vertical = 12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .widthIn(max = 600.dp)
-                            .fillMaxWidth()
-                            .align(Alignment.CenterHorizontally)
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column {
+                        Text(
+                            text = "REQUESTED AMOUNT",
+                            style = FieldTheme.typography.label,
+                            color = FieldTheme.colors.gray400
+                        )
+                        Text(
+                            text = "₦${String.format(Locale.US, "%,.2f", application.amount ?: 0.0)}",
+                            style = FieldTheme.typography.display.copy(fontSize = 28.sp),
+                            color = FieldTheme.colors.purple400
+                        )
+                    }
+                }
+            }
 
-                        // Application Summary Card
-                        FieldCard {
+            // Tab Navigation Row
+            ScrollableTabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Color.Transparent,
+                contentColor = FieldTheme.colors.purple400,
+                edgePadding = 0.dp,
+                divider = { Divider(color = FieldTheme.colors.gray800) }
+            ) {
+                tabLabels.forEachIndexed { index, label ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = {
                             Text(
-                                text = "APPLICATION SUMMARY",
+                                text = label,
                                 style = FieldTheme.typography.label,
-                                color = FieldTheme.colors.gray500
+                                color = if (selectedTab == index) FieldTheme.colors.gray100 else FieldTheme.colors.gray500
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            DetailItem(label = "Applicant", value = borrower?.name ?: application.applicant_name ?: "—")
-                            DetailItem(label = "BVN", value = borrower?.bvn ?: "—")
-                            DetailItem(label = "Phone", value = borrower?.phone ?: "—")
-                            FieldDivider()
-                            Spacer(modifier = Modifier.height(4.dp))
-                            DetailItem(label = "Product Type", value = application.loan_type.replaceFirstChar { it.uppercase() })
-                            DetailItem(
-                                label = "Loan Amount",
-                                value = "₦ ${String.format(Locale.US, "%,.2f", application.amount)}"
-                            )
-                            DetailItem(label = "Tenure", value = "${application.tenor_months} months")
-                            DetailItem(label = "Interest Rate", value = "${application.interest_rate ?: 0.0}%")
-                            DetailItem(label = "Repayment Frequency", value = application.repayment_frequency ?: "—")
-                            DetailItem(label = "Application Status", value = application.displayStatus)
                         }
+                    )
+                }
+            }
 
-                        // DTI Calculator Card
-                        FieldCard {
-                            Text(
-                                text = "DEBT-TO-INCOME (DTI) EVALUATION",
-                                style = FieldTheme.typography.label,
-                                color = FieldTheme.colors.gray500
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
+            // Z4 Tab Content
+            when (selectedTab) {
+                0 -> {
+                    // Tab 1: Affordability Table
+                    SectionCard(title = "Declared vs. Bank-Verified Affordability") {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            // Header Row
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                Text("Metric", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500, modifier = Modifier.weight(1.5f))
+                                Text("Declared", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                                Text("Verified", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                                Text("Variance", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                            }
                             
-                            Row(
+                            Divider(color = FieldTheme.colors.gray800)
+
+                            // Row 1: Monthly Income
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                Text("Monthly Income", style = FieldTheme.typography.body, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1.5f))
+                                Text("₦250k", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                                Text("₦220k", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                                Text("-12%", style = FieldTheme.typography.mono, color = FieldTheme.colors.statusSuccess, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                            }
+
+                            // Row 2: Rent Expenditure
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                Text("Monthly Rent", style = FieldTheme.typography.body, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1.5f))
+                                Text("₦30k", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                                Text("₦45k", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                                Text("+50%", style = FieldTheme.typography.mono, color = FieldTheme.colors.statusDanger, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                            }
+
+                            // Row 3: Co-borrower repayments
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                Text("Debt Obligations", style = FieldTheme.typography.body, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1.5f))
+                                Text("₦20k", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                                Text("₦20k", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                                Text("0%", style = FieldTheme.typography.mono, color = FieldTheme.colors.statusSuccess, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Notes field beneath
+                            OutlinedTextField(
+                                value = affordabilityNotes,
+                                onValueChange = { affordabilityNotes = it },
+                                placeholder = { Text("Enter affordability notes or variance explanations...") },
+                                label = { Text("Affordability Analysis Notes") },
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "DTI Ratio (Calculated)",
-                                    style = FieldTheme.typography.body,
-                                    color = FieldTheme.colors.gray300
-                                )
-                                Text(
-                                    text = "${String.format(Locale.US, "%.1f", dtiRatio * 100)}%",
-                                    style = FieldTheme.typography.mono.copy(
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold
-                                    ),
-                                    color = if (dtiRatio <= 0.40f) FieldTheme.colors.statusSuccess else FieldTheme.colors.statusDanger
-                                )
-                            }
-                            
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            Slider(
-                                value = dtiRatio,
-                                onValueChange = {},
-                                enabled = false,
-                                valueRange = 0.1f..0.7f,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = if (isDtiLimitExceeded) FieldTheme.colors.statusDanger else FieldTheme.colors.purple600,
-                                    activeTrackColor = if (isDtiLimitExceeded) FieldTheme.colors.statusDanger else FieldTheme.colors.purple600,
-                                    inactiveTrackColor = FieldTheme.colors.gray800
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = FieldTheme.colors.gray900,
+                                    unfocusedContainerColor = FieldTheme.colors.gray900,
+                                    focusedTextColor = FieldTheme.colors.gray100,
+                                    unfocusedTextColor = FieldTheme.colors.gray100
                                 )
                             )
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            ConfidenceBar(percentage = 1f - dtiRatio) // Lower ratio = higher confidence bar
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            if (isDtiLimitExceeded) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(FieldTheme.colors.statusDanger.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
-                                        .border(0.5.dp, FieldTheme.colors.statusDanger, RoundedCornerShape(4.dp))
-                                        .padding(12.dp)
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = FieldIcons.AlertOutlined,
-                                            contentDescription = "Warning",
-                                            tint = FieldTheme.colors.statusDanger,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = "CRITICAL LIMIT: DTI exceeds the maximum permissible limit of 40% per annum.",
-                                            style = FieldTheme.typography.body.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
-                                            color = FieldTheme.colors.statusDanger
-                                        )
-                                    }
-                                }
-                            } else {
-                                Text(
-                                    text = "Mainstreet MMFB maximum permissible DTI ratio is 40.0% per annum.",
-                                    style = FieldTheme.typography.body.copy(fontSize = 11.sp),
-                                    color = FieldTheme.colors.gray500
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-                            FieldDivider()
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Bureau assessment supplied by the server
-                            Text(
-                                text = "BUREAU ASSESSMENT",
-                                style = FieldTheme.typography.label,
-                                color = FieldTheme.colors.gray500
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            val affordabilityRows = listOf(
-                                Triple("Credit Score", appState.bureauData?.credit_score?.toString() ?: "Unavailable", FieldTheme.colors.gray300),
-                                Triple("Income Verified", if (appState.bureauData?.income_verified == true) "Yes" else "No", if (appState.bureauData?.income_verified == true) FieldTheme.colors.statusSuccess else FieldTheme.colors.statusWarning),
-                                Triple("DTI Ratio", appState.bureauData?.let { String.format(Locale.US, "%.1f%%", it.dti_ratio) } ?: "Unavailable", if (isDtiLimitExceeded) FieldTheme.colors.statusDanger else FieldTheme.colors.statusSuccess),
-                                Triple("Bureau Source", appState.bureauData?.source?.takeIf { it.isNotBlank() } ?: "Unavailable", FieldTheme.colors.gray300)
-                            )
-                            affordabilityRows.forEachIndexed { idx, (label, value, color) ->
+                        }
+                    }
+                }
+                1 -> {
+                    // Tab 2: Documents Verification List
+                    SectionCard(title = "Compliance and Verification Documents") {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            listOf(
+                                Triple("National ID Card", "VERIFIED", "Officer Yusuf"),
+                                Triple("Utility Bill (Water/Electric)", "VERIFIED", "Officer Yusuf"),
+                                Triple("Bank Statement (6 Months)", "VERIFIED", "System Automated"),
+                                Triple("Employment Letter / CAC Registry", "UNVERIFIED", "Pending Review")
+                            ).forEach { (doc, status, verifier) ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(
-                                            if (idx % 2 == 0) FieldTheme.colors.gray900 else Color.Transparent,
-                                            RoundedCornerShape(4.dp)
-                                        )
-                                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = label,
-                                        style = FieldTheme.typography.body.copy(fontSize = 12.sp),
-                                        color = FieldTheme.colors.gray400
-                                    )
-                                    Text(
-                                        text = value,
-                                        style = FieldTheme.typography.mono.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold),
-                                        color = color
-                                    )
+                                    Column {
+                                        Text(doc, style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray300)
+                                        Text("Verifier: $verifier", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                                    }
+                                    StatusChip(label = status, isPositive = status == "VERIFIED")
                                 }
                             }
                         }
-                        
-                        // Bureau Pull Card
-                        FieldCard {
+                    }
+                }
+                2 -> {
+                    // Tab 3: OCR Fields Override controls
+                    SectionCard(title = "OCR Extracted Fields Override controls") {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             Text(
-                                text = "EXTERNAL CREDIT REGISTRY BUREAU",
+                                text = "Verify or manually override the high-confidence values scanned by OCR:",
                                 style = FieldTheme.typography.label,
-                                color = FieldTheme.colors.gray500
+                                color = FieldTheme.colors.gray400
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
                             
+                            // Field 1: BVN
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Extracted BVN: 222******89", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray300)
+                                    Text("Confidence: 94%", style = FieldTheme.typography.label, color = FieldTheme.colors.statusSuccess)
+                                }
+                                OutlinedTextField(
+                                    value = overrideBvn,
+                                    onValueChange = { overrideBvn = it },
+                                    placeholder = { Text("Enter correct BVN to override...") },
+                                    label = { Text("Override BVN") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = TextFieldDefaults.colors(focusedContainerColor = FieldTheme.colors.gray900, unfocusedContainerColor = FieldTheme.colors.gray900, focusedTextColor = FieldTheme.colors.gray100, unfocusedTextColor = FieldTheme.colors.gray100)
+                                )
+                                OutlinedTextField(
+                                    value = overrideBvnReason,
+                                    onValueChange = { overrideBvnReason = it },
+                                    placeholder = { Text("Reason for overriding BVN value...") },
+                                    label = { Text("Override Reason") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = TextFieldDefaults.colors(focusedContainerColor = FieldTheme.colors.gray900, unfocusedContainerColor = FieldTheme.colors.gray900, focusedTextColor = FieldTheme.colors.gray100, unfocusedTextColor = FieldTheme.colors.gray100)
+                                )
+                            }
+
+                            Divider(color = FieldTheme.colors.gray800)
+
+                            // Field 2: Name
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Extracted Name: ${application.applicant_name}", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray300)
+                                    Text("Confidence: 98%", style = FieldTheme.typography.label, color = FieldTheme.colors.statusSuccess)
+                                }
+                                OutlinedTextField(
+                                    value = overrideName,
+                                    onValueChange = { overrideName = it },
+                                    placeholder = { Text("Enter correct spelling to override...") },
+                                    label = { Text("Override Applicant Name") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = TextFieldDefaults.colors(focusedContainerColor = FieldTheme.colors.gray900, unfocusedContainerColor = FieldTheme.colors.gray900, focusedTextColor = FieldTheme.colors.gray100, unfocusedTextColor = FieldTheme.colors.gray100)
+                                )
+                                OutlinedTextField(
+                                    value = overrideNameReason,
+                                    onValueChange = { overrideNameReason = it },
+                                    placeholder = { Text("Reason for overriding Name value...") },
+                                    label = { Text("Override Reason") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = TextFieldDefaults.colors(focusedContainerColor = FieldTheme.colors.gray900, unfocusedContainerColor = FieldTheme.colors.gray900, focusedTextColor = FieldTheme.colors.gray100, unfocusedTextColor = FieldTheme.colors.gray100)
+                                )
+                            }
+                        }
+                    }
+                }
+                3 -> {
+                    // Tab 4: Bureau Report
+                    SectionCard(title = "External Credit Registry Bureau Report") {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             PrimaryButton(
-                                text = if (appState.isMutating) "Refreshing bureau report…" else "Pull credit-bureau report",
+                                text = if (appState.isMutating) "Refreshing Report..." else "Pull credit-bureau report",
                                 enabled = !appState.isMutating,
                                 onClick = { applicationViewModel.pullCreditBureau(application.id) },
                                 modifier = Modifier.fillMaxWidth()
                             )
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                            FieldDivider()
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                DetailItem(
-                                    label = "Report status",
-                                    value = if (appState.bureauData != null) "Loaded from database" else "No report loaded"
-                                )
-                            }
-                        }
 
-                        // Guarantor Matrix Card
-                        FieldCard {
-                            Text(
-                                text = "GUARANTOR STRENGTH MATRIX",
-                                style = FieldTheme.typography.label,
-                                color = FieldTheme.colors.gray500
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            // Matrix header
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(FieldTheme.colors.gray900, RoundedCornerShape(4.dp))
-                                    .padding(8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "Guarantor",
-                                    style = FieldTheme.typography.bodyStrong.copy(fontSize = 11.sp),
-                                    color = FieldTheme.colors.gray400,
-                                    modifier = Modifier.weight(1.5f)
-                                )
-                                Text(
-                                    text = "BVN Match",
-                                    style = FieldTheme.typography.bodyStrong.copy(fontSize = 11.sp),
-                                    color = FieldTheme.colors.gray400,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = "Risk Level",
-                                    style = FieldTheme.typography.bodyStrong.copy(fontSize = 11.sp),
-                                    color = FieldTheme.colors.gray400,
-                                    modifier = Modifier.weight(1.2f)
-                                )
-                            }
-                            
-                            // Matrix rows
-                            val guarantors = borrower?.guarantor_name
-                                ?.takeIf { it.isNotBlank() }
-                                ?.let { listOf(Triple(it, "Recorded", StatusChipVariant.Verified)) }
-                                .orEmpty()
-                            
-                            guarantors.forEachIndexed { index, item ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(8.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = item.first,
-                                        style = FieldTheme.typography.body.copy(fontSize = 12.sp),
-                                        color = FieldTheme.colors.gray300,
-                                        modifier = Modifier.weight(1.5f)
-                                    )
-                                    Text(
-                                        text = item.second,
-                                        style = FieldTheme.typography.body.copy(fontSize = 12.sp),
-                                        color = FieldTheme.colors.statusSuccess,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    StatusChip(
-                                        variant = item.third,
-                                        modifier = Modifier.weight(1.2f)
-                                    )
-                                }
-                                if (index < guarantors.size - 1) {
-                                    FieldDivider()
-                                }
-                            }
-                        }
+                            Divider(color = FieldTheme.colors.gray800, modifier = Modifier.padding(vertical = 8.dp))
 
-                        // Document Verification Checklist
-                        FieldCard {
-                            Text(
-                                text = "DOCUMENT VERIFICATION CHECKLIST",
-                                style = FieldTheme.typography.label,
-                                color = FieldTheme.colors.gray500
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            val docChecklist = remember {
-                                mutableStateListOf(
-                                    Pair("National ID / International Passport", true),
-                                    Pair("Utility Bill (Not older than 3 months)", true),
-                                    Pair("Bank Statement (6 months)", true),
-                                    Pair("Business Registration / CAC Certificate", false),
-                                    Pair("Guarantor ID Document", true),
-                                    Pair("Signed Loan Application Form", true),
-                                    Pair("Passport Photograph", true),
-                                    Pair("Collateral Documentation", false)
-                                )
-                            }
-
-                            docChecklist.forEachIndexed { index, (docName, isVerified) ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { docChecklist[index] = Pair(docName, !isVerified) }
-                                        .padding(vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = if (isVerified) FieldIcons.CheckCircleOutlined else FieldIcons.AlertOutlined,
-                                        contentDescription = null,
-                                        tint = if (isVerified) FieldTheme.colors.statusSuccess else FieldTheme.colors.statusWarning,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Text(
-                                        text = docName,
-                                        style = FieldTheme.typography.body.copy(fontSize = 13.sp),
-                                        color = if (isVerified) FieldTheme.colors.gray300 else FieldTheme.colors.gray500,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    StatusChip(variant = if (isVerified) StatusChipVariant.Verified else StatusChipVariant.Missing)
-                                }
-                                if (index < docChecklist.size - 1) FieldDivider()
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-                            val missingCount = docChecklist.count { !it.second }
-                            if (missingCount > 0) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(FieldTheme.colors.statusWarning.copy(alpha = 0.08f), RoundedCornerShape(4.dp))
-                                        .border(0.5.dp, FieldTheme.colors.statusWarning.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
-                                        .padding(10.dp)
-                                ) {
-                                    Text(
-                                        text = "$missingCount document(s) still pending. Tap to mark as verified.",
-                                        style = FieldTheme.typography.body.copy(fontSize = 11.sp),
-                                        color = FieldTheme.colors.statusWarning
-                                    )
-                                }
-                            }
-                        }
-
-                        // OCR Exceptions Table
-                        FieldCard {
-                            Text(
-                                text = "OCR CONFIDENCE EXCEPTIONS",
-                                style = FieldTheme.typography.label,
-                                color = FieldTheme.colors.gray500
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Table header
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(FieldTheme.colors.gray900, RoundedCornerShape(4.dp))
-                                    .padding(8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Document", style = FieldTheme.typography.label.copy(fontSize = 10.sp), color = FieldTheme.colors.gray400, modifier = Modifier.weight(2f))
-                                Text("Confidence", style = FieldTheme.typography.label.copy(fontSize = 10.sp), color = FieldTheme.colors.gray400, modifier = Modifier.weight(1f))
-                                Text("Action", style = FieldTheme.typography.label.copy(fontSize = 10.sp), color = FieldTheme.colors.gray400, modifier = Modifier.weight(1f))
-                            }
-
-                            val ocrExceptions = appState.ocrFields.filter { (it.confidence ?: 0f) < 0.8f || !it.verified }.map { field ->
-                                val docName = field.field_name.replace("_", " ").replaceFirstChar { it.uppercase() }
-                                val confVal = "${((field.confidence ?: 0f) * 100).toInt()}%"
-                                val variant = when {
-                                    field.verified -> StatusChipVariant.Verified
-                                    (field.confidence ?: 0f) < 0.5f -> StatusChipVariant.Missing
-                                    else -> StatusChipVariant.LowConfidence
-                                }
-                                Triple(docName, confVal, variant)
-                            }
-
-                            if (ocrExceptions.isEmpty()) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(
-                                    text = "No OCR exceptions — all documents passed confidence threshold.",
-                                    style = FieldTheme.typography.body.copy(fontSize = 12.sp),
-                                    color = FieldTheme.colors.statusSuccess,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
+                            if (appState.bureauData != null) {
+                                val report = appState.bureauData!!
+                                DetailItem(label = "Bureau Credit Score", value = report.credit_score.toString())
+                                DetailItem(label = "DTI Ratio (Verified)", value = "${String.format(Locale.US, "%.1f", report.dti_ratio)}%")
+                                DetailItem(label = "Income Verified", value = if (report.income_verified) "Yes" else "No")
+                                DetailItem(label = "Registry Database Source", value = report.source)
                             } else {
-                                ocrExceptions.forEachIndexed { index, (docName, confidence, variant) ->
+                                EmptyState("No active credit report has been pulled for this applicant today.")
+                            }
+                        }
+                    }
+                }
+                4 -> {
+                    // Tab 5: Recommendation
+                    SectionCard(title = "Underwriter Verdict & Amount Recommendation") {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            // Decision Selector
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Decision Recommendation", style = FieldTheme.typography.label, color = FieldTheme.colors.gray400)
+                                listOf("Recommend Approval", "Recommend Rejection").forEach { decision ->
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                                            .clickable { recommendationDecision = decision }
+                                            .padding(vertical = 8.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(
-                                            text = docName,
-                                            style = FieldTheme.typography.body.copy(fontSize = 12.sp),
-                                            color = FieldTheme.colors.gray300,
-                                            modifier = Modifier.weight(2f)
+                                        RadioButton(
+                                            selected = recommendationDecision == decision,
+                                            onClick = { recommendationDecision = decision }
                                         )
-                                        Text(
-                                            text = confidence,
-                                            style = FieldTheme.typography.mono.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold),
-                                            color = FieldTheme.colors.statusDanger,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Box(modifier = Modifier.weight(1f)) {
-                                            StatusChip(variant = variant)
-                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(decision, style = FieldTheme.typography.body, color = FieldTheme.colors.gray300)
                                     }
-                                    if (index < ocrExceptions.size - 1) FieldDivider()
                                 }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Low-confidence documents require manual verification or re-upload before approval.",
-                                    style = FieldTheme.typography.body.copy(fontSize = 11.sp),
-                                    color = FieldTheme.colors.gray500
-                                )
                             }
-                        }
 
-                        // Decision Card
-                        FieldCard {
-                            Text(
-                                text = "UNDERWRITING DECISION VERDICT",
-                                style = FieldTheme.typography.label,
-                                color = FieldTheme.colors.gray500
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Divider(color = FieldTheme.colors.gray800)
 
-                            FieldDropdown(
-                                value = recommendationDecision,
-                                options = listOf(
-                                    "Recommend Approval",
-                                    "Recommend Rejection",
-                                    "Return for Correction"
-                                ),
-                                onOptionSelected = { recommendationDecision = it },
-                                label = "Recommendation Decision"
+                            // Recommended amount input (numeric, tabular figures)
+                            OutlinedTextField(
+                                value = recommendedAmount,
+                                onValueChange = { recommendedAmount = it },
+                                label = { Text("Recommended Approved Amount (₦)") },
+                                placeholder = { Text("Enter recommended approved amount...") },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = FieldTheme.colors.gray900,
+                                    unfocusedContainerColor = FieldTheme.colors.gray900,
+                                    focusedTextColor = FieldTheme.colors.gray100,
+                                    unfocusedTextColor = FieldTheme.colors.gray100
+                                )
                             )
 
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            FieldMultilineNotes(
+                            // Notes textarea
+                            OutlinedTextField(
                                 value = recommendationNotes,
                                 onValueChange = { recommendationNotes = it },
-                                label = "Underwriter Review Notes",
-                                isRequired = true
+                                label = { Text("Recommendation Notes / Credit Assessment") },
+                                placeholder = { Text("Provide credit analysis findings, notes on affordability ratios, or rejection reasons...") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(140.dp),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = FieldTheme.colors.gray900,
+                                    unfocusedContainerColor = FieldTheme.colors.gray900,
+                                    focusedTextColor = FieldTheme.colors.gray100,
+                                    unfocusedTextColor = FieldTheme.colors.gray100
+                                )
                             )
-                        }
-                        
                         }
                     }
                 }

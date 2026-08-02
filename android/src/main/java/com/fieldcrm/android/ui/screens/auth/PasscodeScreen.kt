@@ -1,5 +1,6 @@
 package com.fieldcrm.android.ui.screens.auth
 
+import android.content.Context
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -14,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -38,6 +40,11 @@ fun PasscodeScreen(
     onBackClick: () -> Unit = {}
 ) {
     val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
+
+    val biometricPrefs = remember { context.getSharedPreferences("fieldcrm_biometric_prefs", Context.MODE_PRIVATE) }
+    val biometricEnabled = remember { biometricPrefs.getBoolean("biometric_enabled", false) }
+
     var pin by remember { mutableStateOf("") }
     var confirmPin by remember { mutableStateOf("") }
     var isConfirming by remember { mutableStateOf(false) }
@@ -214,7 +221,7 @@ fun PasscodeScreen(
                 listOf("1", "2", "3"),
                 listOf("4", "5", "6"),
                 listOf("7", "8", "9"),
-                listOf("", "0", "⌫")
+                listOf("BIOMETRIC", "0", "⌫")
             )
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -225,17 +232,30 @@ fun PasscodeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         row.forEach { key ->
+                            val isKeyEnabled = key.isNotEmpty() && (key != "BIOMETRIC" || (mode == PasscodeMode.LOGIN && biometricEnabled))
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .aspectRatio(1.6f)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(
-                                        if (key.isEmpty()) FieldTheme.colors.gray950
+                                        if (key == "BIOMETRIC" && (!biometricEnabled || mode != PasscodeMode.LOGIN)) FieldTheme.colors.gray950
+                                        else if (key.isEmpty()) FieldTheme.colors.gray950
                                         else FieldTheme.colors.gray800
                                     )
-                                    .clickable(enabled = key.isNotEmpty()) {
-                                        if (key == "⌫") onBackspace() else onDigit(key)
+                                    .clickable(enabled = isKeyEnabled) {
+                                        if (key == "⌫") {
+                                            onBackspace()
+                                        } else if (key == "BIOMETRIC") {
+                                            val activity = context as? androidx.fragment.app.FragmentActivity
+                                            if (activity != null) {
+                                                showBiometricPrompt(activity) {
+                                                    onLoginSuccess()
+                                                }
+                                            }
+                                        } else {
+                                            onDigit(key)
+                                        }
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -246,6 +266,15 @@ fun PasscodeScreen(
                                         tint = FieldTheme.colors.gray300,
                                         modifier = Modifier.size(22.dp)
                                     )
+                                } else if (key == "BIOMETRIC") {
+                                    if (mode == PasscodeMode.LOGIN && biometricEnabled) {
+                                        Icon(
+                                            imageVector = FieldIcons.FingerprintOutlined,
+                                            contentDescription = "Biometric Login",
+                                            tint = FieldTheme.colors.purple400,
+                                            modifier = Modifier.size(26.dp)
+                                        )
+                                    }
                                 } else if (key.isNotEmpty()) {
                                     Text(
                                         text = key,
@@ -260,4 +289,24 @@ fun PasscodeScreen(
             }
         }
     }
+}
+
+private fun showBiometricPrompt(
+    activity: androidx.fragment.app.FragmentActivity,
+    onSuccess: () -> Unit
+) {
+    val executor = androidx.core.content.ContextCompat.getMainExecutor(activity)
+    val callback = object : androidx.biometric.BiometricPrompt.AuthenticationCallback() {
+        override fun onAuthenticationSucceeded(result: androidx.biometric.BiometricPrompt.AuthenticationResult) {
+            super.onAuthenticationSucceeded(result)
+            onSuccess()
+        }
+    }
+    val biometricPrompt = androidx.biometric.BiometricPrompt(activity, executor, callback)
+    val promptInfo = androidx.biometric.BiometricPrompt.PromptInfo.Builder()
+        .setTitle("Biometric Verification")
+        .setSubtitle("Confirm face or fingerprint scan to unlock")
+        .setNegativeButtonText("Use PIN")
+        .build()
+    biometricPrompt.authenticate(promptInfo)
 }

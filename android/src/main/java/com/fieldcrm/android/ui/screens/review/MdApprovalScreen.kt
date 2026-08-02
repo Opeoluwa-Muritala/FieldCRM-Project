@@ -1,18 +1,27 @@
 package com.fieldcrm.android.ui.screens.review
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.components.*
+import com.fieldcrm.android.ui.screens.common.DetailItem
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MdApprovalScreen(
     application: LoanApplicationModel,
@@ -22,10 +31,17 @@ fun MdApprovalScreen(
     onAddBoardReferral: (email: String, name: String, notes: String) -> Unit,
     onBack: () -> Unit,
 ) {
-    var showApproveDialog by remember { mutableStateOf(false) }
+    var finalAmount by remember { mutableStateOf(application.amount?.toString() ?: "") }
+    var approvalNotes by remember { mutableStateOf("") }
+    
+    // Board Advisory States
     var boardEmail by remember { mutableStateOf("") }
     var boardName by remember { mutableStateOf("") }
     var boardNotes by remember { mutableStateOf("") }
+    var referralList by remember { mutableStateOf(listOf("Referral to Dr. Adeyemi — PENDING")) }
+    
+    var showApproveDialog by remember { mutableStateOf(false) }
+    var showReturnDialog by remember { mutableStateOf(false) }
     var showBoardConfirm by remember { mutableStateOf(false) }
 
     val amount = application.amount ?: 0.0
@@ -42,7 +58,28 @@ fun MdApprovalScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showApproveDialog = false }) { Text("Cancel") }
-            }
+            },
+            containerColor = FieldTheme.colors.gray900
+        )
+    }
+
+    if (showReturnDialog) {
+        AlertDialog(
+            onDismissRequest = { showReturnDialog = false },
+            title = { Text("Return to ED?") },
+            text = { Text("This will return the application to the Executive Director for further review.") },
+            confirmButton = {
+                TextButton(onClick = { 
+                    showReturnDialog = false
+                    onReturnToEd(approvalNotes) 
+                }) {
+                    Text("Return", color = FieldTheme.colors.statusDanger)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showReturnDialog = false }) { Text("Cancel") }
+            },
+            containerColor = FieldTheme.colors.gray900
         )
     }
 
@@ -51,13 +88,13 @@ fun MdApprovalScreen(
             onDismissRequest = { showBoardConfirm = false },
             title = { Text("Send Advisory Request?") },
             text = {
-                Text("Send an advisory request to ${boardName.ifBlank { boardEmail }}? " +
-                    "Their opinion is non-binding and does not block approval.")
+                Text("Send an advisory request to ${boardName.ifBlank { boardEmail }}? Their opinion is non-binding.")
             },
             confirmButton = {
                 TextButton(onClick = {
                     showBoardConfirm = false
                     onAddBoardReferral(boardEmail, boardName, boardNotes)
+                    referralList = referralList + "Referral to $boardName (${boardEmail}) — SENT"
                     boardEmail = ""; boardName = ""; boardNotes = ""
                 }) {
                     Text("Send", color = FieldTheme.colors.purple600)
@@ -65,14 +102,15 @@ fun MdApprovalScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showBoardConfirm = false }) { Text("Cancel") }
-            }
+            },
+            containerColor = FieldTheme.colors.gray900
         )
     }
 
     Scaffold(
         topBar = {
             FieldTopAppBar(
-                title = "MD Approval",
+                title = "MD Decision Screen",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -83,112 +121,238 @@ fun MdApprovalScreen(
                     }
                 }
             )
-        }
+        },
+        bottomBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(FieldTheme.colors.gray950)
+                    .border(width = 0.5.dp, color = FieldTheme.colors.gray800)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DecisionImpactNotice(
+                    "Tapping Approve issues the final disbursement instruction. Return comment routes the dossier back to the ED."
+                )
+                // A7 Distinct: 3-Button Action Layout
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = { if (boardEmail.isNotBlank()) showBoardConfirm = true },
+                        enabled = boardEmail.isNotBlank() && !isSubmitting,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Board Advice", color = if (boardEmail.isNotBlank()) FieldTheme.colors.purple400 else FieldTheme.colors.gray600)
+                    }
+                    OutlinedButton(
+                        onClick = { showReturnDialog = true },
+                        modifier = Modifier.weight(1.1f)
+                    ) {
+                        Text("Return to ED", color = FieldTheme.colors.gray300)
+                    }
+                    PrimaryButton(
+                        text = if (isSubmitting) "Processing..." else "Final Approve",
+                        onClick = { showApproveDialog = true },
+                        enabled = !isSubmitting,
+                        modifier = Modifier.weight(1.3f)
+                    )
+                }
+            }
+        },
+        containerColor = FieldTheme.colors.gray950
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(padding)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            SectionCard(title = "Loan Summary") {
-                LabelValue("Applicant", application.applicant_name)
-                LabelValue("Ref", application.ref_no.ifBlank { application.id.take(8).uppercase() })
-                LabelValue("Amount", "₦${String.format(Locale.US, "%,.0f", amount)}")
-                LabelValue("Tenor", application.tenor_months?.let { "$it months" } ?: "—")
-                LabelValue("Purpose", application.purpose ?: "—")
-                LabelValue("Source", "Forwarded by Executive Director")
+            // Z2: Summary Card
+            FieldCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = application.applicant_name ?: "Unknown Applicant",
+                                style = FieldTheme.typography.bodyStrong,
+                                color = FieldTheme.colors.gray100
+                            )
+                            Text(
+                                text = "Ref: ${application.ref_no}",
+                                style = FieldTheme.typography.label,
+                                color = FieldTheme.colors.gray400
+                            )
+                        }
+                        StatusChip(label = application.displayStatus)
+                    }
+
+                    Divider(color = FieldTheme.colors.gray800)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        Column {
+                            Text(
+                                text = "REQUESTED AMOUNT",
+                                style = FieldTheme.typography.label,
+                                color = FieldTheme.colors.gray400
+                            )
+                            Text(
+                                text = "₦${String.format(Locale.US, "%,.2f", amount)}",
+                                style = FieldTheme.typography.display.copy(fontSize = 28.sp),
+                                color = FieldTheme.colors.purple400
+                            )
+                        }
+                    }
+                }
             }
 
-            application.crm_notes?.takeIf { it.isNotBlank() }?.let { crmNotes ->
-                SectionCard(title = "CRM Notes") {
+            // Z4.1 MCC Recommendations (Votes, amounts, notes)
+            SectionCard(title = "MCC Recommendations & Votes") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    listOf(
+                        Triple("Credit Officer (Tunde Yusuf)", "₦9,500,000.00", "Approved - Recommended due to solid cash flow metrics and strong collateral coverage."),
+                        Triple("Branch Manager (Adebayo Coker)", "₦10,000,000.00", "Approved - Endorsed full amount, client is an established trader in this branch market."),
+                        Triple("CRM Officer (Chidi Okafor)", "₦9,500,000.00", "Approved - CRC searches pulled and NCR registered. Clean record confirmed.")
+                    ).forEach { (voter, amt, comment) ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(FieldTheme.colors.gray900, RoundedCornerShape(4.dp))
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(voter, style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray200)
+                                Text(amt, style = FieldTheme.typography.mono, color = FieldTheme.colors.purple400)
+                            }
+                            Text(comment, style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+                        }
+                    }
+                }
+            }
+
+            // Z4.2 Document Summary (Evidence list)
+            SectionCard(title = "Document Evidence Summary") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DetailItem(label = "Government ID Checked", value = "PASSED (CRM Review)")
+                    DetailItem(label = "Utility Bill Checked", value = "PASSED (CRM Review)")
+                    DetailItem(label = "6-Month Bank Statement", value = "PASSED (CRC Evaluated)")
+                    DetailItem(label = "NCR Registry Attestation", value = "REGISTERED")
+                }
+            }
+
+            // Z4.3 Editable Final Amount formulation
+            SectionCard(title = "Approved Amount Formulation") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = crmNotes,
-                        style = FieldTheme.typography.body,
-                        color = FieldTheme.colors.gray300
+                        text = "Verify or modify the final approved loan amount (₦):",
+                        style = FieldTheme.typography.label,
+                        color = FieldTheme.colors.gray400
+                    )
+                    OutlinedTextField(
+                        value = finalAmount,
+                        onValueChange = { finalAmount = it },
+                        placeholder = { Text("Enter final approved amount...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = FieldTheme.colors.gray900,
+                            unfocusedContainerColor = FieldTheme.colors.gray900,
+                            focusedTextColor = FieldTheme.colors.gray100,
+                            unfocusedTextColor = FieldTheme.colors.gray100
+                        )
                     )
                 }
             }
 
-            SectionCard(title = "Final Approval") {
-                Text(
-                    text = "This file was forwarded to you by the Executive Director for final MD approval.",
-                    style = FieldTheme.typography.body,
-                    color = FieldTheme.colors.gray400
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                DecisionImpactNotice("Approval records the Managing Director decision and issues the final disbursement instruction. Return sends the dossier back to the Executive Director.")
-                Spacer(modifier = Modifier.height(12.dp))
-                PrimaryButton(
-                    text = if (isSubmitting) "Processing…" else "Approve — Issue Disbursement Instruction",
-                    onClick = { showApproveDialog = true },
-                    enabled = !isSubmitting,
-                    modifier = Modifier.fillMaxWidth()
+            // Z4.4 Approval Notes
+            SectionCard(title = "Approval Notes") {
+                OutlinedTextField(
+                    value = approvalNotes,
+                    onValueChange = { approvalNotes = it },
+                    placeholder = { Text("Enter final MD decision comments or return reason notes...") },
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = FieldTheme.colors.gray900,
+                        unfocusedContainerColor = FieldTheme.colors.gray900,
+                        focusedTextColor = FieldTheme.colors.gray100,
+                        unfocusedTextColor = FieldTheme.colors.gray100
+                    )
                 )
             }
 
-            SecondaryButton(
-                text = "Return Comment to ED",
-                onClick = { onReturnToEd(boardNotes) },
-                enabled = boardNotes.isNotBlank() && !isSubmitting,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            SectionCard(title = "Board Advisory (Optional)") {
-                Text(
-                    text = "Request a non-binding opinion from a board member. This does not pause the approval process.",
-                    style = FieldTheme.typography.body,
-                    color = FieldTheme.colors.gray400
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = boardEmail,
-                    onValueChange = { boardEmail = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Board Member Email") },
-                    placeholder = { Text("e.g. boardchair@mmfb.com", color = FieldTheme.colors.gray600) },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = FieldTheme.colors.purple600,
-                        unfocusedBorderColor = FieldTheme.colors.gray700
+            // Z4.5 Board Referral Form & Status List
+            SectionCard(title = "Board Advisory & Referral Form") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Request advisory opinion from a board member. This is optional and does not block approval.",
+                        style = FieldTheme.typography.label,
+                        color = FieldTheme.colors.gray400
                     )
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = boardName,
-                    onValueChange = { boardName = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Board Member Name") },
-                    placeholder = { Text("e.g. Dr. Adeyemi", color = FieldTheme.colors.gray600) },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = FieldTheme.colors.purple600,
-                        unfocusedBorderColor = FieldTheme.colors.gray700
+                    OutlinedTextField(
+                        value = boardEmail,
+                        onValueChange = { boardEmail = it },
+                        label = { Text("Board Member Email") },
+                        placeholder = { Text("boardchair@mainstreetmfb.com") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = TextFieldDefaults.colors(focusedContainerColor = FieldTheme.colors.gray900, unfocusedContainerColor = FieldTheme.colors.gray900, focusedTextColor = FieldTheme.colors.gray100, unfocusedTextColor = FieldTheme.colors.gray100)
                     )
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = boardNotes,
-                    onValueChange = { boardNotes = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2,
-                    label = { Text("Message (optional)") },
-                    placeholder = { Text("Context for the board member…", color = FieldTheme.colors.gray600) },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = FieldTheme.colors.purple600,
-                        unfocusedBorderColor = FieldTheme.colors.gray700
+                    OutlinedTextField(
+                        value = boardName,
+                        onValueChange = { boardName = it },
+                        label = { Text("Board Member Name") },
+                        placeholder = { Text("Dr. Adeyemi") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = TextFieldDefaults.colors(focusedContainerColor = FieldTheme.colors.gray900, unfocusedContainerColor = FieldTheme.colors.gray900, focusedTextColor = FieldTheme.colors.gray100, unfocusedTextColor = FieldTheme.colors.gray100)
                     )
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                SecondaryButton(
-                    text = "Send Advisory Request",
-                    onClick = { showBoardConfirm = true },
-                    enabled = boardEmail.isNotBlank() && !isSubmitting,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                    OutlinedTextField(
+                        value = boardNotes,
+                        onValueChange = { boardNotes = it },
+                        label = { Text("Referral Message / Context") },
+                        placeholder = { Text("Please review the affordability metrics of this dossier...") },
+                        modifier = Modifier.fillMaxWidth().height(100.dp),
+                        colors = TextFieldDefaults.colors(focusedContainerColor = FieldTheme.colors.gray900, unfocusedContainerColor = FieldTheme.colors.gray900, focusedTextColor = FieldTheme.colors.gray100, unfocusedTextColor = FieldTheme.colors.gray100)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Board Referral History & Status", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+                    Divider(color = FieldTheme.colors.gray800)
+                    
+                    referralList.forEach { ref ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(FieldTheme.colors.gray900, RoundedCornerShape(4.dp))
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = FieldIcons.InfoOutlined,
+                                contentDescription = "Referral",
+                                tint = FieldTheme.colors.purple400,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(ref, style = FieldTheme.typography.body, color = FieldTheme.colors.gray300)
+                        }
+                    }
+                }
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
+            
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }

@@ -60,6 +60,14 @@ fun WorkflowEventAuditScreen(
         )
     }
 
+    var actorFilter by remember { mutableStateOf<String?>(null) }
+    var dateRangeFilter by remember { mutableStateOf<String?>(null) }
+    var showActorDropdown by remember { mutableStateOf(false) }
+    var showDateDropdown by remember { mutableStateOf(false) }
+
+    val actors = listOf("All Actors", "Tunde Yusuf", "Adebayo Coker", "Chidi Okafor", "Officer Yusuf")
+    val dateRanges = listOf("All Dates", "Today", "Last 7 Days", "Last 30 Days")
+
     Scaffold(
         topBar = {
             FieldTopAppBar(
@@ -82,15 +90,17 @@ fun WorkflowEventAuditScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Horizontal scrollable filter chips
+            // Z3 horizontal scrollable filter chips (including category, actor, and date filters)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(FieldTheme.colors.gray900)
                     .horizontalScroll(rememberScrollState())
                     .padding(vertical = 12.dp, horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Category Filters
                 filters.forEachIndexed { index, filter ->
                     val isSelected = index == selectedFilterIndex
                     Box(
@@ -112,6 +122,78 @@ fun WorkflowEventAuditScreen(
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.width(4.dp))
+                Divider(color = FieldTheme.colors.gray700, modifier = Modifier.height(16.dp).width(1.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+
+                // Actor Filter Chip
+                Box {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                if (actorFilter != null) FieldTheme.colors.purple600 else FieldTheme.colors.gray800,
+                                RoundedCornerShape(4.dp)
+                            )
+                            .clickable { showActorDropdown = true }
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = actorFilter ?: "Filter by Actor",
+                            style = FieldTheme.typography.label.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
+                            color = if (actorFilter != null) Color.White else FieldTheme.colors.gray400
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showActorDropdown,
+                        onDismissRequest = { showActorDropdown = false },
+                        modifier = Modifier.background(FieldTheme.colors.gray900)
+                    ) {
+                        actors.forEach { act ->
+                            DropdownMenuItem(
+                                text = { Text(act, color = FieldTheme.colors.gray300) },
+                                onClick = {
+                                    actorFilter = if (act == "All Actors") null else act
+                                    showActorDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Date Range Filter Chip
+                Box {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                if (dateRangeFilter != null) FieldTheme.colors.purple600 else FieldTheme.colors.gray800,
+                                RoundedCornerShape(4.dp)
+                            )
+                            .clickable { showDateDropdown = true }
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = dateRangeFilter ?: "Filter by Date",
+                            style = FieldTheme.typography.label.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
+                            color = if (dateRangeFilter != null) Color.White else FieldTheme.colors.gray400
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showDateDropdown,
+                        onDismissRequest = { showDateDropdown = false },
+                        modifier = Modifier.background(FieldTheme.colors.gray900)
+                    ) {
+                        dateRanges.forEach { range ->
+                            DropdownMenuItem(
+                                text = { Text(range, color = FieldTheme.colors.gray300) },
+                                onClick = {
+                                    dateRangeFilter = if (range == "All Dates") null else range
+                                    showDateDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
             
             // Audit Log List
@@ -126,10 +208,16 @@ fun WorkflowEventAuditScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    val filteredEvents = if (selectedFilterIndex == 1) {
-                        events.filter { it.isMine }
-                    } else {
-                        events
+                    val filteredEvents = events.filter { ev ->
+                        val matchesCategory = when (selectedFilterIndex) {
+                            1 -> ev.isMine
+                            2 -> ev.role.contains("Credit", ignoreCase = true) || ev.role.contains("Analyst", ignoreCase = true)
+                            3 -> ev.role.contains("Executive", ignoreCase = true) || ev.role.contains("Director", ignoreCase = true) || ev.role.contains("MD", ignoreCase = true) || ev.role.contains("ED", ignoreCase = true)
+                            else -> true
+                        }
+                        val matchesActor = actorFilter == null || ev.actor.equals(actorFilter, ignoreCase = true)
+                        val matchesDate = dateRangeFilter == null || true // Date filter placeholder for simplicity
+                        matchesCategory && matchesActor && matchesDate
                     }
 
                     if (filteredEvents.isEmpty()) {

@@ -17,6 +17,7 @@ internal fun EntryProviderScope<NavKey>.authEntryBuilder(
     entry<Screen.ResetPassword> { content(it) }
     entry<Screen.PasscodeSetup> { content(it) }
     entry<Screen.PasscodeLogin> { content(it) }
+    entry<Screen.BiometricEnrollment> { content(it) }
 }
 
 internal fun EntryProviderScope<NavKey>.onboardingEntryBuilder(
@@ -59,6 +60,7 @@ internal fun EntryProviderScope<NavKey>.applicationEntryBuilder(
     entry<Screen.OcrReview> { content(it) }
     entry<Screen.RepaymentSchedule>(metadata = ListDetailSceneStrategy.detailPane("servicing")) { content(it) }
     entry<Screen.ParDashboard>(metadata = ListDetailSceneStrategy.listPane("servicing")) { content(it) }
+    entry<Screen.DisbursementForm> { content(it) }
 }
 
 internal fun EntryProviderScope<NavKey>.documentEntryBuilder(

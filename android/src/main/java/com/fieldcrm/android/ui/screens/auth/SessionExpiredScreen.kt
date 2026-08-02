@@ -13,13 +13,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.PrimaryButton
-import com.fieldcrm.android.ui.components.SecondaryButton
 import com.fieldcrm.android.ui.theme.FieldTheme
 
 @Composable
 fun SessionExpiredScreen(
     userEmail: String,
-    onReauthSuccess: () -> Unit
+    onLoginAgainClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -60,13 +59,13 @@ fun SessionExpiredScreen(
 
                     Text(
                         text = "Session Expired",
-                        style = FieldTheme.typography.display,
+                        style = FieldTheme.typography.title,
                         color = FieldTheme.colors.gray100,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "For your security, ${if (userEmail.isNotBlank()) "$userEmail has" else "your session has"} been automatically logged out due to inactivity. Please sign in again to access FieldCRM.",
+                        text = "For your security, ${if (userEmail.isNotBlank()) "$userEmail has" else "your session has"} been automatically logged out due to inactivity. Please log in again to continue accessing FieldCRM.",
                         style = FieldTheme.typography.body,
                         color = FieldTheme.colors.gray400,
                         textAlign = TextAlign.Center
@@ -75,16 +74,8 @@ fun SessionExpiredScreen(
                     Spacer(modifier = Modifier.height(32.dp))
 
                     PrimaryButton(
-                        text = "Login Again",
-                        onClick = onReauthSuccess,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    SecondaryButton(
-                        text = "Return to Home",
-                        onClick = onReauthSuccess,
+                        text = "Log In Again",
+                        onClick = onLoginAgainClick,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

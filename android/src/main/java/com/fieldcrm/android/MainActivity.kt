@@ -31,7 +31,30 @@ class MainActivity : AppCompatActivity() {
         pendingApplicationId = intent?.getStringExtra("application_id")
         setContent {
             val appUiState by appViewModel.uiState.collectAsState()
-            FieldCRMTheme(role = appUiState.session?.role) {
+            val themePrefs = androidx.compose.runtime.remember { getSharedPreferences("fieldcrm_theme_prefs", MODE_PRIVATE) }
+            var themeState by androidx.compose.runtime.remember {
+                androidx.compose.runtime.mutableStateOf(themePrefs.getString("theme", "System") ?: "System")
+            }
+
+            androidx.compose.runtime.DisposableEffect(themePrefs) {
+                val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                    if (key == "theme") {
+                        themeState = themePrefs.getString("theme", "System") ?: "System"
+                    }
+                }
+                themePrefs.registerOnSharedPreferenceChangeListener(listener)
+                onDispose {
+                    themePrefs.unregisterOnSharedPreferenceChangeListener(listener)
+                }
+            }
+
+            val isDark = when (themeState) {
+                "Dark" -> true
+                "Light" -> false
+                else -> androidx.compose.foundation.isSystemInDarkTheme()
+            }
+
+            FieldCRMTheme(role = appUiState.session?.role, darkTheme = isDark) {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     FieldCRMApp(appViewModel, pendingApplicationId)
                 }

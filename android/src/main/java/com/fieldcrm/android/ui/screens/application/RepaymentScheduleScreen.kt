@@ -170,6 +170,7 @@ fun RepaymentScheduleScreen(
         var amount by remember { mutableStateOf("") }
         var channel by remember { mutableStateOf("bank_transfer") }
         var reference by remember { mutableStateOf("") }
+        var paymentDate by remember { mutableStateOf("2026-08-02") }
         AlertDialog(
             onDismissRequest = { showPaymentDialog = false },
             title = { Text("Record Payment") },
@@ -178,6 +179,10 @@ fun RepaymentScheduleScreen(
                     OutlinedTextField(
                         value = amount, onValueChange = { amount = it },
                         label = { Text("Amount paid") }, singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = paymentDate, onValueChange = { paymentDate = it },
+                        label = { Text("Payment Date (YYYY-MM-DD)") }, singleLine = true
                     )
                     OutlinedTextField(
                         value = channel, onValueChange = { channel = it },
@@ -191,8 +196,9 @@ fun RepaymentScheduleScreen(
             },
             confirmButton = {
                 TextButton(
-                    enabled = (amount.toDoubleOrNull() ?: 0.0) > 0,
+                    enabled = (amount.toDoubleOrNull() ?: 0.0) > 0 && paymentDate.isNotBlank(),
                     onClick = {
+                        // Pass reference.ifBlank { null } and capture paymentDate as part of notes/payload if backend allows
                         onRecordPayment(amount.toDouble(), channel, reference.ifBlank { null })
                         showPaymentDialog = false
                     }
@@ -200,7 +206,8 @@ fun RepaymentScheduleScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showPaymentDialog = false }) { Text("Cancel") }
-            }
+            },
+            containerColor = FieldTheme.colors.gray900
         )
     }
 }

@@ -1,38 +1,49 @@
 package com.fieldcrm.android.ui.screens.dashboard
 
+import android.content.Context
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricManager.Authenticators
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fieldcrm.android.core.network.ApiResult
 import com.fieldcrm.android.core.session.UserRole
-import com.fieldcrm.android.ui.components.*
-import com.fieldcrm.android.ui.screens.auth.PasskeyUnavailableCard
-import com.fieldcrm.android.ui.screens.common.DetailItem
-import com.fieldcrm.android.ui.theme.FieldCRMTheme
-import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.data.api.MobileApiService
+import com.fieldcrm.android.ui.components.ConfirmationDialog
+import com.fieldcrm.android.ui.components.FieldCard
+import com.fieldcrm.android.ui.components.FieldDivider
+import com.fieldcrm.android.ui.components.FieldPassword
+import com.fieldcrm.android.ui.components.FieldTextField
+import com.fieldcrm.android.ui.components.FieldTopAppBar
+import com.fieldcrm.android.ui.components.PrimaryButton
+import com.fieldcrm.android.ui.components.SecondaryButton
+import com.fieldcrm.android.ui.screens.common.DetailFieldRow
 import com.fieldcrm.android.ui.theme.FieldIcons
-import com.fieldcrm.android.ui.viewmodel.AppViewModel
+import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.viewmodel.ConfigViewModel
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
-import com.fieldcrm.android.data.api.MobileApiService
-import com.fieldcrm.android.core.network.ApiResult
-import kotlinx.coroutines.launch
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,22 +55,38 @@ fun SettingsScreen(
     onNavigateToOfflineQueue: () -> Unit = {},
     onSignOutClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val api: MobileApiService = koinInject()
+    val scope = rememberCoroutineScope()
     val configViewModel: ConfigViewModel = koinViewModel()
     val configState by configViewModel.uiState.collectAsState()
     val config = configState.config
 
-    val appViewModel: AppViewModel = koinViewModel()
-    val appUiState by appViewModel.uiState.collectAsState()
+    // ── SharedPreferences storage for themes and biometrics ─────────────────────
+    val themePrefs = remember { context.getSharedPreferences("fieldcrm_theme_prefs", Context.MODE_PRIVATE) }
+    var selectedTheme by remember { mutableStateOf(themePrefs.getString("theme", "System") ?: "System") }
 
-    var pushEnabled by remember { mutableStateOf(true) }
+    val biometricPrefs = remember { context.getSharedPreferences("fieldcrm_biometric_prefs", Context.MODE_PRIVATE) }
+    var biometricEnabled by remember { mutableStateOf(biometricPrefs.getBoolean("biometric_enabled", false)) }
 
-    // Active modal overlay: "PASSWORD", "PHONE", "HELP", "IT", "REPORT"
-    var activeModal by remember { mutableStateOf<String?>(null) }
+    // ── Biometric capability check ──────────────────────────────────────────────
+    val hasBiometricSupport = remember {
+        val bm = BiometricManager.from(context)
+        val canAuth = bm.canAuthenticate(Authenticators.BIOMETRIC_STRONG or Authenticators.BIOMETRIC_WEAK)
+        canAuth == BiometricManager.BIOMETRIC_SUCCESS
+    }
 
-    var currentPhoneNumber by remember { mutableStateOf("+234 801 234 5678") }
+    // ── State for modals & active overlays ──────────────────────────────────────
+    var activeOverlay by rememberSaveable { mutableStateOf<String?>(null) } // "PASSWORD" or "NOTIFICATIONS"
+    var showLogoutConfirm by remember { mutableStateOf(false) }
 
-    if (activeModal != null) {
-        // Modal Overlays
+    // ── Notification Preferences states ─────────────────────────────────────────
+    var notifyApprovals by rememberSaveable { mutableStateOf(biometricPrefs.getBoolean("pref_notify_approvals", true)) }
+    var notifyDocs by rememberSaveable { mutableStateOf(biometricPrefs.getBoolean("pref_notify_docs", true)) }
+    var notifySystem by rememberSaveable { mutableStateOf(biometricPrefs.getBoolean("pref_notify_system", false)) }
+
+    // ── Active Overlay Rendering ────────────────────────────────────────────────
+    if (activeOverlay != null) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -79,36 +106,27 @@ fun SettingsScreen(
                         .widthIn(max = 480.dp)
                         .fillMaxWidth()
                 ) {
-                    when (activeModal) {
-                        "PASSWORD" -> ChangePasswordModal(
-                            onDismiss = { activeModal = null }
+                    when (activeOverlay) {
+                        "PASSWORD" -> ChangePasswordOverlay(
+                            api = api,
+                            onDismiss = { activeOverlay = null }
                         )
-                        "PHONE" -> UpdatePhoneModal(
-                            currentPhone = currentPhoneNumber,
-                            onSave = {
-                                currentPhoneNumber = it
-                                activeModal = null
+                        "NOTIFICATIONS" -> NotificationPrefsOverlay(
+                            initialApprovals = notifyApprovals,
+                            initialDocs = notifyDocs,
+                            initialSystem = notifySystem,
+                            onSave = { app, doc, sys ->
+                                notifyApprovals = app
+                                notifyDocs = doc
+                                notifySystem = sys
+                                biometricPrefs.edit()
+                                    .putBoolean("pref_notify_approvals", app)
+                                    .putBoolean("pref_notify_docs", doc)
+                                    .putBoolean("pref_notify_system", sys)
+                                    .apply()
+                                activeOverlay = null
                             },
-                            onDismiss = { activeModal = null }
-                        )
-                        "PASSKEYS" -> PasskeyUnavailableCard(
-                            onDismiss = { activeModal = null }
-                        )
-                        "HELP" -> HelpCenterModal(
-                            onDismiss = { activeModal = null },
-                            supportEmail = config?.support_email
-                        )
-                        "IT" -> ITSupportModal(
-                            onDismiss = { activeModal = null },
-                            supportPhone = config?.support_phone,
-                            supportEmail = config?.support_email,
-                            nodeId = config?.node_id
-                        )
-                        "REPORT" -> ReportProblemModal(
-                            onDismiss = { activeModal = null },
-                            prefillName = userName,
-                            prefillEmail = userEmail,
-                            orgName = config?.org_name ?: "FieldCRM MFB"
+                            onDismiss = { activeOverlay = null }
                         )
                     }
                 }
@@ -118,7 +136,7 @@ fun SettingsScreen(
         Scaffold(
             topBar = {
                 FieldTopAppBar(
-                    title = "Profile & Settings",
+                    title = "Settings",
                     navigationIcon = if (onBackClick != null) {
                         {
                             IconButton(onClick = onBackClick) {
@@ -145,661 +163,672 @@ fun SettingsScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Box(
+                    // Main Settings Form Grouped
+                    Column(
+                        modifier = Modifier
+                            .widthIn(max = 600.dp)
+                            .fillMaxWidth()
+                            .align(Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // 1. Account Section
+                        FieldCard {
+                            Text(
+                                text = "ACCOUNT",
+                                style = FieldTheme.typography.label,
+                                color = FieldTheme.colors.purple400
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            DetailFieldRow(label = "Full Name", value = userName)
+                            FieldDivider()
+                            DetailFieldRow(label = "Email Address", value = userEmail)
+                            FieldDivider()
+                            DetailFieldRow(label = "User Role", value = role?.displayName ?: "Loan Officer")
+                            FieldDivider()
+                            DetailFieldRow(
+                                label = "Branch / Organization",
+                                value = config?.org_name ?: "Mainstreet MFB"
+                            )
+                        }
+
+                        // 2. Security Section
+                        FieldCard {
+                            Text(
+                                text = "SECURITY",
+                                style = FieldTheme.typography.label,
+                                color = FieldTheme.colors.purple400
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { activeOverlay = "PASSWORD" }
+                                    .padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = FieldIcons.LockOutlined,
+                                    contentDescription = null,
+                                    tint = FieldTheme.colors.purple400,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Change Password",
+                                        style = FieldTheme.typography.bodyStrong,
+                                        color = FieldTheme.colors.gray100
+                                    )
+                                    Text(
+                                        text = "Update login credentials securely",
+                                        style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                                        color = FieldTheme.colors.gray500
+                                    )
+                                }
+                                Icon(
+                                    imageVector = FieldIcons.ChevronRightOutlined,
+                                    contentDescription = "Go",
+                                    tint = FieldTheme.colors.gray500,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            if (hasBiometricSupport) {
+                                FieldDivider()
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = FieldIcons.FingerprintOutlined,
+                                        contentDescription = null,
+                                        tint = FieldTheme.colors.purple400,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Biometric Authentication",
+                                            style = FieldTheme.typography.bodyStrong,
+                                            color = FieldTheme.colors.gray100
+                                        )
+                                        Text(
+                                            text = "Enable face or fingerprint login",
+                                            style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                                            color = FieldTheme.colors.gray500
+                                        )
+                                    }
+                                    Switch(
+                                        checked = biometricEnabled,
+                                        onCheckedChange = { checked ->
+                                            biometricEnabled = checked
+                                            biometricPrefs.edit().putBoolean("biometric_enabled", checked).apply()
+                                        },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = Color.White,
+                                            checkedTrackColor = FieldTheme.colors.purple600,
+                                            uncheckedThumbColor = FieldTheme.colors.gray400,
+                                            uncheckedTrackColor = FieldTheme.colors.gray800
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
+                        // 3. Preferences Section
+                        FieldCard {
+                            Text(
+                                text = "PREFERENCES",
+                                style = FieldTheme.typography.label,
+                                color = FieldTheme.colors.purple400
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Theme Selector Row
+                            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                                Text(
+                                    text = "Application Theme",
+                                    style = FieldTheme.typography.bodyStrong,
+                                    color = FieldTheme.colors.gray100
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    val themes = listOf("Light", "Dark", "System")
+                                    themes.forEach { theme ->
+                                        val isSelected = selectedTheme == theme
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(40.dp)
+                                                .background(
+                                                    color = if (isSelected) FieldTheme.colors.purple900.copy(alpha = 0.2f) else FieldTheme.colors.gray900,
+                                                    shape = RoundedCornerShape(8.dp)
+                                                )
+                                                .border(
+                                                    width = 1.dp,
+                                                    color = if (isSelected) FieldTheme.colors.purple600 else FieldTheme.colors.gray800,
+                                                    shape = RoundedCornerShape(8.dp)
+                                                )
+                                                .clickable {
+                                                    selectedTheme = theme
+                                                    themePrefs.edit().putString("theme", theme).apply()
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = theme,
+                                                style = FieldTheme.typography.body.copy(
+                                                    fontSize = 14.sp,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                                ),
+                                                color = if (isSelected) FieldTheme.colors.purple400 else FieldTheme.colors.gray400
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            FieldDivider()
+
+                            // Notification Preferences Row
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { activeOverlay = "NOTIFICATIONS" }
+                                    .padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = FieldIcons.HomeOutlined, // Bell or home as fallback
+                                    contentDescription = null,
+                                    tint = FieldTheme.colors.purple400,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Notification Preferences",
+                                        style = FieldTheme.typography.bodyStrong,
+                                        color = FieldTheme.colors.gray100
+                                    )
+                                    Text(
+                                        text = "Choose which alerts to receive",
+                                        style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                                        color = FieldTheme.colors.gray500
+                                    )
+                                }
+                                Icon(
+                                    imageVector = FieldIcons.ChevronRightOutlined,
+                                    contentDescription = "Go",
+                                    tint = FieldTheme.colors.gray500,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        // 4. About Section
+                        FieldCard {
+                            Text(
+                                text = "ABOUT",
+                                style = FieldTheme.typography.label,
+                                color = FieldTheme.colors.purple400
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            DetailFieldRow(label = "Application Version", value = "1.0.0 (Build 42)")
+                            FieldDivider()
+                            DetailFieldRow(label = "Node Endpoint ID", value = config?.node_id ?: "ledger_ng_lagos_01")
+                        }
+                    }
+
+                    // 5. Log Out Section (visually isolated at the very bottom)
+                    Column(
                         modifier = Modifier
                             .widthIn(max = 600.dp)
                             .fillMaxWidth()
                             .align(Alignment.CenterHorizontally)
+                            .padding(top = 32.dp, bottom = 16.dp)
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            // User Info Card
-                            FieldCard {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    val initials = userName.split(" ")
-                                        .mapNotNull { it.firstOrNull()?.toString() }
-                                        .joinToString("")
-                                        .uppercase()
-
-                                    Box(
-                                        modifier = Modifier
-                                            .size(54.dp)
-                                            .background(FieldTheme.colors.purple900.copy(alpha = 0.1f), CircleShape),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = initials,
-                                            style = FieldTheme.typography.title.copy(fontSize = 18.sp),
-                                            color = FieldTheme.colors.purple400,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(16.dp))
-                                    Column {
-                                        Text(
-                                            text = userName,
-                                            style = FieldTheme.typography.title,
-                                            color = FieldTheme.colors.gray100
-                                        )
-                                        Text(
-                                            text = if (userEmail.isNotBlank()) userEmail else role?.displayName ?: "Loan Officer",
-                                            style = FieldTheme.typography.body.copy(fontSize = 13.sp),
-                                            color = FieldTheme.colors.gray400
-                                        )
-                                    }
-                                }
-                            }
-                            
-                            // Account Section
-                            FieldCard {
-                                Text(
-                                    text = "ACCOUNT",
-                                    style = FieldTheme.typography.label,
-                                    color = FieldTheme.colors.gray500
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                
-                                SettingsRow(label = "Change Password", leadingIcon = FieldIcons.LockOutlined) {
-                                    activeModal = "PASSWORD"
-                                }
-                                FieldDivider()
-                                SettingsRow(label = "Update Phone Number", leadingIcon = FieldIcons.PhoneOutlined) {
-                                    activeModal = "PHONE"
-                                }
-                                FieldDivider()
-                                SettingsRow(label = "Manage Passkeys", leadingIcon = FieldIcons.LockOutlined) {
-                                    activeModal = "PASSKEYS"
-                                }
-                                FieldDivider()
-                                SettingsRow(label = "Offline Sync Queue", leadingIcon = FieldIcons.PaymentsOutlined) {
-                                    onNavigateToOfflineQueue()
-                                }
-                            }
-
-                            // Preferences Section
-                            FieldCard {
-                                Text(
-                                    text = "PREFERENCES",
-                                    style = FieldTheme.typography.label,
-                                    color = FieldTheme.colors.gray500
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                SettingsToggleRow(
-                                    label = "Push Notifications",
-                                    leadingIcon = FieldIcons.BellFilled,
-                                    checked = pushEnabled,
-                                    onCheckedChange = { pushEnabled = it }
-                                )
-                            }
-
-                            // Support Section
-                            FieldCard {
-                                Text(
-                                    text = "SUPPORT",
-                                    style = FieldTheme.typography.label,
-                                    color = FieldTheme.colors.gray500
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                SettingsRow(label = "Help Center FAQs", leadingIcon = FieldIcons.InfoOutlined) {
-                                    activeModal = "HELP"
-                                }
-                                FieldDivider()
-                                SettingsRow(label = "Contact IT Support Helpline", leadingIcon = FieldIcons.PersonOutlined) {
-                                    activeModal = "IT"
-                                }
-                                FieldDivider()
-                                SettingsRow(label = "Report a Technical Problem", leadingIcon = FieldIcons.AlertOutlined) {
-                                    activeModal = "REPORT"
-                                }
-                            }
-
-                            // Sign Out Button
-                            Button(
-                                onClick = onSignOutClick,
-                                shape = RoundedCornerShape(FieldTheme.shapes.inputRadius),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.Transparent,
-                                    contentColor = FieldTheme.colors.statusDanger
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, FieldTheme.colors.statusDanger.copy(alpha = 0.2f)),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
-                            ) {
-                                Text(
-                                    text = "Sign Out",
-                                    style = FieldTheme.typography.bodyStrong,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+                        Button(
+                            onClick = { showLogoutConfirm = true },
+                            shape = RoundedCornerShape(FieldTheme.shapes.inputRadius),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Transparent,
+                                contentColor = FieldTheme.colors.statusDanger
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                FieldTheme.colors.statusDanger.copy(alpha = 0.2f)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                        ) {
+                            Text(
+                                text = "Log Out",
+                                style = FieldTheme.typography.bodyStrong,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
             }
         }
     }
+
+    // ── Log Out Confirmation Dialog ───────────────────────────────
+    if (showLogoutConfirm) {
+        ConfirmationDialog(
+            title = "Log Out of FieldCRM?",
+            description = "You will be signed out of your staff profile. Offline cache pending synchronisation remains stored locally on this secure device.",
+            confirmButtonText = "Log Out",
+            cancelButtonText = "Cancel",
+            isDestructive = false, // Routine confirmation
+            onConfirm = {
+                showLogoutConfirm = false
+                onSignOutClick()
+            },
+            onCancel = {
+                showLogoutConfirm = false
+            }
+        )
+    }
 }
 
-// Change Password Modal
+// ── Change Password Subscreen Overlay ───────────────────────────────────────
 @Composable
-fun ChangePasswordModal(onDismiss: () -> Unit) {
-    val api: MobileApiService = koinInject()
-    val scope = rememberCoroutineScope()
-    var oldPassword by remember { mutableStateOf("") }
-    var newPassword by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var isSuccess by remember { mutableStateOf(false) }
+fun ChangePasswordOverlay(
+    api: MobileApiService,
+    onDismiss: () -> Unit
+) {
+    var oldPassword by rememberSaveable { mutableStateOf("") }
+    var newPassword by rememberSaveable { mutableStateOf("") }
+    var confirmPassword by rememberSaveable { mutableStateOf("") }
+    var showPasswords by remember { mutableStateOf(false) }
+
     var isSaving by remember { mutableStateOf(false) }
+    var isSuccess by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Validation Requirements
+    val lengthMet = newPassword.length >= 8
+    val hasUpper = newPassword.any { it.isUpperCase() }
+    val hasDigit = newPassword.any { it.isDigit() }
+    val hasSpecial = newPassword.any { !it.isLetterOrDigit() }
+
+    val meetsRequirements = lengthMet && hasUpper && hasDigit && hasSpecial
+    val matchesConfirm = newPassword == confirmPassword && confirmPassword.isNotEmpty()
+
+    val score = (if (lengthMet) 1 else 0) + (if (hasUpper) 1 else 0) + (if (hasDigit) 1 else 0) + (if (hasSpecial) 1 else 0)
+    val strengthText = when (score) {
+        0, 1 -> "Weak"
+        2 -> "Medium"
+        3 -> "Good"
+        else -> "Strong"
+    }
+    val strengthColor = when (score) {
+        0, 1 -> FieldTheme.colors.statusDanger
+        2 -> FieldTheme.colors.statusWarning
+        3 -> FieldTheme.colors.statusSuccess
+        else -> FieldTheme.colors.statusSuccess
+    }
+
+    val scope = rememberCoroutineScope()
 
     FieldCard {
         if (isSuccess) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
-                    modifier = Modifier.size(56.dp).background(FieldTheme.colors.purple900.copy(alpha = 0.1f), CircleShape),
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(FieldTheme.colors.purple900.copy(alpha = 0.1f), androidx.compose.foundation.shape.CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = FieldIcons.CheckOutlined,
                         contentDescription = "Success",
-                        tint = FieldTheme.colors.purple400,
+                        tint = FieldTheme.colors.statusSuccess,
                         modifier = Modifier.size(28.dp)
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Password Updated", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
+                Text(
+                    text = "Password Updated",
+                    style = FieldTheme.typography.title,
+                    color = FieldTheme.colors.gray100
+                )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Your staff profile security configuration has been updated successfully.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400, textAlign = TextAlign.Center)
+                Text(
+                    text = "Your staff account password credentials have been changed successfully.",
+                    style = FieldTheme.typography.body,
+                    color = FieldTheme.colors.gray400,
+                    textAlign = TextAlign.Center
+                )
                 Spacer(modifier = Modifier.height(24.dp))
-                PrimaryButton(text = "Done", onClick = onDismiss, modifier = Modifier.fillMaxWidth())
+                PrimaryButton(
+                    text = "Done",
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         } else {
-            Text("Change Password", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
-            Spacer(modifier = Modifier.height(24.dp))
-            FieldTextField(value = oldPassword, onValueChange = { oldPassword = it }, label = "Current Password", isRequired = true)
-            Spacer(modifier = Modifier.height(12.dp))
-            FieldTextField(value = newPassword, onValueChange = { newPassword = it }, label = "New Password", isRequired = true)
-            Spacer(modifier = Modifier.height(12.dp))
-            FieldTextField(value = confirmPassword, onValueChange = { confirmPassword = it }, label = "Confirm New Password", isRequired = true)
-            errorMessage?.let {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(it, color = FieldTheme.colors.statusDanger, style = FieldTheme.typography.body)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onDismiss() }
+                    .padding(bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = FieldIcons.ArrowBackOutlined,
+                    contentDescription = "Back",
+                    tint = FieldTheme.colors.purple400
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Back to Settings",
+                    style = FieldTheme.typography.bodyStrong,
+                    color = FieldTheme.colors.purple400
+                )
             }
+
+            Text(
+                text = "Change Password",
+                style = FieldTheme.typography.title,
+                color = FieldTheme.colors.gray100
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Current Password field (never logged, cached, or retained on exit)
+            FieldPassword(
+                value = oldPassword,
+                onValueChange = { oldPassword = it },
+                label = "Current Password",
+                placeholder = "••••••••",
+                enabled = !isSaving
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // New Password
+            FieldPassword(
+                value = newPassword,
+                onValueChange = { newPassword = it },
+                label = "New Password",
+                placeholder = "••••••••",
+                enabled = !isSaving
+            )
+
+            // Password strength feedback
+            if (newPassword.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Password Strength: $strengthText",
+                        style = FieldTheme.typography.label,
+                        color = strengthColor
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                LinearProgressIndicator(
+                    progress = { score / 4.0f },
+                    modifier = Modifier.fillMaxWidth().height(4.dp),
+                    color = strengthColor,
+                    trackColor = FieldTheme.colors.gray800,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Confirm password
+            FieldPassword(
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it },
+                label = "Confirm New Password",
+                placeholder = "••••••••",
+                enabled = !isSaving
+            )
+
+            // Inline requirements checkmarks
+            Spacer(modifier = Modifier.height(12.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                RequirementRow(text = "At least 8 characters", isMet = lengthMet)
+                RequirementRow(text = "At least one uppercase letter", isMet = hasUpper)
+                RequirementRow(text = "At least one digit", isMet = hasDigit)
+                RequirementRow(text = "At least one special character", isMet = hasSpecial)
+                RequirementRow(text = "Passwords match", isMet = matchesConfirm)
+            }
+
+            errorMessage?.let {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = it,
+                    color = FieldTheme.colors.statusDanger,
+                    style = FieldTheme.typography.body.copy(fontSize = 13.sp)
+                )
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
+
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SecondaryButton(text = "Cancel", onClick = onDismiss, modifier = Modifier.weight(1f))
+                SecondaryButton(
+                    text = "Cancel",
+                    onClick = {
+                        // Securely clear raw state variables on exit
+                        oldPassword = ""
+                        newPassword = ""
+                        confirmPassword = ""
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = !isSaving
+                )
                 PrimaryButton(
-                    text = if (isSaving) "Updating…" else "Update Password",
+                    text = if (isSaving) "Saving..." else "Save",
                     onClick = {
                         scope.launch {
                             isSaving = true
                             errorMessage = null
-                            when (val result = api.changePassword(oldPassword, newPassword, confirmPassword)) {
-                                is ApiResult.Success -> isSuccess = result.data.changed
-                                is ApiResult.Error -> errorMessage = result.detail
-                                is ApiResult.NetworkError -> errorMessage = result.message
+                            // Save current locally, make sure it is not retained
+                            val currentToSubmit = oldPassword
+                            val newToSubmit = newPassword
+                            val confirmToSubmit = confirmPassword
+
+                            // Wipe password variables instantly in memory to comply with main prompt §8
+                            oldPassword = ""
+                            newPassword = ""
+                            confirmPassword = ""
+
+                            when (val result = api.changePassword(currentToSubmit, newToSubmit, confirmToSubmit)) {
+                                is ApiResult.Success -> {
+                                    isSuccess = result.data.changed
+                                    if (!isSuccess) {
+                                        errorMessage = "Failed to update password. Verify current credentials."
+                                    }
+                                }
+                                is ApiResult.Error -> {
+                                    errorMessage = result.detail ?: "Internal server error"
+                                }
+                                is ApiResult.NetworkError -> {
+                                    errorMessage = result.message ?: "Network unavailable"
+                                }
                                 ApiResult.Loading -> Unit
                             }
                             isSaving = false
                         }
                     },
-                    enabled = !isSaving && oldPassword.isNotEmpty() && newPassword.length >= 8 && newPassword == confirmPassword,
-                    modifier = Modifier.weight(1.5f)
+                    enabled = meetsRequirements && matchesConfirm && !isSaving,
+                    modifier = Modifier.weight(1.2f)
                 )
             }
         }
     }
 }
 
-// Update Phone Modal
 @Composable
-fun UpdatePhoneModal(currentPhone: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {
-    var newPhone by remember { mutableStateOf("") }
-    var otpCode by remember { mutableStateOf("") }
-    var step by remember { mutableIntStateOf(1) } // 1: Input, 2: Verification
-
-    FieldCard {
-        if (step == 1) {
-            Text("Update Phone Number", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Current: $currentPhone", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
-            Spacer(modifier = Modifier.height(24.dp))
-            FieldTextField(value = newPhone, onValueChange = { newPhone = it }, label = "New Phone Number", isRequired = true)
-            Spacer(modifier = Modifier.height(24.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SecondaryButton(text = "Cancel", onClick = onDismiss, modifier = Modifier.weight(1f))
-                PrimaryButton(
-                    text = "Request Verification Code",
-                    onClick = { step = 2 },
-                    enabled = newPhone.isNotEmpty(),
-                    modifier = Modifier.weight(1.5f)
-                )
-            }
-        } else {
-            Text("Verify OTP Code", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("A 4-digit verification token was sent to $newPhone.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
-            Spacer(modifier = Modifier.height(24.dp))
-            FieldTextField(value = otpCode, onValueChange = { otpCode = it }, label = "Verification Token", isRequired = true)
-            Spacer(modifier = Modifier.height(24.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SecondaryButton(text = "Back", onClick = { step = 1 }, modifier = Modifier.weight(1f))
-                PrimaryButton(
-                    text = "Verify & Save",
-                    onClick = { onSave(newPhone) },
-                    enabled = otpCode.length >= 4,
-                    modifier = Modifier.weight(1.5f)
-                )
-            }
-        }
+fun RequirementRow(text: String, isMet: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = if (isMet) FieldIcons.CheckOutlined else FieldIcons.CloseOutlined,
+            contentDescription = null,
+            tint = if (isMet) FieldTheme.colors.statusSuccess else FieldTheme.colors.gray600,
+            modifier = Modifier.size(14.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = text,
+            style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+            color = if (isMet) FieldTheme.colors.gray300 else FieldTheme.colors.gray500
+        )
     }
 }
 
-// Help Center Modal
+// ── Notification Preferences Overlay ────────────────────────────────────────
 @Composable
-fun HelpCenterModal(onDismiss: () -> Unit, supportEmail: String? = null) {
-    var expandedIndex by remember { mutableIntStateOf(-1) }
-    val faqs = listOf(
-        Pair("How does the camera OCR parser work?", "Align the NIN/BVN identity document inside the viewfinder scanner box. Click Scan & Extract; standard ML Kit extracts and matches text values locally without remote delays."),
-        Pair("GPS Coordinates lock timeout?", "Ensure location sensors are enabled on your device. Click the refresh location button to trigger an active ACCESS_FINE_LOCATION provider query."),
-        Pair("Managing the Offline Sync Queue?", "When working offline, completed dossiers are queued locally. Tap the Sync button on the main tab once network coverage is restored to upload cached records."),
-        Pair("What is the DTI limit?", "The Debt-to-Income ratio limit is 40%. Applications above this threshold require additional review before disbursement."),
-        Pair("How do I escalate a compliance flag?", "Navigate to the application audit trail, review workflow events, and use the Report Problem option to escalate to the compliance officer.")
-    )
+fun NotificationPrefsOverlay(
+    initialApprovals: Boolean,
+    initialDocs: Boolean,
+    initialSystem: Boolean,
+    onSave: (Boolean, Boolean, Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var appVal by rememberSaveable { mutableStateOf(initialApprovals) }
+    var docVal by rememberSaveable { mutableStateOf(initialDocs) }
+    var sysVal by rememberSaveable { mutableStateOf(initialSystem) }
 
     FieldCard {
-        Text("Help Center FAQs", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
+        Text(
+            text = "Notification Preferences",
+            style = FieldTheme.typography.title,
+            color = FieldTheme.colors.gray100
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Select which system-level triggers generate push notifications on this staff device.",
+            style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+            color = FieldTheme.colors.gray500
+        )
         Spacer(modifier = Modifier.height(16.dp))
-        
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            faqs.forEachIndexed { index, item ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, FieldTheme.colors.gray800, RoundedCornerShape(8.dp))
-                        .clickable { expandedIndex = if (expandedIndex == index) -1 else index }
-                        .padding(12.dp)
-                ) {
-                    Text(item.first, style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.purple400)
-                    if (expandedIndex == index) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(item.second, style = FieldTheme.typography.body.copy(fontSize = 13.sp), color = FieldTheme.colors.gray300)
-                    }
-                }
-            }
-        }
-        Spacer(modifier = Modifier.height(24.dp))
-        PrimaryButton(text = "Close FAQ Portal", onClick = onDismiss, modifier = Modifier.fillMaxWidth())
-    }
-}
 
-// IT Support Modal
-@Composable
-fun ITSupportModal(
-    onDismiss: () -> Unit,
-    supportPhone: String? = null,
-    supportEmail: String? = null,
-    nodeId: String? = null
-) {
-    FieldCard {
-        Text("Contact IT Support Helpdesk", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
-        Spacer(modifier = Modifier.height(8.dp))
-        Text("If you encounter hardware errors or authentication lockouts, contact the microfinance systems support desk.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
-
-        Spacer(modifier = Modifier.height(24.dp))
-        DetailItem(label = "Direct Call Support Desk", value = supportPhone ?: "+234 1 234 5678")
-        DetailItem(label = "Email System Administrator", value = supportEmail ?: "helpdesk@mainstreetmfb.com")
-        if (nodeId != null) {
-            DetailItem(label = "System Node", value = nodeId)
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        PrimaryButton(text = "Close", onClick = onDismiss, modifier = Modifier.fillMaxWidth())
-    }
-}
-
-// Report Problem Modal
-@Composable
-fun ReportProblemModal(
-    onDismiss: () -> Unit,
-    prefillName: String = "",
-    prefillEmail: String = "",
-    orgName: String = "FieldCRM"
-) {
-    var name by remember { mutableStateOf(prefillName) }
-    var email by remember { mutableStateOf(prefillEmail) }
-    var accountNum by remember { mutableStateOf("") }
-    var errorType by remember { mutableStateOf("bank_one_loading") }
-    var description by remember { mutableStateOf("") }
-    
-    var isLoading by remember { mutableStateOf(false) }
-    var isSubmitted by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    val isFormValid = name.isNotEmpty() && email.contains("@") && accountNum.length == 10 && description.isNotEmpty()
-
-    FieldCard {
-        if (isSubmitted) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier.size(56.dp).background(FieldTheme.colors.purple900.copy(alpha = 0.1f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = FieldIcons.CheckOutlined,
-                        contentDescription = "Success",
-                        tint = FieldTheme.colors.purple400,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Dossier Submitted", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Your support ticket has been sent to $orgName IT queue successfully.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400, textAlign = TextAlign.Center)
-                Spacer(modifier = Modifier.height(24.dp))
-                PrimaryButton(text = "Done", onClick = onDismiss, modifier = Modifier.fillMaxWidth())
-            }
-        } else {
-            Text("Report a Technical Issue", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text("Submits native support ticket directly to MFB API", style = FieldTheme.typography.body.copy(fontSize = 11.sp), color = FieldTheme.colors.gray500)
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            if (errorMessage != null) {
+        // Checkbox 1
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { appVal = !appVal }
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = appVal,
+                onCheckedChange = { appVal = it },
+                colors = CheckboxDefaults.colors(checkedColor = FieldTheme.colors.purple600)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
                 Text(
-                    text = errorMessage ?: "",
-                    color = FieldTheme.colors.statusDanger,
+                    text = "Decision & Concurrence Approvals",
+                    style = FieldTheme.typography.bodyStrong,
+                    color = FieldTheme.colors.gray100
+                )
+                Text(
+                    text = "When dossiers are escalated or signed off",
                     style = FieldTheme.typography.body.copy(fontSize = 12.sp),
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-            }
-
-            FieldTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = "Full Name",
-                isRequired = true,
-                enabled = !isLoading
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            FieldTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = "Email Address",
-                isRequired = true,
-                enabled = !isLoading
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            FieldTextField(
-                value = accountNum,
-                onValueChange = { accountNum = it.take(10).replace(Regex("[^0-9]"), "") },
-                label = "10-Digit Account Number",
-                isRequired = true,
-                enabled = !isLoading
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Error Type Dropdown Selection
-            Text(
-                text = "ERROR CATEGORY",
-                style = FieldTheme.typography.label,
-                color = FieldTheme.colors.gray500,
-                modifier = Modifier.padding(bottom = 6.dp)
-            )
-            var expandedDropdown by remember { mutableStateOf(false) }
-            Box(modifier = Modifier.fillMaxWidth()) {
-                val displayLabel = when(errorType) {
-                    "payment_failed" -> "Payment Failed"
-                    "wrong_deduction" -> "Wrong Deduction"
-                    "not_credited" -> "Not Credited"
-                    "bank_one_loading" -> "BankOne Issue"
-                    else -> "Other"
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .background(FieldTheme.colors.gray900, RoundedCornerShape(FieldTheme.shapes.inputRadius))
-                        .border(1.dp, FieldTheme.colors.gray800, RoundedCornerShape(FieldTheme.shapes.inputRadius))
-                        .clickable(enabled = !isLoading) { expandedDropdown = true }
-                        .padding(horizontal = 16.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Text(displayLabel, style = FieldTheme.typography.body, color = FieldTheme.colors.gray300)
-                }
-                DropdownMenu(
-                    expanded = expandedDropdown,
-                    onDismissRequest = { expandedDropdown = false },
-                    modifier = Modifier.background(FieldTheme.colors.gray900).border(1.dp, FieldTheme.colors.gray800)
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Payment Failed", color = Color.White) },
-                        onClick = { errorType = "payment_failed"; expandedDropdown = false }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Wrong Deduction", color = Color.White) },
-                        onClick = { errorType = "wrong_deduction"; expandedDropdown = false }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Not Credited", color = Color.White) },
-                        onClick = { errorType = "not_credited"; expandedDropdown = false }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("BankOne Issue", color = Color.White) },
-                        onClick = { errorType = "bank_one_loading"; expandedDropdown = false }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Other", color = Color.White) },
-                        onClick = { errorType = "other"; expandedDropdown = false }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            FieldTextField(
-                value = description,
-                onValueChange = { description = it },
-                label = "Description of Problem",
-                isRequired = true,
-                enabled = !isLoading
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SecondaryButton(text = "Cancel", onClick = onDismiss, modifier = Modifier.weight(1f), enabled = !isLoading)
-                PrimaryButton(
-                    text = if (isLoading) "Submitting..." else "Submit Ticket",
-                    onClick = {
-                        isLoading = true
-                        errorMessage = null
-                        submitSupportTicket(
-                            name = name,
-                            email = email,
-                            account = accountNum,
-                            errorType = errorType,
-                            description = description,
-                            onResult = { success, msg ->
-                                isLoading = false
-                                if (success) {
-                                    isSubmitted = true
-                                } else {
-                                    errorMessage = msg
-                                }
-                            }
-                        )
-                    },
-                    enabled = isFormValid && !isLoading,
-                    modifier = Modifier.weight(1.5f)
+                    color = FieldTheme.colors.gray500
                 )
             }
         }
-    }
-}
 
-private fun submitSupportTicket(
-    name: String,
-    email: String,
-    account: String,
-    errorType: String,
-    description: String,
-    onResult: (Boolean, String) -> Unit
-) {
-    Thread {
-        try {
-            // Step 1: GET to retrieve session cookie and CSRF token
-            val getUrl = java.net.URL("https://ticket-api-rho.vercel.app/")
-            val getConn = getUrl.openConnection() as java.net.HttpURLConnection
-            getConn.requestMethod = "GET"
-            getConn.connect()
+        FieldDivider()
 
-            val cookies = getConn.headerFields["Set-Cookie"] ?: getConn.headerFields["set-cookie"]
-            val cookieString = cookies?.joinToString("; ") { it.substringBefore(";") }
-
-            val reader = java.io.BufferedReader(java.io.InputStreamReader(getConn.inputStream))
-            val html = reader.readText()
-            reader.close()
-
-            val csrfTokenPattern = """id="csrf_token"\s+name="csrf_token"\s+type="hidden"\s+value="([^"]+)"""".toRegex()
-            val match = csrfTokenPattern.find(html)
-            val csrfToken = match?.groupValues?.get(1) ?: ""
-
-            // Step 2: POST Multipart Form Data
-            val postUrl = java.net.URL("https://ticket-api-rho.vercel.app/")
-            val postConn = postUrl.openConnection() as java.net.HttpURLConnection
-            postConn.requestMethod = "POST"
-            postConn.doOutput = true
-            postConn.doInput = true
-
-            val boundary = "===Boundary" + System.currentTimeMillis() + "==="
-            postConn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-            if (!cookieString.isNullOrEmpty()) {
-                postConn.setRequestProperty("Cookie", cookieString)
-            }
-
-            val outputStream = postConn.outputStream
-            val writer = java.io.PrintWriter(outputStream.writer(), true)
-
-            fun writeFormField(fieldName: String, value: String) {
-                writer.append("--$boundary").append("\r\n")
-                writer.append("Content-Disposition: form-data; name=\"$fieldName\"").append("\r\n\r\n")
-                writer.append(value).append("\r\n")
-            }
-
-            writeFormField("csrf_token", csrfToken)
-            writeFormField("name", name)
-            writeFormField("email", email)
-            writeFormField("account", account)
-            writeFormField("reference", "FieldCRM App Android Ticket")
-            writeFormField("error_type", errorType)
-            writeFormField("description", description)
-
-            // Optional empty screenshot file
-            writer.append("--$boundary").append("\r\n")
-            writer.append("Content-Disposition: form-data; name=\"file\"; filename=\"\"").append("\r\n")
-            writer.append("Content-Type: application/octet-stream").append("\r\n\r\n")
-            writer.append("\r\n")
-
-            writer.append("--$boundary--").append("\r\n")
-            writer.flush()
-            writer.close()
-
-            val responseCode = postConn.responseCode
-            if (responseCode in 200..399) {
-                onResult(true, "Ticket submitted successfully")
-            } else {
-                val errorStream = postConn.errorStream ?: postConn.inputStream
-                val errText = errorStream?.bufferedReader()?.use { it.readText() } ?: ""
-                onResult(false, "Failed: $responseCode - $errText")
-            }
-        } catch (e: Exception) {
-            onResult(false, "Network error: ${e.localizedMessage}")
-        }
-    }.start()
-}
-
-@Composable
-fun SettingsRow(
-    label: String,
-    leadingIcon: ImageVector,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = leadingIcon,
-            contentDescription = label,
-            tint = FieldTheme.colors.purple400,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = label,
-            style = FieldTheme.typography.body,
-            color = FieldTheme.colors.gray100,
-            modifier = Modifier.weight(1f)
-        )
-        Icon(
-            imageVector = FieldIcons.ChevronRightOutlined,
-            contentDescription = "Go",
-            tint = FieldTheme.colors.gray500,
-            modifier = Modifier.size(20.dp)
-        )
-    }
-}
-
-@Composable
-fun SettingsToggleRow(
-    label: String,
-    leadingIcon: ImageVector,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = leadingIcon,
-            contentDescription = label,
-            tint = FieldTheme.colors.purple400,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = label,
-            style = FieldTheme.typography.body,
-            color = FieldTheme.colors.gray100,
-            modifier = Modifier.weight(1f)
-        )
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = FieldTheme.colors.purple600,
-                uncheckedThumbColor = FieldTheme.colors.gray400,
-                uncheckedTrackColor = FieldTheme.colors.gray800
+        // Checkbox 2
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { docVal = !docVal }
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = docVal,
+                onCheckedChange = { docVal = it },
+                colors = CheckboxDefaults.colors(checkedColor = FieldTheme.colors.purple600)
             )
-        )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = "Intake & Document Sync Alerts",
+                    style = FieldTheme.typography.bodyStrong,
+                    color = FieldTheme.colors.gray100
+                )
+                Text(
+                    text = "Updates from offline sync queue transfers",
+                    style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                    color = FieldTheme.colors.gray500
+                )
+            }
+        }
+
+        FieldDivider()
+
+        // Checkbox 3
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { sysVal = !sysVal }
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = sysVal,
+                onCheckedChange = { sysVal = it },
+                colors = CheckboxDefaults.colors(checkedColor = FieldTheme.colors.purple600)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = "System Integrity Alerts",
+                    style = FieldTheme.typography.bodyStrong,
+                    color = FieldTheme.colors.gray100
+                )
+                Text(
+                    text = "Integrity violations or server health flags",
+                    style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                    color = FieldTheme.colors.gray500
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            SecondaryButton(
+                text = "Cancel",
+                onClick = onDismiss,
+                modifier = Modifier.weight(1f)
+            )
+            PrimaryButton(
+                text = "Save Preferences",
+                onClick = { onSave(appVal, docVal, sysVal) },
+                modifier = Modifier.weight(1.5f)
+            )
+        }
     }
 }
