@@ -139,8 +139,6 @@ fun FieldCRMApp(
         }
     }
 
-    val context = LocalContext.current
-
     // Auto-restore persisted session
     LaunchedEffect(restoredSession) {
         val session = restoredSession ?: return@LaunchedEffect
