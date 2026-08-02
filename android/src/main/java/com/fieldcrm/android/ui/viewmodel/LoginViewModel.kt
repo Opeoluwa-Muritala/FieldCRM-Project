@@ -31,6 +31,14 @@ class LoginViewModel(
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
+    // Kotlin runs properties and init blocks in source order. Session restoration can write
+    // these flows immediately, so they must exist before restoreSession() is launched.
+    private val _sessionInvalidated = MutableStateFlow(false)
+    val sessionInvalidated: StateFlow<Boolean> = _sessionInvalidated.asStateFlow()
+
+    private val _restoredSession = MutableStateFlow<UserSession?>(null)
+    val restoredSession: StateFlow<UserSession?> = _restoredSession.asStateFlow()
+
     init {
         restoreSession()
     }
@@ -70,12 +78,8 @@ class LoginViewModel(
     }
 
     // Signals that a background token check found the session definitively rejected.
-    private val _sessionInvalidated = MutableStateFlow(false)
-    val sessionInvalidated: StateFlow<Boolean> = _sessionInvalidated.asStateFlow()
 
     // Emits a non-null value when a restored session is ready — observed by MainActivity
-    private val _restoredSession = MutableStateFlow<UserSession?>(null)
-    val restoredSession: StateFlow<UserSession?> = _restoredSession.asStateFlow()
 
     fun setEmail(value: String) {
         _uiState.update { it.copy(email = value, error = null) }
