@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.*
@@ -138,12 +137,8 @@ fun WorkspaceDashboardPage(
             }
             if (actions.isNotEmpty()) {
                 item { Text("WORKSPACE", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500) }
-                item {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(actions, key = { it.label }) { action ->
-                            WorkspacePreviewCard(action = action, onOpen = onOpen)
-                        }
-                    }
+                items(actions, key = { it.label }) { action ->
+                    WorkspacePreviewCard(action = action, onOpen = onOpen)
                 }
             }
         }
@@ -174,7 +169,7 @@ private fun WorkspacePreviewCard(action: WorkspaceAction, onOpen: (Screen) -> Un
     }
     FieldCard(
         modifier = Modifier
-            .width(280.dp)
+            .fillMaxWidth()
             .heightIn(min = 150.dp, max = 230.dp)
             .clickable { onOpen(action.destination) }
     ) {
