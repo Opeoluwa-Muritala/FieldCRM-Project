@@ -7,7 +7,7 @@ object WorkspaceRegistry {
     private val sessionRoutes = setOf(
         Screen.Login, Screen.ForgotPassword, Screen.ResetPassword,
         Screen.PermissionsPrimer, Screen.Onboarding, Screen.Confirmation,
-        Screen.Notifications, Screen.Dashboard
+        Screen.Notifications, Screen.Dashboard, Screen.Settings
     )
     private val dossier = setOf(
         "identity", "application", "compliance", "documents", "guarantors",
@@ -19,7 +19,7 @@ object WorkspaceRegistry {
         search: SearchDefinition? = null, review: ReviewDefinition? = null,
         sections: Set<String> = dossier, mcc: Boolean = false
     ) = WorkspaceDefinition(
-        role, name, primary, sessionRoutes + routes,
+        role, name, primary + WorkspaceDestination("Settings", Screen.Settings), sessionRoutes + routes,
         queues = listOfNotNull(queue), search = search,
         reviews = listOfNotNull(review), dossierSections = sections, mccEnabled = mcc
     )
@@ -94,8 +94,8 @@ object WorkspaceRegistry {
     private val admin = WorkspaceDefinition(
         role = UserRole.SYSTEM_ADMIN,
         canonicalRoleName = "System Admin",
-        primaryDestinations = listOf(WorkspaceDestination("Dashboard", Screen.Dashboard), WorkspaceDestination("Users", Screen.Users), WorkspaceDestination("System Activity", Screen.SystemActivity)),
-        allowedRoutes = setOf(Screen.Login, Screen.ForgotPassword, Screen.ResetPassword, Screen.PermissionsPrimer, Screen.Onboarding, Screen.Dashboard, Screen.Users, Screen.SystemActivity),
+        primaryDestinations = listOf(WorkspaceDestination("Dashboard", Screen.Dashboard), WorkspaceDestination("Users", Screen.Users), WorkspaceDestination("System Activity", Screen.SystemActivity), WorkspaceDestination("Settings", Screen.Settings)),
+        allowedRoutes = setOf(Screen.Login, Screen.ForgotPassword, Screen.ResetPassword, Screen.PermissionsPrimer, Screen.Onboarding, Screen.Dashboard, Screen.Users, Screen.SystemActivity, Screen.Settings),
         dossierSections = emptySet()
     )
     private val executiveReadOnly = workspace(

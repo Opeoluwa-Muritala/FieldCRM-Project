@@ -95,13 +95,10 @@ fun SupervisorReview(
                             applicationViewModel.approveApplication(
                                 application.id,
                                 supervisorComment,
-                                mapOf(
-                                    "supervisor_identity_checked" to identityChecked,
-                                    "supervisor_collateral_checked" to collateralChecked,
-                                    "supervisor_guarantor_checked" to guarantorChecked
-                                )
+                                identityChecked && guarantorChecked,
+                                collateralChecked,
+                                onComplete = onDecisionSubmitted
                             )
-                            onDecisionSubmitted()
                         },
                         enabled = isFormValid && !appState.isLoading,
                         modifier = Modifier.weight(1.5f)
@@ -209,7 +206,7 @@ fun SupervisorReview(
                     )
                     DetailItem(
                         label = "Team Lead Comments",
-                        value = application.officer_recommendation_notes ?: "No concurrence comments recorded"
+                        value = "Not available"
                     )
                 }
             }

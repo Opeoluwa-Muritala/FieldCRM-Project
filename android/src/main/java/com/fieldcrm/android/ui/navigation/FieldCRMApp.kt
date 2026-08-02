@@ -338,12 +338,13 @@ fun FieldCRMApp(
                 UserRole.EXECUTIVE -> "Disbursements"
             }
 
-            var selectedTab by rememberSaveable(resolvedRole) { mutableStateOf(0) }
+            var selectedTab by rememberSaveable(resolvedRole.name) { mutableStateOf(0) }
             val bottomBarItems = if (resolvedRole == UserRole.SYSTEM_ADMIN) {
                 listOf(
                     NavigationItem("Home", FieldIcons.HomeOutlined, FieldIcons.HomeFilled),
                     NavigationItem("Users", FieldIcons.GroupOutlined, FieldIcons.GroupOutlined),
-                    NavigationItem("Activity", FieldIcons.DocumentOutlined, FieldIcons.DocumentOutlined)
+                    NavigationItem("Activity", FieldIcons.DocumentOutlined, FieldIcons.DocumentOutlined),
+                    NavigationItem("Settings", FieldIcons.SettingsOutlined, FieldIcons.SettingsFilled)
                 )
             } else {
                 listOf(
@@ -351,6 +352,9 @@ fun FieldCRMApp(
                     NavigationItem(queueLabel, FieldIcons.QueueOutlined, FieldIcons.QueueFilled),
                     NavigationItem("Settings", FieldIcons.SettingsOutlined, FieldIcons.SettingsFilled)
                 )
+            }
+            LaunchedEffect(resolvedRole, bottomBarItems.size) {
+                if (selectedTab !in bottomBarItems.indices) selectedTab = 0
             }
 
             val adaptiveInfo = currentWindowAdaptiveInfo()
@@ -506,7 +510,7 @@ fun FieldCRMApp(
                                 else -> Box(Modifier.fillMaxSize())
                             }
                         }
-                        else -> {
+                        2 -> {
                             if (resolvedRole == UserRole.SYSTEM_ADMIN) {
                                 SystemActivityScreen(
                                     onBackClick = null
@@ -527,6 +531,19 @@ fun FieldCRMApp(
                                 )
                             }
                         }
+                        else -> SettingsScreen(
+                            userName = sessionName,
+                            userEmail = sessionEmail,
+                            role = resolvedRole,
+                            onBackClick = null,
+                            onNavigateToOfflineQueue = { backStack.add(Screen.OfflineQueue) },
+                            onSignOutClick = {
+                                appViewModel.logout()
+                                NotificationSyncWorker.cancel(context)
+                                backStack.clear()
+                                backStack.add(Screen.Login)
+                            }
+                        )
                     }
                 }
             }
@@ -1083,17 +1100,20 @@ fun FieldCRMApp(
             if (app != null) {
                 DisbursementFormScreen(
                     application = app,
-                    isSubmitting = appUiState.isLoading,
-                    onRecordDisbursement = { amount, date, method, reference ->
+                    isSubmitting = applicationUiState.isMutating,
+                    onRecordDisbursement = { amount, date, method, reference, interestRate, repaymentFrequency, scheduleMethod ->
                         applicationViewModel.recordDisbursement(
                             applicationId = app.id,
                             request = com.fieldcrm.android.data.api.DisbursementRequest(
-                                actual_amount = amount,
-                                disbursement_date = date,
-                                payment_method = method,
-                                bank_reference = reference
+                                disbursed_amount = amount,
+                                disbursement_method = method,
+                                disbursed_bank_ref = reference,
+                                payment_date = date,
+                                interest_rate = interestRate,
+                                repayment_frequency = repaymentFrequency,
+                                schedule_method = scheduleMethod
                             ),
-                            onDone = { backStack.removeLastOrNull() }
+                            onCompleted = { backStack.removeLastOrNull() }
                         )
                     },
                     onBack = { backStack.removeLastOrNull() }
