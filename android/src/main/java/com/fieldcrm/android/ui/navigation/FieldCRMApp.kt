@@ -6,12 +6,16 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.fieldcrm.android.ui.components.*
@@ -331,7 +335,7 @@ fun FieldCRMApp(
                 UserRole.EXECUTIVE -> "Disbursements"
             }
 
-            var selectedTab by remember { mutableStateOf(0) }
+            var selectedTab by rememberSaveable(resolvedRole) { mutableStateOf(0) }
             val bottomBarItems = if (resolvedRole == UserRole.SYSTEM_ADMIN) {
                 listOf(
                     NavigationItem("Home", FieldIcons.HomeOutlined, FieldIcons.HomeFilled),
@@ -346,20 +350,29 @@ fun FieldCRMApp(
                 )
             }
 
-            Scaffold(
-                bottomBar = {
-                    FieldBottomBar(
-                        items = bottomBarItems,
-                        selectedItemIndex = selectedTab,
-                        onItemSelect = { selectedTab = it }
-                    )
+            val adaptiveInfo = currentWindowAdaptiveInfo()
+            NavigationSuiteScaffold(
+                layoutType = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo),
+                navigationSuiteItems = {
+                    bottomBarItems.forEachIndexed { index, navigationItem ->
+                        item(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            icon = {
+                                Icon(
+                                    imageVector = if (selectedTab == index) navigationItem.filledIcon else navigationItem.outlinedIcon,
+                                    contentDescription = navigationItem.label
+                                )
+                            },
+                            label = { Text(navigationItem.label) }
+                        )
+                    }
                 },
                 containerColor = FieldTheme.colors.gray950
-            ) { paddingValues ->
+            ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
                 ) {
                     when (selectedTab) {
                         0 -> RoleDashboardHost(

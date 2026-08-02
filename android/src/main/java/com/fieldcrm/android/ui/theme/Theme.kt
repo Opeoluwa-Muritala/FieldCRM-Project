@@ -2,6 +2,8 @@ package com.fieldcrm.android.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -85,6 +87,34 @@ val DarkFieldColors = FieldColors(
     statusInfo = Color(0xFF4C7EB8)
 )
 
+// DESIGN.md light tokens mapped directly to the compatibility color ramp used by
+// existing FieldCRM components. New screens should consume MaterialTheme roles.
+val LightFieldColors = FieldColors(
+    isLight = true,
+    gray950 = Color(0xFFF2F2F2),
+    gray900 = Color(0xFFFFFFFF),
+    gray850 = Color(0xFFF2F4F6),
+    gray800 = Color(0xFFE0E3E5),
+    gray700 = Color(0xFF7D7483),
+    gray600 = Color(0xFF625A68),
+    gray500 = Color(0xFF4C4451),
+    gray400 = Color(0xFF3A3340),
+    gray300 = Color(0xFF29242D),
+    gray100 = Color(0xFF191C1E),
+    purple950 = Color(0xFFF0DBFF),
+    purple900 = Color(0xFFE8D5F5),
+    purple700 = Color(0xFF4B0082),
+    purple600 = Color(0xFF2E0052),
+    purple500 = Color(0xFF622599),
+    purple400 = Color(0xFF6F2EA5),
+    purple200 = Color(0xFFE7C7FF),
+    purple100 = Color(0xFFF0DBFF),
+    statusSuccess = Color(0xFF087A55),
+    statusWarning = Color(0xFF8A5700),
+    statusDanger = Color(0xFFBA1A1A),
+    statusInfo = Color(0xFF285F9E)
+)
+
 
 
 // ==========================================
@@ -162,45 +192,35 @@ val LocalFieldTypography = staticCompositionLocalOf { FieldTypo }
 val LocalFieldShapes = staticCompositionLocalOf { FieldShapes() }
 
 // Dynamic theme resolution base on user role and system mode
-fun getRoleColors(@Suppress("UNUSED_PARAMETER") role: UserRole?, @Suppress("UNUSED_PARAMETER") darkTheme: Boolean = true): FieldColors {
-    val base = DarkFieldColors
-    
-    val (primaryColor, primaryHover, primaryLight, primaryTint) = 
-        listOf(Color(0xFF7B52B3), Color(0xFF8E63C7), Color(0xFFA67EDB), Color(0xFF1E152A))
-    
-    return base.copy(
-        purple950 = primaryTint,
-        purple900 = primaryTint,
-        purple700 = primaryHover,
-        purple600 = primaryColor,
-        purple500 = primaryColor,
-        purple400 = primaryLight,
-        purple200 = primaryTint,
-        purple100 = primaryTint
-    )
-}
+fun getRoleColors(@Suppress("UNUSED_PARAMETER") role: UserRole?, darkTheme: Boolean): FieldColors =
+    if (darkTheme) DarkFieldColors else LightFieldColors
 
 @Composable
 fun FieldCRMTheme(
     role: UserRole? = null,
-    @Suppress("UNUSED_PARAMETER") darkTheme: Boolean = true,
+    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colors = getRoleColors(role, true)
+    val colors = getRoleColors(role, darkTheme)
     
-    val m3ColorScheme = darkColorScheme(
-        primary = colors.purple600,
-        onPrimary = Color.White,
-        background = colors.gray950,
-        onBackground = colors.gray300,
-        surface = colors.gray900,
-        onSurface = colors.gray300,
-        surfaceVariant = colors.gray850,
-        onSurfaceVariant = colors.gray400,
-        outline = colors.gray700,
-        outlineVariant = colors.gray600,
-        error = colors.statusDanger,
-        onError = Color.White
+    val m3ColorScheme = if (darkTheme) darkColorScheme(
+        primary = colors.purple400, onPrimary = Color(0xFF1D002F),
+        primaryContainer = colors.purple900, onPrimaryContainer = colors.purple100,
+        secondary = Color(0xFFD5B7DD), onSecondary = Color(0xFF38253D),
+        background = colors.gray950, onBackground = colors.gray100,
+        surface = colors.gray900, onSurface = colors.gray100,
+        surfaceVariant = colors.gray850, onSurfaceVariant = colors.gray300,
+        outline = colors.gray500, outlineVariant = colors.gray700,
+        error = colors.statusDanger, onError = Color.White
+    ) else lightColorScheme(
+        primary = Color(0xFF2E0052), onPrimary = Color.White,
+        primaryContainer = Color(0xFFF0DBFF), onPrimaryContainer = Color(0xFF2C0050),
+        secondary = Color(0xFF89268B), onSecondary = Color.White,
+        background = Color(0xFFF2F2F2), onBackground = Color(0xFF191C1E),
+        surface = Color.White, onSurface = Color(0xFF191C1E),
+        surfaceVariant = Color(0xFFE0E3E5), onSurfaceVariant = Color(0xFF4C4451),
+        outline = Color(0xFF7D7483), outlineVariant = Color(0xFFCEC3D3),
+        error = Color(0xFFBA1A1A), onError = Color.White
     )
 
     CompositionLocalProvider(
