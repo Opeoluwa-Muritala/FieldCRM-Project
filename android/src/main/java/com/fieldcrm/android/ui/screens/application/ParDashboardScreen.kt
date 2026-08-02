@@ -22,6 +22,7 @@ import com.fieldcrm.android.ui.theme.FieldTheme
  * PAR (Portfolio at Risk) dashboard screen.
  * Shows CBN classification breakdown and full active loan portfolio.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ParDashboardScreen(
     par: ParSummary?,
@@ -47,9 +48,7 @@ fun ParDashboardScreen(
         }
     ) { padding ->
         if (isLoading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = FieldTheme.colors.purple700)
-            }
+            FinanceListSkeleton()
             return@Scaffold
         }
 
@@ -62,40 +61,43 @@ fun ParDashboardScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (par != null) {
+                FieldCard(Modifier.fillMaxWidth()) {
+                    Text("PAR-30", style = FieldTheme.typography.label, color = FieldTheme.colors.gray400)
+                    Text("${par.par30_pct}%", style = FieldTheme.typography.display.copy(fontSize = 40.sp), color = FieldTheme.colors.statusWarning)
+                    Text("${par.par30_count} loans currently exceed 30 days past due", style = FieldTheme.typography.body, color = FieldTheme.colors.gray300)
+                }
                 // PAR metric cards
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), maxItemsInEachRow = 2) {
                     ParMetricCard(
                         label = "Total Loans",
                         value = "${par.total_loans}",
                         sub = "₦%,.0f".format(par.total_portfolio),
-                        bg = Color.White,
-                        modifier = Modifier.weight(1f)
+                        bg = FieldTheme.colors.gray900,
+                        modifier = Modifier.widthIn(min = 148.dp).weight(1f)
                     )
                     ParMetricCard(
                         label = "PAR-1",
                         value = "${par.par1_pct}%",
                         sub = "${par.par1_count} loans",
-                        bg = Color(0xFFE8F5E9),
-                        valueColor = Color(0xFF2E7D32),
-                        modifier = Modifier.weight(1f)
+                        bg = FieldTheme.colors.gray900,
+                        valueColor = FieldTheme.colors.statusSuccess,
+                        modifier = Modifier.widthIn(min = 148.dp).weight(1f)
                     )
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ParMetricCard(
                         label = "PAR-30",
                         value = "${par.par30_pct}%",
                         sub = "${par.par30_count} loans",
-                        bg = Color(0xFFFFF8E1),
-                        valueColor = Color(0xFFF57F17),
-                        modifier = Modifier.weight(1f)
+                        bg = FieldTheme.colors.gray900,
+                        valueColor = FieldTheme.colors.statusWarning,
+                        modifier = Modifier.widthIn(min = 148.dp).weight(1f)
                     )
                     ParMetricCard(
                         label = "PAR-90",
                         value = "${par.par90_pct}%",
                         sub = "${par.par90_count} loans",
-                        bg = Color(0xFFFCE4EC),
-                        valueColor = Color(0xFFC62828),
-                        modifier = Modifier.weight(1f)
+                        bg = FieldTheme.colors.gray900,
+                        valueColor = FieldTheme.colors.statusDanger,
+                        modifier = Modifier.widthIn(min = 148.dp).weight(1f)
                     )
                 }
 

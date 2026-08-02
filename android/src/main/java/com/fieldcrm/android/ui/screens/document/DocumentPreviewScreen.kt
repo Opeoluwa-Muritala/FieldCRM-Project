@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -34,8 +33,9 @@ fun DocumentPreviewScreen(
     role: UserRole?,
     onBackClick: () -> Unit
 ) {
-    val configuration = LocalConfiguration.current
-    val isTablet = configuration.screenWidthDp >= 600
+    // Documents are intentionally immersive at every width. The surrounding
+    // adaptive scene owns pane placement; the preview itself never letterboxes.
+    val isTablet = false
     val showDelete = role != UserRole.AUDITOR // Auditor never sees delete
 
     if (isTablet) {

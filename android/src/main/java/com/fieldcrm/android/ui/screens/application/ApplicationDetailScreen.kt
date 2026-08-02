@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -58,9 +59,9 @@ fun ApplicationDetailScreenView(
         auditTrailVm.load(application.id)
     }
 
-    var isBorrowerSectionExpanded by remember { mutableStateOf(true) }
-    var isCollateralSectionExpanded by remember { mutableStateOf(true) }
-    var isAuditSectionExpanded by remember { mutableStateOf(true) }
+    var isBorrowerSectionExpanded by rememberSaveable(application.id) { mutableStateOf(true) }
+    var isCollateralSectionExpanded by rememberSaveable(application.id) { mutableStateOf(false) }
+    var isAuditSectionExpanded by rememberSaveable(application.id) { mutableStateOf(false) }
 
     BoxWithConstraints(
         modifier = Modifier
@@ -125,17 +126,14 @@ fun ApplicationDetailScreenView(
                                     .border(width = 0.5.dp, color = FieldTheme.colors.purple600.copy(alpha = 0.1f))
                                     .padding(horizontal = 24.dp, vertical = 24.dp)
                             ) {
-                                Text(
-                                    text = "Application Dossier Master",
-                                    style = FieldTheme.typography.title.copy(fontSize = 28.sp),
-                                    color = FieldTheme.colors.gray100
-                                )
+                                Text(borrower?.name ?: application.applicant_name, style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Comprehensive review of the lending application profile, borrower identity, collateral, and compliance gates.",
-                                    style = FieldTheme.typography.body.copy(fontSize = 14.sp),
-                                    color = FieldTheme.colors.gray400
-                                )
+                                Text("₦${String.format(Locale.US, "%,.0f", application.amount ?: 0.0)}", style = FieldTheme.typography.display.copy(fontSize = 40.sp), color = FieldTheme.colors.gray100)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text(application.id.take(8).uppercase(Locale.getDefault()), style = FieldTheme.typography.mono, color = FieldTheme.colors.gray400)
+                                    Text(application.stage.replace('_', ' ').replaceFirstChar { it.uppercase() }, style = FieldTheme.typography.label, color = FieldTheme.colors.purple400)
+                                }
                             }
                         }
 
