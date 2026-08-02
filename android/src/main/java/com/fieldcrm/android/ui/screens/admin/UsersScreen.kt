@@ -355,7 +355,9 @@ fun UsersScreen(
                     activeUsers.forEach { activeUser ->
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(bottom = 4.dp)
+                            modifier = Modifier
+                                .clickable { selectedUserForDetail = activeUser }
+                                .padding(horizontal = 4.dp, vertical = 6.dp)
                         ) {
                             Box(
                                 modifier = Modifier
@@ -416,7 +418,7 @@ fun UsersScreen(
                 else -> {
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().weight(1f)
                     ) {
                         items(filteredUsers) { user ->
                             FieldCard(
@@ -458,6 +460,8 @@ fun UsersScreen(
                                     }
                                     Column(horizontalAlignment = Alignment.End) {
                                         RoleBadge(role = user.display_role.ifBlank { user.role.replace("_", " ").replaceFirstChar { it.uppercaseChar() } })
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text("Manage", style = FieldTheme.typography.label, color = FieldTheme.colors.purple400)
                                     }
                                 }
                             }
@@ -483,7 +487,7 @@ fun UsersScreen(
 
         AlertDialog(
             onDismissRequest = { if (!isUpdatingUser) selectedUserForDetail = null },
-            title = { Text("User Profile Details") },
+            title = { Text("Manage User") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (updateError != null) {

@@ -110,13 +110,14 @@ class SessionStore(context: Context) {
             .remove(KEY_TOKEN)
             .remove(KEY_REFRESH_TOKEN)
             .remove(KEY_ACCESS_EXPIRES_AT)
-            .remove(KEY_EMAIL)
             .remove(KEY_NAME)
             .remove(KEY_ROLE)
             .remove(KEY_ORG_ID)
             .remove(KEY_EXPIRES_AT)
             .apply()
     }
+
+    fun lastEmail(): String = prefs.getString(KEY_EMAIL, "").orEmpty()
 
     fun isStored(): Boolean {
         val token = prefs.getString(KEY_TOKEN, null) ?: return false

@@ -28,7 +28,7 @@ class LoginViewModel(
     private val sessionStore: SessionStore
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(LoginUiState())
+    private val _uiState = MutableStateFlow(LoginUiState(email = sessionStore.lastEmail()))
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     // Kotlin runs properties and init blocks in source order. Session restoration can write
@@ -87,6 +87,10 @@ class LoginViewModel(
 
     fun setPassword(value: String) {
         _uiState.update { it.copy(password = value, error = null) }
+    }
+
+    fun retainEmailOnly() {
+        _uiState.update { it.copy(email = sessionStore.lastEmail(), password = "", error = null, isLoading = false) }
     }
 
     fun login(onSuccess: (UserSession) -> Unit) {
