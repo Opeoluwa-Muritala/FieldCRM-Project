@@ -39,7 +39,7 @@ fun CreditReviewQueueScreen(
     applications: List<LoanApplicationModel> = emptyList(),
     borrowers: List<BorrowerModel> = emptyList(),
     role: UserRole? = null,
-    onBackClick: () -> Unit,
+    onBackClick: (() -> Unit)? = null,
     onReviewApplication: (String) -> Unit = {}
 ) {
     val dashboardViewModel: DashboardViewModel = koinViewModel()
@@ -92,15 +92,17 @@ fun CreditReviewQueueScreen(
                     UserRole.CREDIT_ANALYST -> "Underwriting Queue"
                     else -> "Review Queue"
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = FieldIcons.ArrowBackOutlined,
-                            contentDescription = "Back",
-                            tint = FieldTheme.colors.gray400
-                        )
+                navigationIcon = if (onBackClick != null) {
+                    {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = FieldIcons.ArrowBackOutlined,
+                                contentDescription = "Back",
+                                tint = FieldTheme.colors.gray400
+                            )
+                        }
                     }
-                },
+                } else null,
                 actions = {
                     Box(
                         modifier = Modifier

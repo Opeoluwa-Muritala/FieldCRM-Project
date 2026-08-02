@@ -1,190 +1,123 @@
 package com.fieldcrm.android.ui.screens.admin
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.fieldcrm.android.ui.components.*
-import com.fieldcrm.android.ui.theme.FieldCRMTheme
+import com.fieldcrm.android.core.network.ApiResult
+import com.fieldcrm.android.data.api.MobileApiService
+import com.fieldcrm.android.data.api.SystemActivityItem
+import com.fieldcrm.android.ui.components.EmptyState
+import com.fieldcrm.android.ui.components.FieldCard
+import com.fieldcrm.android.ui.components.FieldTopAppBar
+import com.fieldcrm.android.ui.components.LoadingSkeleton
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
-import com.fieldcrm.shared.model.BorrowerModel
-import com.fieldcrm.shared.model.LoanApplicationModel
-import java.util.Locale
-import com.fieldcrm.android.data.api.MobileApiService
-import com.fieldcrm.android.core.network.ApiResult
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 import org.koin.compose.koinInject
 
-private data class ControlQueueItem(
-    val applicantName: String,
-    val amount: String,
-    val currentStage: String,
-    val handledBy: String
-)
+private sealed interface ActivityPageState {
+    data object Loading : ActivityPageState
+    data class Loaded(val items: List<SystemActivityItem>, val page: Int, val total: Int) : ActivityPageState
+    data object Empty : ActivityPageState
+    data object PermissionDenied : ActivityPageState
+    data object SessionExpired : ActivityPageState
+    data class Error(val message: String) : ActivityPageState
+}
 
 @Composable
-fun SystemActivityScreen(
-    applications: List<LoanApplicationModel> = emptyList(),
-    borrowers: List<BorrowerModel> = emptyList(),
-    onBackClick: () -> Unit,
-    onViewApplication: (String) -> Unit = {}
-) {
+fun SystemActivityScreen(onBackClick: (() -> Unit)? = null) {
     val api: MobileApiService = koinInject()
-    var isLoading by remember { mutableStateOf(true) }
-    var controlItems by remember { mutableStateOf<List<ControlQueueItem>>(emptyList()) }
-    LaunchedEffect(Unit) {
-        when (val result = api.getSystemActivity()) {
-            is ApiResult.Success -> controlItems = result.data.items.map { element ->
-                val item = element.jsonObject
-                fun text(key: String) = item[key]?.jsonPrimitive?.contentOrNull.orEmpty()
-                ControlQueueItem(
-                    applicantName = text("event_type").ifBlank { text("action") },
-                    amount = text("created_at"),
-                    currentStage = listOf(text("from_stage"), text("to_stage")).filter { it.isNotBlank() }.joinToString(" → "),
-                    handledBy = text("actor_name").ifBlank { text("actor_role") }
-                )
+    var page by remember { mutableIntStateOf(1) }
+    var state by remember { mutableStateOf<ActivityPageState>(ActivityPageState.Loading) }
+    var selected by remember { mutableStateOf<SystemActivityItem?>(null) }
+
+    LaunchedEffect(page) {
+        state = ActivityPageState.Loading
+        state = when (val result = api.getSystemActivity(page, 25)) {
+            is ApiResult.Success -> if (result.data.items.isEmpty()) ActivityPageState.Empty
+                else ActivityPageState.Loaded(result.data.items, result.data.page, result.data.total)
+            is ApiResult.Error -> when (result.statusCode) {
+                401 -> ActivityPageState.SessionExpired
+                403 -> ActivityPageState.PermissionDenied
+                else -> ActivityPageState.Error(result.detail)
             }
-            else -> controlItems = emptyList()
+            is ApiResult.NetworkError -> ActivityPageState.Error(result.message)
+            ApiResult.Loading -> ActivityPageState.Loading
         }
-        isLoading = false
+    }
+
+    selected?.let { item ->
+        AlertDialog(
+            onDismissRequest = { selected = null },
+            title = { Text(item.event_type.replace('_', ' ').replaceFirstChar { it.uppercase() }) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Actor: ${item.actor_name ?: item.triggered_role ?: "Not available"}")
+                    Text("Resource: ${item.loan_id ?: "Not available"}")
+                    Text("Stage: ${listOfNotNull(item.from_stage, item.to_stage).joinToString(" → ").ifBlank { "Not available" }}")
+                    Text("Time: ${item.created_at}")
+                    if (!item.notes.isNullOrBlank()) Text("Notes: ${item.notes}")
+                }
+            },
+            confirmButton = { TextButton(onClick = { selected = null }) { Text("Close") } }
+        )
     }
 
     Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(FieldTheme.colors.gray950),
         topBar = {
             FieldTopAppBar(
-                title = "System Control Queue",
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = FieldIcons.ArrowBackOutlined,
-                            contentDescription = "Back",
-                            tint = FieldTheme.colors.gray400
-                        )
+                title = "System Activity",
+                navigationIcon = if (onBackClick != null) {
+                    {
+                        IconButton(onClick = onBackClick) {
+                            Icon(FieldIcons.ArrowBackOutlined, "Back", tint = FieldTheme.colors.gray400)
+                        }
                     }
-                },
-                actions = {
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                FieldTheme.colors.gray800,
-                                RoundedCornerShape(FieldTheme.shapes.cardRadius)
-                            )
-                            .border(
-                                0.5.dp,
-                                FieldTheme.colors.gray700,
-                                RoundedCornerShape(FieldTheme.shapes.cardRadius)
-                            )
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = "${controlItems.size} IN QUEUE",
-                            style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
-                            color = FieldTheme.colors.purple400
-                        )
-                    }
-                }
+                } else null
             )
         },
         containerColor = FieldTheme.colors.gray950
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp)
-        ) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (isLoading) {
+    ) { padding ->
+        when (val current = state) {
+            ActivityPageState.Loading -> LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) { items(6) { LoadingSkeleton(height = 76.dp) } }
+            ActivityPageState.Empty -> Box(Modifier.fillMaxSize().padding(padding)) { EmptyState("No system activity has been recorded.") }
+            ActivityPageState.PermissionDenied -> Box(Modifier.fillMaxSize().padding(padding)) { EmptyState("You do not have permission to view system activity.") }
+            ActivityPageState.SessionExpired -> Box(Modifier.fillMaxSize().padding(padding)) { EmptyState("Your session has expired. Sign in again.") }
+            is ActivityPageState.Error -> Box(Modifier.fillMaxSize().padding(padding)) { EmptyState(current.message) }
+            is ActivityPageState.Loaded -> Column(Modifier.fillMaxSize().padding(padding)) {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(4) {
-                        FieldCard(modifier = Modifier.fillMaxWidth().height(80.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    LoadingSkeleton(height = 16.dp, width = 140.dp)
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    LoadingSkeleton(height = 12.dp, width = 90.dp)
-                                }
-                                LoadingSkeleton(height = 20.dp, width = 70.dp, cornerRadius = 10.dp)
-                            }
-                        }
-                    }
+                    items(current.items, key = { it.id }) { item -> SystemActivityRow(item) { selected = item } }
                 }
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    items(controlItems) { item ->
-                        FieldCard(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = item.applicantName,
-                                        style = FieldTheme.typography.bodyStrong,
-                                        color = FieldTheme.colors.gray100
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = item.amount,
-                                            style = FieldTheme.typography.mono.copy(
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Bold
-                                            ),
-                                            color = FieldTheme.colors.gray300
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Text(
-                                            text = item.handledBy,
-                                            style = FieldTheme.typography.body.copy(fontSize = 11.sp),
-                                            color = FieldTheme.colors.gray500
-                                        )
-                                    }
-                                }
-                                StatusChip(variant = StatusChipVariant.NeedsReview)
-                            }
-                        }
-                    }
+                    TextButton(enabled = page > 1, onClick = { page-- }) { Text("Previous") }
+                    Text("Page ${current.page}", color = FieldTheme.colors.gray400)
+                    TextButton(enabled = current.page * 25 < current.total, onClick = { page++ }) { Text("Next") }
                 }
             }
         }
     }
 }
 
-@Preview(name = "System Activity Screen", widthDp = 411, heightDp = 850)
 @Composable
-fun PreviewSystemActivityScreen() {
-    FieldCRMTheme {
-        SystemActivityScreen(onBackClick = {})
+private fun SystemActivityRow(item: SystemActivityItem, onClick: () -> Unit) {
+    FieldCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(item.event_type.replace('_', ' ').replaceFirstChar { it.uppercase() }, style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray100)
+            Text(item.actor_name ?: item.triggered_role ?: "Unknown actor", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+            Text(item.created_at, style = FieldTheme.typography.mono, color = FieldTheme.colors.gray500)
+        }
     }
 }

@@ -5,6 +5,53 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
 @Serializable
+data class ExistingCustomerSearchItem(
+    val id: String,
+    val legal_name: String,
+    val customer_reference: String? = null,
+    val masked_bvn: String? = null,
+    val masked_nin: String? = null,
+    val masked_phone: String? = null,
+    val branch: String? = null,
+    val relationship_owner: String? = null,
+    val active: Boolean = true
+)
+
+@Serializable
+data class ExistingCustomerSearchResponse(
+    val items: List<ExistingCustomerSearchItem> = emptyList(),
+    val query: String
+)
+
+@Serializable
+data class ApplicationProfileBorrower(val id: String, val legal_name: String)
+
+@Serializable
+data class PersonalProfileSnapshot(
+    val applicant_name: String,
+    val phone: String? = null,
+    val alternative_phone: String? = null,
+    val email: String? = null,
+    val date_of_birth: String? = null,
+    val gender: String? = null,
+    val marital_status: String? = null,
+    val bvn: String? = null,
+    val nin: String? = null,
+    val residential_address: String? = null,
+    val state: String? = null,
+    val lga: String? = null,
+    val locality: String? = null,
+    val customer_reference: String? = null,
+    val account_reference: String? = null
+)
+
+@Serializable
+data class ApplicationProfileResponse(
+    val borrower: ApplicationProfileBorrower,
+    val personal_profile: PersonalProfileSnapshot
+)
+
+@Serializable
 data class DirectUploadAuthorizationRequest(
     val filename: String,
     val mime_type: String,
@@ -43,8 +90,14 @@ data class DirectUploadFinalizeRequest(
 @Serializable
 data class TokenResponse(
     val access_token: String,
-    val token_type: String
+    val token_type: String,
+    val refresh_token: String? = null,
+    val access_expires_in: Int = 600,
+    val session_expires_at: String? = null
 )
+
+@Serializable data class RefreshTokenRequest(val refresh_token: String)
+@Serializable data class LogoutTokenRequest(val refresh_token: String? = null)
 
 /** Full loan application response matching loan_applications table columns. */
 @Serializable
@@ -153,7 +206,9 @@ data class MobileUser(
 data class CreateAppRequest(
     val customer_type: String,
     val loan_type: String,
-    val applicant_name: String
+    val applicant_name: String,
+    val borrower_id: String? = null,
+    val client_request_id: String? = null
 )
 
 @Serializable
@@ -211,8 +266,22 @@ data class DisbursementRequest(
 )
 
 @Serializable
+data class SystemActivityItem(
+    val id: String,
+    val loan_id: String? = null,
+    val event_type: String,
+    val from_stage: String? = null,
+    val to_stage: String? = null,
+    val triggered_by: String? = null,
+    val triggered_role: String? = null,
+    val actor_name: String? = null,
+    val notes: String? = null,
+    val created_at: String
+)
+
+@Serializable
 data class SystemActivityResponse(
-    val items: List<JsonElement> = emptyList(),
+    val items: List<SystemActivityItem> = emptyList(),
     val page: Int,
     val size: Int,
     val total: Int

@@ -107,6 +107,7 @@ fun CreateBorrowerContent(
         },
         containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
+        val focusManager = LocalFocusManager.current
         val nameFocusRequester = remember { FocusRequester() }
         val phoneFocusRequester = remember { FocusRequester() }
         val bvnFocusRequester = remember { FocusRequester() }

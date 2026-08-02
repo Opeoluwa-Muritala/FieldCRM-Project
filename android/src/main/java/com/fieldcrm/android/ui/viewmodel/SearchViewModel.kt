@@ -23,10 +23,11 @@ data class SearchUiState(
 
 class SearchViewModel(
     private val repo: SearchRepository,
-    context: Context
+    private val context: Context
 ) : ViewModel() {
 
-    private val prefs = context.getSharedPreferences("search_history", Context.MODE_PRIVATE)
+    private var roleScope: String = "anonymous"
+    private val prefs get() = context.getSharedPreferences("search_history_$roleScope", Context.MODE_PRIVATE)
 
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
@@ -41,6 +42,18 @@ class SearchViewModel(
         val historyStr = prefs.getString("history", "") ?: ""
         val list = if (historyStr.isBlank()) emptyList() else historyStr.split("\n").filter { it.isNotBlank() }
         _uiState.update { it.copy(history = list) }
+    }
+
+    fun setRoleScope(role: String) {
+        if (roleScope == role) return
+        roleScope = role
+        _uiState.value = SearchUiState()
+        loadSearchHistory()
+    }
+
+    fun clearHistory() {
+        prefs.edit().clear().apply()
+        _uiState.value = SearchUiState()
     }
 
     private fun saveSearchHistory(query: String) {

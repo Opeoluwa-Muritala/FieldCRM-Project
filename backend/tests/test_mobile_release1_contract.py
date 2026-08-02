@@ -74,6 +74,17 @@ def test_mobile_creation_accepts_client_request_id():
     assert field.is_required() is False
 
 
+def test_existing_customer_application_contracts_are_registered():
+    routes = {
+        (method, route.path)
+        for route in router.routes
+        for method in getattr(route, "methods", set())
+    }
+    assert ("GET", "/borrowers/search") in routes
+    assert ("GET", "/borrowers/{borrower_id}/application-profile") in routes
+    assert CreateApplicationRequest.model_fields["borrower_id"].is_required() is False
+
+
 def test_current_roles_are_not_remapped_to_legacy_roles():
     user = type("User", (), {"role": "Head CRM"})()
     assert _role(user) == "head_crm"

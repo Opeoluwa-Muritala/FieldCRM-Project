@@ -37,13 +37,19 @@
 
             <!-- Existing Customer Search Slot (Hidden initially) -->
             <div id="existingSearchSlot" class="csp-s-e5403ebfd1fb">
-                <label class="field-label" for="bvnSearch">Search by Name, BVN, or Account Number</label>
+                <input type="hidden" id="borrowerId" name="borrower_id">
+                <label class="field-label" for="bvnSearch">Search by name, BVN, NIN, customer/account reference, or phone</label>
                 <div class="csp-s-a9c77021d675">
-                    <input type="text" id="bvnSearch" class="field-input" placeholder="e.g. 22233344455">
-                    <button type="button" class="btn-primary-filled csp-s-56ab29fe6d1f">Search</button>
+                    <input type="search" id="bvnSearch" class="field-input" placeholder="Enter at least 3 characters" autocomplete="off">
+                    <button type="button" id="customerSearchBtn" class="btn-primary-filled csp-s-56ab29fe6d1f">Search</button>
                 </div>
-                <div id="searchFeedback" class="csp-s-77d09ec59941">
-                    ✓ Customer record matched: Grace Omowunmi (BVN: 222******55)
+                <div id="searchFeedback" class="csp-s-77d09ec59941" role="status" aria-live="polite"></div>
+                <div id="customerResults"></div>
+                <div id="selectedCustomer" hidden>
+                    <strong id="selectedCustomerName"></strong>
+                    <p id="profilePreview"></p>
+                    <p>Changes made here affect this application only.</p>
+                    <button type="button" id="clearCustomerBtn">Change customer</button>
                 </div>
             </div>
 
@@ -123,9 +129,10 @@
         const searchSlot = document.getElementById('existingSearchSlot');
         if (type === 'existing') {
             searchSlot.style.display = 'block';
+            document.getElementById('searchFeedback').textContent = '';
         } else {
             searchSlot.style.display = 'none';
-            document.getElementById('searchFeedback').style.display = 'none';
+            clearSelectedCustomer();
         }
         validateForm();
     }
@@ -152,18 +159,61 @@
         validateForm();
     }
 
-    function mockAutoFill() {
-        const val = document.getElementById('bvnSearch').value;
-        if (val.length >= 5) {
-            document.getElementById('searchFeedback').style.display = 'block';
-        }
+    let searchTimer;
+    async function searchCustomers() {
+        const query = document.getElementById('bvnSearch').value.trim();
+        const feedback = document.getElementById('searchFeedback');
+        if (query.length < 3) { feedback.textContent = 'Enter at least 3 characters.'; feedback.style.display = 'block'; return; }
+        feedback.textContent = 'Searching customers...'; feedback.style.display = 'block';
+        document.getElementById('customerResults').replaceChildren();
+        try {
+            const response = await fetch(`/api/v1/mobile/borrowers/search?q=${encodeURIComponent(query)}&limit=20`);
+            if (response.status === 401) throw new Error('Your session has expired. Sign in again.');
+            if (response.status === 403) throw new Error('You are not authorized to search customers.');
+            if (!response.ok) throw new Error('Customer search failed. Try again.');
+            const data = await response.json();
+            feedback.textContent = data.items.length ? `${data.items.length} customer(s) found.` : 'No customers found.';
+            const fragment = document.createDocumentFragment();
+            data.items.forEach((customer) => {
+                const button = document.createElement('button');
+                button.type = 'button'; button.className = 'toggle-option-card'; button.dataset.customerId = customer.id;
+                button.textContent = `${customer.legal_name} · ${customer.customer_reference || 'No reference'} · ${customer.masked_phone || 'No phone'}`;
+                fragment.appendChild(button);
+            });
+            document.getElementById('customerResults').appendChild(fragment);
+        } catch (error) { feedback.textContent = navigator.onLine ? error.message : 'You are offline. Connect to search customers.'; }
+    }
+
+    async function selectCustomer(id) {
+        const feedback = document.getElementById('searchFeedback');
+        feedback.textContent = 'Loading current customer profile...';
+        try {
+            const response = await fetch(`/api/v1/mobile/borrowers/${encodeURIComponent(id)}/application-profile`);
+            if (!response.ok) throw new Error('Could not load the current customer profile.');
+            const data = await response.json();
+            document.getElementById('borrowerId').value = data.borrower.id;
+            document.getElementById('selectedCustomerName').textContent = data.borrower.legal_name;
+            const profile = data.personal_profile;
+            document.getElementById('profilePreview').textContent = [profile.phone, profile.email, profile.residential_address].filter(Boolean).join(' · ') || 'Personal profile loaded.';
+            document.getElementById('selectedCustomer').hidden = false;
+            document.getElementById('customerResults').replaceChildren();
+            feedback.textContent = 'Customer selected.'; validateForm();
+        } catch (error) { feedback.textContent = error.message; }
+    }
+
+    function clearSelectedCustomer() {
+        document.getElementById('borrowerId').value = '';
+        document.getElementById('selectedCustomer').hidden = true;
+        document.getElementById('profilePreview').textContent = '';
+        validateForm();
     }
 
     function validateForm() {
         const custTypeChecked = document.getElementById('radioNew').checked || document.getElementById('radioExisting').checked;
         const loanTypeChecked = document.getElementById('radioEnterprise').checked || document.getElementById('radioMsef').checked || document.getElementById('radioPayee').checked || document.getElementById('radioOther').checked;
         
-        document.getElementById('beginAppBtn').disabled = !(custTypeChecked && loanTypeChecked);
+        const existingReady = !document.getElementById('radioExisting').checked || !!document.getElementById('borrowerId').value;
+        document.getElementById('beginAppBtn').disabled = !(custTypeChecked && loanTypeChecked && existingReady);
     }
 
     async function generateClientLink() {
@@ -209,7 +259,14 @@
     document.querySelectorAll('[data-loan-type]').forEach((card) => {
         card.addEventListener('click', () => selectLoanType(card.dataset.loanType));
     });
-    document.getElementById('bvnSearch')?.addEventListener('input', mockAutoFill);
+    document.getElementById('bvnSearch')?.addEventListener('input', () => {
+        clearTimeout(searchTimer); searchTimer = setTimeout(searchCustomers, 350);
+    });
+    document.getElementById('customerSearchBtn')?.addEventListener('click', searchCustomers);
+    document.getElementById('customerResults')?.addEventListener('click', (event) => {
+        const target = event.target.closest('[data-customer-id]'); if (target) selectCustomer(target.dataset.customerId);
+    });
+    document.getElementById('clearCustomerBtn')?.addEventListener('click', clearSelectedCustomer);
     document.getElementById('generateLinkBtn')?.addEventListener('click', generateClientLink);
     document.getElementById('copyLinkBtn')?.addEventListener('click', copyShareLink);
 </script>

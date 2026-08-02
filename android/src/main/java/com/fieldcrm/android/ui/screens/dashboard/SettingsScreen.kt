@@ -40,7 +40,7 @@ fun SettingsScreen(
     userName: String = "Chidi Okafor",
     userEmail: String = "chidi@mmfb.com",
     role: UserRole? = UserRole.LOAN_OFFICER,
-    onBackClick: () -> Unit,
+    onBackClick: (() -> Unit)? = null,
     onNavigateToOfflineQueue: () -> Unit = {},
     onSignOutClick: () -> Unit = {}
 ) {
@@ -53,84 +53,12 @@ fun SettingsScreen(
 
     var pushEnabled by remember { mutableStateOf(true) }
 
-    var showSignOutConfirmation by remember { mutableStateOf(false) }
-
     // Active modal overlay: "PASSWORD", "PHONE", "HELP", "IT", "REPORT"
     var activeModal by remember { mutableStateOf<String?>(null) }
 
     var currentPhoneNumber by remember { mutableStateOf("+234 801 234 5678") }
 
-    if (showSignOutConfirmation) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(FieldTheme.colors.gray950),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier
-                        .widthIn(max = 420.dp)
-                        .fillMaxWidth()
-                ) {
-                    FieldCard {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "Sign Out",
-                                style = FieldTheme.typography.display.copy(fontSize = 20.sp),
-                                color = FieldTheme.colors.gray100,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "Are you sure you want to sign out? Any unsynced data will be saved and sent when you sign back in.",
-                                style = FieldTheme.typography.body,
-                                color = FieldTheme.colors.gray400,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(32.dp))
-
-                            PrimaryButton(
-                                text = "Sign Out",
-                                onClick = onSignOutClick,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Button(
-                                onClick = { showSignOutConfirmation = false },
-                                shape = RoundedCornerShape(FieldTheme.shapes.inputRadius),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.Transparent,
-                                    contentColor = FieldTheme.colors.gray400
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(44.dp)
-                            ) {
-                                Text(
-                                    text = "Cancel",
-                                    style = FieldTheme.typography.bodyStrong,
-                                    fontWeight = FontWeight.Normal
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    } else if (activeModal != null) {
+    if (activeModal != null) {
         // Modal Overlays
         Box(
             modifier = Modifier
@@ -191,15 +119,17 @@ fun SettingsScreen(
             topBar = {
                 FieldTopAppBar(
                     title = "Profile & Settings",
-                    navigationIcon = {
-                        IconButton(onClick = onBackClick) {
-                            Icon(
-                                imageVector = FieldIcons.ArrowBackOutlined,
-                                contentDescription = "Back",
-                                tint = FieldTheme.colors.gray400
-                            )
+                    navigationIcon = if (onBackClick != null) {
+                        {
+                            IconButton(onClick = onBackClick) {
+                                Icon(
+                                    imageVector = FieldIcons.ArrowBackOutlined,
+                                    contentDescription = "Back",
+                                    tint = FieldTheme.colors.gray400
+                                )
+                            }
                         }
-                    }
+                    } else null
                 )
             },
             containerColor = FieldTheme.colors.gray950
@@ -329,27 +259,9 @@ fun SettingsScreen(
                                 }
                             }
 
-                            // About & Diagnostics Section
-                            FieldCard {
-                                Text(
-                                    text = "ABOUT & DIAGNOSTICS",
-                                    style = FieldTheme.typography.label,
-                                    color = FieldTheme.colors.gray500
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                DetailItem(label = "API Base URL", value = com.fieldcrm.android.BuildConfig.API_BASE_URL, isMono = true)
-                                FieldDivider()
-                                DetailItem(label = "Git Revision", value = "main-adab47", isMono = true)
-                                FieldDivider()
-                                DetailItem(label = "Version Code", value = "1", isMono = true)
-                                FieldDivider()
-                                DetailItem(label = "Build Time", value = "2026-08-01 19:20:00 UTC", isMono = true)
-                            }
-
                             // Sign Out Button
                             Button(
-                                onClick = { showSignOutConfirmation = true },
+                                onClick = onSignOutClick,
                                 shape = RoundedCornerShape(FieldTheme.shapes.inputRadius),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color.Transparent,

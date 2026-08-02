@@ -33,11 +33,16 @@ data class SearchResultDocument(val title: String, val type: String)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchResultsScreen(
+    title: String,
+    placeholder: String,
+    entityLabel: String,
+    historyScope: String,
     onBackClick: () -> Unit,
     onNavigateToApplication: (String) -> Unit
 ) {
     val searchViewModel: SearchViewModel = koinViewModel()
     val searchState by searchViewModel.uiState.collectAsState()
+    LaunchedEffect(historyScope) { searchViewModel.setRoleScope(historyScope) }
 
     var searchQuery by remember { mutableStateOf("") }
 
@@ -68,7 +73,7 @@ fun SearchResultsScreen(
                         onValueChange = { searchQuery = it },
                         placeholder = {
                             Text(
-                                text = "Search applications or references...",
+                                text = placeholder,
                                 style = FieldTheme.typography.body,
                                 color = FieldTheme.colors.gray500
                             )
@@ -247,7 +252,7 @@ fun SearchResultsScreen(
                                     .padding(horizontal = 16.dp, vertical = 12.dp)
                             ) {
                                 Text(
-                                    text = "APPLICATIONS (${filteredApps.size})",
+                                    text = "${entityLabel.uppercase()} (${filteredApps.size})",
                                     style = FieldTheme.typography.label,
                                     color = FieldTheme.colors.gray500
                                 )

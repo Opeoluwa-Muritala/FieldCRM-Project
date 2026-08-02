@@ -1,29 +1,9 @@
--- loans/queries/dashboard_system_admin.sql
--- System Admin dashboard metrics.
+-- Administrative health only. Never derive System Admin metrics from lending records.
 -- Params: $1=org_id
-
 SELECT
-    (
-        SELECT COUNT(*)
-        FROM users u
-        WHERE u.org_id = $1
-          AND u.active = TRUE
-    ) AS active_users,
-    COUNT(*) FILTER (
-        WHERE stage NOT IN ('disbursed', 'rejected')
-    ) AS active_loans,
-    COUNT(*) FILTER (
-        WHERE stage = 'disbursement_ready'
-    ) AS ready_for_disbursement,
-    COUNT(*) FILTER (
-        WHERE stage IN ('returned', 'rejected')
-    ) AS blocked_files,
-    (
-        SELECT COUNT(*)
-        FROM audit_entries ae
-        WHERE ae.org_id = $1
-          AND ae.created_at >= NOW() - INTERVAL '24 hours'
-    ) AS audit_events_today
-FROM loan_applications
-WHERE org_id = $1
-  AND deleted_at IS NULL;
+    (SELECT COUNT(*) FROM users WHERE org_id=$1 AND active=TRUE) AS active_users,
+    (SELECT COUNT(*) FROM users WHERE org_id=$1) AS total_users,
+    (SELECT COUNT(*) FROM users WHERE org_id=$1 AND active=FALSE) AS inactive_users,
+    (SELECT COUNT(*) FROM audit_entries WHERE org_id=$1 AND created_at >= NOW() - INTERVAL '24 hours') AS system_events,
+    0::bigint AS failed_jobs,
+    0::bigint AS config_alerts;

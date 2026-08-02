@@ -20,6 +20,8 @@ import java.util.UUID
 import com.fieldcrm.android.core.network.ApiResult
 import kotlinx.serialization.json.JsonElement
 import com.fieldcrm.android.core.session.SessionStore
+import com.fieldcrm.android.data.api.ExistingCustomerSearchItem
+import com.fieldcrm.android.data.api.PersonalProfileSnapshot
 
 @Immutable
 data class ApplicationUiState(
@@ -31,6 +33,10 @@ data class ApplicationUiState(
     val customerType: String = "existing",          // "new" | "existing"
     val loanCategory: String = "enterprise",        // "enterprise" | "msef" | "payee" | "other"
     val selectedBorrowerForApp: BorrowerModel? = null,
+    val customerSearchQuery: String = "",
+    val customerSearchResults: List<ExistingCustomerSearchItem> = emptyList(),
+    val isSearchingCustomers: Boolean = false,
+    val selectedCustomerProfile: PersonalProfileSnapshot? = null,
     val newCustomerName: String = "",
     val newCustomerPhone: String = "",
     val newCustomerBvn: String = "",
@@ -141,12 +147,82 @@ class ApplicationViewModel(
         _uiState.update { it.copy(selectedBorrowerForApp = borrower, errorMessage = null) }
     }
 
+    fun setCustomerSearchQuery(value: String) {
+        _uiState.update { it.copy(customerSearchQuery = value, errorMessage = null) }
+    }
+
+    fun searchExistingCustomers() {
+        val query = _uiState.value.customerSearchQuery.trim()
+        if (query.length < 3) {
+            _uiState.update { it.copy(customerSearchResults = emptyList(), errorMessage = "Enter at least 3 characters") }
+            return
+        }
+        _uiState.update { it.copy(isSearchingCustomers = true, errorMessage = null) }
+        viewModelScope.launch {
+            when (val result = repository.searchExistingCustomers(query)) {
+                is ApiResult.Success -> _uiState.update {
+                    it.copy(isSearchingCustomers = false, customerSearchResults = result.data.items)
+                }
+                is ApiResult.Error -> _uiState.update { it.copy(isSearchingCustomers = false, errorMessage = result.detail) }
+                is ApiResult.NetworkError -> _uiState.update { it.copy(isSearchingCustomers = false, errorMessage = result.message) }
+                ApiResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun selectExistingCustomer(customer: ExistingCustomerSearchItem) {
+        _uiState.update { it.copy(isSearchingCustomers = true, errorMessage = null) }
+        viewModelScope.launch {
+            when (val result = repository.getApplicationProfile(customer.id)) {
+                is ApiResult.Success -> {
+                    val profile = result.data.personal_profile
+                    val borrower = BorrowerModel(
+                        id = result.data.borrower.id,
+                        org_id = sessionStore.load()?.orgId.orEmpty(),
+                        loan_officer_id = "",
+                        name = profile.applicant_name,
+                        phone = profile.phone.orEmpty(),
+                        bvn = profile.bvn.orEmpty(),
+                        nin = profile.nin.orEmpty(),
+                        status = if (customer.active) "ACTIVE" else "INACTIVE",
+                        created_at = ""
+                    )
+                    _uiState.update {
+                        it.copy(
+                            isSearchingCustomers = false,
+                            selectedBorrowerForApp = borrower,
+                            selectedCustomerProfile = profile,
+                            customerSearchResults = emptyList()
+                        )
+                    }
+                }
+                is ApiResult.Error -> _uiState.update { it.copy(isSearchingCustomers = false, errorMessage = result.detail) }
+                is ApiResult.NetworkError -> _uiState.update { it.copy(isSearchingCustomers = false, errorMessage = result.message) }
+                ApiResult.Loading -> Unit
+            }
+        }
+    }
+
     fun setCustomerType(value: String) {
-        _uiState.update { it.copy(customerType = value, errorMessage = null) }
+        val normalized = if (value.equals("New Customer", ignoreCase = true)) "new" else "existing"
+        _uiState.update {
+            it.copy(
+                customerType = normalized,
+                selectedBorrowerForApp = if (normalized == "new") null else it.selectedBorrowerForApp,
+                selectedCustomerProfile = if (normalized == "new") null else it.selectedCustomerProfile,
+                customerSearchResults = if (normalized == "new") emptyList() else it.customerSearchResults,
+                errorMessage = null
+            )
+        }
     }
 
     fun setLoanCategory(value: String) {
-        _uiState.update { it.copy(loanCategory = value, errorMessage = null) }
+        val normalized = when (value.lowercase()) {
+            "enterprise loan" -> "enterprise"
+            "other option" -> "other"
+            else -> value.lowercase()
+        }
+        _uiState.update { it.copy(loanCategory = normalized, errorMessage = null) }
     }
 
     fun setNewCustomerName(value: String) {
@@ -337,7 +413,7 @@ class ApplicationViewModel(
                 created_at = System.currentTimeMillis().toString()
             )
 
-            val success = repository.createApplication(newApp)
+            val success = repository.createApplication(newApp, if (isNew) null else borrower.id)
             if (success) {
                 _uiState.update { it.copy(applications = it.applications + newApp) }
                 clearNewAppFields()
@@ -368,6 +444,9 @@ class ApplicationViewModel(
                 customerType = "existing",
                 loanCategory = "enterprise",
                 selectedBorrowerForApp = null,
+                selectedCustomerProfile = null,
+                customerSearchQuery = "",
+                customerSearchResults = emptyList(),
                 newCustomerName = "",
                 newCustomerPhone = "",
                 newCustomerBvn = "",
@@ -447,11 +526,6 @@ class ApplicationViewModel(
         onSuccess: () -> Unit
     ) {
         viewModelScope.launch {
-            _uiState.update { state ->
-                state.copy(applications = state.applications.map { if (it.id == updatedApp.id) updatedApp else it })
-            }
-            repository.createApplication(updatedApp)
-
             val ok = repository.submitIntakeToServer(
                 id = updatedApp.id,
                 amount = updatedApp.amount ?: 0.0,
@@ -460,12 +534,15 @@ class ApplicationViewModel(
                 purpose = updatedApp.purpose ?: ""
             )
             if (!ok) {
-                repository.queueStageAction(
-                    action = "SUBMIT_INTAKE",
-                    entityId = updatedApp.id,
-                    payloadJson = """{"id":"${updatedApp.id}","body":"{\"stage\":\"branch_manager_review\",\"amount\":${updatedApp.amount},\"tenor_months\":${updatedApp.tenor_months},\"loan_type\":\"${updatedApp.loan_type}\"}"}"""
-                )
+                _uiState.update { it.copy(errorMessage = "Could not save the intake. Check your connection and try again.") }
+                return@launch
             }
+            val advanced = repository.advanceWorkflow(updatedApp.id, "Relationship Officer submitted completed intake")
+            if (advanced == null) {
+                _uiState.update { it.copy(errorMessage = "The application is not ready to submit. Complete the server-required gates first.") }
+                return@launch
+            }
+            refreshApplications()
             onSuccess()
         }
     }

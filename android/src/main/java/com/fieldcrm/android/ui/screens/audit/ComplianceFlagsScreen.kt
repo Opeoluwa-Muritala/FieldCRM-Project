@@ -35,7 +35,7 @@ private data class ComplianceFlag(
 
 @Composable
 fun ComplianceFlagsScreen(
-    onBackClick: () -> Unit,
+    onBackClick: (() -> Unit)? = null,
     onViewFlag: (String) -> Unit = {}
 ) {
     val api: MobileApiService = koinInject()
@@ -76,15 +76,17 @@ fun ComplianceFlagsScreen(
         topBar = {
             FieldTopAppBar(
                 title = "Compliance Flags",
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = FieldIcons.ArrowBackOutlined,
-                            contentDescription = "Back",
-                            tint = FieldTheme.colors.gray400
-                        )
+                navigationIcon = if (onBackClick != null) {
+                    {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = FieldIcons.ArrowBackOutlined,
+                                contentDescription = "Back",
+                                tint = FieldTheme.colors.gray400
+                            )
+                        }
                     }
-                },
+                } else null,
                 actions = {
                     Box(
                         modifier = Modifier

@@ -45,6 +45,8 @@ class SessionStore(context: Context) {
 
     companion object {
         private const val KEY_TOKEN = "auth_token"
+        private const val KEY_REFRESH_TOKEN = "refresh_token"
+        private const val KEY_ACCESS_EXPIRES_AT = "access_expires_at"
         private const val KEY_EMAIL = "user_email"
         private const val KEY_NAME = "user_name"
         private const val KEY_ROLE = "user_role"
@@ -56,7 +58,7 @@ class SessionStore(context: Context) {
 
 
         // 7-day session TTL — matches the mobile JWT lifetime issued by login-mobile
-        private const val SESSION_TTL_MS = 7L * 24 * 60 * 60 * 1000
+        private const val SESSION_TTL_MS = 48L * 60 * 60 * 1000
     }
 
     fun save(session: UserSession) {
@@ -66,7 +68,7 @@ class SessionStore(context: Context) {
             .putString(KEY_NAME, session.userName)
             .putString(KEY_ROLE, session.role.name)
             .putString(KEY_ORG_ID, session.orgId)
-            .putLong(KEY_EXPIRES_AT, System.currentTimeMillis() + SESSION_TTL_MS)
+            .putLong(KEY_EXPIRES_AT, prefs.getLong(KEY_EXPIRES_AT, 0L).takeIf { it > System.currentTimeMillis() } ?: (System.currentTimeMillis() + SESSION_TTL_MS))
             .apply()
     }
 
@@ -89,18 +91,25 @@ class SessionStore(context: Context) {
         )
     }
 
-    fun extendSession() {
-        val current = prefs.getLong(KEY_EXPIRES_AT, 0L)
-        if (current > 0L) {
-            prefs.edit()
-                .putLong(KEY_EXPIRES_AT, System.currentTimeMillis() + SESSION_TTL_MS)
-                .apply()
-        }
+    fun saveTokenBundle(accessToken: String, refreshToken: String?, accessExpiresIn: Int, absoluteExpiresAt: String?) {
+        val absolute = runCatching { absoluteExpiresAt?.let { java.time.Instant.parse(it).toEpochMilli() } ?: error("missing expiry") }
+            .getOrDefault(System.currentTimeMillis() + SESSION_TTL_MS)
+        prefs.edit()
+            .putString(KEY_TOKEN, accessToken)
+            .putString(KEY_REFRESH_TOKEN, refreshToken)
+            .putLong(KEY_ACCESS_EXPIRES_AT, System.currentTimeMillis() + accessExpiresIn * 1000L)
+            .putLong(KEY_EXPIRES_AT, absolute)
+            .apply()
     }
+
+    fun refreshToken(): String? = prefs.getString(KEY_REFRESH_TOKEN, null)
+    fun accessExpiresSoon(): Boolean = System.currentTimeMillis() + 60_000L >= prefs.getLong(KEY_ACCESS_EXPIRES_AT, 0L)
 
     fun clear() {
         prefs.edit()
             .remove(KEY_TOKEN)
+            .remove(KEY_REFRESH_TOKEN)
+            .remove(KEY_ACCESS_EXPIRES_AT)
             .remove(KEY_EMAIL)
             .remove(KEY_NAME)
             .remove(KEY_ROLE)

@@ -59,6 +59,52 @@ class CreateApplicationRequest(BaseModel):
     client_request_id: UUID | None = None
 
 
+PROFILE_FIELDS = (
+    "applicant_name", "full_name", "phone", "alternative_phone", "email",
+    "date_of_birth", "gender", "marital_status", "bvn", "nin",
+    "residential_address", "state", "lga", "locality", "customer_reference",
+    "account_reference", "employment_status", "employer_name",
+)
+
+
+def _mask_identifier(value: Any, *, visible_end: int = 2) -> str | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    if len(text) <= visible_end * 2:
+        return "*" * len(text)
+    return f"{text[:visible_end]}{'*' * (len(text) - visible_end * 2)}{text[-visible_end:]}"
+
+
+def _personal_profile(app: Any, intake: dict[str, Any] | None = None) -> dict[str, Any]:
+    source = dict(intake or {})
+    profile = {key: source.get(key) for key in PROFILE_FIELDS if source.get(key) not in (None, "")}
+    def app_value(key: str, default=None):
+        if isinstance(app, dict) or hasattr(app, "keys"):
+            return app[key] if key in app.keys() else default
+        return getattr(app, key, default)
+    profile["applicant_name"] = profile.get("applicant_name") or profile.get("full_name") or app_value("applicant_name", "")
+    for key in ("phone", "bvn"):
+        if not profile.get(key) and app_value(key):
+            profile[key] = app_value(key)
+    profile["customer_reference"] = profile.get("customer_reference") or app_value("ref_no")
+    return profile
+
+
+async def _customer_record(conn, borrower_id: UUID, org_id: UUID):
+    app = await LoanRepository(conn).get_by_id(borrower_id, org_id)
+    if app:
+        intake = await _loan_service(conn).get_wizard_data(borrower_id)
+        return app, _personal_profile(app, intake)
+    exists = await conn.fetchval(
+        "SELECT EXISTS(SELECT 1 FROM loan_applications WHERE id=$1 AND deleted_at IS NULL)",
+        borrower_id,
+    )
+    if exists:
+        raise HTTPException(status_code=403, detail="Customer does not belong to your organization")
+    raise HTTPException(status_code=404, detail="Customer not found")
+
+
 class MobileBorrowerRequest(BaseModel):
     name: str
     phone: str = ""
@@ -338,7 +384,9 @@ async def _get_application_or_404(
     if (
         enforce_officer_scope
         and _role(current_user) == "branch_manager"
-        and str(getattr(app, "branch_id", "")) != str(getattr(current_user, "branch_id", ""))
+        and getattr(app, "branch_id", None) is not None
+        and getattr(current_user, "branch_id", None) is not None
+        and str(app.branch_id) != str(current_user.branch_id)
     ):
         raise HTTPException(status_code=403, detail="You do not have permission to access applications outside your branch")
     return app
@@ -601,6 +649,69 @@ async def list_mobile_borrowers(
     }
 
 
+@router.get("/borrowers/search")
+async def search_mobile_borrowers(
+    q: str = Query(..., max_length=100),
+    limit: int = Query(20, ge=1, le=50),
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"account_officer"})
+    query = q.strip()
+    structured = query.isdigit() and len(query) >= 7
+    if len(query) < 3 and not structured:
+        raise HTTPException(status_code=422, detail="Enter at least 3 characters")
+    pattern = f"%{query}%"
+    rows = await conn.fetch(
+        """
+        SELECT DISTINCT ON (lower(a.applicant_name), coalesce(a.phone,''), coalesce(a.bvn,''))
+               a.id, a.ref_no, a.applicant_name, a.phone, a.bvn, a.stage,
+               u.full_name AS relationship_owner, b.name AS branch_name,
+               coalesce(sd.data_json, '{}'::jsonb) AS intake
+        FROM loan_applications a
+        LEFT JOIN users u ON u.id=a.created_by AND u.org_id=a.org_id
+        LEFT JOIN branches b ON b.id=u.branch_id AND b.org_id=a.org_id
+        LEFT JOIN LATERAL (
+            SELECT data_json FROM stage_data
+            WHERE loan_id=a.id AND stage='intake' ORDER BY saved_at DESC LIMIT 1
+        ) sd ON true
+        WHERE a.org_id=$1 AND a.deleted_at IS NULL
+          AND (a.applicant_name ILIKE $2 OR coalesce(a.phone,'') ILIKE $2
+               OR coalesce(a.bvn,'') ILIKE $2 OR a.ref_no ILIKE $2
+               OR coalesce(sd.data_json->>'nin','') ILIKE $2
+               OR coalesce(sd.data_json->>'customer_reference','') ILIKE $2
+               OR coalesce(sd.data_json->>'account_reference','') ILIKE $2)
+        ORDER BY lower(a.applicant_name), coalesce(a.phone,''), coalesce(a.bvn,''), a.updated_at DESC
+        LIMIT $3
+        """,
+        current_user.org_id, pattern, limit,
+    )
+    items = []
+    for row in rows:
+        profile = _personal_profile(row, dict(row["intake"] or {}))
+        items.append({
+            "id": str(row["id"]), "legal_name": profile["applicant_name"],
+            "customer_reference": _mask_identifier(profile.get("customer_reference")),
+            "masked_bvn": _mask_identifier(profile.get("bvn")),
+            "masked_nin": _mask_identifier(profile.get("nin")),
+            "masked_phone": _mask_identifier(profile.get("phone"), visible_end=3),
+            "branch": row["branch_name"], "relationship_owner": row["relationship_owner"],
+            "active": row["stage"] != "rejected",
+        })
+    return {"items": items, "query": query}
+
+
+@router.get("/borrowers/{borrower_id}/application-profile")
+async def get_mobile_borrower_application_profile(
+    borrower_id: UUID,
+    conn=Depends(db_conn),
+    current_user=Depends(get_current_user),
+):
+    _ensure_roles(current_user, {"account_officer"})
+    app, profile = await _customer_record(conn, borrower_id, current_user.org_id)
+    return {"borrower": {"id": str(app.id), "legal_name": app.applicant_name}, "personal_profile": profile}
+
+
 @router.post("/borrowers", status_code=status.HTTP_201_CREATED)
 async def create_mobile_borrower(
     payload: MobileBorrowerRequest,
@@ -682,19 +793,31 @@ async def create_mobile_application(
             existing_app = await LoanRepository(conn).get_by_id(
                 existing["id"], current_user.org_id
             )
+            saved_snapshot = await _loan_service(conn).get_wizard_data(existing["id"])
+            linked_id = saved_snapshot.get("borrower_id")
             return {
                 "application": _mobile_application(existing_app, current_user),
+                "borrower": ({"id": linked_id, "legal_name": existing_app.applicant_name} if linked_id else None),
+                "personal_profile_snapshot": {
+                    key: saved_snapshot[key] for key in PROFILE_FIELDS if saved_snapshot.get(key) not in (None, "")
+                } or None,
                 "next": {"type": "intake_step", "step": 1},
                 "replayed": True,
             }
+    if payload.customer_type == "existing" and not payload.borrower_id:
+        raise HTTPException(status_code=422, detail="borrower_id is required for an existing customer")
+    if payload.customer_type == "new" and payload.borrower_id:
+        raise HTTPException(status_code=422, detail="borrower_id must be empty for a new customer")
     applicant_name = payload.applicant_name
+    borrower_app = None
+    personal_profile = None
     if payload.borrower_id:
         try:
-            borrower_app = await LoanRepository(conn).get_by_id(UUID(payload.borrower_id), current_user.org_id)
-            if borrower_app:
-                applicant_name = borrower_app.applicant_name
-        except ValueError:
-            pass
+            selected_id = UUID(payload.borrower_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="Invalid borrower_id") from exc
+        borrower_app, personal_profile = await _customer_record(conn, selected_id, current_user.org_id)
+        applicant_name = personal_profile["applicant_name"]
     app = await _loan_service(conn).create_loan(
         org_id=current_user.org_id,
         customer_type=payload.customer_type,
@@ -716,18 +839,24 @@ async def create_mobile_application(
         )
         if updated_idempotent:
             app = await LoanRepository(conn).get_by_id(app.id, current_user.org_id) or app
-    if payload.amount is not None or payload.tenure is not None:
-        updated = await LoanRepository(conn).update_intake_details(
-            loan_id=app.id,
-            org_id=current_user.org_id,
-            applicant_name=applicant_name,
-            phone=None,
-            bvn=None,
-            amount=payload.amount,
-            tenor_months=payload.tenure,
+    if personal_profile is not None:
+        snapshot = dict(personal_profile)
+        snapshot.update({
+            "borrower_id": str(borrower_app.id),
+            "profile_snapshot_source": "customer_profile",
+            "profile_snapshot_created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        await _loan_service(conn).save_wizard_step(
+            app.id, 1, snapshot, current_user.id, current_user.org_id
         )
-        app = updated or app
-    return {"application": _mobile_application(app, current_user), "next": {"type": "intake_step", "step": 1}}
+        app = await LoanRepository(conn).get_by_id(app.id, current_user.org_id) or app
+    return {
+        "application": _mobile_application(app, current_user),
+        "borrower": ({"id": str(borrower_app.id), "legal_name": borrower_app.applicant_name} if borrower_app else None),
+        "personal_profile_snapshot": personal_profile,
+        "next": {"type": "intake_step", "step": 1},
+        "replayed": False,
+    }
 
 
 @router.get("/applications/{application_id}")
@@ -874,7 +1003,7 @@ async def authorize_mobile_document_upload(
         "insurance_certificate", "legal_clearance", "other_crm",
     }
     if payload.doc_type in crm_categories:
-        _ensure_roles(current_user, {"crm", "head_crm", "system_admin"})
+        _ensure_roles(current_user, {"crm", "head_crm"})
     authorization = await DirectDocumentUploadService(conn).authorize(
         application_id=application_id,
         org_id=current_user.org_id,
@@ -932,7 +1061,7 @@ async def upload_mobile_crm_document(
     current_user=Depends(get_current_user),
 ):
     await _get_application_or_404(conn, application_id, current_user)
-    _ensure_roles(current_user, {"crm", "head_crm", "system_admin"})
+    _ensure_roles(current_user, {"crm", "head_crm"})
     document = await _document_service(conn).save_upload(
         loan_id=application_id, org_id=current_user.org_id,
         doc_type=category, form_code=None, file=file,
@@ -1020,7 +1149,7 @@ async def submit_mobile_visitation_signoff(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"branch_manager", "system_admin"})
+    _ensure_roles(current_user, {"branch_manager"})
     await _get_application_or_404(conn, application_id, current_user)
     report = await _visitation_service(conn).submit_manager_signoff(
         loan_id=application_id,
@@ -1131,7 +1260,7 @@ async def approve_mobile_application(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"branch_manager", "branch_supervisor", "system_admin"})
+    _ensure_roles(current_user, {"branch_manager", "branch_supervisor"})
     existing = await _get_application_or_404(conn, application_id, current_user)
     role = _role(current_user)
     expected_stage, next_stage, action = (
@@ -1224,7 +1353,7 @@ async def return_mobile_application(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"branch_manager", "branch_supervisor", "system_admin"})
+    _ensure_roles(current_user, {"branch_manager", "branch_supervisor"})
     existing = await _get_application_or_404(conn, application_id, current_user)
     expected_stage = (
         "branch_supervisor_review"
@@ -1807,7 +1936,7 @@ async def get_mobile_executive_review(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"md", "ed", "system_admin"})
+    _ensure_roles(current_user, {"md", "ed"})
     app = await _get_application_or_404(conn, application_id, current_user)
     documents = await DocumentRepository(conn).get_by_loan(application_id, current_user.org_id)
     return {"application": app, "documents": documents}
@@ -1819,7 +1948,7 @@ async def submit_mobile_executive_approve(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"md", "ed", "system_admin"})
+    _ensure_roles(current_user, {"md", "ed"})
     app = await _get_application_or_404(conn, application_id, current_user)
     updated = await LoanRepository(conn).executive_approve(
         loan_id=application_id,
@@ -2018,7 +2147,7 @@ async def advance_review_workflow(
             status_code=409,
             detail="Relationship Officers complete intake only; the Team Lead submits the application for review.",
         )
-    if role not in {required_role, "system_admin"}:
+    if role != required_role:
         raise HTTPException(status_code=403, detail=f"This stage is assigned to {ROLE_LABELS[required_role]}")
     if app.stage in {"ed_approval", "md_approval"}:
         raise HTTPException(status_code=409, detail="Use the existing ED or MD decision endpoint for this stage")
@@ -2066,8 +2195,8 @@ async def submit_mobile_signed_intake_to_branch_manager(
 ):
     """JSON equivalent of the canonical signed-intake web transition."""
     app = await _get_application_or_404(conn, application_id, current_user)
-    _ensure_roles(current_user, {"account_officer", "system_admin"})
-    if _role(current_user) != "system_admin" and app.created_by != current_user.id:
+    _ensure_roles(current_user, {"account_officer"})
+    if app.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="You do not have permission to submit this application")
     if app.stage != "intake":
         raise HTTPException(status_code=409, detail="Only an intake application can be submitted to the branch manager")
@@ -2103,7 +2232,7 @@ async def pull_mobile_credit_bureau_report(
     current_user=Depends(get_current_user),
 ):
     app = await _get_application_or_404(conn, application_id, current_user)
-    _ensure_roles(current_user, {"credit_analyst", "system_admin"})
+    _ensure_roles(current_user, {"credit_analyst"})
     from app.domains.credit_bureau.service import CreditBureauService
 
     service = CreditBureauService(conn)
@@ -2151,7 +2280,7 @@ async def update_mobile_credit_checklist(
     current_user=Depends(get_current_user),
 ):
     app = await _get_application_or_404(conn, application_id, current_user)
-    _ensure_roles(current_user, {"credit_analyst", "system_admin"})
+    _ensure_roles(current_user, {"credit_analyst"})
     row = await conn.fetchrow(
         """
         INSERT INTO checklist_items
@@ -2198,8 +2327,8 @@ async def generate_mobile_client_link(
     current_user=Depends(get_current_user),
 ):
     app = await _get_application_or_404(conn, application_id, current_user)
-    _ensure_roles(current_user, {"account_officer", "system_admin"})
-    if _role(current_user) != "system_admin" and app.created_by != current_user.id:
+    _ensure_roles(current_user, {"account_officer"})
+    if app.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="You do not have permission to share this application")
     if app.stage != "intake":
         raise HTTPException(status_code=409, detail="Only an intake application can be shared with the client")
@@ -2222,7 +2351,7 @@ async def generate_mobile_guarantor_link(
     await _get_application_or_404(conn, application_id, current_user)
     _ensure_roles(
         current_user,
-        {"account_officer", "branch_manager", "branch_supervisor", "credit_analyst", "system_admin"},
+        {"account_officer", "branch_manager", "branch_supervisor", "credit_analyst"},
     )
     return _signing_link(
         request, "guarantor-access",
@@ -2262,7 +2391,7 @@ async def generate_mobile_offer(
     current_user=Depends(get_current_user),
 ):
     app = await _get_application_or_404(conn, application_id, current_user)
-    _ensure_roles(current_user, {"crm", "system_admin"})
+    _ensure_roles(current_user, {"crm"})
     if app.stage != "disbursement_ready":
         raise HTTPException(status_code=409, detail="Application is not ready for an offer letter")
     existing = await conn.fetchrow(
@@ -2341,7 +2470,7 @@ async def get_mobile_disbursement(
     )
     return {
         "application": _mobile_application(app, current_user),
-        "can_record": _role(current_user) in {"crm", "system_admin"}
+        "can_record": _role(current_user) == "crm"
                       and app.stage == "disbursement_ready" and bool(offer_exists),
         "offer_generated": bool(offer_exists),
     }
@@ -2355,7 +2484,7 @@ async def record_mobile_disbursement(
     current_user=Depends(get_current_user),
 ):
     await _get_application_or_404(conn, application_id, current_user)
-    _ensure_roles(current_user, {"crm", "system_admin"})
+    _ensure_roles(current_user, {"crm"})
     offer_exists = await conn.fetchval(
         """
         SELECT EXISTS(
@@ -2443,7 +2572,7 @@ async def record_mobile_payment(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"crm", "system_admin"})
+    _ensure_roles(current_user, {"crm"})
     await _get_application_or_404(conn, application_id, current_user)
     from app.services.loan_servicing_service import LoanServicingService
     from datetime import date
@@ -2476,7 +2605,7 @@ async def get_mobile_par_dashboard(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"crm", "head_crm", "md", "ed", "auditor", "system_admin"})
+    _ensure_roles(current_user, {"crm", "head_crm", "md", "ed", "auditor"})
     from app.services.loan_servicing_service import LoanServicingService
     svc = LoanServicingService(conn)
     par = await svc.get_par_summary(org_id=current_user.org_id)
@@ -2829,7 +2958,7 @@ async def get_mobile_par_loans(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"crm", "head_crm", "ed", "md", "auditor", "system_admin"})
+    _ensure_roles(current_user, {"crm", "head_crm", "ed", "md", "auditor"})
     loans, total = await LoanRepository(conn).list_disbursed_page(
         current_user.org_id, limit=size, offset=(page - 1) * size
     )
@@ -2858,7 +2987,7 @@ async def generate_share_link_mobile(
     current_user=Depends(get_current_user),
 ):
     """Mobile endpoint to generate a client shareable link."""
-    _ensure_roles(current_user, {"account_officer", "system_admin"})
+    _ensure_roles(current_user, {"account_officer"})
     from jose import jwt
     from app.config import settings
     import secrets
@@ -2900,10 +3029,13 @@ async def list_mobile_users(
     _ensure_roles(current_user, {"system_admin"})
     rows = await conn.fetch(
         """
-        SELECT id, full_name, email, role, active, created_at
-        FROM users
-        WHERE org_id = $1
-        ORDER BY active DESC, role ASC, full_name ASC
+        SELECT u.id, u.full_name, u.email, u.role, u.active, u.created_at,
+               u.last_login_at, o.name AS organization_name, b.name AS branch_name
+        FROM users u
+        JOIN organisations o ON o.id=u.org_id
+        LEFT JOIN branches b ON b.id=u.branch_id AND b.org_id=u.org_id
+        WHERE u.org_id = $1
+        ORDER BY u.active DESC, u.role ASC, u.full_name ASC
         """,
         current_user.org_id,
     )
@@ -2916,13 +3048,16 @@ async def list_mobile_users(
             "display_role": {
                 "loan_officer": "Relationship Officer",
                 "branch_manager": "Team Lead",
-                "auditor": "Auditor",
+                "auditor": "Audit",
                 "system_admin": "System Admin",
                 "crm": "CRM Officer",
                 "md": "Managing Director",
                 "ed": "Executive Director",
             }.get(r["role"], r["role"].replace("_", " ").title()),
             "active": r["active"],
+            "organization_name": r["organization_name"],
+            "branch_name": r["branch_name"],
+            "last_activity_at": r["last_login_at"],
         }
         for r in rows
     ]

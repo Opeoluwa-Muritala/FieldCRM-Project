@@ -79,8 +79,6 @@ def create_access_token(
 ) -> str:
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
-    elif session_type == "mobile":
-        expire = datetime.utcnow() + timedelta(days=30)
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 

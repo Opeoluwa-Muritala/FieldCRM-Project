@@ -4,8 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -14,6 +14,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.fieldcrm.android.ui.components.*
+import com.fieldcrm.android.ui.theme.FieldIcons
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation3.runtime.rememberNavBackStack
 import com.fieldcrm.android.core.notification.NotificationSyncWorker
@@ -32,6 +34,25 @@ import com.fieldcrm.android.ui.screens.queue.*
 import com.fieldcrm.android.ui.screens.review.*
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.viewmodel.*
+import com.fieldcrm.android.ui.roles.RoleDashboardHost
+import com.fieldcrm.android.ui.roles.RoleSearchHost
+import com.fieldcrm.android.ui.roles.RoleCrmReviewHost
+import com.fieldcrm.android.ui.roles.RoleReviewQueueHost
+import com.fieldcrm.android.ui.roles.RoleCrmQueueHost
+import com.fieldcrm.android.ui.roles.legal.queue.LegalCaseQueue
+import com.fieldcrm.android.ui.roles.relationshipofficer.queue.*
+import com.fieldcrm.android.ui.roles.teamlead.queue.*
+import com.fieldcrm.android.ui.roles.creditanalyst.queue.CreditOcrExceptionQueue
+import com.fieldcrm.android.ui.roles.crm.queue.CrmReviewQueue
+import com.fieldcrm.android.ui.roles.executive.queue.ExecutiveDisbursementQueue
+import com.fieldcrm.android.ui.roles.executivedirector.queue.ExecutiveDirectorDecisionQueue
+import com.fieldcrm.android.ui.roles.managingdirector.queue.ManagingDirectorDecisionQueue
+import com.fieldcrm.android.ui.roles.teamlead.review.TeamLeadConcurrenceReview
+import com.fieldcrm.android.ui.roles.supervisor.review.SupervisorReview
+import com.fieldcrm.android.ui.roles.creditanalyst.review.CreditAssessmentReview
+import com.fieldcrm.android.ui.roles.executive.review.ExecutiveDisbursementReview
+import com.fieldcrm.android.ui.roles.executivedirector.review.ExecutiveDirectorDecisionReview
+import com.fieldcrm.android.ui.roles.managingdirector.review.ManagingDirectorDecisionReview
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
 @Composable
@@ -57,6 +78,7 @@ fun FieldCRMApp(
     val servicingUiState by servicingViewModel.uiState.collectAsState()
     val crmReviewUiState by crmReviewViewModel.uiState.collectAsState()
     val syncUiState by syncViewModel.uiState.collectAsState()
+    val dashboardUiState by dashboardViewModel.uiState.collectAsState()
 
     val backStack = rememberNavBackStack(Screen.Login)
 
@@ -77,7 +99,15 @@ fun FieldCRMApp(
     var selectedDocUrl by remember { mutableStateOf("") }
     var selectedDocName by remember { mutableStateOf("") }
 
-    val activity = LocalContext.current as? android.app.Activity
+    val context = LocalContext.current
+    val activity = remember(context) {
+        var ctx = context
+        while (ctx is android.content.ContextWrapper) {
+            if (ctx is android.app.Activity) break
+            ctx = ctx.baseContext
+        }
+        ctx as? android.app.Activity
+    }
     var backPressedOnce by remember { mutableStateOf(false) }
     LaunchedEffect(backPressedOnce) {
         if (backPressedOnce) {
@@ -135,10 +165,12 @@ fun FieldCRMApp(
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 if (appUiState.session != null) {
-                    applicationViewModel.refreshIfStale()
-                    borrowerViewModel.refreshIfStale()
                     dashboardViewModel.refreshIfStale()
-                    notificationsViewModel.refreshIfStale()
+                    if (appUiState.session?.role != UserRole.SYSTEM_ADMIN) {
+                        applicationViewModel.refreshIfStale()
+                        borrowerViewModel.refreshIfStale()
+                        notificationsViewModel.refreshIfStale()
+                    }
                 }
             }
         }
@@ -152,6 +184,10 @@ fun FieldCRMApp(
     LaunchedEffect(appUiState.session) {
         val session = appUiState.session
         if (session != null) {
+            if (session.role == UserRole.SYSTEM_ADMIN) {
+                dashboardViewModel.loadMetrics()
+                return@LaunchedEffect
+            }
             syncViewModel.syncNow { success ->
                 dashboardViewModel.loadMetrics()
                 val role = session.role
@@ -267,60 +303,220 @@ fun FieldCRMApp(
             }
         )
 
-        Screen.SearchResults -> SearchResultsScreen(
-            onBackClick = { backStack.removeLastOrNull() },
-            onNavigateToApplication = { appId ->
+        Screen.SearchResults -> RoleSearchHost(
+            role = appUiState.session?.role ?: UserRole.EXECUTIVE,
+            onBack = { backStack.removeLastOrNull() },
+            onOpen = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
                 if (app != null) appViewModel.setSelectedApplication(app)
                 backStack.add(Screen.ApplicationDetail)
             }
         )
 
-        Screen.Dashboard -> DashboardScreenView(
-            role = appUiState.session?.role,
-            borrowers = borrowerUiState.borrowers,
-            applications = applicationUiState.applications,
-            isLoading = applicationUiState.isLoading,
-            sessionEmail = appUiState.session?.userEmail,
-            sessionName = appUiState.session?.userName,
-            onNavigateToBorrowers = { backStack.add(Screen.BorrowerList) },
-            onNavigateToCreateApplication = { backStack.add(Screen.CreateApplication) },
-            onNavigateToApplication = { appId ->
-                val app = applicationUiState.applications.find { it.id == appId }
-                if (app != null) {
-                    appViewModel.setSelectedApplication(app)
-                    backStack.add(Screen.ApplicationDetail)
-                } else {
-                    backStack.add(Screen.CreateApplication)
+        Screen.Dashboard -> {
+            val resolvedRole = appUiState.session?.role ?: UserRole.EXECUTIVE
+            val sessionEmail = appUiState.session?.userEmail ?: ""
+            val sessionName = appUiState.session?.userName?.takeIf { it.isNotBlank() } ?: resolvedRole.displayName
+            val queueLabel = when (resolvedRole) {
+                UserRole.ACCOUNT_OFFICER, UserRole.LOAN_OFFICER -> "My Work"
+                UserRole.BRANCH_MANAGER -> "Concurrence"
+                UserRole.BRANCH_SUPERVISOR -> "Supervision"
+                UserRole.CREDIT_ANALYST -> "Underwriting"
+                UserRole.CRM, UserRole.HEAD_CRM -> "CRM Review"
+                UserRole.AUDITOR -> "Compliance"
+                UserRole.ED -> "ED Decisions"
+                UserRole.MD -> "MD Decisions"
+                UserRole.LEGAL -> "Legal Cases"
+                UserRole.SYSTEM_ADMIN -> "Users"
+                UserRole.EXECUTIVE -> "Disbursements"
+            }
+
+            var selectedTab by remember { mutableStateOf(0) }
+            val bottomBarItems = if (resolvedRole == UserRole.SYSTEM_ADMIN) {
+                listOf(
+                    NavigationItem("Home", FieldIcons.HomeOutlined, FieldIcons.HomeFilled),
+                    NavigationItem("Users", FieldIcons.GroupOutlined, FieldIcons.GroupOutlined),
+                    NavigationItem("Activity", FieldIcons.DocumentOutlined, FieldIcons.DocumentOutlined)
+                )
+            } else {
+                listOf(
+                    NavigationItem("Home", FieldIcons.HomeOutlined, FieldIcons.HomeFilled),
+                    NavigationItem(queueLabel, FieldIcons.QueueOutlined, FieldIcons.QueueFilled),
+                    NavigationItem("Settings", FieldIcons.SettingsOutlined, FieldIcons.SettingsFilled)
+                )
+            }
+
+            Scaffold(
+                bottomBar = {
+                    FieldBottomBar(
+                        items = bottomBarItems,
+                        selectedItemIndex = selectedTab,
+                        onItemSelect = { selectedTab = it }
+                    )
+                },
+                containerColor = FieldTheme.colors.gray950
+            ) { paddingValues ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
+                    when (selectedTab) {
+                        0 -> RoleDashboardHost(
+                            role = resolvedRole,
+                            metrics = dashboardUiState.metrics,
+                            isLoading = dashboardUiState.isLoading,
+                            error = dashboardUiState.error,
+                            onOpen = { destination ->
+                                if (RoleAccessPolicy.canAccess(resolvedRole, destination)) {
+                                    if (destination == Screen.ParDashboard) servicingViewModel.loadParDashboard()
+                                    backStack.add(destination)
+                                }
+                            },
+                            onSignOut = {
+                                appViewModel.logout()
+                                NotificationSyncWorker.cancel(context)
+                                backStack.clear()
+                                backStack.add(Screen.Login)
+                            }
+                        )
+                        1 -> {
+                            when (resolvedRole) {
+                                UserRole.SYSTEM_ADMIN -> UsersScreen(
+                                    onBackClick = null,
+                                    onViewUser = {}
+                                )
+                                UserRole.ACCOUNT_OFFICER, UserRole.LOAN_OFFICER -> RelationshipOfficerApplicationQueue(
+                                    applications = applicationUiState.applications,
+                                    borrowers = borrowerUiState.borrowers,
+                                    onBackClick = null,
+                                    onViewApplication = { appId ->
+                                        val app = applicationUiState.applications.find { it.id == appId }
+                                        if (app != null) {
+                                            appViewModel.setSelectedApplication(app)
+                                            backStack.add(Screen.ApplicationDetail)
+                                        }
+                                    }
+                                )
+                                UserRole.BRANCH_MANAGER -> AwaitingConcurrenceScreen(
+                                    applications = applicationUiState.applications,
+                                    borrowers = borrowerUiState.borrowers,
+                                    onBackClick = null,
+                                    onViewApplication = { appId ->
+                                        val app = applicationUiState.applications.find { it.id == appId }
+                                        if (app != null) {
+                                            appViewModel.setSelectedApplication(app)
+                                            backStack.add(Screen.ApplicationDetail)
+                                        }
+                                    }
+                                )
+                                UserRole.BRANCH_SUPERVISOR, UserRole.CREDIT_ANALYST -> CreditReviewQueueScreen(
+                                    applications = applicationUiState.applications,
+                                    borrowers = borrowerUiState.borrowers,
+                                    role = resolvedRole,
+                                    onBackClick = null,
+                                    onReviewApplication = { appId ->
+                                        val app = applicationUiState.applications.find { it.id == appId }
+                                        if (app != null) {
+                                            appViewModel.setSelectedApplication(app)
+                                            backStack.add(Screen.ApplicationDetail)
+                                        }
+                                    }
+                                )
+                                UserRole.CRM, UserRole.HEAD_CRM -> CrmQueueScreen(
+                                    applications = applicationUiState.applications,
+                                    borrowers = borrowerUiState.borrowers,
+                                    onBackClick = null,
+                                    onReviewApplication = { appId ->
+                                        val app = applicationUiState.applications.find { it.id == appId }
+                                        if (app != null) {
+                                            appViewModel.setSelectedApplication(app)
+                                            backStack.add(Screen.ApplicationDetail)
+                                        }
+                                    }
+                                )
+                                UserRole.AUDITOR -> ComplianceFlagsScreen(
+                                    onBackClick = null,
+                                    onViewFlag = { appId ->
+                                        val app = applicationUiState.applications.find { it.id == appId }
+                                        if (app != null) {
+                                            appViewModel.setSelectedApplication(app)
+                                            backStack.add(Screen.ApplicationDetail)
+                                        }
+                                    }
+                                )
+                                UserRole.ED -> EdQueueScreen(
+                                    applications = applicationUiState.applications,
+                                    onBackClick = null,
+                                    onReviewApplication = { appId ->
+                                        val app = applicationUiState.applications.find { it.id == appId }
+                                        if (app != null) {
+                                            appViewModel.setSelectedApplication(app)
+                                            backStack.add(Screen.ApplicationDetail)
+                                        }
+                                    }
+                                )
+                                UserRole.MD -> MdQueueScreen(
+                                    applications = applicationUiState.applications,
+                                    onBackClick = null,
+                                    onReviewApplication = { appId ->
+                                        val app = applicationUiState.applications.find { it.id == appId }
+                                        if (app != null) {
+                                            appViewModel.setSelectedApplication(app)
+                                            backStack.add(Screen.ApplicationDetail)
+                                        }
+                                    }
+                                )
+                                UserRole.LEGAL -> LegalWorkspaceScreen(
+                                    onBack = null,
+                                    onOpenApplication = { appId ->
+                                        val app = applicationUiState.applications.find { it.id == appId }
+                                        if (app != null) {
+                                            appViewModel.setSelectedApplication(app)
+                                            backStack.add(Screen.ApplicationDetail)
+                                        }
+                                    }
+                                )
+                                UserRole.EXECUTIVE -> ExecutiveQueueScreen(
+                                    applications = applicationUiState.applications,
+                                    borrowers = borrowerUiState.borrowers,
+                                    onBackClick = null,
+                                    onReviewApplication = { appId ->
+                                        val app = applicationUiState.applications.find { it.id == appId }
+                                        if (app != null) {
+                                            appViewModel.setSelectedApplication(app)
+                                            backStack.add(Screen.ApplicationDetail)
+                                        }
+                                    }
+                                )
+                                else -> Box(Modifier.fillMaxSize())
+                            }
+                        }
+                        else -> {
+                            if (resolvedRole == UserRole.SYSTEM_ADMIN) {
+                                SystemActivityScreen(
+                                    onBackClick = null
+                                )
+                            } else {
+                                SettingsScreen(
+                                    userName = sessionName,
+                                    userEmail = sessionEmail,
+                                    role = resolvedRole,
+                                    onBackClick = null,
+                                    onNavigateToOfflineQueue = { backStack.add(Screen.OfflineQueue) },
+                                    onSignOutClick = {
+                                        appViewModel.logout()
+                                        NotificationSyncWorker.cancel(context)
+                                        backStack.clear()
+                                        backStack.add(Screen.Login)
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
-            },
-            onLogout = { appViewModel.logout(); NotificationSyncWorker.cancel(context); backStack.clear(); backStack.add(Screen.Login) },
-            onNavigateToNotifications = { backStack.add(Screen.Notifications) },
-            onNavigateToSearchResults = { backStack.add(Screen.SearchResults) },
-            onNavigateToMyQueue = { backStack.add(Screen.MyQueue) },
-            onNavigateToVisitsDue = { backStack.add(Screen.VisitsDue) },
-            onNavigateToAwaitingConcurrence = { backStack.add(Screen.AwaitingConcurrence) },
-            onNavigateToPendingSignoffs = { backStack.add(Screen.PendingSignoffs) },
-            onNavigateToCreditReviewQueue = { backStack.add(Screen.CreditReviewQueue) },
-            onNavigateToOcrExceptions = { backStack.add(Screen.OcrExceptions) },
-            onNavigateToPipeline = { backStack.add(Screen.Pipeline) },
-            onNavigateToUsers = { backStack.add(Screen.Users) },
-            onNavigateToSystemActivity = { backStack.add(Screen.SystemActivity) },
-            onNavigateToAuditTrail = { backStack.add(Screen.AuditTrail) },
-            onNavigateToComplianceFlags = { backStack.add(Screen.ComplianceFlags) },
-            onNavigateToOfflineQueue = { backStack.add(Screen.OfflineQueue) },
-            onNavigateToCrmQueue = { backStack.add(Screen.CrmQueue) },
-            onNavigateToExecutiveQueue = { backStack.add(Screen.ExecutiveQueue) },
-            onNavigateToParDashboard = { servicingViewModel.loadParDashboard(); backStack.add(Screen.ParDashboard) },
-            onNavigateToEdQueue = { backStack.add(Screen.EdQueue) },
-            onNavigateToMdQueue = { backStack.add(Screen.MdQueue) },
-            onNavigateToLegalWorkspace = { backStack.add(Screen.LegalWorkspace) },
-            onNavigateToMccWorkspace = { backStack.add(Screen.MccWorkspace) },
-            onNavigateToInterestPresets = { backStack.add(Screen.InterestPresets) },
-            onNavigateToBranches = { backStack.add(Screen.BranchManagement) },
-            syncState = syncUiState,
-            onSyncNow = { syncViewModel.syncNow() }
-        )
+            }
+        }
 
         Screen.Settings -> {
             val sessionEmail = appUiState.session?.userEmail ?: ""
@@ -544,14 +740,21 @@ fun FieldCRMApp(
                     val context = if (appUiState.session?.role == UserRole.BRANCH_SUPERVISOR) "supervisor_review" else "team_lead_review"
                     applicationViewModel.loadReviewChecklist(app.id, context)
                 }
-                BranchManagerReviewScreen(
-                    application = app,
-                    borrower = borrower,
-                    role = appUiState.session?.role ?: UserRole.BRANCH_MANAGER,
-                    applicationViewModel = applicationViewModel,
-                    onBackClick = { backStack.removeLastOrNull() },
-                    onDecisionSubmitted = { backStack.removeLastOrNull() }
-                )
+                if (appUiState.session?.role == UserRole.BRANCH_SUPERVISOR) {
+                    SupervisorReview(app, borrower, applicationViewModel, { backStack.removeLastOrNull() }, { backStack.removeLastOrNull() })
+                } else {
+                    TeamLeadConcurrenceReview(app, borrower, applicationViewModel, { backStack.removeLastOrNull() }, { backStack.removeLastOrNull() })
+                }
+            } else {
+                backStack.removeLastOrNull()
+            }
+        }
+
+        Screen.CreditOfficerReview -> {
+            val app = appUiState.selectedApplication
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name }
+            if (app != null) {
+                CreditAssessmentReview(app, borrower, applicationViewModel, { backStack.removeLastOrNull() }, { backStack.removeLastOrNull() })
             } else {
                 backStack.removeLastOrNull()
             }
@@ -573,7 +776,7 @@ fun FieldCRMApp(
             onBackClick = { backStack.removeLastOrNull() }
         )
 
-        Screen.MyQueue -> MyQueueScreen(
+        Screen.MyQueue -> RelationshipOfficerApplicationQueue(
             applications = applicationUiState.applications,
             borrowers = borrowerUiState.borrowers,
             onBackClick = { backStack.removeLastOrNull() },
@@ -584,7 +787,7 @@ fun FieldCRMApp(
             }
         )
 
-        Screen.VisitsDue -> VisitsDueScreen(
+        Screen.VisitsDue -> RelationshipOfficerVisitsQueue(
             applications = applicationUiState.applications,
             borrowers = borrowerUiState.borrowers,
             onBackClick = { backStack.removeLastOrNull() },
@@ -595,7 +798,7 @@ fun FieldCRMApp(
             }
         )
 
-        Screen.AwaitingConcurrence -> AwaitingConcurrenceScreen(
+        Screen.AwaitingConcurrence -> TeamLeadConcurrenceQueue(
             applications = applicationUiState.applications,
             borrowers = borrowerUiState.borrowers,
             onBackClick = { backStack.removeLastOrNull() },
@@ -606,18 +809,18 @@ fun FieldCRMApp(
             }
         )
 
-        Screen.PendingSignoffs -> PendingSignoffsScreen(
+        Screen.PendingSignoffs -> TeamLeadSignoffQueue(
             applications = applicationUiState.applications,
             borrowers = borrowerUiState.borrowers,
             onBackClick = { backStack.removeLastOrNull() },
             onViewReport = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
                 if (app != null) appViewModel.setSelectedApplication(app)
-                backStack.add(Screen.VisitationReport)
+                backStack.add(Screen.ApplicationDetail)
             }
         )
 
-        Screen.CreditReviewQueue -> CreditReviewQueueScreen(
+        Screen.CreditReviewQueue -> RoleReviewQueueHost(
             applications = applicationUiState.applications,
             borrowers = borrowerUiState.borrowers,
             role = appUiState.session?.role,
@@ -629,7 +832,7 @@ fun FieldCRMApp(
             }
         )
 
-        Screen.OcrExceptions -> OcrExceptionsScreen(
+        Screen.OcrExceptions -> CreditOcrExceptionQueue(
             applications = applicationUiState.applications,
             borrowers = borrowerUiState.borrowers,
             onBackClick = { backStack.removeLastOrNull() },
@@ -640,7 +843,7 @@ fun FieldCRMApp(
             }
         )
 
-        Screen.Pipeline -> PipelineScreen(
+        Screen.Pipeline -> TeamLeadPipeline(
             applications = applicationUiState.applications,
             borrowers = borrowerUiState.borrowers,
             onBackClick = { backStack.removeLastOrNull() },
@@ -656,17 +859,10 @@ fun FieldCRMApp(
         )
 
         Screen.SystemActivity -> SystemActivityScreen(
-            applications = applicationUiState.applications,
-            borrowers = borrowerUiState.borrowers,
-            onBackClick = { backStack.removeLastOrNull() },
-            onViewApplication = { appId ->
-                val app = applicationUiState.applications.find { it.id == appId }
-                if (app != null) appViewModel.setSelectedApplication(app)
-                backStack.add(Screen.ApplicationDetail)
-            }
+            onBackClick = { backStack.removeLastOrNull() }
         )
 
-        Screen.LegalWorkspace -> LegalWorkspaceScreen(
+        Screen.LegalWorkspace -> LegalCaseQueue(
             onBack = { backStack.removeLastOrNull() },
             onOpenApplication = { appId ->
                 applicationViewModel.resolveAuthorizedApplication(appId) { app ->
@@ -752,7 +948,7 @@ fun FieldCRMApp(
             val app = appUiState.selectedApplication
             if (app != null) {
                 LaunchedEffect(app.id) { crmReviewViewModel.loadChecklist(app.id) }
-                CrmReviewScreen(
+                RoleCrmReviewHost(
                     application = app,
                     role = appUiState.session?.role ?: UserRole.CRM,
                     isSubmitting = crmReviewUiState.isSubmitting,
@@ -788,7 +984,7 @@ fun FieldCRMApp(
         Screen.ExecutiveApproval -> {
             val app = appUiState.selectedApplication
             if (app != null) {
-                ExecutiveApprovalScreen(
+                ExecutiveDisbursementReview(
                     application = app,
                     isSubmitting = crmReviewUiState.isSubmitting,
                     onIssueInstruction = {
@@ -849,42 +1045,43 @@ fun FieldCRMApp(
             )
         }
 
-        Screen.CrmQueue -> CrmQueueScreen(
+        Screen.CrmQueue -> RoleCrmQueueHost(
+            applications = applicationUiState.applications,
+            borrowers = borrowerUiState.borrowers,
+            role = appUiState.session?.role,
+            onBackClick = { backStack.removeLastOrNull() },
+            onReviewApplication = { appId ->
+                val app = applicationUiState.applications.find { it.id == appId }
+                if (app != null) appViewModel.setSelectedApplication(app)
+                backStack.add(Screen.ApplicationDetail)
+            }
+        )
+
+        Screen.ExecutiveQueue -> ExecutiveDisbursementQueue(
             applications = applicationUiState.applications,
             borrowers = borrowerUiState.borrowers,
             onBackClick = { backStack.removeLastOrNull() },
             onReviewApplication = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
                 if (app != null) appViewModel.setSelectedApplication(app)
-                backStack.add(Screen.CrmReview)
+                backStack.add(Screen.ApplicationDetail)
             }
         )
 
-        Screen.ExecutiveQueue -> ExecutiveQueueScreen(
-            applications = applicationUiState.applications,
-            borrowers = borrowerUiState.borrowers,
-            onBackClick = { backStack.removeLastOrNull() },
-            onReviewApplication = { appId ->
-                val app = applicationUiState.applications.find { it.id == appId }
-                if (app != null) appViewModel.setSelectedApplication(app)
-                backStack.add(Screen.ExecutiveApproval)
-            }
-        )
-
-        Screen.EdQueue -> EdQueueScreen(
+        Screen.EdQueue -> ExecutiveDirectorDecisionQueue(
             applications = applicationUiState.applications,
             onBackClick = { backStack.removeLastOrNull() },
             onReviewApplication = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
                 if (app != null) appViewModel.setSelectedApplication(app)
-                backStack.add(Screen.EdApproval)
+                backStack.add(Screen.ApplicationDetail)
             }
         )
 
         Screen.EdApproval -> {
             val app = appUiState.selectedApplication
             if (app != null) {
-                EdApprovalScreen(
+                ExecutiveDirectorDecisionReview(
                     application = app,
                     isSubmitting = crmReviewUiState.isSubmitting,
                     onApprove = {
@@ -908,20 +1105,20 @@ fun FieldCRMApp(
             }
         }
 
-        Screen.MdQueue -> MdQueueScreen(
+        Screen.MdQueue -> ManagingDirectorDecisionQueue(
             applications = applicationUiState.applications,
             onBackClick = { backStack.removeLastOrNull() },
             onReviewApplication = { appId ->
                 val app = applicationUiState.applications.find { it.id == appId }
                 if (app != null) appViewModel.setSelectedApplication(app)
-                backStack.add(Screen.MdApproval)
+                backStack.add(Screen.ApplicationDetail)
             }
         )
 
         Screen.MdApproval -> {
             val app = appUiState.selectedApplication
             if (app != null) {
-                MdApprovalScreen(
+                ManagingDirectorDecisionReview(
                     application = app,
                     isSubmitting = crmReviewUiState.isSubmitting,
                     onApprove = {

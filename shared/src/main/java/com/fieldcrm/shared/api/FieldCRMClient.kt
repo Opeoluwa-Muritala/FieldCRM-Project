@@ -45,7 +45,7 @@ class FieldCRMClient(internal val baseUrl: String) {
         }
     }
 
-    suspend fun createApplication(app: LoanApplicationModel): HttpResponse {
+    suspend fun createApplication(app: LoanApplicationModel, borrowerId: String? = null): HttpResponse {
         return httpClient.post("$baseUrl/api/v1/mobile/applications") {
             contentType(ContentType.Application.Json)
             secureHeaders()
@@ -53,7 +53,8 @@ class FieldCRMClient(internal val baseUrl: String) {
                 MobileApplicationRequest(
                     customer_type = app.customer_type,
                     loan_type = app.loan_type,
-                    applicant_name = app.applicant_name
+                    applicant_name = app.applicant_name,
+                    borrower_id = borrowerId
                 )
             )
         }
@@ -135,5 +136,6 @@ class FieldCRMClient(internal val baseUrl: String) {
 private data class MobileApplicationRequest(
     val customer_type: String,
     val loan_type: String,
-    val applicant_name: String
+    val applicant_name: String,
+    val borrower_id: String? = null
 )

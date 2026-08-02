@@ -32,8 +32,13 @@ import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.viewmodel.DashboardViewModel
+import com.fieldcrm.android.data.api.RelationshipOfficerMetrics
+import com.fieldcrm.android.data.api.DashboardMetrics
 import com.fieldcrm.android.ui.viewmodel.SyncItemStatus
 import com.fieldcrm.android.ui.viewmodel.SyncUiState
+import com.fieldcrm.android.ui.screens.admin.SystemActivityScreen
+import com.fieldcrm.android.ui.screens.admin.UsersScreen
+import com.fieldcrm.android.ui.navigation.WorkspaceRegistry
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import androidx.activity.compose.BackHandler
@@ -80,9 +85,27 @@ fun DashboardScreenView(
     onSyncNow: () -> Unit = {}
 ) {
     val resolvedRole = role ?: UserRole.ACCOUNT_OFFICER
-    val activity = LocalContext.current as android.app.Activity
-    val windowSizeClass = calculateWindowSizeClass(activity)
-    val isTablet = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
+    val context = LocalContext.current
+    val activity = remember(context) {
+        var ctx = context
+        while (ctx is android.content.ContextWrapper) {
+            if (ctx is android.app.Activity) break
+            ctx = ctx.baseContext
+        }
+        ctx as? android.app.Activity
+    }
+    val isTablet = remember(activity) {
+        if (activity != null) {
+            try {
+                val windowSizeClass = calculateWindowSizeClass(activity)
+                windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
+            } catch (_: Exception) {
+                false
+            }
+        } else {
+            false
+        }
+    }
 
     var selectedTab by remember { mutableStateOf(0) }
     val tabHistory = remember { mutableStateListOf<Int>() }
@@ -118,7 +141,7 @@ fun DashboardScreenView(
             UserRole.LOAN_OFFICER, UserRole.ACCOUNT_OFFICER -> "Relationship Officer"
             UserRole.BRANCH_MANAGER -> "Team Lead"
             UserRole.BRANCH_SUPERVISOR -> "Supervisor"
-            UserRole.AUDITOR -> "Auditor"
+            UserRole.AUDITOR -> "Audit"
             UserRole.CRM -> "CRM Officer"
             UserRole.EXECUTIVE -> "Executive"
             UserRole.HEAD_CRM -> "Head CRM"
@@ -253,8 +276,9 @@ fun DashboardScreenView(
                     name = item.applicant_name,
                     appId = item.id,
                     refNo = item.ref_no,
-                    detail = "${item.officer_name ?: "Relationship Officer"} · ${item.days_waiting}d waiting",
-                    status = StatusChipVariant.NeedsReview
+                    detail = "${item.days_waiting}d waiting",
+                    status = StatusChipVariant.NeedsReview,
+                    officerName = item.officer_name
                 )
             }
         } else if (resolvedRole == UserRole.CREDIT_ANALYST) {
@@ -273,8 +297,9 @@ fun DashboardScreenView(
                     name = item.applicant_name,
                     appId = item.id,
                     refNo = item.ref_no,
-                    detail = "${item.officer_name ?: "Relationship Officer"} · ${item.days_waiting}d waiting",
-                    status = StatusChipVariant.NeedsReview
+                    detail = "${item.days_waiting}d waiting",
+                    status = StatusChipVariant.NeedsReview,
+                    officerName = item.officer_name
                 )
             }
         } else borrowers.mapNotNull { borrower ->
@@ -440,8 +465,9 @@ fun DashboardScreenView(
             // Tablet Navigation Side Rail Layout
             val sideRailItems = if (resolvedRole == UserRole.SYSTEM_ADMIN) {
                 listOf(
-                    NavigationItem("Home", FieldIcons.HomeOutlined, FieldIcons.HomeFilled),
-                    NavigationItem("Settings", FieldIcons.SettingsOutlined, FieldIcons.SettingsFilled)
+                    NavigationItem("Dashboard", FieldIcons.HomeOutlined, FieldIcons.HomeFilled),
+                    NavigationItem("Users", FieldIcons.GroupOutlined, FieldIcons.GroupOutlined),
+                    NavigationItem("System Activity", FieldIcons.DocumentOutlined, FieldIcons.DocumentOutlined)
                 )
             } else {
                 listOf(
@@ -469,9 +495,14 @@ fun DashboardScreenView(
                         )
                     }
                     Box(modifier = Modifier.weight(1f)) {
-                    val targetTab = if (resolvedRole == UserRole.SYSTEM_ADMIN && selectedTab == 1) 2 else selectedTab
-                    when (targetTab) {
-                        0 -> TabletDashboardHome(
+                    when {
+                        resolvedRole == UserRole.SYSTEM_ADMIN && selectedTab == 1 -> UsersScreen(
+                            onBackClick = { navigateToTab(0) }
+                        )
+                        resolvedRole == UserRole.SYSTEM_ADMIN && selectedTab == 2 -> SystemActivityScreen(
+                            onBackClick = { navigateToTab(0) }
+                        )
+                        selectedTab == 0 -> TabletDashboardHome(
                             userName = userName,
                             role = resolvedRole,
                             metrics = metrics,
@@ -481,13 +512,13 @@ fun DashboardScreenView(
                             onQueueItemClick = onQueueItemClick,
                             onNavigateToCreateApplication = onNavigateToCreateApplication
                         )
-                        1 -> QueueTab(
+                        selectedTab == 1 -> QueueTab(
                             searchQuery = searchQuery,
                             onSearchChange = { searchQuery = it },
                             queueItems = filteredQueueItems,
                             onItemClick = { appId -> onQueueItemClick(appId) }
                         )
-                        2 -> SettingsScreen(
+                        else -> SettingsScreen(
                             userName = userName,
                             userEmail = userEmail,
                             role = resolvedRole,
@@ -503,8 +534,9 @@ fun DashboardScreenView(
             // Phone Bottom Navigation Layout
             val bottomBarItems = if (resolvedRole == UserRole.SYSTEM_ADMIN) {
                 listOf(
-                    NavigationItem("Home", FieldIcons.HomeOutlined, FieldIcons.HomeFilled),
-                    NavigationItem("Settings", FieldIcons.SettingsOutlined, FieldIcons.SettingsFilled)
+                    NavigationItem("Dashboard", FieldIcons.HomeOutlined, FieldIcons.HomeFilled),
+                    NavigationItem("Users", FieldIcons.GroupOutlined, FieldIcons.GroupOutlined),
+                    NavigationItem("Activity", FieldIcons.DocumentOutlined, FieldIcons.DocumentOutlined)
                 )
             } else {
                 listOf(
@@ -539,9 +571,14 @@ fun DashboardScreenView(
                         )
                     }
                     Box(modifier = Modifier.weight(1f)) {
-                    val targetTab = if (resolvedRole == UserRole.SYSTEM_ADMIN && selectedTab == 1) 2 else selectedTab
-                    when (targetTab) {
-                        0 -> PhoneDashboardHome(
+                    when {
+                        resolvedRole == UserRole.SYSTEM_ADMIN && selectedTab == 1 -> UsersScreen(
+                            onBackClick = { navigateToTab(0) }
+                        )
+                        resolvedRole == UserRole.SYSTEM_ADMIN && selectedTab == 2 -> SystemActivityScreen(
+                            onBackClick = { navigateToTab(0) }
+                        )
+                        selectedTab == 0 -> PhoneDashboardHome(
                             userName = userName,
                             role = resolvedRole,
                             metrics = metrics,
@@ -551,13 +588,13 @@ fun DashboardScreenView(
                             onQueueItemClick = onQueueItemClick,
                             onNavigateToCreateApplication = onNavigateToCreateApplication
                         )
-                        1 -> QueueTab(
+                        selectedTab == 1 -> QueueTab(
                             searchQuery = searchQuery,
                             onSearchChange = { searchQuery = it },
                             queueItems = filteredQueueItems,
                             onItemClick = { appId -> onQueueItemClick(appId) }
                         )
-                        2 -> SettingsScreen(
+                        else -> SettingsScreen(
                             userName = userName,
                             userEmail = userEmail,
                             role = resolvedRole,
@@ -593,22 +630,12 @@ data class QueueItem(
     val appId: String = "",
     val refNo: String,
     val detail: String,
-    val status: StatusChipVariant
+    val status: StatusChipVariant,
+    val officerName: String? = null
 )
 
-private fun UserRole.queueLabel(): String = when (this) {
-    UserRole.LOAN_OFFICER, UserRole.ACCOUNT_OFFICER -> "My Queue"
-    UserRole.BRANCH_MANAGER -> "Awaiting Me"
-    UserRole.BRANCH_SUPERVISOR -> "Review Queue"
-    UserRole.CREDIT_ANALYST -> "Credit Queue"
-    UserRole.CRM, UserRole.HEAD_CRM -> "CRM Queue"
-    UserRole.AUDITOR -> "Audit Queue"
-    UserRole.ED -> "ED Queue"
-    UserRole.MD -> "MD Queue"
-    UserRole.EXECUTIVE -> "Approvals"
-    UserRole.LEGAL -> "Legal Queue"
-    UserRole.SYSTEM_ADMIN -> "Activity"
-}
+private fun UserRole.queueLabel(): String =
+    WorkspaceRegistry.forRole(this).queues.firstOrNull()?.title ?: "Workspace"
 
 // ==========================================
 // PHONE DASHBOARD VIEW
@@ -1360,27 +1387,45 @@ fun ActionFeedCard(
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.name,
+                    style = FieldTheme.typography.bodyStrong.copy(fontSize = 15.sp),
+                    color = FieldTheme.colors.gray100
+                )
+                Spacer(modifier = Modifier.height(2.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = item.name,
-                        style = FieldTheme.typography.bodyStrong.copy(fontSize = 15.sp),
-                        color = FieldTheme.colors.gray100
-                    )
-                    Text(
                         text = item.refNo,
                         style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
                         color = FieldTheme.colors.purple400
                     )
+                    val roName = item.officerName?.takeIf { it.isNotBlank() } ?: ""
+                    if (roName.isNotEmpty()) {
+                        Text(
+                            text = "·",
+                            style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                            color = FieldTheme.colors.gray500
+                        )
+                        Text(
+                            text = roName,
+                            style = FieldTheme.typography.bodyStrong.copy(fontSize = 13.sp),
+                            color = FieldTheme.colors.gray300
+                        )
+                    }
+                    Text(
+                        text = "·",
+                        style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                        color = FieldTheme.colors.gray500
+                    )
+                    Text(
+                        text = item.detail,
+                        style = FieldTheme.typography.body.copy(fontSize = 13.sp),
+                        color = FieldTheme.colors.gray400
+                    )
                 }
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = item.detail,
-                    style = FieldTheme.typography.body.copy(fontSize = 13.sp),
-                    color = FieldTheme.colors.gray400
-                )
             }
             Spacer(modifier = Modifier.width(8.dp))
             Column(horizontalAlignment = Alignment.End) {

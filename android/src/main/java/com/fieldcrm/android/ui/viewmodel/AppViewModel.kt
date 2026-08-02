@@ -5,6 +5,9 @@ import androidx.compose.runtime.Immutable
 import androidx.navigation3.runtime.NavKey
 import com.fieldcrm.android.core.session.SessionStore
 import com.fieldcrm.android.core.session.UserSession
+import com.fieldcrm.android.data.repository.AuthRepository
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 import com.fieldcrm.shared.model.BorrowerModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -146,7 +149,10 @@ data class AppUiState(
     val preselectedBorrowerId: String? = null
 )
 
-class AppViewModel(private val sessionStore: SessionStore) : ViewModel() {
+class AppViewModel(
+    private val sessionStore: SessionStore,
+    private val authRepository: AuthRepository
+) : ViewModel() {
     private val _uiState = MutableStateFlow(
         AppUiState(
             hasSeenOnboarding = sessionStore.hasSeenOnboarding(),
@@ -204,6 +210,8 @@ class AppViewModel(private val sessionStore: SessionStore) : ViewModel() {
     }
 
     fun logout() {
+        val refreshToken = sessionStore.refreshToken()
+        viewModelScope.launch { authRepository.revokeSession(refreshToken) }
         sessionStore.clear()
         _uiState.value = AppUiState(
             hasSeenOnboarding = sessionStore.hasSeenOnboarding(),
