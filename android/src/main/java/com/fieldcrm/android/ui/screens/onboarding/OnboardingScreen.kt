@@ -61,7 +61,7 @@ fun OnboardingScreen(
                 icon = FieldIcons.CheckOutlined
             )
         )
-        else -> listOf( // Default for Loan Officer / others
+        else -> listOf( // Default for Relationship Officer / others
             OnboardingSlide(
                 title = "New: Swipe to upload",
                 description = "Swipe any application card right to quickly upload a missing document or guarantor form.",

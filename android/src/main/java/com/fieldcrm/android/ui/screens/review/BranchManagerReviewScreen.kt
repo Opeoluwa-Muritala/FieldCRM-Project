@@ -179,7 +179,7 @@ fun BranchManagerReviewScreen(
                                     DetailItem(label = "Requested Amount", value = "₦${String.format(Locale.US, "%,.0f", application.amount)}", isMono = true)
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
-                                    DetailItem(label = "Underwritten Stage", value = "Branch Approval")
+                                    DetailItem(label = "Current Stage", value = if (isSupervisor) "Supervisor Review" else "Team Lead Review")
                                     DetailItem(label = "Primary Product", value = application.loan_type.replaceFirstChar { it.uppercase() })
                                 }
                             }

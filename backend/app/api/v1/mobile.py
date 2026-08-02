@@ -247,10 +247,11 @@ def _mobile_role(user) -> str:
 def _stage_number(stage: str | None) -> int:
     return {
         "intake": 1,
-        "ocr_review": 2,
-        "credit_review": 3,
-        "branch_approval": 4,
+        "branch_manager_review": 2,
+        "branch_supervisor_review": 3,
+        "credit_analyst_review": 4,
         "crm_review": 5,
+        "head_crm_review": 6,
         "ed_approval": 7,
         "md_approval": 8,
         "executive_approval": 7,
@@ -258,24 +259,34 @@ def _stage_number(stage: str | None) -> int:
         "disbursed": 10,
         "returned": 11,
         "rejected": 12,
+        # Historical aliases retained for records created by the retired flow.
+        "ocr_review": 1,
+        "credit_review": 4,
+        "branch_approval": 2,
+        "committee_review": 7,
     }.get(stage or "intake", 1)
 
 
 def _stage_status(stage: str | None) -> str:
     return {
-        "intake": "Draft",
-        "ocr_review": "OCR Review",
-        "credit_review": "Credit Review",
-        "branch_approval": "Branch Approval",
-        "crm_review": "CRM Review",
-        "ed_approval": "ED Approval",
-        "md_approval": "MD Approval",
-        "executive_approval": "Executive Approval",
-        "disbursement_ready": "Disbursement Ready",
+        "intake": "Relationship Officer Intake",
+        "branch_manager_review": "Team Lead Review",
+        "branch_supervisor_review": "Supervisor Review",
+        "credit_analyst_review": "Credit Analysis",
+        "crm_review": "CRM Dossier Review",
+        "head_crm_review": "Head CRM Approval",
+        "ed_approval": "Executive Director Approval",
+        "md_approval": "Managing Director Input",
+        "executive_approval": "Executive Director Approval",
+        "disbursement_ready": "CRM Disbursement",
         "disbursed": "Disbursed",
         "returned": "Returned",
         "rejected": "Rejected",
-    }.get(stage or "intake", "Draft")
+        "ocr_review": "Legacy OCR Review",
+        "credit_review": "Legacy Credit Review",
+        "branch_approval": "Legacy Branch Approval",
+        "committee_review": "Legacy Committee Review",
+    }.get(stage or "intake", "Relationship Officer Intake")
 
 
 def _mobile_application(app: Any, current_user) -> dict[str, Any]:

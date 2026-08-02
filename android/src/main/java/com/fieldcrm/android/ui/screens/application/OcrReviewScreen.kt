@@ -65,7 +65,7 @@ fun OcrReviewScreen(
         ) {
             FieldCard {
                 Text(
-                    "Review auto-extracted fields below. Correct any errors before advancing to Credit Review.",
+                    "Review auto-extracted fields below. Correct any errors before sending the application to Team Lead Review.",
                     style = FieldTheme.typography.body,
                     color = FieldTheme.colors.gray400
                 )
@@ -144,7 +144,7 @@ fun OcrReviewScreen(
             }
 
             PrimaryButton(
-                text = "Verify & Advance to Credit Review",
+                text = "Verify & Send to Team Lead",
                 enabled = !uiState.isLoading && uiState.ocrFields.isNotEmpty(),
                 onClick = {
                     applicationViewModel.submitOcrReview(

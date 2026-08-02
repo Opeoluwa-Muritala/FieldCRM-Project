@@ -80,7 +80,7 @@ fun CrmReviewScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 DecisionImpactNotice(
-                    if (role == UserRole.HEAD_CRM) "Approval records Head CRM authorization and routes the dossier to the audit stage." else "Submission records CRM completeness review and routes the dossier to Head CRM."
+                    if (role == UserRole.HEAD_CRM) "Approval records Head CRM authorization and routes the dossier to the Executive Director." else "Submission records CRM completeness review and routes the dossier to Head CRM."
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -93,7 +93,7 @@ fun CrmReviewScreen(
                         Text(if (role == UserRole.HEAD_CRM) "Return to CRM" else "Return")
                     }
                     PrimaryButton(
-                        text = if (isSubmitting) "Submitting..." else if (role == UserRole.HEAD_CRM) "Approve & Send to Audit" else "Advance to Head CRM",
+                        text = if (isSubmitting) "Submitting..." else if (role == UserRole.HEAD_CRM) "Approve & Send to Executive Director" else "Advance to Head CRM",
                         onClick = { onAdvanceToExecutive(notes, bureau1, bureau2, crmsSearch, ncrReg) },
                         enabled = allChecked && !isSubmitting,
                         modifier = Modifier.weight(1.5f)
@@ -179,7 +179,7 @@ fun CrmReviewScreen(
                                     color = FieldTheme.colors.gray100
                                 )
                                 Text(
-                                    text = "Reviewer: Adebayo Coker | Status: Complete | Date: 2026-08-02",
+                                    text = "Reviewer details are not available in this response.",
                                     style = FieldTheme.typography.label,
                                     color = FieldTheme.colors.gray400
                                 )
@@ -191,26 +191,7 @@ fun CrmReviewScreen(
 
             // Z4.1 Document Quality / Verification Table
             SectionCard(title = "Document Quality / Verification") {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        Triple("Government ID", "VERIFIED", "Adebayo Coker"),
-                        Triple("Utility Address Evidence", "VERIFIED", "Adebayo Coker"),
-                        Triple("6-Month Bank Statement", "VERIFIED", "System Automated"),
-                        Triple("Credit Bureau Report Searches", "VERIFIED", "Adebayo Coker")
-                    ).forEach { (doc, status, verifier) ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(doc, style = FieldTheme.typography.body, color = FieldTheme.colors.gray300)
-                                Text("Uploader/Verifier: $verifier", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
-                            }
-                            StatusChip(label = status, isPositive = status == "VERIFIED")
-                        }
-                    }
-                }
+                Text("Open the dossier Documents section for current upload, verification, and OCR states.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
             }
 
             // Z4.2 Supporting Document Upload shortcut

@@ -200,7 +200,18 @@ fun ApplicationDetailScreenView(
                             Spacer(modifier = Modifier.height(4.dp))
                             Box(modifier = Modifier.clickable { onNavigateToFormWizard() }) {
                                 LoanStageTimeline(
-                                    stages = listOf("Intake", "Branch Manager", "Credit Analysis", "Approval", "Ready"),
+                                    stages = listOf(
+                                        "Relationship Officer",
+                                        "Team Lead",
+                                        "Supervisor",
+                                        "Credit Analyst",
+                                        "CRM Officer",
+                                        "Head CRM",
+                                        "Executive Director",
+                                        "Managing Director",
+                                        "CRM Disbursement",
+                                        "Disbursed"
+                                    ),
                                     currentStageIndex = application.stageIndex
                                 )
                             }

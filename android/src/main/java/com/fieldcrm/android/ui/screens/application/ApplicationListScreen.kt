@@ -184,7 +184,20 @@ fun ApplicationListContent(
                     .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val stages = listOf("All Stages", "Draft", "OCR Review", "Credit Review", "Branch Approval", "CRM Review", "Disbursed", "Returned")
+                val stages = listOf(
+                    "All Stages",
+                    "Relationship Officer Intake",
+                    "Team Lead Review",
+                    "Supervisor Review",
+                    "Credit Analysis",
+                    "CRM Dossier Review",
+                    "Head CRM Approval",
+                    "Executive Director Approval",
+                    "Managing Director Input",
+                    "CRM Disbursement",
+                    "Disbursed",
+                    "Returned"
+                )
                 stages.forEach { stage ->
                     val isSelected = selectedFilterStage == stage
                     val chipBg = if (isSelected) FieldTheme.colors.purple600.copy(alpha = 0.2f) else FieldTheme.colors.gray900
@@ -257,9 +270,10 @@ fun ApplicationListContent(
                         val initials = name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
 
                         val stateCode = when (app.stage) {
-                            "branch_approval", "executive_approval", "disbursement_ready", "disbursed" -> StatusChipVariant.Approved
+                            "ed_approval", "md_approval", "executive_approval", "disbursement_ready", "disbursed" -> StatusChipVariant.Approved
                             "intake" -> StatusChipVariant.Verified
-                            "ocr_review", "crm_review" -> StatusChipVariant.NeedsReview
+                            "branch_manager_review", "branch_supervisor_review", "credit_analyst_review",
+                            "crm_review", "head_crm_review", "ocr_review", "credit_review", "branch_approval" -> StatusChipVariant.NeedsReview
                             "returned" -> StatusChipVariant.Returned
                             "rejected" -> StatusChipVariant.LowConfidence
                             else -> StatusChipVariant.NeedsReview

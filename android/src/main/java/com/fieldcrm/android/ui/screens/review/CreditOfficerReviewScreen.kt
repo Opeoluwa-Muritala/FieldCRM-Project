@@ -211,25 +211,19 @@ fun CreditOfficerReviewScreen(
                             // Row 1: Monthly Income
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 Text("Monthly Income", style = FieldTheme.typography.body, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1.5f))
-                                Text("₦250k", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
-                                Text("₦220k", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
-                                Text("-12%", style = FieldTheme.typography.mono, color = FieldTheme.colors.statusSuccess, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                                Text("Not available", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500, modifier = Modifier.weight(3f), textAlign = TextAlign.End)
                             }
 
                             // Row 2: Rent Expenditure
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 Text("Monthly Rent", style = FieldTheme.typography.body, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1.5f))
-                                Text("₦30k", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
-                                Text("₦45k", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
-                                Text("+50%", style = FieldTheme.typography.mono, color = FieldTheme.colors.statusDanger, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                                Text("Not available", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500, modifier = Modifier.weight(3f), textAlign = TextAlign.End)
                             }
 
                             // Row 3: Co-borrower repayments
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 Text("Debt Obligations", style = FieldTheme.typography.body, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1.5f))
-                                Text("₦20k", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
-                                Text("₦20k", style = FieldTheme.typography.mono, color = FieldTheme.colors.gray300, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
-                                Text("0%", style = FieldTheme.typography.mono, color = FieldTheme.colors.statusSuccess, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                                Text("Not available", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500, modifier = Modifier.weight(3f), textAlign = TextAlign.End)
                             }
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -254,28 +248,7 @@ fun CreditOfficerReviewScreen(
                 1 -> {
                     // Tab 2: Documents Verification List
                     SectionCard(title = "Compliance and Verification Documents") {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            listOf(
-                                Triple("National ID Card", "VERIFIED", "Officer Yusuf"),
-                                Triple("Utility Bill (Water/Electric)", "VERIFIED", "Officer Yusuf"),
-                                Triple("Bank Statement (6 Months)", "VERIFIED", "System Automated"),
-                                Triple("Employment Letter / CAC Registry", "UNVERIFIED", "Pending Review")
-                            ).forEach { (doc, status, verifier) ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column {
-                                        Text(doc, style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray300)
-                                        Text("Verifier: $verifier", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
-                                    }
-                                    StatusChip(label = status, isPositive = status == "VERIFIED")
-                                }
-                            }
-                        }
+                        Text("Open the dossier Documents section for current database-backed verification records.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
                     }
                 }
                 2 -> {

@@ -309,7 +309,7 @@ fun LoanApplicationFormContent(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             PrimaryButton(
-                                text = "Submit for Credit Review",
+                                text = "Submit to Team Lead",
                                 onClick = {
                                     onSubmit(
                                         nameInput, phoneInput, bvnInput, addressInput, dobInput, maritalInput,
@@ -1344,7 +1344,7 @@ fun WizardTabContent(
             val hasDirectDebitMandate = docs.any { (it["doc_type"] as? String)?.equals("direct_debit_mandate", ignoreCase = true) == true }
             val hasRequiredDocs = hasOfferAcceptance && hasDisbursementMandate && hasDirectDebitMandate
 
-            val ocrVerified = (appDetail?.readiness?.get("ocr_verified") as? Boolean) ?: true
+            val ocrVerified = (appDetail?.readiness?.get("ocr_verified") as? Boolean) == true
 
             val isGuarantorRequired = product.equals("MSEF", ignoreCase = true) || product.equals("Enterprise Loan", ignoreCase = true)
             val guarantorComplete = !isGuarantorRequired || ((appDetail?.readiness?.get("guarantor_form_submitted") as? Boolean) == true)
@@ -1356,7 +1356,7 @@ fun WizardTabContent(
             FieldCard {
                 Text("Dossier Summary Review", style = FieldTheme.typography.title, color = FieldTheme.colors.gray100)
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Please confirm that all details are accurate. Submitting will advance the application to the OCR Review pipeline stage.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
+                Text("Please confirm that all details are accurate. Submitting will send the application to Team Lead Review.", style = FieldTheme.typography.body, color = FieldTheme.colors.gray400)
                 Spacer(modifier = Modifier.height(16.dp))
                 ReadinessChecklist(
                     gates = listOf(

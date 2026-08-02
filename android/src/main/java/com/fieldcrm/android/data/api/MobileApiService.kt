@@ -91,7 +91,7 @@ interface MobileApiService {
     suspend fun submitMdApprove(id: String, action: String, notes: String): String?
     suspend fun addBoardReferral(id: String, email: String, name: String, notes: String): String?
 
-    // Canonical operational workflow: Account Officer through CRM disbursement readiness.
+    // Canonical operational workflow: Relationship Officer through CRM disbursement readiness.
     suspend fun advanceWorkflow(id: String, notes: String): WorkflowAdvanceResponse?
 
     // User management (admin only)

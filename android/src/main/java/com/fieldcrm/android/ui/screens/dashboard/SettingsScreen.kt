@@ -48,7 +48,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    userName: String = "Chidi Okafor",
+    userName: String = "",
     userEmail: String = "chidi@mmfb.com",
     role: UserRole? = UserRole.LOAN_OFFICER,
     onBackClick: (() -> Unit)? = null,
@@ -186,7 +186,7 @@ fun SettingsScreen(
                             FieldDivider()
                             DetailFieldRow(label = "Email Address", value = userEmail)
                             FieldDivider()
-                            DetailFieldRow(label = "User Role", value = role?.displayName ?: "Loan Officer")
+                            DetailFieldRow(label = "User Role", value = role?.displayName ?: "Relationship Officer")
                             FieldDivider()
                             DetailFieldRow(
                                 label = "Branch / Organization",

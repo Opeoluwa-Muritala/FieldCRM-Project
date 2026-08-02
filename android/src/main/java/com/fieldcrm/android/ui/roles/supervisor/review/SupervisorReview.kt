@@ -184,7 +184,7 @@ fun SupervisorReview(
                                 color = FieldTheme.colors.gray100
                             )
                             Text(
-                                text = "TL: Tunde Yusuf | Decision: Concurred | Date: 2026-08-02",
+                                text = "Team Lead concurrence details are not available in this response.",
                                 style = FieldTheme.typography.label,
                                 color = FieldTheme.colors.gray400
                             )

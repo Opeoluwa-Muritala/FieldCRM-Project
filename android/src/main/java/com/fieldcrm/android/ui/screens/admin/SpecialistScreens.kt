@@ -242,20 +242,20 @@ fun MccWorkspaceScreen(onBack: () -> Unit, canManage: Boolean = true) {
                     
                     HorizontalDivider(color = FieldTheme.colors.gray800)
 
-                    // Side-by-Side Recommendations (Credit Officer & Branch Manager)
+                    // Side-by-Side Recommendations (Credit Analyst & Team Lead)
                     Text("ROLE RECOMMENDATIONS", style = FieldTheme.typography.label, color = FieldTheme.colors.purple400)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Credit Officer Column
+                        // Credit Analyst Column
                         Column(
                             modifier = Modifier
                                 .weight(1f)
                                 .background(FieldTheme.colors.gray900, RoundedCornerShape(8.dp))
                                 .padding(8.dp)
                         ) {
-                            Text("Credit Officer", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray100)
+                            Text("Credit Analyst", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray100)
                             Spacer(modifier = Modifier.height(4.dp))
                             val coAmt = mccDetail?.get("credit_officer_amount")?.jsonPrimitive?.content
                                 ?: mccDetail?.get("co_recommended_amount")?.jsonPrimitive?.content
@@ -266,14 +266,14 @@ fun MccWorkspaceScreen(onBack: () -> Unit, canManage: Boolean = true) {
                             Text(coNotes, style = FieldTheme.typography.body.copy(fontSize = 11.sp), color = FieldTheme.colors.gray400)
                         }
 
-                        // Branch Manager Column
+                        // Team Lead Column
                         Column(
                             modifier = Modifier
                                 .weight(1f)
                                 .background(FieldTheme.colors.gray900, RoundedCornerShape(8.dp))
                                 .padding(8.dp)
                         ) {
-                            Text("Branch Manager", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray100)
+                            Text("Team Lead", style = FieldTheme.typography.bodyStrong, color = FieldTheme.colors.gray100)
                             Spacer(modifier = Modifier.height(4.dp))
                             val bmAmt = mccDetail?.get("branch_manager_amount")?.jsonPrimitive?.content
                                 ?: mccDetail?.get("bm_recommended_amount")?.jsonPrimitive?.content
