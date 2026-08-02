@@ -3,8 +3,6 @@ package com.fieldcrm.android.ui.screens.admin
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -335,57 +333,9 @@ fun UsersScreen(
                 )
             }
 
-            // Present / Active Users Horizontal Row Component
-            val activeUsers = users.filter { it.active }
-            if (activeUsers.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "PRESENT USERS",
-                    style = FieldTheme.typography.label,
-                    color = FieldTheme.colors.gray500
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    activeUsers.forEach { activeUser ->
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .clickable { selectedUserForDetail = activeUser }
-                                .padding(horizontal = 4.dp, vertical = 6.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .background(FieldTheme.colors.purple950.copy(alpha = 0.5f), RoundedCornerShape(22.dp))
-                                    .border(1.5.dp, FieldTheme.colors.statusSuccess, RoundedCornerShape(22.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = activeUser.full_name.take(2).uppercase(),
-                                    style = FieldTheme.typography.bodyStrong,
-                                    color = FieldTheme.colors.gray100
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = activeUser.full_name.split(" ").firstOrNull() ?: activeUser.full_name,
-                                style = FieldTheme.typography.label.copy(fontSize = 11.sp),
-                                color = FieldTheme.colors.gray300
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Divider(color = FieldTheme.colors.gray800)
-            }
-
             Spacer(modifier = Modifier.height(16.dp))
+            Text("ALL USERS", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
+            Spacer(modifier = Modifier.height(8.dp))
 
             when {
                 pageState is UsersPageState.Loading -> {
