@@ -638,44 +638,13 @@ def _verify_loan_scope(app, current_user):
                 detail="You do not have permission to access this application."
             )
 
-@router.get("/applications/{application_id}")
-async def render_application_detail(
-    request: Request,
-    application_id: str,
-    conn = Depends(db_conn),
-    current_user = Depends(get_current_user)
-):
-    """
-    On mobile: redirects to the correct wizard step or review page depending on current owner/stage.
-    On desktop: renders the role-specific detail workstation layout page.
-    """
+async def _get_dossier_context(request: Request, application_id: str, conn, current_user, active_tab="applications"):
     repo = LoanRepository(conn)
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
     _verify_loan_scope(app, current_user)
-        
-    device = detect_device_type(request)
-    if device == "mobile":
-        if app.current_stage == 1:
-            return RedirectResponse(url=f"/applications/{application_id}/step/1", status_code=status.HTTP_303_SEE_OTHER)
-        elif app.current_stage == 2:
-            # Legacy OCR-review records no longer have a manual review page.
-            return RedirectResponse(url=f"/applications/{application_id}/approve", status_code=status.HTTP_303_SEE_OTHER)
-        elif app.current_stage == 3:
-            return RedirectResponse(url=f"/applications/{application_id}/credit-review", status_code=status.HTTP_303_SEE_OTHER)
-        else:
-            return RedirectResponse(url=f"/applications/{application_id}/approve", status_code=status.HTTP_303_SEE_OTHER)
-
-    # On desktop, render role-specific detail workstation
-    role = current_user.role.lower().replace(" ", "_")
-    template_name = get_role_template(role, "application_detail.html")
-    # Branch Supervisor and Credit Analyst use their own dashboards/queues,
-    # but share the Branch Manager's read-only application review layout.
-    # Those role folders intentionally do not contain a duplicate detail view.
-    if role in ("branch_supervisor", "credit_analyst"):
-        template_name = "branch_manager/application_detail.html"
     
     app_uuid = UUID(application_id)
 
@@ -759,9 +728,52 @@ async def render_application_detail(
         VERIFICATION_ENABLED=settings.VERIFICATION_ENABLED,
         BUREAU_REPORTING_ENABLED=settings.BUREAU_REPORTING_ENABLED,
         AML_SCREENING_ENABLED=settings.AML_SCREENING_ENABLED,
-        active_tab="applications",
-        active_page="applications",
+        active_tab=active_tab,
+        active_page=active_tab,
     )
+    return ctx
+
+@router.get("/applications/{application_id}")
+async def render_application_detail(
+    request: Request,
+    application_id: str,
+    conn = Depends(db_conn),
+    current_user = Depends(get_current_user)
+):
+    """
+    On mobile: redirects to the correct wizard step or review page depending on current owner/stage.
+    On desktop: renders the role-specific detail workstation layout page.
+    """
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+        
+    _verify_loan_scope(app, current_user)
+        
+    device = detect_device_type(request)
+    if device == "mobile":
+        if app.current_stage == 1:
+            return RedirectResponse(url=f"/applications/{application_id}/step/1", status_code=status.HTTP_303_SEE_OTHER)
+        elif app.current_stage == 2:
+            # Legacy OCR-review records no longer have a manual review page.
+            return RedirectResponse(url=f"/applications/{application_id}/approve", status_code=status.HTTP_303_SEE_OTHER)
+        elif app.current_stage == 3:
+            return RedirectResponse(url=f"/applications/{application_id}/credit-review", status_code=status.HTTP_303_SEE_OTHER)
+        else:
+            return RedirectResponse(url=f"/applications/{application_id}/approve", status_code=status.HTTP_303_SEE_OTHER)
+
+    # On desktop, render role-specific detail workstation
+    role = current_user.role.lower().replace(" ", "_")
+    template_name = get_role_template(role, "application_detail.html")
+    # Branch Supervisor and Credit Analyst use their own dashboards/queues,
+    # but share the Branch Manager's read-only application review layout.
+    # Those role folders intentionally do not contain a duplicate detail view.
+    if role in ("branch_supervisor", "credit_analyst"):
+        template_name = "branch_manager/application_detail.html"
+
+    ctx = await _get_dossier_context(request, application_id, conn, current_user, active_tab="applications")
+    ctx["readonly"] = (role not in ("branch_supervisor", "branch_manager")) or ctx["app"].stage != "branch_approval"
     return templates.TemplateResponse(request, template_name, ctx)
 
 @router.get("/applications/{application_id}/step/{step}")
@@ -974,15 +986,6 @@ async def submit_signed_intake_to_branch_manager(
             detail="Only an intake application can be submitted to the branch manager",
         )
 
-    signed_version = await SigningRepository(conn).latest_version(
-        app_id, "applicant_stage", "intake"
-    )
-    if not signed_version or signed_version["status"] != "signed":
-        raise HTTPException(
-            status_code=409,
-            detail="The client must sign the intake before it can be submitted",
-        )
-
     await repo.assign_default_branch_manager(app_id, current_user.org_id)
     updated = await repo.advance_stage(
         app_id, current_user.org_id, "branch_manager_review"
@@ -993,7 +996,7 @@ async def submit_signed_intake_to_branch_manager(
     await AuditService(conn).log(
         application_id=application_id,
         org_id=str(current_user.org_id),
-        action="Signed intake submitted to Branch Manager",
+        action="Intake submitted to Branch Manager",
         from_stage="intake",
         to_stage="branch_manager_review",
         actor_id=str(current_user.id),
@@ -1863,20 +1866,9 @@ async def render_read_only_application_view(
     current_user=Depends(RoleChecker(["Branch Manager", "Branch Supervisor", "Credit Analyst", "CRM", "Head CRM", "Auditor", "ED", "MD"])),
 ):
     """Read-only application view used by the Current Loans screen."""
-    repo = LoanRepository(conn)
-    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
-    if not app:
-        raise HTTPException(status_code=404, detail="Loan Application not found")
-    documents = await get_document_service(conn).repo.get_by_loan(UUID(application_id), current_user.org_id)
-    ctx = build_template_context(
-        request,
-        current_user,
-        app=app,
-        documents=documents,
-        active_tab="borrowers",
-        active_page="borrowers",
-    )
-    return templates.TemplateResponse(request, "shared/loan_view.html", ctx)
+    ctx = await _get_dossier_context(request, application_id, conn, current_user, active_tab="borrowers")
+    ctx["readonly"] = True
+    return templates.TemplateResponse(request, "branch_manager/application_detail.html", ctx)
 
 @router.get("/notifications")
 async def render_notifications(
@@ -2757,8 +2749,9 @@ async def process_valuation_submission(
 
 @router.get("/mcc")
 async def render_mcc_index(request: Request, conn=Depends(db_conn), current_user=Depends(get_current_user)):
-    if current_user.role not in {"ed", "md"}:
-        raise HTTPException(status_code=403, detail="MCC is restricted to ED and MD")
+    role = current_user.role.lower().replace(" ", "_")
+    if role == "client":
+        raise HTTPException(status_code=403, detail="MCC is restricted to staff")
     dossiers = await conn.fetch(
         """SELECT id, ref_no, applicant_name, amount, stage, updated_at FROM loan_applications
            WHERE org_id=$1 AND deleted_at IS NULL AND stage IN ('ed_approval','md_approval')
@@ -2770,8 +2763,9 @@ async def render_mcc_index(request: Request, conn=Depends(db_conn), current_user
 
 @router.get("/applications/{application_id}/mcc")
 async def render_mcc_summary(request: Request, application_id: str, conn=Depends(db_conn), current_user=Depends(get_current_user)):
-    if current_user.role not in {"ed", "md"}:
-        raise HTTPException(status_code=403, detail="MCC is restricted to ED and MD")
+    role = current_user.role.lower().replace(" ", "_")
+    if role == "client":
+        raise HTTPException(status_code=403, detail="MCC is restricted to staff")
     app = await LoanRepository(conn).get_by_id(UUID(application_id), current_user.org_id)
     if not app or app.stage not in {"ed_approval", "md_approval"}:
         raise HTTPException(status_code=404, detail="MCC dossier not found")
@@ -2787,8 +2781,9 @@ async def render_mcc_summary(request: Request, application_id: str, conn=Depends
 
 @router.post("/applications/{application_id}/mcc-vote")
 async def submit_mcc_vote(application_id: str, recommended_amount: float = Form(...), notes: str = Form(""), conn=Depends(db_conn), current_user=Depends(get_current_user)):
-    if current_user.role not in {"ed", "md"}:
-        raise HTTPException(status_code=403, detail="MCC is restricted to ED and MD")
+    role = current_user.role.lower().replace(" ", "_")
+    if role == "client":
+        raise HTTPException(status_code=403, detail="MCC is restricted to staff")
     app = await LoanRepository(conn).get_by_id(UUID(application_id), current_user.org_id)
     if not app or app.stage not in {"ed_approval", "md_approval"}:
         raise HTTPException(status_code=409, detail="This dossier is not available for MCC voting")
@@ -2804,8 +2799,8 @@ async def submit_mcc_vote(application_id: str, recommended_amount: float = Form(
 
 @router.post("/applications/{application_id}/mcc-finalize")
 async def finalize_mcc_amount(application_id: str, final_amount: float = Form(...), conn=Depends(db_conn), current_user=Depends(get_current_user)):
-    if current_user.role not in {"ed", "md"}:
-        raise HTTPException(status_code=403, detail="MCC is restricted to ED and MD")
+    if current_user.role.lower().replace(" ", "_") not in {"ed", "md"}:
+        raise HTTPException(status_code=403, detail="Only ED or MD can set the final MCC amount")
     result = await conn.execute(
         """UPDATE loan_applications SET amount=$1, mcc_finalized_by=$2, mcc_finalized_at=NOW(), updated_at=NOW()
            WHERE id=$3 AND org_id=$4 AND stage IN ('ed_approval','md_approval')""",
@@ -3376,46 +3371,10 @@ async def generate_existing_client_link(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    role = current_user.role.lower().replace(" ", "_")
-    if role not in {"account_officer", "loan_officer"}:
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
-    try:
-        app_id = UUID(application_id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Loan Application not found")
-
-    app = await LoanRepository(conn).get_by_id(app_id, current_user.org_id)
-    if not app:
-        raise HTTPException(status_code=404, detail="Loan Application not found")
-    if app.created_by != current_user.id:
-        raise HTTPException(
-            status_code=403,
-            detail="You do not have permission to share this application",
-        )
-    if app.stage != "intake":
-        raise HTTPException(
-            status_code=409,
-            detail="Only an intake application can be shared with the client",
-        )
-
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
-    token = jwt.encode(
-        {
-            "type": "existing_client_signing",
-            "app_id": str(app_id),
-            "org_id": str(current_user.org_id),
-            "officer_id": str(current_user.id),
-            "exp": expires_at,
-            "nonce": secrets.token_hex(16),
-        },
-        settings.JWT_SECRET_KEY,
-        algorithm=settings.JWT_ALGORITHM,
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Client signing and link generation is deactivated."
     )
-    base_url = str(request.base_url).rstrip("/")
-    return {
-        "share_url": f"{base_url}/client-access/{token}",
-        "expires_at": expires_at,
-    }
 
 
 @router.post("/applications/{application_id}/guarantor-link/{slot}")
@@ -3426,44 +3385,10 @@ async def generate_guarantor_signing_link(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    role = current_user.role.lower().replace(" ", "_")
-    allowed_roles = {"account_officer", "loan_officer", "branch_manager", "branch_supervisor", "credit_analyst"}
-    if role not in allowed_roles:
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
-
-    try:
-        app_id = UUID(application_id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Loan Application not found")
-
-    app = await LoanRepository(conn).get_by_id(app_id, current_user.org_id)
-    if not app:
-        raise HTTPException(status_code=404, detail="Loan Application not found")
-
-    if slot not in (1, 2):
-        raise HTTPException(status_code=400, detail="Invalid guarantor slot")
-
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=1440)
-    token = jwt.encode(
-        {
-            "type": "guarantor_signing",
-            "app_id": str(app_id),
-            "slot": slot,
-            "org_id": str(current_user.org_id),
-            "officer_id": str(current_user.id),
-            "exp": expires_at,
-            "nonce": secrets.token_hex(16),
-        },
-        settings.JWT_SECRET_KEY,
-        algorithm=settings.JWT_ALGORITHM,
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Client signing and link generation is deactivated."
     )
-    base_url = str(request.base_url).rstrip("/")
-    share_url = f"{base_url}/guarantor-access/{token}"
-    return {
-        "share_url": share_url,
-        "link": share_url,
-        "expires_at": expires_at,
-    }
 
 
 @router.get("/guarantor-access/{token}")
@@ -3644,19 +3569,10 @@ async def redeem_existing_client_link(
 
 
 def get_client_session_data(request: Request) -> dict:
-    cookie_val = request.cookies.get("client_session")
-    if not cookie_val:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Session not found. Please open the link sent by your officer."
-        )
-    payload = decode_access_token(cookie_val)
-    if not payload or payload.get("type") != "client_session":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Session expired or invalid. Please open the link sent by your officer."
-        )
-    return payload
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Client signing and link generation is deactivated."
+    )
 
 
 @router.post("/client-form/signing/otp/start")

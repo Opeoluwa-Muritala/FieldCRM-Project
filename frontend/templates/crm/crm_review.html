@@ -27,6 +27,10 @@
   <div><span>Decision owner</span><strong>{{ 'Head CRM' if current_user.role == 'head_crm' else 'CRM Officer' }}</strong></div>
 </section>
 
+<div class="page-card" style="margin-bottom: 20px;">
+  <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary" style="display: inline-block;">Open Collateral &amp; Repayment Feasibility Analysis &rarr;</a>
+</div>
+
 <div class="page-card csp-s-3c4a3d440074">
   <h3 class="csp-s-4636770b4968">Document Checklist</h3>
   <table class="custom-table">
@@ -102,7 +106,16 @@
     </table>
   </div>
   {% endif %}
+{% if current_user.role == 'head_crm' %}
+<div class="page-card" style="margin-bottom: 20px;">
+  <h3 class="csp-s-4636770b4968">Head CRM Application Reference Views</h3>
+  <p class="action-note">Use these read-only links to inspect the details submitted by the applicant and relationship officer:</p>
+  <div style="display: flex; gap: 15px; margin-top: 10px;">
+    <a href="/applications/{{ app_id }}/step/1" class="btn btn-secondary" target="_blank">View Application Form (Step 1) &nearr;</a>
+    <a href="/applications/{{ app_id }}/guarantors/1/step/7" class="btn btn-secondary" target="_blank">View Guarantor Details (Step 7) &nearr;</a>
+  </div>
 </div>
+{% endif %}
 
 <div class="audit-action-panel">
   <h3 class="csp-s-4636770b4968">{{ 'Head CRM Approval' if current_user.role == 'head_crm' else 'CRM Dossier Review' }}</h3>
@@ -115,7 +128,7 @@
     <section id="crm-consents" class="csp-s-a94d78a93365">
       <h4 class="csp-s-bb5bea385726">Declarations &amp; Consents</h4>
       <p class="csp-s-244cb7eb6f45">All items below are required before this file can proceed.</p>
-      <p class="flat-card consent-signing-note csp-s-df1b781e15ed">The applicant signs through their authenticated client link. Staff cannot sign on an applicant's behalf.</p>
+      <p class="flat-card consent-signing-note csp-s-df1b781e15ed">Confirm applicant consent for the declarations below before proceeding.</p>
       <div class="consent-checklist">
         <label class="consent-checklist-item"><input type="checkbox" name="consent_credit_bureau" value="1" {% if consent_data.consent_credit_bureau %}checked{% endif %}> <span><strong>Credit Bureau Disclosure</strong><small>CBN-mandated disclosure consent</small></span></label>
         <label class="consent-checklist-item"><input type="checkbox" name="consent_credit_check" value="1" {% if consent_data.consent_credit_check %}checked{% endif %}> <span><strong>Credit Check Authorisation</strong></span></label>

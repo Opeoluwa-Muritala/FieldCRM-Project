@@ -2212,12 +2212,6 @@ async def submit_mobile_signed_intake_to_branch_manager(
     if app.stage != "intake":
         raise HTTPException(status_code=409, detail="Only an intake application can be submitted to the branch manager")
 
-    signed_version = await SigningRepository(conn).latest_version(
-        application_id, "applicant_stage", "intake"
-    )
-    if not signed_version or signed_version["status"] != "signed":
-        raise HTTPException(status_code=409, detail="The client must sign the intake before it can be submitted")
-
     repo = LoanRepository(conn)
     await repo.assign_default_branch_manager(application_id, current_user.org_id)
     updated = await repo.advance_stage(application_id, current_user.org_id, "branch_manager_review")
@@ -2227,7 +2221,7 @@ async def submit_mobile_signed_intake_to_branch_manager(
     await AuditService(conn).log(
         application_id=str(application_id),
         org_id=str(current_user.org_id),
-        action="Signed intake submitted to Branch Manager",
+        action="Intake submitted to Branch Manager",
         from_stage="intake",
         to_stage="branch_manager_review",
         actor_id=str(current_user.id),
@@ -2337,17 +2331,9 @@ async def generate_mobile_client_link(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    app = await _get_application_or_404(conn, application_id, current_user)
-    _ensure_roles(current_user, {"account_officer"})
-    if app.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="You do not have permission to share this application")
-    if app.stage != "intake":
-        raise HTTPException(status_code=409, detail="Only an intake application can be shared with the client")
-    return _signing_link(
-        request, "client-access",
-        {"type": "existing_client_signing", "app_id": str(application_id),
-         "org_id": str(current_user.org_id), "officer_id": str(current_user.id)},
-        10,
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Client signing and link generation is deactivated."
     )
 
 
@@ -2359,16 +2345,9 @@ async def generate_mobile_guarantor_link(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    await _get_application_or_404(conn, application_id, current_user)
-    _ensure_roles(
-        current_user,
-        {"account_officer", "branch_manager", "branch_supervisor", "credit_analyst"},
-    )
-    return _signing_link(
-        request, "guarantor-access",
-        {"type": "guarantor_signing", "app_id": str(application_id), "slot": slot,
-         "org_id": str(current_user.org_id), "officer_id": str(current_user.id)},
-        1440,
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Client signing and link generation is deactivated."
     )
 
 
@@ -2768,7 +2747,7 @@ async def get_mobile_mcc_queue(
     page: int = Query(1, ge=1), size: int = Query(50, ge=1, le=100),
     conn=Depends(db_conn), current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"ed", "md"})
+    _ensure_roles(current_user, {"ed", "md", "branch_manager", "branch_supervisor", "credit_analyst", "crm", "head_crm", "auditor", "system_admin", "account_officer", "loan_officer"})
     rows = await conn.fetch(
         """SELECT id, ref_no, applicant_name, amount, stage, updated_at, COUNT(*) OVER() AS total_count
            FROM loan_applications WHERE org_id=$1 AND deleted_at IS NULL
@@ -2785,7 +2764,7 @@ async def get_mobile_mcc_queue(
 async def get_mobile_mcc_application(
     application_id: UUID, conn=Depends(db_conn), current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"ed", "md"})
+    _ensure_roles(current_user, {"ed", "md", "branch_manager", "branch_supervisor", "credit_analyst", "crm", "head_crm", "auditor", "system_admin", "account_officer", "loan_officer"})
     app = await _get_application_or_404(conn, application_id, current_user, enforce_officer_scope=False)
     if app.stage not in {"ed_approval", "md_approval"}:
         raise HTTPException(status_code=409, detail="This dossier is not available for MCC review")
@@ -2806,7 +2785,7 @@ async def submit_mobile_mcc_vote(
     application_id: UUID, payload: MccVoteRequest,
     conn=Depends(db_conn), current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"ed", "md"})
+    _ensure_roles(current_user, {"ed", "md", "branch_manager", "branch_supervisor", "credit_analyst", "crm", "head_crm", "auditor", "system_admin", "account_officer", "loan_officer"})
     app = await _get_application_or_404(conn, application_id, current_user, enforce_officer_scope=False)
     if app.stage not in {"ed_approval", "md_approval"}:
         raise HTTPException(status_code=409, detail="This dossier is not available for MCC voting")
