@@ -854,6 +854,7 @@ async def process_wizard_step(
         raise HTTPException(status_code=403, detail="You do not have permission to view/modify this application")
     form_data = await request.form()
     data_dict = form_data_to_jsonable_dict(form_data)
+    pledge_upload = form_data.get("pledge_file") if step == 8 else None
     from app.domains.signing.service import SigningService
     from app.domains.signing.repository import SigningRepository
     signing_svc = SigningService(SigningRepository(conn))
@@ -871,6 +872,30 @@ async def process_wizard_step(
         return RedirectResponse(
             url=f"/applications/{application_id}/step/{step}?{query}",
             status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    if pledge_upload is not None and getattr(pledge_upload, "filename", ""):
+        pledge_document = await get_document_service(conn).save_upload(
+            loan_id=app_uuid,
+            org_id=current_user.org_id,
+            doc_type="pledge_form",
+            form_code="MMFB/CRM/02",
+            file=pledge_upload,
+            uploaded_by=current_user.id,
+            user_role=current_user.role,
+        )
+        from app.services.ocr_extraction_service import OcrExtractionService
+        await OcrExtractionService(conn).process_document(
+            document_id=pledge_document["id"],
+            loan_id=app_uuid,
+            doc_type=pledge_document["doc_type"],
+            stored_path=pledge_document["stored_path"],
+            mime_type=pledge_document["mime_type"],
+            upload_dir=settings.DOCUMENT_UPLOAD_DIR,
+        )
+        await conn.execute(
+            "UPDATE ocr_jobs SET status = 'done', updated_at = CURRENT_TIMESTAMP WHERE document_id = $1",
+            pledge_document["id"],
         )
 
     if request.query_params.get("draft") == "1":

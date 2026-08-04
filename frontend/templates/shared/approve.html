@@ -46,28 +46,55 @@
             <div class="page-card-header">
                 <span class="approval-eyebrow">Team lead decision desk</span>
                 <h2 class="page-card-title">Cross-check the submitted application</h2>
-                <p class="page-card-subtitle">Open the applicant's completed forms in read-only mode, verify every checklist item, then record your concurrence decision.</p>
+                <p class="page-card-subtitle">Select a form or checklist row to inspect its evidence, then record your concurrence decision.</p>
             </div>
-            <a href="/applications/{{ app_id }}/step/9" class="btn-primary-filled">Review Filled Application &rarr;</a>
         </section>
 
         {% macro check_row(label, status='Verified', tone='verified', href='', action='') %}
-        <div class="approval-check-row">
+        {% if href %}<a href="{{ href }}" class="approval-check-row approval-check-row-clickable" aria-label="{{ action }}: {{ label }}">
+        {% else %}<div class="approval-check-row">{% endif %}
             <div class="approval-check-label">{{ label }}</div>
             <div class="approval-check-actions">
+                {% if href %}<span class="approval-row-action">{{ action }} <span aria-hidden="true">&rarr;</span></span>{% endif %}
                 <span class="status-badge {{ tone }}">{{ status }}</span>
-                {% if href %}<a href="{{ href }}" class="approval-row-action">{{ action }}</a>{% endif %}
             </div>
-        </div>
+        {% if href %}</a>{% else %}</div>{% endif %}
         {% endmacro %}
+
+        {% set pledge_evidence = namespace(url='', name='') %}
+        {% for doc in documents %}
+            {% set doc_name = doc.original_name|default('', true)|lower %}
+            {% if not pledge_evidence.url and doc.url and (doc.doc_type == 'pledge_form' or doc.form_code == 'MMFB/CRM/02' or 'pledge' in doc_name) %}
+                {% set pledge_evidence.url = doc.url %}
+                {% set pledge_evidence.name = doc.original_name|default('Uploaded pledge form', true) %}
+            {% endif %}
+        {% endfor %}
 
         <section class="page-card approval-checklist-card">
             <div class="page-card-header approval-section-header"><span>01</span><div><h3 class="page-card-title approval-card-title">Forms completed</h3><p class="page-card-subtitle">Submitted forms and signed declarations</p></div></div>
             <div class="approval-check-list">
-                {{ check_row('Loan Application Form (MMFB/CRM/01)', href='/applications/' ~ app_id ~ '/step/9', action='View read-only') }}
-                {{ check_row('Guarantor Form 1', href='/applications/' ~ app_id ~ '/guarantors/1/step/7', action='View read-only') }}
-                {{ check_row('Guarantor Form 2', 'Missing', 'returned', '/applications/' ~ app_id ~ '/step/3', 'Fix →') }}
-                {{ check_row('Pledge and Trust Receipt (MMFB/CRM/02)', href='/applications/' ~ app_id ~ '/step/8', action='View read-only') }}
+                {% if summary and summary.loan_form_submitted %}
+                    {{ check_row('Loan Application Form (MMFB/CRM/01)', 'Available', 'verified', '/applications/' ~ app_id ~ '/step/1', 'Preview') }}
+                {% else %}
+                    {{ check_row('Loan Application Form (MMFB/CRM/01)', 'Not Available', 'returned') }}
+                {% endif %}
+                {% if summary and summary.guarantors_verified >= 1 %}
+                    {{ check_row('Guarantor Form 1', 'Available', 'verified', '/applications/' ~ app_id ~ '/guarantors/1/step/7', 'Preview') }}
+                {% else %}
+                    {{ check_row('Guarantor Form 1', 'Not Available', 'returned') }}
+                {% endif %}
+                {% if summary and summary.guarantors_verified >= 2 %}
+                    {{ check_row('Guarantor Form 2', 'Available', 'verified', '/applications/' ~ app_id ~ '/guarantors/2/step/7', 'Preview') }}
+                {% else %}
+                    {{ check_row('Guarantor Form 2', 'Not Available', 'returned') }}
+                {% endif %}
+                {% if pledge_evidence.url %}
+                    {{ check_row('Pledge and Trust Receipt — ' ~ pledge_evidence.name, 'Uploaded', 'verified', pledge_evidence.url, 'Preview PDF') }}
+                {% elif summary and summary.pledge_form_submitted %}
+                    {{ check_row('Pledge and Trust Receipt (MMFB/CRM/02)', 'Available', 'verified', '/applications/' ~ app_id ~ '/step/8', 'Preview') }}
+                {% else %}
+                    {{ check_row('Pledge and Trust Receipt (MMFB/CRM/02)', 'Not Available', 'returned') }}
+                {% endif %}
             </div>
         </section>
 
@@ -75,7 +102,11 @@
             <div class="page-card-header approval-section-header"><span>02</span><div><h3 class="page-card-title approval-card-title">Supporting documents</h3><p class="page-card-subtitle">Uploaded evidence available for inspection</p></div></div>
             <div class="approval-check-list">
                 {% for doc in documents %}
-                {{ check_row(doc.category|replace('_', ' ')|title, doc.status|replace('_', ' ')|title, 'verified' if doc.status == 'verified' else 'needs-review', doc.url or '', 'Preview ↗') }}
+                    {% if doc.url %}
+                        {{ check_row(doc.category|replace('_', ' ')|title, 'Verified' if doc.status == 'verified' else 'Needs Review', 'verified' if doc.status == 'verified' else 'needs-review', doc.url, 'Preview') }}
+                    {% else %}
+                        {{ check_row(doc.category|replace('_', ' ')|title, 'Not Available', 'returned') }}
+                    {% endif %}
                 {% else %}<div class="approval-empty-state">No documents uploaded.</div>{% endfor %}
             </div>
         </section>
@@ -85,7 +116,7 @@
                 <div class="page-card-header approval-section-header"><span>03</span><div><h3 class="page-card-title approval-card-title">Data quality &amp; checks</h3></div></div>
                 <div class="approval-check-list">
                     {{ check_row('BVN Matching Verification') }}
-                    {{ check_row('OCR Low-Confidence Exceptions', 'Needs Review', 'needs-review', '/applications/' ~ app_id ~ '/ocr-review', 'Fix →') }}
+                    {{ check_row('OCR Low-Confidence Exceptions', 'Needs Review', 'needs-review', '/applications/' ~ app_id ~ '/ocr-review', 'Fix') }}
                 </div>
             </section>
             <section class="page-card approval-checklist-card">
@@ -100,7 +131,7 @@
                 <div class="page-card-header approval-section-header"><span>05</span><div><h3 class="page-card-title approval-card-title">Field verification</h3></div></div>
                 <div class="approval-check-list">
                     {{ check_row('Visitation Report Uploaded') }}
-                    {{ check_row('Team Lead Visitation Concurrence', 'Needs Review', 'needs-review', '/applications/' ~ app_id ~ '/visitation', 'Fix →') }}
+                    {{ check_row('Team Lead Visitation Concurrence', 'Needs Review', 'needs-review', '/applications/' ~ app_id ~ '/visitation', 'Fix') }}
                 </div>
             </section>
             <section class="page-card approval-checklist-card">

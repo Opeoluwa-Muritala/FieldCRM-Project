@@ -240,6 +240,7 @@ class DashboardService:
             None,
             10,
             0,
+            getattr(user, "branch_id", None),
         )
         queue = [self._with_stage_display(dict(row)) for row in rows] if rows else []
         return {
@@ -262,6 +263,7 @@ class DashboardService:
             None,
             limit,
             offset,
+            getattr(user, "branch_id", None),
         )
         return [self._with_stage_display(dict(row)) for row in rows] if rows else []
 

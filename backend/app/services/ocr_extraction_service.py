@@ -11,6 +11,7 @@ import asyncio
 import json
 import logging
 import re
+import tempfile
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -42,10 +43,17 @@ _GUARANTOR_FIELDS: list[tuple[str, str, bool]] = [
 ]
 
 _PLEDGE_FIELDS: list[tuple[str, str, bool]] = [
-    ("item_name",        r"(?:Item|Pledged\s+Item|Property)[:\s]+(.+)",          True),
-    ("serial_number",    r"(?:Serial\s+No|Serial\s+Number)[:\s]+([A-Z0-9\-]+)", False),
-    ("estimated_value",  r"(?:Value|Estimated\s+Value)[:\s]+([\d,]+)",           True),
-    ("ncr_reg_number",   r"(?:NCR|NCR\s+Reg|Registration)[:\s]+([A-Z0-9\-/]+)", False),
+    ("pledge_date",        r"(?:Date)[:\s]+(\d{1,2}[\-/]\d{1,2}[\-/]\d{2,4}|\d{4}-\d{2}-\d{2})", False),
+    ("pledge_borrower",    r"(?:Name\s+of\s+(?:Borrower|Association)|Borrower)[:\s]+(.+)", True),
+    ("pledge_amount_figs", r"(?:Facility\s+Amount|Amount\s+in\s+Figures|Loan\s+Amount)[:\s₦N]+([\d,]+(?:\.\d{1,2})?)", True),
+    ("pledge_location",    r"(?:Goods\s+(?:are\s+)?Located|Shop/House\s+Address|Location)[:\s]+(.+)", False),
+    ("pledge_obligor",     r"(?:Name\s+of\s+Obligor|Obligor)[:\s]+(.+)", False),
+    ("item_name",          r"(?:Item|Pledged\s+Item|Property)[:\s]+(.+)", True),
+    ("item_quantity",      r"(?:Quantity|Qty)[:\s]+(\d+)", False),
+    ("item_description",   r"(?:Description)[:\s]+(.+)", False),
+    ("serial_number",      r"(?:Serial\s+No|Serial\s+Number)[:\s]+([A-Z0-9\-]+)", False),
+    ("estimated_value",    r"(?:Value|Estimated\s+Value)[:\s₦N]+([\d,]+(?:\.\d{1,2})?)", True),
+    ("ncr_reg_number",     r"(?:NCR|NCR\s+Reg|Registration)[:\s]+([A-Z0-9\-/]+)", False),
 ]
 
 _FIELD_MAP: dict[str, tuple[list[tuple[str, str, bool]], str]] = {
@@ -182,24 +190,47 @@ class OcrExtractionService:
 
         field_specs, form_type = spec
 
-        # Build absolute path from stored_path ("/static/uploads/...")
-        rel = stored_path.lstrip("/").replace("static/uploads/", "")
-        abs_path = str(Path(upload_dir) / rel)
+        temp_path: Path | None = None
+        if stored_path.startswith("cloudinary://"):
+            try:
+                import httpx
+                from app.services.cloud_storage_service import signed_download_url
+
+                public_id = stored_path.removeprefix("cloudinary://")
+                download_url = signed_download_url(public_id, mime_type)
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    response = await client.get(download_url)
+                    response.raise_for_status()
+                suffix = ".pdf" if mime_type == "application/pdf" else ".png" if mime_type == "image/png" else ".jpg"
+                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+                    temp_file.write(response.content)
+                    temp_path = Path(temp_file.name)
+                abs_path = str(temp_path)
+            except Exception as exc:
+                log.warning("Unable to retrieve cloud document for OCR: %s", type(exc).__name__)
+                await self.conn.execute(
+                    "UPDATE documents SET ocr_status = 'failed' WHERE id = $1", document_id
+                )
+                return None
+        else:
+            rel = stored_path.lstrip("/").replace("static/uploads/", "")
+            abs_path = str(Path(upload_dir) / rel)
 
         await self.conn.execute(
             "UPDATE documents SET ocr_status = 'processing' WHERE id = $1", document_id
         )
 
         try:
-            text, page_count = await asyncio.get_event_loop().run_in_executor(
-                None, extract_text_from_file, abs_path, mime_type
-            )
+            text, page_count = await asyncio.get_event_loop().run_in_executor(None, extract_text_from_file, abs_path, mime_type)
         except Exception as e:
             log.error("OCR text extraction failed: %s", e)
             await self.conn.execute(
                 "UPDATE documents SET ocr_status = 'failed' WHERE id = $1", document_id
             )
             return None
+        finally:
+            if temp_path:
+                temp_path.unlink(missing_ok=True)
 
         if not text.strip():
             await self.conn.execute(
@@ -241,6 +272,8 @@ class OcrExtractionService:
         # Auto-fill high-confidence fields into stage_data for loan_application forms
         if form_type == "loan_application":
             await self._autofill_intake(loan_id, fields)
+        elif form_type == "pledge_receipt":
+            await self._autofill_pledge(loan_id, document_id, fields)
 
         await self.conn.execute(
             "UPDATE documents SET ocr_status = 'done' WHERE id = $1", document_id
@@ -283,3 +316,57 @@ class OcrExtractionService:
                     "INSERT INTO stage_data (loan_id, stage, data_json, saved_by) VALUES ($1, 'ocr_review', $2::jsonb, $3)",
                     loan_id, json.dumps(high_conf), system_user,
                 )
+
+    async def _autofill_pledge(self, loan_id: UUID, document_id: UUID, fields: list[dict]) -> None:
+        """Merge high-confidence pledge OCR values into the Step 8 intake fields."""
+        extracted = {
+            field["field_name"]: field["ocr_value"]
+            for field in fields
+            if field["confidence"] >= 80.0 and field["ocr_value"]
+        }
+        if not extracted:
+            return
+
+        scalar_fields = {
+            "pledge_date", "pledge_borrower", "pledge_amount_figs",
+            "pledge_location", "pledge_obligor", "ncr_reg_number",
+        }
+        pledge_data = {key: extracted[key] for key in scalar_fields if key in extracted}
+        if raw_date := pledge_data.get("pledge_date"):
+            date_match = re.fullmatch(r"(\d{1,2})[\-/](\d{1,2})[\-/](\d{2,4})", raw_date)
+            if date_match:
+                day, month, year = date_match.groups()
+                pledge_data["pledge_date"] = f"{('20' + year) if len(year) == 2 else year}-{int(month):02d}-{int(day):02d}"
+        if "pledge_amount_figs" in pledge_data:
+            pledge_data["pledge_amount_figs"] = pledge_data["pledge_amount_figs"].replace(",", "")
+        repeated_fields = {
+            "item_name": "pledge_item_name",
+            "item_quantity": "pledge_item_qty",
+            "item_description": "pledge_item_desc",
+            "estimated_value": "pledge_item_val",
+        }
+        for source, target in repeated_fields.items():
+            if source in extracted:
+                value = extracted[source]
+                if source == "estimated_value":
+                    value = value.replace(",", "")
+                pledge_data[target] = [value]
+        if "serial_number" in extracted and "pledge_item_desc" not in pledge_data:
+            pledge_data["pledge_item_desc"] = [f"Serial number: {extracted['serial_number']}"]
+
+        pledge_data["_pledge_ocr_source"] = str(document_id)
+        pledge_data["_pledge_ocr_requires_review"] = True
+        existing = await self.conn.fetchrow(
+            "SELECT id, data_json FROM stage_data WHERE loan_id = $1 AND stage = 'intake' ORDER BY saved_at DESC LIMIT 1",
+            loan_id,
+        )
+        if not existing:
+            return
+        merged = dict(existing["data_json"] or {})
+        for key, value in pledge_data.items():
+            if key.startswith("_") or not merged.get(key):
+                merged[key] = value
+        await self.conn.execute(
+            "UPDATE stage_data SET data_json = $1::jsonb, saved_at = CURRENT_TIMESTAMP WHERE id = $2",
+            json.dumps(merged), existing["id"],
+        )
