@@ -34,7 +34,7 @@ fun ExecutiveQueueScreen(
         applications
             .filter { it.stage in EXECUTIVE_STATUSES }
             .map { app ->
-                val borrower = borrowers.find { it.id == app.id }
+                val borrower = borrowers.find { it.id == app.borrower_id }
                 Triple(
                     borrower?.name ?: app.applicant_name,
                     "₦${String.format(Locale.US, "%,.0f", app.amount ?: 0.0)}",

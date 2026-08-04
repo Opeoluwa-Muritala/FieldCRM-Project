@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.screens.common.DetailItem
+import com.fieldcrm.android.ui.screens.review.DatabaseDossierSections
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.viewmodel.ApplicationViewModel
@@ -35,11 +36,10 @@ fun SupervisorReview(
 ) {
     val configViewModel: ConfigViewModel = koinViewModel()
     val configState by configViewModel.uiState.collectAsState()
-    val reviewReasons = configState.config?.dropdowns?.review_reasons?.takeIf { it.isNotEmpty() }
-        ?: listOf("Business location verification failed", "Collateral valuation needs review", "Guarantor validation failed", "Documentation mismatch")
+    val reviewReasons = configState.config?.dropdowns?.review_reasons.orEmpty()
 
     var supervisorComment by remember { mutableStateOf("") }
-    var selectedReason by remember { mutableStateOf(reviewReasons.first()) }
+    var selectedReason by remember { mutableStateOf(reviewReasons.firstOrNull().orEmpty()) }
     var showReturnDialog by remember { mutableStateOf(false) }
 
     val appState by applicationViewModel.uiState.collectAsState()
@@ -139,7 +139,7 @@ fun SupervisorReview(
                         StatusChip(label = application.displayStatus)
                     }
 
-                    Divider(color = FieldTheme.colors.gray800)
+                    HorizontalDivider(color = FieldTheme.colors.gray800)
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -210,6 +210,8 @@ fun SupervisorReview(
                     )
                 }
             }
+
+            DatabaseDossierSections(appState.selectedAppDetail, appState.isLoadingDetail)
 
             // Z4.2: Supervisor Verification Checklist
             SectionCard(title = "Supervisor Verification Checklist") {

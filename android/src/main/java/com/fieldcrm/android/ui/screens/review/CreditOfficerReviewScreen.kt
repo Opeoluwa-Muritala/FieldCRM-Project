@@ -35,6 +35,7 @@ fun CreditOfficerReviewScreen(
     onCompleteReview: () -> Unit
 ) {
     val appState by applicationViewModel.uiState.collectAsState()
+    LaunchedEffect(application.id) { applicationViewModel.loadApplicationDetail(application.id) }
 
     // Screen-level states
     var selectedTab by remember { mutableStateOf(0) }
@@ -148,7 +149,7 @@ fun CreditOfficerReviewScreen(
                     StatusChip(label = application.displayStatus)
                 }
 
-                Divider(color = FieldTheme.colors.gray800, modifier = Modifier.padding(vertical = 12.dp))
+                HorizontalDivider(color = FieldTheme.colors.gray800, modifier = Modifier.padding(vertical = 12.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -169,13 +170,15 @@ fun CreditOfficerReviewScreen(
                 }
             }
 
+            DatabaseDossierSections(appState.selectedAppDetail, appState.isLoadingDetail)
+
             // Tab Navigation Row
             ScrollableTabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = Color.Transparent,
                 contentColor = FieldTheme.colors.purple400,
                 edgePadding = 0.dp,
-                divider = { Divider(color = FieldTheme.colors.gray800) }
+                divider = { HorizontalDivider(color = FieldTheme.colors.gray800) }
             ) {
                 tabLabels.forEachIndexed { index, label ->
                     Tab(
@@ -206,7 +209,7 @@ fun CreditOfficerReviewScreen(
                                 Text("Variance", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
                             }
                             
-                            Divider(color = FieldTheme.colors.gray800)
+                            HorizontalDivider(color = FieldTheme.colors.gray800)
 
                             // Row 1: Monthly Income
                             Row(modifier = Modifier.fillMaxWidth()) {
@@ -288,7 +291,7 @@ fun CreditOfficerReviewScreen(
                                 )
                             }
 
-                            Divider(color = FieldTheme.colors.gray800)
+                            HorizontalDivider(color = FieldTheme.colors.gray800)
 
                             // Field 2: Name
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -330,7 +333,7 @@ fun CreditOfficerReviewScreen(
                                 modifier = Modifier.fillMaxWidth()
                             )
 
-                            Divider(color = FieldTheme.colors.gray800, modifier = Modifier.padding(vertical = 8.dp))
+                            HorizontalDivider(color = FieldTheme.colors.gray800, modifier = Modifier.padding(vertical = 8.dp))
 
                             if (appState.bureauData != null) {
                                 val report = appState.bureauData!!
@@ -369,7 +372,7 @@ fun CreditOfficerReviewScreen(
                                 }
                             }
 
-                            Divider(color = FieldTheme.colors.gray800)
+                            HorizontalDivider(color = FieldTheme.colors.gray800)
 
                             // Recommended amount input (numeric, tabular figures)
                             OutlinedTextField(

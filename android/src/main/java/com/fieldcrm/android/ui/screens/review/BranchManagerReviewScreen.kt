@@ -38,16 +38,14 @@ fun BranchManagerReviewScreen(
 ) {
     val configViewModel: ConfigViewModel = koinViewModel()
     val configState by configViewModel.uiState.collectAsState()
-    val reviewReasons = configState.config?.dropdowns?.review_reasons?.takeIf { it.isNotEmpty() }
-        ?: listOf("High Confidence Business Site Check", "Strong Co-Guarantor Attestation",
-                  "Collateral Evaluation Mismatch", "Insufficient Credit Score")
+    val reviewReasons = configState.config?.dropdowns?.review_reasons.orEmpty()
 
     var managerComment by remember { mutableStateOf("") }
-    var selectedReason by remember { mutableStateOf(reviewReasons.first()) }
+    var selectedReason by remember { mutableStateOf(reviewReasons.firstOrNull().orEmpty()) }
 
     // Update selectedReason if reviewReasons loaded after initial composition
     LaunchedEffect(reviewReasons) {
-        if (selectedReason !in reviewReasons) selectedReason = reviewReasons.first()
+        if (selectedReason !in reviewReasons) selectedReason = reviewReasons.firstOrNull().orEmpty()
     }
 
     val appState by applicationViewModel.uiState.collectAsState()
@@ -179,7 +177,10 @@ fun BranchManagerReviewScreen(
                                     DetailItem(label = "Requested Amount", value = "₦${String.format(Locale.US, "%,.0f", application.amount)}", isMono = true)
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
-                                    DetailItem(label = "Current Stage", value = if (isSupervisor) "Supervisor Review" else "Team Lead Review")
+                                    DetailItem(
+                                        label = "Current Stage",
+                                        value = if (role == UserRole.BRANCH_SUPERVISOR) "Supervisor Review" else "Team Lead Review"
+                                    )
                                     DetailItem(label = "Primary Product", value = application.loan_type.replaceFirstChar { it.uppercase() })
                                 }
                             }
@@ -223,6 +224,8 @@ fun BranchManagerReviewScreen(
                                 )
                             )
                         }
+
+                        DatabaseDossierSections(appState.selectedAppDetail, appState.isLoadingDetail)
 
                         // Attestation Gate Checklist card
                         FieldCard {

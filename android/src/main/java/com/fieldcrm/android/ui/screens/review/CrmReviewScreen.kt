@@ -19,7 +19,9 @@ import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.shared.model.LoanApplicationModel
 import com.fieldcrm.android.core.session.UserRole
+import com.fieldcrm.android.ui.viewmodel.ApplicationViewModel
 import java.util.Locale
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +35,9 @@ fun CrmReviewScreen(
     onUploadDocument: () -> Unit = {},
     onBack: () -> Unit,
 ) {
+    val applicationViewModel: ApplicationViewModel = koinViewModel()
+    val applicationState by applicationViewModel.uiState.collectAsState()
+    LaunchedEffect(application.id) { applicationViewModel.loadApplicationDetail(application.id) }
     var bureau1 by remember(savedChecklist) { mutableStateOf(savedChecklist["bureau_1_verified"] == true) }
     var bureau2 by remember(savedChecklist) { mutableStateOf(savedChecklist["bureau_2_verified"] == true) }
     var crmsSearch by remember(savedChecklist) { mutableStateOf(savedChecklist["crms_verified"] == true) }
@@ -134,7 +139,7 @@ fun CrmReviewScreen(
                         StatusChip(label = application.displayStatus)
                     }
 
-                    Divider(color = FieldTheme.colors.gray800)
+                    HorizontalDivider(color = FieldTheme.colors.gray800)
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -188,6 +193,8 @@ fun CrmReviewScreen(
                     }
                 }
             }
+
+            DatabaseDossierSections(applicationState.selectedAppDetail, applicationState.isLoadingDetail)
 
             // Z4.1 Document Quality / Verification Table
             SectionCard(title = "Document Quality / Verification") {

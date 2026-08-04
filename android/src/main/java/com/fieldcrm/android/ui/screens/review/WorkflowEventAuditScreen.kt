@@ -124,7 +124,7 @@ fun WorkflowEventAuditScreen(
                 }
 
                 Spacer(modifier = Modifier.width(4.dp))
-                Divider(color = FieldTheme.colors.gray700, modifier = Modifier.height(16.dp).width(1.dp))
+                VerticalDivider(color = FieldTheme.colors.gray700, modifier = Modifier.height(16.dp))
                 Spacer(modifier = Modifier.width(4.dp))
 
                 // Actor Filter Chip

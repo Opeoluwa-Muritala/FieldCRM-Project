@@ -623,7 +623,7 @@ fun FieldCRMApp(
             )
             ApplicationDetailScreenView(
                 application = app,
-                borrower = borrowerUiState.borrowers.find { it.id == app.id || it.phone == app.phone || it.bvn == app.bvn || it.name == app.applicant_name },
+                borrower = borrowerUiState.borrowers.find { it.id == app.borrower_id },
                 role = appUiState.session?.role,
                 appDetail = applicationUiState.selectedAppDetail,
                 isLoadingDetail = applicationUiState.isLoadingDetail,
@@ -700,7 +700,7 @@ fun FieldCRMApp(
 
         Screen.LoanApplicationForm -> {
             val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name } ?: appUiState.selectedBorrower
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id } ?: appUiState.selectedBorrower
             if (app != null) {
                 LoanApplicationFormScreen(
                     application = app,
@@ -719,7 +719,7 @@ fun FieldCRMApp(
 
         Screen.DocumentUpload -> {
             val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name }
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id }
             DocumentUploadScreen(
                 applicationId = app?.id ?: "",
                 borrower = borrower,
@@ -735,7 +735,7 @@ fun FieldCRMApp(
 
         Screen.GuarantorsForm -> {
             val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name }
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id }
             if (borrower != null) {
                 GuarantorsFormScreen(
                     borrower = borrower,
@@ -750,7 +750,7 @@ fun FieldCRMApp(
 
         Screen.PledgeTrust -> {
             val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name }
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id }
             if (app != null) {
                 PledgeTrustScreen(
                     application = app,
@@ -766,7 +766,7 @@ fun FieldCRMApp(
 
         Screen.VisitationReport -> {
             val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name }
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id }
             if (app != null) {
                 VisitationReportScreen(
                     application = app,
@@ -783,7 +783,7 @@ fun FieldCRMApp(
 
         Screen.BranchManagerReview -> {
             val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name }
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id }
             if (app != null) {
                 LaunchedEffect(app.id, appUiState.session?.role) {
                     applicationViewModel.loadApplicationDetail(app.id)
@@ -802,7 +802,7 @@ fun FieldCRMApp(
 
         Screen.CreditOfficerReview -> {
             val app = appUiState.selectedApplication
-            val borrower = borrowerUiState.borrowers.find { it.id == app?.id || it.phone == app?.phone || it.bvn == app?.bvn || it.name == app?.applicant_name }
+            val borrower = borrowerUiState.borrowers.find { it.id == app?.borrower_id }
             if (app != null) {
                 CreditAssessmentReview(app, borrower, applicationViewModel, { backStack.removeLastOrNull() }, { backStack.removeLastOrNull() })
             } else {

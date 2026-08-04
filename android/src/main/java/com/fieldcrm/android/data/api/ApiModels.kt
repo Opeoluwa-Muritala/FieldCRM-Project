@@ -406,5 +406,6 @@ data class ApplicationDetailResponse(
     val readiness: Map<String, JsonElement>? = null,
     val documents: List<Map<String, JsonElement>>? = null,
     val intake: Map<String, JsonElement>? = null,
-    val visitation: Map<String, JsonElement>? = null
+    val visitation: Map<String, JsonElement>? = null,
+    val workflow_events: List<Map<String, JsonElement>>? = null,
 )

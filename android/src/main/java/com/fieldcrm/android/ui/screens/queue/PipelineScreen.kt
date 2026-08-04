@@ -77,7 +77,7 @@ fun PipelineScreen(
     val pipelineEntries = remember(applications, borrowers) {
         if (applications.isNotEmpty()) {
             applications.map { app ->
-                val borrower = borrowers.find { it.id == app.id }
+                val borrower = borrowers.find { it.id == app.borrower_id }
                 PipelineEntry(
                     applicantName = borrower?.name ?: "Applicant details unavailable",
                     amount = "₦${String.format(Locale.US, "%,.0f", app.amount ?: 0.0)}",
