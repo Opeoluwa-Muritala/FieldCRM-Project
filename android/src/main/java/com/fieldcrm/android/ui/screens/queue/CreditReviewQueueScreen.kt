@@ -68,7 +68,7 @@ fun CreditReviewQueueScreen(
             }
         } else if (applications.isNotEmpty()) {
             applications.map { app ->
-                val borrower = borrowers.find { it.id == app.id }
+                val borrower = borrowers.find { it.id == app.borrower_id }
                 CreditReviewItem(
                     applicantName = borrower?.name ?: app.applicant_name,
                     productType = app.loan_type.replaceFirstChar { it.uppercase() },

@@ -22,7 +22,8 @@ data class ApplicationDetailResult(
     val readiness: Map<String, Any> = emptyMap(),
     val documents: List<Map<String, Any>> = emptyList(),
     val intake: Map<String, Any> = emptyMap(),
-    val visitation: Map<String, Any> = emptyMap()
+    val visitation: Map<String, Any> = emptyMap(),
+    val workflowEvents: List<Map<String, Any>> = emptyList(),
 )
 
 class BorrowerRepository(
@@ -218,22 +219,16 @@ class ApplicationRepository(
             fun safeValue(el: JsonElement): Any? = when (el) {
                 is JsonNull -> null
                 is JsonPrimitive -> el.booleanOrNull ?: el.intOrNull ?: el.doubleOrNull ?: el.content
-                is JsonObject -> el["value"]?.let { inner ->
-                    when (inner) {
-                        is JsonNull -> null
-                        is JsonPrimitive -> inner.booleanOrNull ?: inner.intOrNull ?: inner.doubleOrNull ?: inner.content
-                        else -> null
-                    }
-                }
-                else -> null
+                is JsonObject -> el["value"]?.let { inner -> safeValue(inner) }
+                    ?: el.mapNotNull { (key, value) -> safeValue(value)?.let { key to it } }.toMap()
+                is kotlinx.serialization.json.JsonArray -> el.mapNotNull { item -> safeValue(item) }
             }
 
             fun JsonElement.asObjEntries() = (this as? JsonObject)?.entries
 
             val readiness: Map<String, Any> = response.readiness.mapNotNull { (k, v) -> safeValue(v)?.let { k to it } }.toMap()
 
-            val documents: List<Map<String, Any>> = response.documents?.mapNotNull { docEl ->
-                val d = docEl as? JsonObject ?: return@mapNotNull null
+            val documents: List<Map<String, Any>> = response.documents?.map { d ->
                 val url = (d["preview_url"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
                     ?: (d["secure_url"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
                     ?: (d["file_url"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
@@ -279,8 +274,11 @@ class ApplicationRepository(
             }
 
             val visitation: Map<String, Any> = response.visitation?.mapNotNull { (k, v) -> safeValue(v)?.let { k to it } }?.toMap() ?: emptyMap()
+            val workflowEvents: List<Map<String, Any>> = response.workflow_events?.map { event ->
+                event.mapNotNull { (key, value) -> safeValue(value)?.let { key to it } }.toMap()
+            } ?: emptyList()
 
-            ApplicationDetailResult(readiness, documents, intake, visitation)
+            ApplicationDetailResult(readiness, documents, intake, visitation, workflowEvents)
         } catch (e: Exception) {
             null
         }

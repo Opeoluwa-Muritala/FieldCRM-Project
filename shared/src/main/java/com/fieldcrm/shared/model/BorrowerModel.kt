@@ -38,6 +38,7 @@ data class BorrowerModel(
 data class LoanApplicationModel(
     val id: String,
     val org_id: String,
+    val borrower_id: String? = null,
     val ref_no: String = "",
     val customer_type: String = "new",
     val loan_type: String = "enterprise",

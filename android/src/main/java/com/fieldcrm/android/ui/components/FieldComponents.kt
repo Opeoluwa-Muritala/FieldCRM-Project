@@ -7,6 +7,7 @@ import androidx.compose.foundation.verticalScroll
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,17 +40,40 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.ui.theme.FieldTheme
+import com.fieldcrm.android.R
 import java.util.Locale
 
 // ==========================================
 // NAVIGATION
 // ==========================================
+
+@Composable
+fun FieldBrandMark(modifier: Modifier = Modifier, contentDescription: String? = "FieldCRM") {
+    Image(
+        painter = painterResource(R.drawable.fieldcrm_mark),
+        contentDescription = contentDescription,
+        modifier = modifier,
+        contentScale = ContentScale.Fit,
+    )
+}
+
+@Composable
+fun FieldBrandLogo(modifier: Modifier = Modifier, contentDescription: String? = "FieldCRM") {
+    Image(
+        painter = painterResource(R.drawable.fieldcrm_logo),
+        contentDescription = contentDescription,
+        modifier = modifier,
+        contentScale = ContentScale.Fit,
+    )
+}
 
 @Composable
 fun FieldBottomBar(
@@ -146,19 +170,7 @@ fun FieldNavigationRail(
             verticalArrangement = Arrangement.Top
         ) {
             Spacer(modifier = Modifier.height(20.dp))
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(FieldTheme.colors.purple600, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = FieldIcons.ShieldOutlined,
-                    contentDescription = "FieldCRM",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+            FieldBrandMark(modifier = Modifier.size(48.dp))
             Spacer(modifier = Modifier.height(24.dp))
             items.forEachIndexed { index, item ->
                 val isSelected = index == selectedItemIndex
@@ -1648,7 +1660,7 @@ fun FieldEmail(
             keyboardType = KeyboardType.Email,
             imeAction = imeAction,
             capitalization = KeyboardCapitalization.None,
-            autoCorrect = false
+            autoCorrectEnabled = false
         ),
         keyboardActions = keyboardActions,
         errorText = errorText,
@@ -1824,7 +1836,7 @@ fun FieldPassword(
             keyboardType = KeyboardType.Password,
             imeAction = imeAction,
             capitalization = KeyboardCapitalization.None,
-            autoCorrect = false
+            autoCorrectEnabled = false
         ),
         keyboardActions = keyboardActions,
         errorText = errorText,

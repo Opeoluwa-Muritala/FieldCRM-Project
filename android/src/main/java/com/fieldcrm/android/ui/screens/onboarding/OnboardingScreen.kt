@@ -21,6 +21,7 @@ import com.fieldcrm.android.core.session.UserRole
 import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.PrimaryButton
 import com.fieldcrm.android.ui.components.SecondaryButton
+import com.fieldcrm.android.ui.components.FieldBrandLogo
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.theme.FieldIcons
 
@@ -147,30 +148,7 @@ fun OnboardingContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Brand Mark Area
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(FieldTheme.colors.gray850, RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = FieldIcons.ShieldOutlined,
-                        contentDescription = null,
-                        tint = FieldTheme.colors.purple600,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                Text(
-                    text = "FieldCRM",
-                    style = FieldTheme.typography.title.copy(fontSize = 16.sp),
-                    color = FieldTheme.colors.purple600,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            FieldBrandLogo(modifier = Modifier.width(150.dp).height(40.dp))
             
             // Progress dots
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

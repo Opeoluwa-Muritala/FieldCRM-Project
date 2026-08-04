@@ -19,6 +19,7 @@ import com.fieldcrm.android.ui.screens.common.DetailItem
 import com.fieldcrm.android.ui.theme.FieldIcons
 import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.viewmodel.MccEvidenceViewModel
+import com.fieldcrm.android.ui.viewmodel.ApplicationViewModel
 import com.fieldcrm.shared.model.LoanApplicationModel
 import java.util.Locale
 import org.koin.androidx.compose.koinViewModel
@@ -32,6 +33,9 @@ fun EdApprovalScreen(
     onForwardToMd: () -> Unit,
     onBack: () -> Unit,
 ) {
+    val applicationViewModel: ApplicationViewModel = koinViewModel()
+    val applicationState by applicationViewModel.uiState.collectAsState()
+    LaunchedEffect(application.id) { applicationViewModel.loadApplicationDetail(application.id) }
     val mccViewModel: MccEvidenceViewModel = koinViewModel()
     val mccState by mccViewModel.uiState.collectAsState()
     LaunchedEffect(application.id) { mccViewModel.load(application.id) }
@@ -142,7 +146,7 @@ fun EdApprovalScreen(
                         StatusChip(label = application.displayStatus)
                     }
 
-                    Divider(color = FieldTheme.colors.gray800)
+                    HorizontalDivider(color = FieldTheme.colors.gray800)
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -163,6 +167,8 @@ fun EdApprovalScreen(
                     }
                 }
             }
+
+            DatabaseDossierSections(applicationState.selectedAppDetail, applicationState.isLoadingDetail)
 
             // Z4.1 MCC Recommendations (Votes, amounts, notes)
             SectionCard(title = "MCC Recommendations & Votes") {

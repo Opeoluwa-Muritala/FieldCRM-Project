@@ -39,6 +39,7 @@ import com.fieldcrm.android.ui.components.SecondaryButton
 import com.fieldcrm.android.ui.components.FieldEmail
 import com.fieldcrm.android.ui.components.FieldPassword
 import com.fieldcrm.android.ui.components.KeyboardAwareForm
+import com.fieldcrm.android.ui.components.FieldBrandLogo
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.text.input.ImeAction
@@ -164,21 +165,11 @@ fun LoginScreenContent(
                         ) {
                             Spacer(modifier = Modifier.height(8.dp))
                             
-                            // Centered Brand Mark (Shield Purple)
-                            Box(
+                            FieldBrandLogo(
                                 modifier = Modifier
-                                    .size(72.dp)
-                                    .background(FieldTheme.colors.purple900.copy(alpha = 0.15f), RoundedCornerShape(18.dp))
-                                    .border(0.5.dp, FieldTheme.colors.purple600.copy(alpha = 0.3f), RoundedCornerShape(18.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = FieldIcons.ShieldOutlined,
-                                    contentDescription = "Shield Logo",
-                                    tint = FieldTheme.colors.purple400,
-                                    modifier = Modifier.size(36.dp)
-                                )
-                            }
+                                    .fillMaxWidth()
+                                    .height(72.dp),
+                            )
                             
                             Spacer(modifier = Modifier.height(20.dp))
                             

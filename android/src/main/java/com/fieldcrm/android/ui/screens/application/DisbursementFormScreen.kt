@@ -129,7 +129,7 @@ fun DisbursementFormScreen(
                         }
                         StatusChip(label = application.displayStatus)
                     }
-                    Divider(color = FieldTheme.colors.gray800, modifier = Modifier.padding(vertical = 4.dp))
+                    HorizontalDivider(color = FieldTheme.colors.gray800, modifier = Modifier.padding(vertical = 4.dp))
                     Text(
                         text = "APPROVED PRINCIPAL AMOUNT",
                         style = FieldTheme.typography.label,

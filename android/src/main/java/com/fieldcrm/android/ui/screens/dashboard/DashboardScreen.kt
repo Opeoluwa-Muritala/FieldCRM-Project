@@ -644,33 +644,11 @@ fun PhoneDashboardHome(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(FieldTheme.colors.purple900.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = FieldIcons.ShieldOutlined,
-                            contentDescription = null,
-                            tint = FieldTheme.colors.purple600,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Text(
-                        text = "FIELDCRM",
-                        style = FieldTheme.typography.title.copy(
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        ),
-                        color = FieldTheme.colors.gray100
-                    )
-                }
+                FieldBrandLogo(
+                    modifier = Modifier
+                        .width(156.dp)
+                        .height(40.dp),
+                )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     if (metrics.any { it.value == "—" }) {
@@ -947,33 +925,7 @@ fun TabletDashboardHome(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(FieldTheme.colors.purple900.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = FieldIcons.ShieldOutlined,
-                            contentDescription = null,
-                            tint = FieldTheme.colors.purple600,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Text(
-                        text = "FIELDCRM TABLET",
-                        style = FieldTheme.typography.title.copy(
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        ),
-                        color = FieldTheme.colors.gray100
-                    )
-                }
+                FieldBrandLogo(modifier = Modifier.width(180.dp).height(44.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     IconButton(onClick = { onQuickActionClick("SEARCH") }) {

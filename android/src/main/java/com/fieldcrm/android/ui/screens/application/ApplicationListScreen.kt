@@ -71,7 +71,7 @@ fun ApplicationListContent(
     // Filter and search logic
     val filteredApps = remember(applications, borrowers, searchQuery, selectedFilterStage) {
         applications.filter { app ->
-            val borrower = borrowers.find { it.id == app.id }
+            val borrower = borrowers.find { it.id == app.borrower_id }
             val nameMatches = (borrower?.name ?: app.applicant_name).contains(searchQuery, ignoreCase = true)
             val refMatches = app.ref_no.contains(searchQuery, ignoreCase = true)
             val idMatches = app.id.contains(searchQuery, ignoreCase = true)
@@ -265,7 +265,7 @@ fun ApplicationListContent(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(filteredApps) { app ->
-                        val borrower = borrowers.find { it.id == app.id }
+                        val borrower = borrowers.find { it.id == app.borrower_id }
                         val name = borrower?.name ?: app.applicant_name.ifBlank { "Unknown Profile" }
                         val initials = name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
 
