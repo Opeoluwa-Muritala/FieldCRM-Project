@@ -8,6 +8,15 @@
 {% block page_title %}Application Wizard{% endblock %}
 
 {% block content %}
+    {% if review_mode %}
+    <div class="review-mode-banner" role="status">
+        <div>
+            <strong>Read-only evidence view</strong>
+            <span>You can inspect submitted information, but no fields can be changed.</span>
+        </div>
+        <a href="/applications/{{ app_id }}/approve">Back to approval review</a>
+    </div>
+    {% endif %}
     <!-- Horizontal Step Indicator -->
     <div class="wizard-steps">
         {% set is_single = (data.marital_status == 'Single') %}
