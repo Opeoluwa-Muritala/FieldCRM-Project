@@ -11,7 +11,10 @@ WITH loan AS (
 forms AS (
     SELECT
         COUNT(*) FILTER (WHERE form_code = 'MMFB/CRM/01') AS loan_form_count,
-        COUNT(*) FILTER (WHERE form_code = 'MMFB/CRM/02') AS pledge_form_count,
+        COUNT(*) FILTER (
+            WHERE form_code = 'MMFB/CRM/02'
+               OR doc_type = 'pledge_form'
+        ) AS pledge_form_count,
         COUNT(*) FILTER (WHERE form_code = 'MMFB/CRM/03') AS guarantor_form_count
     FROM documents
     WHERE loan_id = $1 AND deleted_at IS NULL

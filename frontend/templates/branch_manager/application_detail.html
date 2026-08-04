@@ -5,7 +5,8 @@
 {% block breadcrumb %}Loans → Approval → {{ app.ref_no }}{% endblock %}
 
 {% block content %}
-<div class="app-detail-layout">
+{% set detail_role = user.role|lower|replace(' ', '_') if user else '' %}
+<div class="app-detail-layout {% if detail_role == 'branch_supervisor' %}supervisor-review-page{% endif %}">
     
     {# === LEFT COLUMN: APPLICATION IDENTITY, TIMELINE & DOCUMENTS === #}
     <div class="app-detail-sidebar">
@@ -32,7 +33,7 @@
         </div>
         
         {# Vertical Stage Timeline #}
-        <div class="page-card csp-s-b3a2297a12f5">
+        <div class="page-card csp-s-b3a2297a12f5 supervisor-timeline-card">
             <h3 class="csp-s-2e2b4cd7c4f9">Application Timeline</h3>
             <div class="csp-s-b37edfac2acb">
                 
@@ -88,7 +89,7 @@
         </div>
         
         {# Quick Document List #}
-        <div class="page-card csp-s-b3a2297a12f5">
+        <div class="page-card csp-s-b3a2297a12f5 supervisor-documents-card">
             <h3 class="csp-s-93e773d1eb63">Documents Checklist</h3>
             <div class="csp-s-baf2fda59eac">
                 {% set doc_categories = [
@@ -230,7 +231,7 @@
         </div>
 
         {# Forms & Documents Verification checklist groups #}
-        <div class="page-card csp-s-b3a2297a12f5">
+        <div class="page-card csp-s-b3a2297a12f5 supervisor-audit-card">
             <h2 class="page-card-title csp-s-56b52be0a8d2">Verification Audit Groups</h2>
             
             <div class="csp-s-18809276c4d1">
@@ -318,7 +319,7 @@
         </script>
 
         {# Concur / Return Action Bar #}
-        <div class="page-card csp-s-b3a2297a12f5">
+        <div class="page-card csp-s-b3a2297a12f5 supervisor-decision-card">
             <div class="csp-s-5ffb91a26b04">
                 <div class="csp-s-4dd169649d12">
                     <a href="/applications/{{ app_id }}/return?type=officer" class="csp-s-7ee1400d1897">Return to Relationship Officer</a>

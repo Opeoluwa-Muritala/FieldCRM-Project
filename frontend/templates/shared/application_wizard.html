@@ -95,7 +95,7 @@
             </p>
         </div>
 
-        <form id="wizardForm" action="/applications/{{ app_id }}/step/{{ step }}" method="POST">
+        <form id="wizardForm" action="/applications/{{ app_id }}/step/{{ step }}" method="POST" enctype="multipart/form-data">
             
             <!-- STEP 1: APPLICANT DETAILS -->
             {% if step == 1 %}
@@ -567,6 +567,12 @@
 
             <!-- STEP 8: PLEDGE AND TRUST RECEIPT -->
             {% if step == 8 %}
+            {% if data.get('_pledge_ocr_source') %}
+            <div class="flat-card brand" role="status">
+                <strong>OCR populated this form from the uploaded pledge document.</strong>
+                Review the extracted values against the original PDF before approval.
+            </div>
+            {% endif %}
             <div class="tab-row">
                 <button type="button" class="tab-btn active" id="tabFill" data-pledge-tab="fill">Fill Form</button>
                 <button type="button" class="tab-btn" id="tabUpload" data-pledge-tab="upload">Upload Completed Form</button>
@@ -681,15 +687,15 @@
                 <div class="upload-dragzone" data-choose-pledge-file>
                     <span>Drag and drop signed Pledge Form here</span>
                     <span class="csp-s-83f4e781efc8">Supports PDF, PNG, JPG (Max 5MB)</span>
-                    <input type="file" id="pledge_file" class="csp-s-6e22c58a7a6a">
+                    <input type="file" id="pledge_file" name="pledge_file" accept="application/pdf,image/jpeg,image/png" class="csp-s-6e22c58a7a6a">
                 </div>
                 <div id="pledgeUploadFeedback" class="csp-s-3a737e15be5f">
                     <div class="csp-s-5ffb91a26b04">
                         <div>
                             <strong id="pledge_fn">pledge_form_completed.pdf</strong>
-                            <div class="csp-s-f779da42d59e">Size: 1.4 MB · Status: OCR Processed</div>
+                            <div class="csp-s-f779da42d59e">Ready to upload when you save this step.</div>
                         </div>
-                        <span class="status-badge verified">Extraction queued automatically</span>
+                        <span class="status-badge needs-review">Ready to upload</span>
                     </div>
                 </div>
             </div>
@@ -728,6 +734,12 @@
                     <button type="submit" class="btn-primary-filled" id="continueBtn">
                         {% if step == 8 %}Save Details &amp; Generate Client Signing Link &rarr;{% else %}Save & Continue &rarr;{% endif %}
                     </button>
+                    {% elif review_mode and step < 9 %}
+                        {% if is_single and step == 1 %}
+                        <a href="/applications/{{ app_id }}/step/3" class="btn-primary-filled">Next Section &rarr;</a>
+                        {% else %}
+                        <a href="/applications/{{ app_id }}/step/{{ step + 1 }}" class="btn-primary-filled">Next Section &rarr;</a>
+                        {% endif %}
                     {% endif %}
                     <span id="consent_remaining" class="csp-s-5f2c6d32591d">Consents still required.</span>
                 </div>
@@ -849,6 +861,8 @@
                 }
             }
         });
+        const pledgeFile = document.getElementById('pledge_file');
+        if (pledgeFile) pledgeFile.required = tab === 'upload';
     }
 
     function checkPledgeAmountMismatch() {
