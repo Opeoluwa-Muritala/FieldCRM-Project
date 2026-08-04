@@ -1,207 +1,115 @@
 {% extends shell %}
 
 {% block title %}Approval Readiness Review | FieldCRM{% endblock %}
-
 {% block breadcrumb %}Loans &rarr; Application {{ app_id }} &rarr; Approval Readiness{% endblock %}
 {% block page_title %}Approval Readiness Review{% endblock %}
 
 {% block content %}
-<div class="page-card no-shadow">
-    <div class="page-card-header">
-        <h2 class="page-card-title">Approval Readiness Review</h2>
-        <p class="page-card-subtitle">Verify all structural checklist items before forwarding this application to the next review stage. ID: {{ app_id }} · Borrower: {{ borrower_name }}</p>
-    </div>
+<div class="approval-review-desk">
+    <header class="approval-review-hero">
+        <div>
+            <span class="approval-review-kicker">Team lead decision desk</span>
+            <h2>Approval Readiness Review</h2>
+            <p>Cross-check submitted evidence before forwarding this application to the next review stage.</p>
+        </div>
+        <dl class="approval-review-identity">
+            <div><dt>Borrower</dt><dd>{{ borrower_name }}</dd></div>
+            <div><dt>Application ID</dt><dd>{{ app_id }}</dd></div>
+        </dl>
+    </header>
 
-    <!-- Summary progress strip -->
-    <div class="csp-s-ab760b0b3350">
-        <div class="csp-s-776e362a0624">
-            <span>Checklist Status: 18 of 22 items ready</span>
-            <span class="csp-s-b166ee10dc46">81% Complete</span>
-        </div>
-        <div class="csp-s-6afb4593a038">
-            <div class="csp-s-9544a1a53030"></div>
-        </div>
-        <div class="csp-s-03b73410ceae">
-            &#x26A0; 4 critical checklist items still require attention.
-        </div>
-    </div>
+    <div class="approval-review-layout">
+        <main class="approval-review-main">
+            <section class="approval-review-progress" aria-label="Checklist progress">
+                <div class="approval-review-score"><strong>81%</strong><span>readiness</span></div>
+                <div class="approval-review-progress-copy">
+                    <div><strong>18 of 22 items ready</strong><span>4 critical items require attention</span></div>
+                    <div class="approval-review-track"><span></span></div>
+                </div>
+            </section>
 
-    <!-- Group 1: Forms Completed -->
-    <div class="csp-s-37b7b9f4a807">
-        <h3 class="csp-s-01c3f30f7542">1. Forms Completed</h3>
-        <div class="csp-s-6e146183a3a3">
-            <div class="csp-s-c6db9aa46ddd">
-                <span>Loan Application Form (MMFB/CRM/01)</span>
-                <div class="csp-s-7b6ef42c3f03">
-                    <span class="status-badge verified">Verified</span>
+            <section class="approval-evidence-callout">
+                <div>
+                    <span class="approval-evidence-icon" aria-hidden="true">01</span>
+                    <div><strong>Submitted application dossier</strong><p>Inspect the completed loan application and pledge details in a locked view.</p></div>
+                </div>
+                <a href="/applications/{{ app_id }}/step/9" class="approval-view-button">Review filled form <span aria-hidden="true">&rarr;</span></a>
+            </section>
+
+            {% macro check_row(label, status='Verified', tone='verified', href='', action='') %}
+            <div class="approval-check-row">
+                <span>{{ label }}</span>
+                <div><span class="status-badge {{ tone }}">{{ status }}</span>{% if href %}<a href="{{ href }}" class="approval-inline-link">{{ action }}</a>{% endif %}</div>
+            </div>
+            {% endmacro %}
+
+            <section class="approval-check-group">
+                <h3><span>01</span> Forms completed</h3>
+                {{ check_row('Loan Application Form (MMFB/CRM/01)', href='/applications/' ~ app_id ~ '/step/9', action='View read-only') }}
+                {{ check_row('Guarantor Form 1', href='/applications/' ~ app_id ~ '/guarantors/1/step/7', action='View read-only') }}
+                {{ check_row('Guarantor Form 2', 'Missing', 'returned', '/applications/' ~ app_id ~ '/step/3', 'Fix →') }}
+                {{ check_row('Pledge and Trust Receipt (MMFB/CRM/02)', href='/applications/' ~ app_id ~ '/step/8', action='View read-only') }}
+            </section>
+
+            <section class="approval-check-group">
+                <h3><span>02</span> Supporting documents</h3>
+                {% for doc in documents %}
+                {{ check_row(doc.category|replace('_', ' ')|title, doc.status|replace('_', ' ')|title, 'verified' if doc.status == 'verified' else 'needs-review', doc.url or '', 'Preview ↗') }}
+                {% else %}<div class="approval-empty-state">No documents uploaded.</div>{% endfor %}
+            </section>
+
+            <section class="approval-check-group">
+                <h3><span>03</span> Data quality &amp; checks</h3>
+                {{ check_row('BVN Matching Verification') }}
+                {{ check_row('OCR Low-Confidence Exceptions', 'Needs Review', 'needs-review', '/applications/' ~ app_id ~ '/ocr-review', 'Fix →') }}
+            </section>
+
+            <section class="approval-check-group">
+                <h3><span>04</span> Declarations &amp; consents</h3>
+                {{ check_row('Credit Bureau Consent Checked') }}
+                {{ check_row('Cheque Authority Received') }}
+                {{ check_row('GSI Mandate Signed') }}
+            </section>
+
+            <section class="approval-check-group">
+                <h3><span>05</span> Field verification</h3>
+                {{ check_row('Visitation Report Uploaded') }}
+                {{ check_row('Team Lead Visitation Concurrence', 'Needs Review', 'needs-review', '/applications/' ~ app_id ~ '/visitation', 'Fix →') }}
+            </section>
+
+            <section class="approval-check-group">
+                <h3><span>06</span> Approval chain</h3>
+                {{ check_row('Credit Underwriter Recommendation') }}
+            </section>
+        </main>
+
+        <aside class="approval-decision-panel">
+            <div class="approval-decision-heading"><span>Final review</span><h3>Concurrence decision</h3><p>Confirm the evidence checks and recommendation amount.</p></div>
+
+            <div class="approval-review-status">
+                <div><strong>Review status</strong><span>{{ yes_votes|default(0) }} completed checks</span></div>
+                <div class="approval-vote-dots">
+                    {% for i in range(total_votes|default(5)) %}<span class="{% if i < (yes_votes|default(0)) %}complete{% endif %}">{% if i < (yes_votes|default(0)) %}&#10003;{% else %}{{ i + 1 }}{% endif %}</span>{% endfor %}
                 </div>
             </div>
-            <div class="csp-s-c6db9aa46ddd">
-                <span>Guarantor Form 1</span>
-                <div class="csp-s-7b6ef42c3f03">
-                    <span class="status-badge verified">Verified</span>
+
+            <form action="/applications/{{ app_id }}/approve" method="POST" class="approval-decision-form">
+                <fieldset><legend>Manager attestations</legend>
+                    <label><input type="checkbox" name="kyc_attested" required><span>I confirm KYC documents were physically sighted and verified.</span></label>
+                    <label><input type="checkbox" name="collateral_attested" required><span>I confirm collateral value is registered in the branch collateral registry.</span></label>
+                </fieldset>
+                <div class="form-group">
+                    <label class="field-label" for="approval-amount">Approved/Recommended Amount (&#8358;)</label>
+                    <input id="approval-amount" type="number" name="amount" class="field-input" value="{{ app.amount or 0 }}" required>
                 </div>
-            </div>
-            <div class="csp-s-c6db9aa46ddd">
-                <span>Guarantor Form 2</span>
-                <div class="csp-s-7b6ef42c3f03">
-                    <span class="status-badge returned">Missing</span>
-                    <a href="/applications/{{ app_id }}/step/3" class="csp-s-bc021cb91705">Fix &rarr;</a>
-                </div>
-            </div>
-            <div class="csp-s-c6db9aa46ddd">
-                <span>Pledge and Trust Receipt (MMFB/CRM/02)</span>
-                <div class="csp-s-7b6ef42c3f03">
-                    <span class="status-badge verified">Verified</span>
-                </div>
-            </div>
-        </div>
-    </div>
+                <button type="submit" class="btn-primary-filled" id="approveBtn">Concur &amp; Forward for Review &rarr;</button>
+                <a href="/applications/{{ app_id }}/return?type=officer" class="approval-return-link">Return to Relationship Officer</a>
+            </form>
 
-    <!-- Group 2: Supporting Documents -->
-    <div class="csp-s-37b7b9f4a807">
-        <h3 class="csp-s-01c3f30f7542">2. Supporting Documents</h3>
-        <div class="csp-s-6e146183a3a3">
-            {% for doc in documents %}
-            <div class="csp-s-c6db9aa46ddd">
-                {% if doc.url %}
-                    <a href="{{ doc.url }}" target="_blank" class="csp-s-bc021cb91705">
-                        {{ doc.category|replace('_', ' ')|title }} &nearr;
-                    </a>
-                {% else %}
-                    <span>{{ doc.category|replace('_', ' ')|title }}</span>
-                {% endif %}
-                <span class="status-badge {{ 'verified' if doc.status == 'verified' else 'needs-review' }}">{{ doc.status|replace('_', ' ')|title }}</span>
-            </div>
-            {% else %}
-            <div class="csp-s-3fea3c9056c6">No documents uploaded.</div>
-            {% endfor %}
-        </div>
+            {% if app and app.stage == 'disbursed' %}
+            <div class="approval-disbursed"><strong>Disbursement confirmed</strong><span>&#8358;{{ '{:,.0f}'.format(app.amount or 0) }} · {{ app.disbursed_at or 'Date unavailable' }}</span></div>
+            {% endif %}
+        </aside>
     </div>
-
-    <!-- Group 3: Data Quality -->
-    <div class="csp-s-37b7b9f4a807">
-        <h3 class="csp-s-01c3f30f7542">3. Data Quality & Checks</h3>
-        <div class="csp-s-6e146183a3a3">
-            <div class="csp-s-c6db9aa46ddd">
-                <span>BVN Matching Verification</span>
-                <span class="status-badge verified">Verified</span>
-            </div>
-            <div class="csp-s-c6db9aa46ddd">
-                <span>OCR Low-Confidence Exceptions</span>
-                <div class="csp-s-7b6ef42c3f03">
-                    <span class="status-badge needs-review">Needs Review</span>
-                    <a href="/applications/{{ app_id }}/ocr-review" class="csp-s-bc021cb91705">Fix &rarr;</a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Group 4: Declarations and Consents -->
-    <div class="csp-s-37b7b9f4a807">
-        <h3 class="csp-s-01c3f30f7542">4. Declarations & Consents</h3>
-        <div class="csp-s-6e146183a3a3">
-            <div class="csp-s-c6db9aa46ddd">
-                <span>Credit Bureau Consent Checked</span>
-                <span class="status-badge verified">Verified</span>
-            </div>
-            <div class="csp-s-c6db9aa46ddd">
-                <span>Cheque Authority Received</span>
-                <span class="status-badge verified">Verified</span>
-            </div>
-            <div class="csp-s-c6db9aa46ddd">
-                <span>GSI Mandate Signed</span>
-                <span class="status-badge verified">Verified</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Group 5: Field Verification -->
-    <div class="csp-s-37b7b9f4a807">
-        <h3 class="csp-s-01c3f30f7542">5. Field Verification</h3>
-        <div class="csp-s-6e146183a3a3">
-            <div class="csp-s-c6db9aa46ddd">
-                <span>Visitation Report Uploaded</span>
-                <span class="status-badge verified">Verified</span>
-            </div>
-            <div class="csp-s-c6db9aa46ddd">
-                <span>Team Lead Visitation Concurrence</span>
-                <div class="csp-s-7b6ef42c3f03">
-                    <span class="status-badge needs-review">Needs Review</span>
-                    <a href="/applications/{{ app_id }}/visitation" class="csp-s-bc021cb91705">Fix &rarr;</a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Group 6: Approval Chain -->
-    <div class="csp-s-73ce9fd8dcff">
-        <h3 class="csp-s-01c3f30f7542">6. Approval Chain</h3>
-        <div class="csp-s-6e146183a3a3">
-            <div class="csp-s-c6db9aa46ddd">
-                <span>Credit Underwriter Recommendation</span>
-                <span class="status-badge verified">Verified</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Review status tracker -->
-    <div class="csp-s-c1ce43c03782">
-        <h3 class="csp-s-6a01b1369443">Review Status</h3>
-        <div class="csp-s-69abfdc81da3">
-            {% for i in range(total_votes|default(5)) %}
-            <div data-csp-style="width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; {% if i < (yes_votes|default(0)) %}background:#22c55e; color:#fff;{% else %}background:var(--bg-muted,#f3f4f6); color:var(--color-text-muted,#6b7280); border:1px solid var(--border-color,#e5e7eb);{% endif %}">
-                {% if i < (yes_votes|default(0)) %}✓{% else %}–{% endif %}
-            </div>
-            {% endfor %}
-        </div>
-        <p class="csp-s-bcdd41c305f0">{{ yes_votes|default(0) }} completed review checks.</p>
-    </div>
-
-    <!-- Manager Attestations -->
-    <div class="csp-s-c1ce43c03782">
-        <h3 class="csp-s-6a01b1369443">Manager Attestations</h3>
-        <label class="csp-s-898ea1b6ca99">
-            <input type="checkbox" name="kyc_attested" required class="csp-s-868b2e079f55">
-            <span class="csp-s-7a59f00301eb">I confirm that KYC documents have been physically sighted and verified for this applicant.</span>
-        </label>
-        <label class="csp-s-1032ef5b90f4">
-            <input type="checkbox" name="collateral_attested" required class="csp-s-868b2e079f55">
-            <span class="csp-s-7a59f00301eb">I confirm that collateral value has been registered in the branch collateral registry.</span>
-        </label>
-    </div>
-
-    <!-- Bottom Actions bar -->
-    <div class="csp-s-2412d21f7a90">
-        <div class="csp-s-4dd169649d12">
-            <a href="/applications/{{ app_id }}/return?type=officer" class="csp-s-39338490c131">Return to Relationship Officer</a>
-        </div>
-
-        <form action="/applications/{{ app_id }}/approve" method="POST" class="csp-s-2d7bdee59cdd">
-            <div class="form-group csp-s-84132fd4e4a0">
-                <label class="field-label csp-s-3d9df89ef84d">Approved/Recommended Amount (₦)</label>
-                <input type="number" name="amount" class="field-input" value="{{ app.amount or 0 }}" required>
-            </div>
-            <button type="submit" class="btn-primary-filled" id="approveBtn">
-                Concur &amp; Forward for Review &rarr;
-            </button>
-        </form>
-    </div>
-
-    {% if app and app.stage == 'disbursed' %}
-    <div class="csp-s-b6ee57193685">
-        <h3 class="csp-s-cafbaf7de149">Disbursement Confirmed</h3>
-        <div class="form-grid">
-            <div class="form-group">
-                <label class="field-label">Disbursed At</label>
-                <input type="text" class="field-input" value="{{ app.disbursed_at or '—' }}" readonly>
-            </div>
-            <div class="form-group">
-                <label class="field-label">Amount</label>
-                <input type="text" class="field-input" value="₦{{ '{:,.0f}'.format(app.amount or 0) }}" readonly>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 </div>
 {% endblock %}

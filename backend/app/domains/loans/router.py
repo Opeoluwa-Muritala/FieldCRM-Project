@@ -787,14 +787,19 @@ async def render_wizard_step(
     _verify_loan_scope(app, current_user)
         
     user_role = current_user.role.lower().replace(" ", "_")
-    if user_role not in ("account_officer", "loan_officer"):
+    reviewer_roles = {
+        "branch_manager", "branch_supervisor", "credit_analyst", "crm",
+        "head_crm", "auditor", "ed", "md",
+    }
+    if user_role not in ("account_officer", "loan_officer") and user_role not in reviewer_roles:
         raise HTTPException(status_code=403, detail="Insufficient permissions for this action")
-    if app.created_by != current_user.id:
+    if user_role in ("account_officer", "loan_officer") and app.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="You do not have permission to view/modify this application")
 
     if step == 2 and data.get("marital_status") == "Single":
         return RedirectResponse(url=f"/applications/{application_id}/step/3", status_code=status.HTTP_303_SEE_OTHER)
-    readonly = step == 9
+    # Review-chain roles may inspect every completed section, but never edit it.
+    readonly = step == 9 or user_role in reviewer_roles
     applicant_signed = False
     signatures = {}
     if latest:
@@ -819,6 +824,7 @@ async def render_wizard_step(
         readonly=readonly,
         applicant_signed=applicant_signed,
         signatures=signatures,
+        review_mode=user_role in reviewer_roles,
     )
     return templates.TemplateResponse(request, "shared/application_wizard.html", ctx)
 
@@ -991,12 +997,24 @@ async def render_guarantor_step(
     except ValueError:
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
+    loan_repo = LoanRepository(conn)
+    app = await loan_repo.get_by_id(app_uuid, current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    _verify_loan_scope(app, current_user)
+
+    user_role = current_user.role.lower().replace(" ", "_")
+    reviewer_roles = {
+        "branch_manager", "branch_supervisor", "credit_analyst", "crm",
+        "head_crm", "auditor", "ed", "md",
+    }
+
     guarantor_row = await conn.fetchrow(
         "SELECT id FROM guarantors WHERE loan_id = $1 AND slot = $2",
         app_uuid, guarantor_index
     )
     
-    readonly = False
+    readonly = user_role in reviewer_roles
     signatures = {}
     if guarantor_row:
         from app.domains.signing.service import SigningService
@@ -1025,7 +1043,8 @@ async def render_guarantor_step(
         hide_tabbar=True,
         mobile_title_text=f"Guarantor: Step {step}",
         readonly=readonly,
-        signatures=signatures
+        signatures=signatures,
+        review_mode=user_role in reviewer_roles,
     )
     return templates.TemplateResponse(request, "shared/guarantor_wizard.html", ctx)
 
@@ -1046,6 +1065,15 @@ async def process_guarantor_step(
         app_uuid = UUID(application_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Loan Application not found")
+
+    loan_repo = LoanRepository(conn)
+    app = await loan_repo.get_by_id(app_uuid, current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    _verify_loan_scope(app, current_user)
+    user_role = current_user.role.lower().replace(" ", "_")
+    if user_role not in ("account_officer", "loan_officer") or app.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="This submitted guarantor form is read-only for reviewers")
         
     guarantor_row = await conn.fetchrow(
         "SELECT id, full_name FROM guarantors WHERE loan_id = $1 AND slot = $2",
@@ -1571,6 +1599,7 @@ async def render_approval_readiness(
     borrower_name = app.applicant_name if app else "Borrower"
     
     summary = await repo.get_readiness_summary(UUID(application_id), current_user.org_id)
+    documents = await get_document_service(conn).repo.get_by_loan(UUID(application_id), current_user.org_id)
     
     ctx = build_template_context(
         request,
@@ -1579,6 +1608,7 @@ async def render_approval_readiness(
         borrower_name=borrower_name,
         app=app,
         summary=summary,
+        documents=documents,
         active_tab="awaiting",
         active_page="awaiting",
     )

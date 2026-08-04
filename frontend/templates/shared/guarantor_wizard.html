@@ -8,6 +8,15 @@
 {% block page_title %}Guarantor Form Flow{% endblock %}
 
 {% block content %}
+    {% if review_mode %}
+    <div class="review-mode-banner" role="status">
+        <div>
+            <strong>Read-only guarantor evidence</strong>
+            <span>This signed/submitted form is locked during review.</span>
+        </div>
+        <a href="/applications/{{ app_id }}/approve">Back to approval review</a>
+    </div>
+    {% endif %}
     <!-- Horizontal Step Indicator -->
     <div class="wizard-steps">
         {% set step_labels = ["Identity", "Obligations", "Family", "Employment", "Business & Docs", "Declaration", "Guarantee Limit", "Signatures"] %}
