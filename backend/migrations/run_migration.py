@@ -23,6 +23,10 @@ MIGRATION_FILES = [
     "025_mobile_creation_idempotency.sql",
     "026_document_upload_intents.sql",
     "027_auth_refresh_sessions.sql",
+    "028_business_locations.sql",
+    "029_collateral_items.sql",
+    "030_business_pnl.sql",
+    "031_loan_recommendations.sql",
 ]
 
 

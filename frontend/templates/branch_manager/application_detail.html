@@ -32,6 +32,10 @@
             <span class="status-badge {{ stage_class.get(app.stage, '') }}">{{ app.status }}</span>
         </div>
         
+        <div class="page-card csp-s-b3a2297a12f5">
+            <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary" style="display: block; text-align: center; text-decoration: none; font-weight: bold;">Feasibility Analysis &rarr;</a>
+        </div>
+        
         {# Vertical Stage Timeline #}
         <div class="page-card csp-s-b3a2297a12f5 supervisor-timeline-card">
             <h3 class="csp-s-2e2b4cd7c4f9">Application Timeline</h3>
@@ -254,6 +258,7 @@
                                    data-key="{{ item_key }}" 
                                    data-label="{{ item_label }}"
                                    {% if is_checked %}checked{% endif %}
+                                   {% if readonly %}disabled{% endif %}
                                    data-checklist-toggle>
                             <span>{{ item_label }}</span>
                         </label>
@@ -319,6 +324,7 @@
         </script>
 
         {# Concur / Return Action Bar #}
+        {% if not readonly %}
         <div class="page-card csp-s-b3a2297a12f5 supervisor-decision-card">
             <div class="csp-s-5ffb91a26b04">
                 <div class="csp-s-4dd169649d12">
@@ -332,6 +338,7 @@
                 </form>
             </div>
         </div>
+        {% endif %}
         
     </div>
 </div>

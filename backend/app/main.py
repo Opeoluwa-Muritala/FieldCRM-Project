@@ -41,6 +41,7 @@ from app.domains.auth.router import router as auth_router
 from app.domains.users.router import router as users_router
 from app.domains.branches.router import router as branches_router
 from app.domains.loans.router import router as loans_router
+from app.domains.loans.collateral import router as collateral_router
 from app.domains.ocr.router import router as ocr_router
 from app.api.v1.mobile import router as mobile_api_router, warm_mobile_static_cache
 
@@ -361,6 +362,7 @@ app.include_router(ocr_router)
 
 # Mount Loan pages at root
 app.include_router(loans_router)
+app.include_router(collateral_router)
 
 logger = logging.getLogger("FieldCRMMain")
 

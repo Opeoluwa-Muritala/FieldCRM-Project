@@ -1,0 +1,658 @@
+{% extends shell %}
+
+{% block title %}Collateral &amp; Repayment Feasibility | FieldCRM{% endblock %}
+{% block page_title %}Feasibility &amp; Collateral Analysis{% endblock %}
+{% block breadcrumb %}Applications &rarr; {{ app.ref_no }} &rarr; Feasibility{% endblock %}
+
+{% block extra_css %}
+<style nonce="{{ csp_nonce }}">
+    :root {
+        --shield-purple: #2E0052;
+        --mfb-purple: #89268B;
+        --off-white: #F2F2F2;
+        --glass-bg: rgba(255, 255, 255, 0.85);
+        --glass-border: rgba(137, 38, 139, 0.15);
+    }
+    
+    .feasibility-container {
+        font-family: 'DM Sans', sans-serif;
+        color: #333;
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+        margin-bottom: 40px;
+    }
+    
+    @media (max-width: 1024px) {
+        .feasibility-container {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .feasibility-main-column {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+    
+    .feasibility-side-column {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+    
+    .feasibility-card {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(46, 0, 82, 0.05);
+        backdrop-filter: blur(10px);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .feasibility-card:hover {
+        box-shadow: 0 6px 24px rgba(46, 0, 82, 0.08);
+    }
+    
+    .feasibility-card-title {
+        font-family: 'Playfair Display', serif;
+        color: var(--shield-purple);
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        font-weight: 700;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid var(--off-white);
+        padding-bottom: 10px;
+    }
+    
+    .feasibility-label {
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        color: var(--mfb-purple);
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+        display: block;
+    }
+    
+    .feasibility-input {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1.5px solid #E0E0E0;
+        border-radius: 6px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.95rem;
+        transition: border-color 0.2s;
+        box-sizing: border-box;
+    }
+    
+    .feasibility-input:focus {
+        border-color: var(--mfb-purple);
+        outline: none;
+    }
+    
+    .feasibility-input:disabled {
+        background-color: var(--off-white);
+        cursor: not-allowed;
+    }
+    
+    .btn-action {
+        background: linear-gradient(135deg, var(--shield-purple) 0%, var(--mfb-purple) 100%);
+        color: #fff;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-family: 'DM Sans', sans-serif;
+        cursor: pointer;
+        transition: opacity 0.2s;
+    }
+    
+    .btn-action:hover {
+        opacity: 0.9;
+    }
+    
+    .btn-danger-outline {
+        background: transparent;
+        color: #d9534f;
+        border: 1px solid #d9534f;
+        padding: 8px 14px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-family: 'DM Sans', sans-serif;
+        cursor: pointer;
+        transition: background-color 0.2s, color 0.2s;
+    }
+    
+    .btn-danger-outline:hover {
+        background-color: #d9534f;
+        color: #fff;
+    }
+    
+    .btn-secondary-outline {
+        background: transparent;
+        color: var(--mfb-purple);
+        border: 1px solid var(--mfb-purple);
+        padding: 8px 14px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s, color 0.2s;
+    }
+    
+    .btn-secondary-outline:hover {
+        background-color: var(--mfb-purple);
+        color: #fff;
+    }
+    
+    .location-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr auto;
+        gap: 12px;
+        align-items: end;
+        margin-bottom: 12px;
+    }
+    
+    .collateral-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .collateral-card {
+        border: 1px dashed var(--mfb-purple);
+        border-radius: 8px;
+        padding: 16px;
+        background-color: rgba(137, 38, 139, 0.02);
+    }
+    
+    .collateral-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+    
+    .collateral-badge {
+        background-color: var(--shield-purple);
+        color: #fff;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    
+    .doc-upload-box {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--off-white);
+    }
+    
+    .doc-list {
+        margin-top: 10px;
+        list-style: none;
+        padding: 0;
+    }
+    
+    .doc-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        background-color: #fff;
+        border: 1px solid #E0E0E0;
+        border-radius: 6px;
+        margin-bottom: 6px;
+        font-size: 0.85rem;
+    }
+    
+    .summary-card {
+        background: linear-gradient(135deg, var(--shield-purple) 0%, #4D008C 100%);
+        color: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 6px 24px rgba(46, 0, 82, 0.15);
+    }
+    
+    .summary-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.6rem;
+        margin-bottom: 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        padding-bottom: 10px;
+    }
+    
+    .summary-metric {
+        margin-bottom: 16px;
+    }
+    
+    .summary-val {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #fff;
+        margin-top: 4px;
+    }
+    
+    .recommendation-item {
+        padding: 12px;
+        border-bottom: 1px solid var(--off-white);
+    }
+    
+    .recommendation-item:last-child {
+        border-bottom: none;
+    }
+    
+    .rec-meta {
+        font-size: 0.8rem;
+        color: #777;
+        margin-top: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <a href="/applications/{{ app_id }}" class="btn-secondary-outline">&larr; Back to Workstation</a>
+</div>
+
+<div class="feasibility-container">
+    {# LEFT COLUMN: forms and inputs #}
+    <div class="feasibility-main-column">
+        
+        {# PHASE 1: BUSINESS LOCATIONS #}
+        <section class="feasibility-card">
+            <h2 class="feasibility-card-title">Business Locations</h2>
+            <form action="/applications/{{ app_id }}/business-locations" method="POST" id="locationsForm">
+                <div id="locationsContainer">
+                    {% for loc in locations %}
+                    <div class="location-row">
+                        <div class="form-group">
+                            <label class="feasibility-label">Address Line</label>
+                            <input type="text" name="address_line[]" class="feasibility-input" value="{{ loc.address_line }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="feasibility-label">City</label>
+                            <input type="text" name="city[]" class="feasibility-input" value="{{ loc.city }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="feasibility-label">State</label>
+                            <input type="text" name="state[]" class="feasibility-input" value="{{ loc.state }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="feasibility-label">Function</label>
+                            <select name="function[]" class="feasibility-input" required>
+                                <option value="hq" {% if loc.function == 'hq' %}selected{% endif %}>HQ</option>
+                                <option value="warehouse" {% if loc.function == 'warehouse' %}selected{% endif %}>Warehouse</option>
+                                <option value="branch" {% if loc.function == 'branch' %}selected{% endif %}>Branch</option>
+                                <option value="retail_outlet" {% if loc.function == 'retail_outlet' %}selected{% endif %}>Retail Outlet</option>
+                            </select>
+                        </div>
+                        <div>
+                            <button type="button" class="btn-danger-outline" onclick="this.parentElement.parentElement.remove()">Remove</button>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="location-row">
+                        <div class="form-group">
+                            <label class="feasibility-label">Address Line</label>
+                            <input type="text" name="address_line[]" class="feasibility-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="feasibility-label">City</label>
+                            <input type="text" name="city[]" class="feasibility-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="feasibility-label">State</label>
+                            <input type="text" name="state[]" class="feasibility-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="feasibility-label">Function</label>
+                            <select name="function[]" class="feasibility-input" required>
+                                <option value="hq">HQ</option>
+                                <option value="warehouse">Warehouse</option>
+                                <option value="branch">Branch</option>
+                                <option value="retail_outlet">Retail Outlet</option>
+                            </select>
+                        </div>
+                        <div>
+                            <button type="button" class="btn-danger-outline" onclick="this.parentElement.parentElement.remove()">Remove</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div style="margin-top: 12px; display: flex; justify-content: space-between;">
+                    <button type="button" class="btn-secondary-outline" id="addLocationBtn">+ Add Location</button>
+                    <button type="submit" class="btn-action">Save Locations</button>
+                </div>
+            </form>
+        </section>
+
+        {# PHASE 2: COLLATERAL ITEMS #}
+        <section class="feasibility-card">
+            <h2 class="feasibility-card-title">Pledged Collateral Items</h2>
+            
+            <div class="collateral-grid">
+                {% for item in collateral_items %}
+                <div class="collateral-card">
+                    <div class="collateral-header">
+                        <div>
+                            <span class="collateral-badge">{{ item.collateral_type }}</span>
+                            <h4 style="margin: 8px 0 4px 0; font-family: 'Playfair Display', serif; color: var(--shield-purple);">{{ item.narration }}</h4>
+                        </div>
+                        <form action="/applications/{{ app_id }}/collateral/{{ item.id }}/delete" method="POST">
+                            <button type="submit" class="btn-danger-outline">Delete Item</button>
+                        </form>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 0.9rem; border-top: 1px solid var(--off-white); padding-top: 10px;">
+                        {% if item.collateral_type == 'cash' %}
+                        <div>
+                            <span style="color: #777;">Face Value</span><br>
+                            <strong>₦{{ "{:,.2f}".format(item.face_value or 0) }}</strong>
+                        </div>
+                        {% else %}
+                        <div>
+                            <span style="color: #777;">Loan-based Price</span><br>
+                            <strong>₦{{ "{:,.2f}".format(item.loan_based_price or 0) }}</strong>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <span style="color: #777;">Force Sale Value</span><br>
+                            <strong style="color: var(--mfb-purple);">₦{{ "{:,.2f}".format(item.force_sale_value or 0) }}</strong>
+                        </div>
+                    </div>
+
+                    {# Document List & Upload #}
+                    <div class="doc-upload-box">
+                        <span class="feasibility-label">Supporting Documents</span>
+                        <ul class="doc-list">
+                            {% for doc in item.documents %}
+                            <li class="doc-item">
+                                <div>
+                                    <a href="{{ doc.cloudinary_url }}" target="_blank" style="color: var(--mfb-purple); text-decoration: none; font-weight: bold;">
+                                        {{ doc.document_type|replace('_', ' ')|title }} &nearr;
+                                    </a>
+                                    <br><small style="color: #777;">Supported Worth: ₦{{ "{:,.2f}".format(doc.worth) }}</small>
+                                </div>
+                                <form action="/applications/{{ app_id }}/collateral/{{ item.id }}/documents/{{ doc.id }}/delete" method="POST">
+                                    <button type="submit" class="btn-danger-outline" style="padding: 4px 8px; font-size: 0.75rem;">Delete</button>
+                                </form>
+                            </li>
+                            {% else %}
+                            <li style="color: #777; font-size: 0.85rem; font-style: italic;">No documents uploaded.</li>
+                            {% endfor %}
+                        </ul>
+
+                        <form action="/applications/{{ app_id }}/collateral/{{ item.id }}/documents" method="POST" enctype="multipart/form-data" style="margin-top: 12px; border-top: 1px dashed #E0E0E0; padding-top: 12px;">
+                            <div style="display: grid; grid-template-columns: 2fr 1fr 1.5fr auto; gap: 8px; align-items: end;">
+                                <div>
+                                    <label class="feasibility-label" style="font-size: 0.75rem;">Document Type</label>
+                                    <input type="text" name="document_type" class="feasibility-input" placeholder="e.g. Title Deed" required>
+                                </div>
+                                <div>
+                                    <label class="feasibility-label" style="font-size: 0.75rem;">Worth (₦)</label>
+                                    <input type="number" name="worth" class="feasibility-input" placeholder="e.g. 500000" required>
+                                </div>
+                                <div>
+                                    <label class="feasibility-label" style="font-size: 0.75rem;">File</label>
+                                    <input type="file" name="file" class="feasibility-input" required>
+                                </div>
+                                <div>
+                                    <button type="submit" class="btn-action" style="padding: 10px 14px; font-size: 0.85rem;">Upload</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {# Add new collateral form #}
+            <div style="margin-top: 24px; border-top: 2px solid var(--off-white); padding-top: 20px;">
+                <h3 style="font-family: 'Playfair Display', serif; color: var(--shield-purple); margin-bottom: 12px;">Add Collateral Item</h3>
+                <form action="/applications/{{ app_id }}/collateral" method="POST">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div>
+                            <label class="feasibility-label">Collateral Type</label>
+                            <select name="collateral_type" id="collateral_type" class="feasibility-input" required>
+                                <option value="property">Property</option>
+                                <option value="equipment">Equipment</option>
+                                <option value="inventory">Inventory</option>
+                                <option value="cash">Cash</option>
+                            </select>
+                        </div>
+                        <div id="loan_based_price_group">
+                            <label class="feasibility-label">Loan-Based Price (₦)</label>
+                            <input type="number" name="loan_based_price" id="loan_based_price" class="feasibility-input" placeholder="e.g. 1000000">
+                        </div>
+                        <div id="face_value_group" style="display: none;">
+                            <label class="feasibility-label">Face Value (₦)</label>
+                            <input type="number" name="face_value" id="face_value" class="feasibility-input" placeholder="e.g. 500000">
+                        </div>
+                        <div>
+                            <label class="feasibility-label">Computed FSV (₦)</label>
+                            <input type="text" id="fsv_preview" class="feasibility-input" readonly value="₦0.00">
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <label class="feasibility-label">Description / Narration</label>
+                        <textarea name="narration" class="feasibility-input" rows="3" placeholder="Provide collateral details..." required></textarea>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end;">
+                        <button type="submit" class="btn-action">Add Collateral</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        {# PHASE 3: BUSINESS PROFIT & LOSS #}
+        <section class="feasibility-card">
+            <h2 class="feasibility-card-title">Business Profit &amp; Loss</h2>
+            <form action="/applications/{{ app_id }}/pnl" method="POST">
+                <div style="display: grid; grid-template-columns: 2fr 1.5fr 1.5fr 1.5fr; gap: 12px; align-items: end;">
+                    <div>
+                        <label class="feasibility-label">Period Label</label>
+                        <input type="text" name="period_label" class="feasibility-input" placeholder="e.g. FY2025 or Last 12 months" value="{{ pnl.period_label if pnl else '' }}" required>
+                    </div>
+                    <div>
+                        <label class="feasibility-label">Revenue (₦)</label>
+                        <input type="number" name="revenue" id="pnl_revenue" class="feasibility-input" placeholder="e.g. 5000000" value="{{ pnl.revenue|int if pnl else '' }}" required>
+                    </div>
+                    <div>
+                        <label class="feasibility-label">Expenses (₦)</label>
+                        <input type="number" name="expenses" id="pnl_expenses" class="feasibility-input" placeholder="e.g. 3000000" value="{{ pnl.expenses|int if pnl else '' }}" required>
+                    </div>
+                    <div>
+                        <label class="feasibility-label">Net Profit (₦)</label>
+                        <input type="text" id="pnl_net_profit" class="feasibility-input" readonly value="₦{{ '{:,.2f}'.format(pnl.net_profit or 0) if pnl else '0.00' }}">
+                    </div>
+                </div>
+                <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+                    <button type="submit" class="btn-action">Save P&amp;L</button>
+                </div>
+            </form>
+        </section>
+
+    </div>
+
+    {# RIGHT COLUMN: summary & recommendations #}
+    <div class="feasibility-side-column">
+        
+        {# PHASE 4: SUMMARY CARD #}
+        <section class="summary-card">
+            <h2 class="summary-title">Feasibility Summary</h2>
+            
+            <div class="summary-metric">
+                <span class="feasibility-label" style="color: rgba(255,255,255,0.7);">Total Pledged Collateral (FSV)</span>
+                <div class="summary-val">₦{{ "{:,.2f}".format(total_pledged_value or 0) }}</div>
+            </div>
+            
+            <div class="summary-metric">
+                <span class="feasibility-label" style="color: rgba(255,255,255,0.7);">Collateral Coverage Ratio</span>
+                <div class="summary-val">{{ "{:.2%}".format(coverage_ratio or 0) }}</div>
+                <small style="color: rgba(255,255,255,0.6);">Target is 100% or greater (1.0x)</small>
+            </div>
+
+            <div class="summary-metric" style="border-top: 1px solid rgba(255,255,255,0.15); padding-top: 15px; margin-top: 15px;">
+                <span class="feasibility-label" style="color: rgba(255,255,255,0.7);">Proposed Monthly Installment</span>
+                <div class="summary-val" style="font-size: 1.4rem;">₦{{ "{:,.2f}".format(proposed_installment or 0) }}</div>
+                <small style="color: rgba(255,255,255,0.6);">Derived from ₦{{ "{:,.0f}".format(app.amount or 0) }} request over {{ app.tenor_months or 0 }}m @ {{ proposed_interest_rate }}% P.A.</small>
+            </div>
+
+            <div class="summary-metric">
+                <span class="feasibility-label" style="color: rgba(255,255,255,0.7);">Monthly Net Profit</span>
+                {% set monthly_net = (pnl.net_profit / 12) if pnl else 0 %}
+                <div class="summary-val" style="font-size: 1.4rem;">₦{{ "{:,.2f}".format(monthly_net) }}</div>
+                <small style="color: rgba(255,255,255,0.6);">Based on P&amp;L ({{ pnl.period_label if pnl else 'not set' }})</small>
+            </div>
+
+            <div class="summary-metric" style="border-top: 1px solid rgba(255,255,255,0.15); padding-top: 15px;">
+                <span class="feasibility-label" style="color: rgba(255,255,255,0.7);">Repayment Capacity Ratio</span>
+                {% set cap_ratio = (monthly_net / proposed_installment) if proposed_installment > 0 else 0 %}
+                <div class="summary-val" style="font-size: 1.4rem; color: {% if cap_ratio >= 1.5 %}#85e085{% elif cap_ratio >= 1.0 %}#ffeb99{% else %}#ff9999{% endif %};">
+                    {{ "{:.2f}".format(cap_ratio) }}x
+                </div>
+                <small style="color: rgba(255,255,255,0.6);">Monthly Net Profit / Monthly Installment. Recommended minimum is 1.5x.</small>
+            </div>
+        </section>
+
+        {# PHASE 5: LOAN RECOMMENDATIONS HISTORY & FORM #}
+        <section class="feasibility-card">
+            <h2 class="feasibility-card-title">Recommendations</h2>
+            
+            {# List existing recommendations #}
+            <div style="max-height: 300px; overflow-y: auto; margin-bottom: 20px; border: 1px solid var(--off-white); border-radius: 6px;">
+                {% for rec in recommendations %}
+                <div class="recommendation-item">
+                    <div style="display: flex; justify-content: space-between; font-weight: bold;">
+                        <span style="color: var(--mfb-purple);">₦{{ "{:,.2f}".format(rec.recommended_amount) }}</span>
+                        <span style="font-size: 0.8rem; background-color: var(--off-white); padding: 2px 6px; border-radius: 4px;">{{ rec.role_at_submission|title }}</span>
+                    </div>
+                    {% if rec.notes %}
+                    <p style="margin: 6px 0 0 0; font-size: 0.9rem; color: #444;">{{ rec.notes }}</p>
+                    {% endif %}
+                    <div class="rec-meta">
+                        By {{ rec.submitter_name }} &middot; {{ rec.created_at.strftime('%d %b %Y, %H:%M') }}
+                    </div>
+                </div>
+                {% else %}
+                <div style="padding: 15px; color: #777; font-size: 0.9rem; font-style: italic; text-align: center;">No recommendations submitted yet.</div>
+                {% endfor %}
+            </div>
+
+            {# Submit new recommendation #}
+            {% if current_user.role|lower|replace(' ', '_') in ['account_officer', 'loan_officer', 'branch_manager', 'branch_supervisor', 'credit_analyst', 'crm', 'head_crm', 'ed', 'md'] %}
+            <h3 style="font-family: 'Playfair Display', serif; color: var(--shield-purple); font-size: 1.1rem; margin-bottom: 10px;">Submit Recommendation</h3>
+            <form action="/applications/{{ app_id }}/recommendations" method="POST">
+                <div style="margin-bottom: 12px;">
+                    <label class="feasibility-label">Recommended Amount (₦)</label>
+                    <input type="number" name="recommended_amount" class="feasibility-input" value="{{ app.amount|int }}" required>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label class="feasibility-label">Recommendation Notes</label>
+                    <textarea name="notes" class="feasibility-input" rows="3" placeholder="Explain the recommendation..." required></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end;">
+                    <button type="submit" class="btn-action">Submit Recommendation</button>
+                </div>
+            </form>
+            {% endif %}
+        </section>
+
+    </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+    document.addEventListener("DOMContentLoaded", function() {
+        // Business Locations dynamic rows
+        const container = document.getElementById("locationsContainer");
+        const addBtn = document.getElementById("addLocationBtn");
+        
+        if (addBtn) {
+            addBtn.addEventListener("click", function() {
+                const newRow = document.createElement("div");
+                newRow.className = "location-row";
+                newRow.innerHTML = `
+                    <div class="form-group">
+                        <label class="feasibility-label">Address Line</label>
+                        <input type="text" name="address_line[]" class="feasibility-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="feasibility-label">City</label>
+                        <input type="text" name="city[]" class="feasibility-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="feasibility-label">State</label>
+                        <input type="text" name="state[]" class="feasibility-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="feasibility-label">Function</label>
+                        <select name="function[]" class="feasibility-input" required>
+                            <option value="hq">HQ</option>
+                            <option value="warehouse">Warehouse</option>
+                            <option value="branch">Branch</option>
+                            <option value="retail_outlet">Retail Outlet</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button type="button" class="btn-danger-outline" onclick="this.parentElement.parentElement.remove()">Remove</button>
+                    </div>
+                `;
+                container.appendChild(newRow);
+            });
+        }
+
+        // PNL Automatic Net Profit Calculation
+        const revenueInput = document.getElementById("pnl_revenue");
+        const expensesInput = document.getElementById("pnl_expenses");
+        const netProfitInput = document.getElementById("pnl_net_profit");
+
+        function calculateNetProfit() {
+            const revenue = parseFloat(revenueInput.value) || 0.0;
+            const expenses = parseFloat(expensesInput.value) || 0.0;
+            const netProfit = revenue - expenses;
+            netProfitInput.value = "₦" + netProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        if (revenueInput && expensesInput) {
+            revenueInput.addEventListener("input", calculateNetProfit);
+            expensesInput.addEventListener("input", calculateNetProfit);
+        }
+
+        // Collateral FSV Live preview
+        const typeSelect = document.getElementById("collateral_type");
+        const loanBasedPrice = document.getElementById("loan_based_price");
+        const faceValue = document.getElementById("face_value");
+        const fsvPreview = document.getElementById("fsv_preview");
+        const priceGroup = document.getElementById("loan_based_price_group");
+        const faceValueGroup = document.getElementById("face_value_group");
+
+        function updateFSVPreview() {
+            const type = typeSelect.value;
+            if (type === "cash") {
+                priceGroup.style.display = "none";
+                faceValueGroup.style.display = "block";
+                const val = parseFloat(faceValue.value) || 0.0;
+                fsvPreview.value = "₦" + val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            } else {
+                priceGroup.style.display = "block";
+                faceValueGroup.style.display = "none";
+                const val = parseFloat(loanBasedPrice.value) || 0.0;
+                const fsv = val * 0.70;
+                fsvPreview.value = "₦" + fsv.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            }
+        }
+
+        if (typeSelect) {
+            typeSelect.addEventListener("change", updateFSVPreview);
+            loanBasedPrice.addEventListener("input", updateFSVPreview);
+            faceValue.addEventListener("input", updateFSVPreview);
+        }
+    });
+</script>
+{% endblock %}

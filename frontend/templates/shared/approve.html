@@ -95,6 +95,7 @@
                 {% else %}
                     {{ check_row('Pledge and Trust Receipt (MMFB/CRM/02)', 'Not Available', 'returned') }}
                 {% endif %}
+                {{ check_row('Collateral & Repayment Feasibility Analysis', 'View details', 'verified', '/applications/' ~ app_id ~ '/repayment-feasibility', 'Open Analysis') }}
             </div>
         </section>
 

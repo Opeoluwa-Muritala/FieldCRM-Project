@@ -31,43 +31,6 @@
             <span class="status-badge {{ stage_class.get(app.stage, '') }}">{{ app.status }}</span>
         </div>
         
-        {# Secure Signing Links (Nigerian Evidence Act s.84) #}
-        <div class="page-card csp-s-b3a2297a12f5">
-            <h3 class="csp-s-93e773d1eb63">Secure Signing Links</h3>
-            <div class="csp-s-18809276c4d1">
-                {# Applicant Link #}
-                <div>
-                    <div class="csp-s-afe7b8278545">
-                        <span class="csp-s-7b0ad62b2e6a">Applicant Link</span>
-                        <span id="applicant-link-status" class="csp-s-c029905cd705"></span>
-                    </div>
-                    <button type="button" class="btn btn-primary csp-s-9c9cbc093ce9" id="btn-generate-applicant-link">
-                        Generate Applicant Link
-                    </button>
-                </div>
-                {# Guarantor Slot 1 Link #}
-                <div>
-                    <div class="csp-s-afe7b8278545">
-                        <span class="csp-s-7b0ad62b2e6a">Guarantor Slot 1 Link</span>
-                        <span id="guarantor-1-link-status" class="csp-s-c029905cd705"></span>
-                    </div>
-                    <button type="button" class="btn btn-primary csp-s-9c9cbc093ce9" id="btn-generate-guarantor-1-link">
-                        Generate Guarantor 1 Link
-                    </button>
-                </div>
-                {# Guarantor Slot 2 Link #}
-                <div>
-                    <div class="csp-s-afe7b8278545">
-                        <span class="csp-s-7b0ad62b2e6a">Guarantor Slot 2 Link</span>
-                        <span id="guarantor-2-link-status" class="csp-s-c029905cd705"></span>
-                    </div>
-                    <button type="button" class="btn btn-primary csp-s-9c9cbc093ce9" id="btn-generate-guarantor-2-link">
-                        Generate Guarantor 2 Link
-                    </button>
-                </div>
-            </div>
-        </div>
-        
         {# Vertical Stage Timeline #}
         <div class="page-card csp-s-b3a2297a12f5">
             <h3 class="csp-s-2e2b4cd7c4f9">Application Timeline</h3>
@@ -339,70 +302,4 @@
         
     </div>
 </div>
-
-<script nonce="{{ csp_nonce }}">
-async function showAndCopySigningLink(button, status, shareUrl) {
-  button.dataset.shareUrl = shareUrl;
-  button.textContent = shareUrl;
-  button.title = 'Click to copy this signing link';
-  button.style.overflow = 'hidden';
-  button.style.textOverflow = 'ellipsis';
-  button.style.whiteSpace = 'nowrap';
-  button.onclick = async () => {
-    await navigator.clipboard.writeText(button.dataset.shareUrl);
-    status.textContent = 'Copied!';
-    status.style.color = 'var(--accent-success)';
-  };
-  await navigator.clipboard.writeText(shareUrl);
-  status.textContent = 'Copied! Open within 10 minutes.';
-  status.style.color = 'var(--accent-success)';
-}
-
-document.getElementById('btn-generate-applicant-link')?.addEventListener('click', async event => {
-  const button = event.currentTarget;
-  const status = document.getElementById('applicant-link-status');
-  button.disabled = true;
-  status.textContent = 'Generating...';
-  try {
-    const response = await fetch('/applications/{{ app.id }}/client-link', {
-      method: 'POST', headers: {'Accept': 'application/json'}
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.detail || 'Failed');
-    await showAndCopySigningLink(button, status, result.share_url);
-  } catch (error) {
-    status.textContent = error.message;
-    status.style.color = 'var(--accent-danger)';
-  } finally {
-    button.disabled = false;
-  }
-});
-
-async function generateGuarantorLink(slot, statusId, buttonId) {
-  const button = document.getElementById(buttonId);
-  const status = document.getElementById(statusId);
-  button.disabled = true;
-  status.textContent = 'Generating...';
-  try {
-    const response = await fetch(`/applications/{{ app.id }}/guarantor-link/${slot}`, {
-      method: 'POST', headers: {'Accept': 'application/json'}
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.detail || 'Failed');
-    await showAndCopySigningLink(button, status, result.share_url);
-  } catch (error) {
-    status.textContent = error.message;
-    status.style.color = 'var(--accent-danger)';
-  } finally {
-    button.disabled = false;
-  }
-}
-
-document.getElementById('btn-generate-guarantor-1-link')?.addEventListener('click', () => {
-  generateGuarantorLink(1, 'guarantor-1-link-status', 'btn-generate-guarantor-1-link');
-});
-document.getElementById('btn-generate-guarantor-2-link')?.addEventListener('click', () => {
-  generateGuarantorLink(2, 'guarantor-2-link-status', 'btn-generate-guarantor-2-link');
-});
-</script>
 {% endblock %}

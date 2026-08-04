@@ -76,10 +76,18 @@
 
 .loan-row-link {
     text-decoration: none;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+.loan-row-link:hover {
+    border-color: var(--color-brand-shield, #2E0052);
+    background-color: rgba(137, 38, 139, 0.02);
+    box-shadow: 0 4px 12px rgba(46, 0, 82, 0.08);
+    transform: translateY(-1px);
 }
 
 .loan-row-link:active {
-    background-color: var(--color-brand-tint);
+    background-color: var(--color-brand-tint, rgba(137, 38, 139, 0.08));
 }
 
 .loan-row-header {

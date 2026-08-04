@@ -22,10 +22,10 @@
         {% set is_single = (data.marital_status == 'Single') %}
         {% if is_single %}
             {% set steps_list = [1, 3, 4, 5, 6, 7, 8, 9] %}
-            {% set step_labels = ["Details", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge", "Review & Sign"] %}
+            {% set step_labels = ["Details", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge", "Review"] %}
         {% else %}
             {% set steps_list = [1, 2, 3, 4, 5, 6, 7, 8, 9] %}
-            {% set step_labels = ["Details", "Spousal Consent", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge", "Review & Sign"] %}
+            {% set step_labels = ["Details", "Spousal Consent", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge", "Review"] %}
         {% endif %}
         {% for s_num in steps_list %}
             {% set is_active = (s_num == step) %}
@@ -78,7 +78,7 @@
                 {% elif step == 6 %}Loan Request Details
                 {% elif step == 7 %}Disbursement Account
                 {% elif step == 8 %}Pledge and Trust Receipt (MMFB/CRM/02)
-                {% elif step == 9 %}Review and Client Signature
+                {% elif step == 9 %}Review Details
                 {% endif %}
             </h2>
             <p class="page-card-subtitle">
@@ -90,7 +90,7 @@
                 {% elif step == 6 %}Specify the amount, tenor, purpose, and security.
                 {% elif step == 7 %}Where the approved facility will be paid.
                 {% elif step == 8 %}Collateral security terms and description.
-                {% elif step == 9 %}Read-only review of the details and the client's signing status.
+                {% elif step == 9 %}Review and confirm entered application details before submission to the Team Lead.
                 {% endif %}
             </p>
         </div>
@@ -211,17 +211,9 @@
                         <p><strong>Payout account:</strong><br>{{ data.get('account_number') or '—' }}</p>
                     </div>
                 </div>
-                <div class="flat-card {% if applicant_signed %}success{% else %}warning{% endif %}">
-                    {% if applicant_signed %}
-                    <strong>Client signature received</strong>
-                    <p class="csp-s-5ff1c1361cc4">The signed intake is locked and ready for submission to the Team Lead.</p>
-                    {% if signatures.primary %}
-                    <img src="{{ signatures.primary }}" alt="Applicant signature" class="csp-s-0552dff39726">
-                    {% endif %}
-                    {% else %}
-                    <strong>Awaiting client signature</strong>
-                    <p class="csp-s-5ff1c1361cc4">This page is read-only. Submit will become available after the client signs.</p>
-                    {% endif %}
+                <div class="flat-card success">
+                    <strong>Review &amp; Confirmation</strong>
+                    <p class="csp-s-5ff1c1361cc4">Please verify that all entered information is correct. Click "Submit to Team Lead" below to advance the application.</p>
                 </div>
             </div>
             {% endif %}
@@ -717,8 +709,7 @@
                     <span data-save-draft class="csp-s-a904dbafb705">Save Draft</span>
                     {% endif %}
                 </div>
-                <div class="csp-s-f6cda3b21d28">
-                    {% if step == 9 and applicant_signed %}
+                    {% if step == 9 %}
                     <button
                         type="submit"
                         class="btn-primary-filled"
@@ -732,7 +723,7 @@
                     </button>
                     {% elif not readonly %}
                     <button type="submit" class="btn-primary-filled" id="continueBtn">
-                        {% if step == 8 %}Save Details &amp; Generate Client Signing Link &rarr;{% else %}Save & Continue &rarr;{% endif %}
+                        Save &amp; Continue &rarr;
                     </button>
                     {% elif review_mode and step < 9 %}
                         {% if is_single and step == 1 %}
