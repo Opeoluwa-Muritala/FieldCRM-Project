@@ -518,6 +518,8 @@ async def render_applications_list(
     q: str = None,
     from_date: date | None = None,
     to_date: date | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(100, ge=1, le=1000),
     conn = Depends(db_conn),
     current_user = Depends(get_current_user)
 ):
