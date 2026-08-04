@@ -5,111 +5,136 @@
 {% block page_title %}Approval Readiness Review{% endblock %}
 
 {% block content %}
-<div class="approval-review-desk">
-    <header class="approval-review-hero">
-        <div>
-            <span class="approval-review-kicker">Team lead decision desk</span>
-            <h2>Approval Readiness Review</h2>
-            <p>Cross-check submitted evidence before forwarding this application to the next review stage.</p>
-        </div>
-        <dl class="approval-review-identity">
-            <div><dt>Borrower</dt><dd>{{ borrower_name }}</dd></div>
-            <div><dt>Application ID</dt><dd>{{ app_id }}</dd></div>
-        </dl>
-    </header>
-
-    <div class="approval-review-layout">
-        <main class="approval-review-main">
-            <section class="approval-review-progress" aria-label="Checklist progress">
-                <div class="approval-review-score"><strong>81%</strong><span>readiness</span></div>
-                <div class="approval-review-progress-copy">
-                    <div><strong>18 of 22 items ready</strong><span>4 critical items require attention</span></div>
-                    <div class="approval-review-track"><span></span></div>
-                </div>
-            </section>
-
-            <section class="approval-evidence-callout">
-                <div>
-                    <span class="approval-evidence-icon" aria-hidden="true">01</span>
-                    <div><strong>Submitted application dossier</strong><p>Inspect the completed loan application and pledge details in a locked view.</p></div>
-                </div>
-                <a href="/applications/{{ app_id }}/step/9" class="approval-view-button">Review filled form <span aria-hidden="true">&rarr;</span></a>
-            </section>
-
-            {% macro check_row(label, status='Verified', tone='verified', href='', action='') %}
-            <div class="approval-check-row">
-                <span>{{ label }}</span>
-                <div><span class="status-badge {{ tone }}">{{ status }}</span>{% if href %}<a href="{{ href }}" class="approval-inline-link">{{ action }}</a>{% endif %}</div>
+<div class="app-detail-layout approval-page">
+    <aside class="app-detail-sidebar">
+        <section class="page-card approval-app-card">
+            <span class="approval-eyebrow">Application under review</span>
+            <h2 class="page-card-title">{{ borrower_name }}</h2>
+            <p class="page-card-subtitle approval-reference">{{ app_id }}</p>
+            <div class="approval-app-meta">
+                <span>Requested amount</span>
+                <strong>&#8358;{{ '{:,.0f}'.format(app.amount or 0) }}</strong>
             </div>
-            {% endmacro %}
+            <span class="status-badge needs-review">Team Lead Review</span>
+        </section>
 
-            <section class="approval-check-group">
-                <h3><span>01</span> Forms completed</h3>
+        <section class="page-card">
+            <div class="page-card-header">
+                <h3 class="page-card-title approval-card-title">Readiness</h3>
+                <p class="page-card-subtitle">18 of 22 checklist items ready</p>
+            </div>
+            <div class="approval-readiness-number"><strong>81%</strong><span>Complete</span></div>
+            <div class="approval-progress-track" role="progressbar" aria-valuenow="81" aria-valuemin="0" aria-valuemax="100"><span></span></div>
+            <div class="approval-warning"><strong>4 critical items</strong> still require attention.</div>
+        </section>
+
+        <section class="page-card">
+            <div class="page-card-header">
+                <h3 class="page-card-title approval-card-title">Review status</h3>
+                <p class="page-card-subtitle">{{ yes_votes|default(0) }} completed review checks</p>
+            </div>
+            <div class="approval-vote-dots">
+                {% for i in range(total_votes|default(5)) %}
+                <span class="{% if i < (yes_votes|default(0)) %}complete{% endif %}">{% if i < (yes_votes|default(0)) %}&#10003;{% else %}{{ i + 1 }}{% endif %}</span>
+                {% endfor %}
+            </div>
+        </section>
+    </aside>
+
+    <main class="app-detail-main">
+        <section class="page-card approval-intro-card">
+            <div class="page-card-header">
+                <span class="approval-eyebrow">Team lead decision desk</span>
+                <h2 class="page-card-title">Cross-check the submitted application</h2>
+                <p class="page-card-subtitle">Open the applicant's completed forms in read-only mode, verify every checklist item, then record your concurrence decision.</p>
+            </div>
+            <a href="/applications/{{ app_id }}/step/9" class="btn-primary-filled">Review Filled Application &rarr;</a>
+        </section>
+
+        {% macro check_row(label, status='Verified', tone='verified', href='', action='') %}
+        <div class="approval-check-row">
+            <div class="approval-check-label">{{ label }}</div>
+            <div class="approval-check-actions">
+                <span class="status-badge {{ tone }}">{{ status }}</span>
+                {% if href %}<a href="{{ href }}" class="approval-row-action">{{ action }}</a>{% endif %}
+            </div>
+        </div>
+        {% endmacro %}
+
+        <section class="page-card approval-checklist-card">
+            <div class="page-card-header approval-section-header"><span>01</span><div><h3 class="page-card-title approval-card-title">Forms completed</h3><p class="page-card-subtitle">Submitted forms and signed declarations</p></div></div>
+            <div class="approval-check-list">
                 {{ check_row('Loan Application Form (MMFB/CRM/01)', href='/applications/' ~ app_id ~ '/step/9', action='View read-only') }}
                 {{ check_row('Guarantor Form 1', href='/applications/' ~ app_id ~ '/guarantors/1/step/7', action='View read-only') }}
                 {{ check_row('Guarantor Form 2', 'Missing', 'returned', '/applications/' ~ app_id ~ '/step/3', 'Fix →') }}
                 {{ check_row('Pledge and Trust Receipt (MMFB/CRM/02)', href='/applications/' ~ app_id ~ '/step/8', action='View read-only') }}
-            </section>
+            </div>
+        </section>
 
-            <section class="approval-check-group">
-                <h3><span>02</span> Supporting documents</h3>
+        <section class="page-card approval-checklist-card">
+            <div class="page-card-header approval-section-header"><span>02</span><div><h3 class="page-card-title approval-card-title">Supporting documents</h3><p class="page-card-subtitle">Uploaded evidence available for inspection</p></div></div>
+            <div class="approval-check-list">
                 {% for doc in documents %}
                 {{ check_row(doc.category|replace('_', ' ')|title, doc.status|replace('_', ' ')|title, 'verified' if doc.status == 'verified' else 'needs-review', doc.url or '', 'Preview ↗') }}
                 {% else %}<div class="approval-empty-state">No documents uploaded.</div>{% endfor %}
-            </section>
-
-            <section class="approval-check-group">
-                <h3><span>03</span> Data quality &amp; checks</h3>
-                {{ check_row('BVN Matching Verification') }}
-                {{ check_row('OCR Low-Confidence Exceptions', 'Needs Review', 'needs-review', '/applications/' ~ app_id ~ '/ocr-review', 'Fix →') }}
-            </section>
-
-            <section class="approval-check-group">
-                <h3><span>04</span> Declarations &amp; consents</h3>
-                {{ check_row('Credit Bureau Consent Checked') }}
-                {{ check_row('Cheque Authority Received') }}
-                {{ check_row('GSI Mandate Signed') }}
-            </section>
-
-            <section class="approval-check-group">
-                <h3><span>05</span> Field verification</h3>
-                {{ check_row('Visitation Report Uploaded') }}
-                {{ check_row('Team Lead Visitation Concurrence', 'Needs Review', 'needs-review', '/applications/' ~ app_id ~ '/visitation', 'Fix →') }}
-            </section>
-
-            <section class="approval-check-group">
-                <h3><span>06</span> Approval chain</h3>
-                {{ check_row('Credit Underwriter Recommendation') }}
-            </section>
-        </main>
-
-        <aside class="approval-decision-panel">
-            <div class="approval-decision-heading"><span>Final review</span><h3>Concurrence decision</h3><p>Confirm the evidence checks and recommendation amount.</p></div>
-
-            <div class="approval-review-status">
-                <div><strong>Review status</strong><span>{{ yes_votes|default(0) }} completed checks</span></div>
-                <div class="approval-vote-dots">
-                    {% for i in range(total_votes|default(5)) %}<span class="{% if i < (yes_votes|default(0)) %}complete{% endif %}">{% if i < (yes_votes|default(0)) %}&#10003;{% else %}{{ i + 1 }}{% endif %}</span>{% endfor %}
-                </div>
             </div>
+        </section>
 
-            <form action="/applications/{{ app_id }}/approve" method="POST" class="approval-decision-form">
-                <fieldset><legend>Manager attestations</legend>
-                    <label><input type="checkbox" name="kyc_attested" required><span>I confirm KYC documents were physically sighted and verified.</span></label>
-                    <label><input type="checkbox" name="collateral_attested" required><span>I confirm collateral value is registered in the branch collateral registry.</span></label>
-                </fieldset>
-                <div class="form-group">
-                    <label class="field-label" for="approval-amount">Approved/Recommended Amount (&#8358;)</label>
-                    <input id="approval-amount" type="number" name="amount" class="field-input" value="{{ app.amount or 0 }}" required>
+        <div class="approval-check-grid">
+            <section class="page-card approval-checklist-card">
+                <div class="page-card-header approval-section-header"><span>03</span><div><h3 class="page-card-title approval-card-title">Data quality &amp; checks</h3></div></div>
+                <div class="approval-check-list">
+                    {{ check_row('BVN Matching Verification') }}
+                    {{ check_row('OCR Low-Confidence Exceptions', 'Needs Review', 'needs-review', '/applications/' ~ app_id ~ '/ocr-review', 'Fix →') }}
                 </div>
-                <button type="submit" class="btn-primary-filled" id="approveBtn">Concur &amp; Forward for Review &rarr;</button>
-                <a href="/applications/{{ app_id }}/return?type=officer" class="approval-return-link">Return to Relationship Officer</a>
-            </form>
+            </section>
+            <section class="page-card approval-checklist-card">
+                <div class="page-card-header approval-section-header"><span>04</span><div><h3 class="page-card-title approval-card-title">Declarations &amp; consents</h3></div></div>
+                <div class="approval-check-list">
+                    {{ check_row('Credit Bureau Consent Checked') }}
+                    {{ check_row('Cheque Authority Received') }}
+                    {{ check_row('GSI Mandate Signed') }}
+                </div>
+            </section>
+            <section class="page-card approval-checklist-card">
+                <div class="page-card-header approval-section-header"><span>05</span><div><h3 class="page-card-title approval-card-title">Field verification</h3></div></div>
+                <div class="approval-check-list">
+                    {{ check_row('Visitation Report Uploaded') }}
+                    {{ check_row('Team Lead Visitation Concurrence', 'Needs Review', 'needs-review', '/applications/' ~ app_id ~ '/visitation', 'Fix →') }}
+                </div>
+            </section>
+            <section class="page-card approval-checklist-card">
+                <div class="page-card-header approval-section-header"><span>06</span><div><h3 class="page-card-title approval-card-title">Approval chain</h3></div></div>
+                <div class="approval-check-list">{{ check_row('Credit Underwriter Recommendation') }}</div>
+            </section>
+        </div>
 
-            {% if app and app.stage == 'disbursed' %}
-            <div class="approval-disbursed"><strong>Disbursement confirmed</strong><span>&#8358;{{ '{:,.0f}'.format(app.amount or 0) }} · {{ app.disbursed_at or 'Date unavailable' }}</span></div>
-            {% endif %}
-        </aside>
-    </div>
+        <section class="page-card approval-decision-card">
+            <div class="page-card-header">
+                <h2 class="page-card-title">Manager concurrence</h2>
+                <p class="page-card-subtitle">Complete both attestations and confirm the recommended amount before forwarding.</p>
+            </div>
+            <form action="/applications/{{ app_id }}/approve" method="POST" class="approval-decision-form">
+                <div class="approval-attestation-list">
+                    <label><input type="checkbox" name="kyc_attested" required><span><strong>KYC sighting confirmed</strong>I confirm KYC documents were physically sighted and verified.</span></label>
+                    <label><input type="checkbox" name="collateral_attested" required><span><strong>Collateral registration confirmed</strong>I confirm collateral value is registered in the branch collateral registry.</span></label>
+                </div>
+                <div class="approval-decision-actions">
+                    <div class="form-group">
+                        <label class="field-label" for="approval-amount">Approved/Recommended Amount (&#8358;)</label>
+                        <input id="approval-amount" type="number" name="amount" class="field-input" value="{{ app.amount or 0 }}" required>
+                    </div>
+                    <div class="approval-action-buttons">
+                        <a href="/applications/{{ app_id }}/return?type=officer" class="btn-ghost-link approval-return-button">Return to Relationship Officer</a>
+                        <button type="submit" class="btn-primary-filled" id="approveBtn">Concur &amp; Forward for Review &rarr;</button>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        {% if app and app.stage == 'disbursed' %}
+        <section class="page-card approval-disbursed"><strong>Disbursement confirmed</strong><span>&#8358;{{ '{:,.0f}'.format(app.amount or 0) }} &middot; {{ app.disbursed_at or 'Date unavailable' }}</span></section>
+        {% endif %}
+    </main>
 </div>
 {% endblock %}
