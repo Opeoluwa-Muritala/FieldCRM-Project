@@ -4,12 +4,20 @@
 {% block title %}New Application | FieldCRM{% endblock %}
 {% set active_page = "new_application" %}
 
+{% block extra_css %}
+<style nonce="{{ csp_nonce }}">
+.new-loan-page{padding:18px 0 38px!important}.new-loan-card{max-width:900px!important;padding:0!important;overflow:hidden;border:1px solid #e5dce8!important;border-top:4px solid #89268b!important;border-radius:16px!important;box-shadow:0 18px 48px rgba(46,0,82,.08)!important}.new-loan-card>.page-card-header{margin:0!important;padding:30px 34px!important;background:linear-gradient(135deg,#2e0052,#67206a);text-align:left!important}.new-loan-card>.page-card-header h2{margin:0!important;color:#fff!important;font-size:26px!important}.new-loan-card>.page-card-header h2 span{display:inline-grid;width:32px;height:32px;margin-right:9px;place-items:center;border-radius:9px;background:rgba(255,255,255,.14)}.new-loan-card>.page-card-header p{margin:8px 0 0!important;color:rgba(255,255,255,.74)!important}.new-loan-card form{padding:32px 34px 36px}.new-loan-card .csp-s-e8a8a9c051f6{margin-bottom:30px!important}.new-loan-card .csp-s-a56b14ff62f4{display:block;margin-bottom:12px!important;color:#2e0052!important;font-size:13px!important}.new-loan-card .csp-s-95d0fe5e93eb{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:14px!important}.new-loan-card .toggle-option-card{position:relative;width:auto!important;min-height:96px;padding:20px 20px 20px 50px!important;border:1px solid #ded3e2!important;border-radius:12px!important;background:#fff!important;text-align:left!important;transition:.18s ease!important}.new-loan-card .toggle-option-card::before{content:"";position:absolute;left:19px;top:50%;width:18px;height:18px;border:2px solid #bbaebf;border-radius:50%;transform:translateY(-50%)}.new-loan-card .toggle-option-card:hover{border-color:#a05aa2!important;background:#fdfafd!important}.new-loan-card .toggle-option-card.selected{border-color:#89268b!important;background:#f8eff8!important;box-shadow:0 0 0 2px rgba(137,38,139,.1)!important}.new-loan-card .toggle-option-card.selected::before{border:5px solid #89268b;background:#fff}.new-loan-card .toggle-option-card strong{display:block;color:#35283a;font-size:14px}.new-loan-card .toggle-option-card span{display:block;margin-top:5px;color:#756c78;font-size:12px;line-height:1.45}.new-loan-card .csp-s-82461dce141b{gap:14px!important}.new-loan-card .csp-s-82461dce141b .toggle-option-card{min-height:76px}.new-loan-card #existingSearchSlot,.new-loan-card #otherCategorySlot{margin:-14px 0 30px!important;padding:20px!important;border:1px solid #e3d9e6!important;border-radius:12px!important;background:#faf8fb!important}.new-loan-card .csp-s-a9c77021d675{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:10px!important}.new-loan-card #customerResults{display:grid;gap:8px;margin-top:10px}.new-loan-card #customerResults .toggle-option-card{width:100%!important;min-height:auto}.new-loan-card #selectedCustomer{margin-top:12px;padding:14px;border:1px solid #b8dcc6;border-radius:10px;background:#f0faf4}.new-loan-card #selectedCustomer p{margin:5px 0;color:#536159;font-size:12px}.new-loan-card #clearCustomerBtn{padding:0;border:0;background:transparent;color:#702472;font-weight:700;cursor:pointer}.new-loan-card #beginAppBtn{min-height:50px!important;border-radius:10px!important;font-size:14px!important}.new-loan-card #beginAppBtn:disabled{cursor:not-allowed;opacity:.48}
+.new-loan-card #newAppForm{display:flex;flex-direction:column}.new-loan-card .toggle-option-card input[type="radio"]{display:none!important}.new-loan-card .toggle-option-card::before{display:none!important}.new-loan-card .toggle-option-card{padding-left:20px!important}.new-loan-card .csp-s-82461dce141b{column-gap:20px!important;row-gap:18px!important;margin-top:2px!important}.new-loan-card .csp-s-82461dce141b .toggle-option-card{padding:22px!important}.new-loan-card #existingSearchSlot[style*="display: block"],.new-loan-card #otherCategorySlot[style*="display: block"],.new-loan-card #searchFeedback[style*="display: block"]{display:block!important}.new-loan-card #existingSearchSlot label,.new-loan-card #otherCategorySlot label{display:block;margin-bottom:9px}.new-loan-card #customerSearchBtn{min-width:96px;min-height:44px}.new-loan-card #otherLoanDesc{margin-top:0}.new-loan-card #beginAppBtn{margin-top:2px!important}
+@media(max-width:680px){.new-loan-page{padding-top:8px!important}.new-loan-card>.page-card-header,.new-loan-card form{padding:24px 20px!important}.new-loan-card .csp-s-95d0fe5e93eb,.new-loan-card .csp-s-82461dce141b{grid-template-columns:1fr!important}.new-loan-card .csp-s-a9c77021d675{grid-template-columns:1fr!important}.new-loan-card #customerSearchBtn{width:100%}}
+</style>
+{% endblock %}
+
 {% block breadcrumb %}Loans &rarr; New Application{% endblock %}
 {% block page_title %}➕ New Loan Application{% endblock %}
 
 {% block content %}
-<div class="csp-s-379920d954e6">
-    <div class="page-card no-shadow csp-s-efb39d9cfbf0">
+<div class="csp-s-379920d954e6 new-loan-page">
+    <div class="page-card no-shadow csp-s-efb39d9cfbf0 new-loan-card">
         <div class="page-card-header csp-s-3cf2f7ea58a5">
             <h2 class="page-card-title csp-s-b4dad54230ab">
                 <span>➕</span> New Loan Application
@@ -89,6 +97,7 @@
         </form>
 
         <!-- Generate Share Link Card -->
+        {% if false %}
         <div class="csp-s-4687a0157d60">
             <div class="csp-s-fb5ec070f2bf">
                 <h3 class="csp-s-eaacf0d435d4">
@@ -115,6 +124,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 </div>
 

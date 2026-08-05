@@ -38,7 +38,9 @@
         <nav class="sidebar-nav">
             {% block sidebar_nav %}
             {% include sidebar_component ignore missing %}
+            {% if user_role != 'system_admin' %}
             {% include 'components/mcc_sidebar_link.html' %}
+            {% endif %}
             {% endblock %}
         </nav>
         <div class="sidebar-user">

@@ -117,6 +117,8 @@
 </div>
 {% endif %}
 
+{% include "components/loan_recommendations.html" %}
+
 <div class="audit-action-panel">
   <h3 class="csp-s-4636770b4968">{{ 'Head CRM Approval' if current_user.role == 'head_crm' else 'CRM Dossier Review' }}</h3>
   <p class="action-note">{{ 'This approval records the Head CRM handover and routes the complete dossier to ED.' if current_user.role == 'head_crm' else 'This review records dossier completeness and routes the file to Head CRM for approval.' }}</p>

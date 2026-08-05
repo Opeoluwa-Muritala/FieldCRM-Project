@@ -1,19 +1,56 @@
 {% extends "base/desktop_shell.html" %}
-{% block title %}MCC Review - FieldCRM{% endblock %}
-{% block page_title %}MCC Review{% endblock %}
+{% block title %}MCC Dossier - FieldCRM{% endblock %}
+{% block page_title %}Management Credit Committee Dossier{% endblock %}
+{% block breadcrumb %}MCC &rarr; {{ app.ref_no }}{% endblock %}
+{% block extra_css %}<style nonce="{{ csp_nonce }}">
+.mcc-dossier{display:grid;gap:20px}.mcc-hero{padding:28px;background:linear-gradient(135deg,#2e0052,#752177);color:#fff;border-radius:16px}.mcc-hero h2{margin:0 0 6px;color:#fff}.mcc-hero p{margin:0;color:rgba(255,255,255,.76)}.mcc-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.mcc-metric{padding:18px;border:1px solid #eadfec;border-radius:12px;background:#fff}.mcc-metric span{display:block;color:#756b78;font-size:11px;font-weight:700;text-transform:uppercase}.mcc-metric strong{display:block;margin-top:7px;color:#2e0052;font-size:22px}.mcc-columns{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(320px,.8fr);gap:20px;align-items:start}.mcc-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 22px}.mcc-field{padding:10px 0;border-bottom:1px solid #eee8f1}.mcc-field span{display:block;color:#756b78;font-size:10px;font-weight:700;text-transform:uppercase}.mcc-field strong{display:block;margin-top:4px;color:#302735;overflow-wrap:anywhere}.mcc-stack{display:grid;gap:20px}.mcc-actions{display:grid;gap:12px}.mcc-actions .field-input{width:100%;margin-top:6px}.mcc-actions button{margin-top:10px}.mcc-documents{grid-column:1/-1}@media(max-width:900px){.mcc-metrics,.mcc-columns,.mcc-fields{grid-template-columns:1fr}.mcc-documents{grid-column:auto}}
+</style>{% endblock %}
+
 {% block content %}
-<div class="page-card"><h2 class="page-card-title">{{ app.applicant_name }}</h2>
-  <p>{{ app.ref_no }} · &#x20A6;{{ "{:,.0f}".format(app.amount or 0) }} · {{ app.stage|replace('_',' ')|title }}</p>
-</div>
-<div class="page-card"><h3>Recommendations</h3>
-  <table class="custom-table"><thead><tr><th>Member</th><th>Amount</th><th>Notes</th></tr></thead>
-  <tbody>{% for vote in votes %}<tr><td>{{ vote.member_name }}</td><td>&#x20A6;{{ "{:,.0f}".format(vote.recommended_amount or 0) }}</td><td>{{ vote.notes or '—' }}</td></tr>
-  {% else %}<tr><td colspan="3">No recommendations submitted.</td></tr>{% endfor %}</tbody></table>
-</div>
-<div class="page-card"><h3>Submit Recommendation</h3>
-  <form method="post" action="/applications/{{ app_id }}/mcc-vote"><input class="field-input" type="number" name="recommended_amount" min="1" required><textarea class="field-input" name="notes" placeholder="Recommendation notes"></textarea><button class="btn btn-secondary" type="submit">Submit</button></form>
-</div>
-<div class="page-card"><h3>Finalize Amount</h3>
-  <form method="post" action="/applications/{{ app_id }}/mcc-finalize"><input class="field-input" type="number" name="final_amount" min="1" required><button class="btn btn-primary" type="submit">Set Final Amount</button></form>
+{% set monthly_net = (pnl.net_profit / 12) if pnl else 0 %}
+{% set capacity_ratio = (monthly_net / proposed_installment) if proposed_installment > 0 else 0 %}
+{% set hidden_fields = ['photo_url','spouse_signature','borrower_pledge_signature','pledge_witness_signature','profile_snapshot_source','profile_snapshot_created_at'] %}
+<div class="mcc-dossier">
+  <a href="/mcc" class="btn-ghost-link">&larr; Back to MCC dossiers</a>
+  <section class="mcc-hero"><h2>{{ app.applicant_name }}</h2><p>{{ app.ref_no }} &middot; {{ app.loan_type|replace('_',' ')|title }} &middot; {{ app.stage|replace('_',' ')|title }}</p></section>
+
+  <section class="mcc-metrics">
+    <article class="mcc-metric"><span>Requested Amount</span><strong>&#8358;{{ "{:,.0f}".format(app.amount or 0) }}</strong></article>
+    <article class="mcc-metric"><span>Collateral FSV</span><strong>&#8358;{{ "{:,.0f}".format(total_pledged_value or 0) }}</strong></article>
+    <article class="mcc-metric"><span>Coverage</span><strong>{{ "{:.2%}".format(coverage_ratio or 0) }}</strong></article>
+    <article class="mcc-metric"><span>Monthly Installment</span><strong>&#8358;{{ "{:,.0f}".format(proposed_installment or 0) }}</strong></article>
+    <article class="mcc-metric"><span>{% if monthly_net < 0 %}Monthly Net Loss{% else %}Monthly Net Profit{% endif %}</span><strong>{% if monthly_net < 0 %}-{% endif %}&#8358;{{ "{:,.0f}".format(monthly_net|abs) }}</strong></article>
+    <article class="mcc-metric"><span>Repayment Capacity</span><strong>{{ "{:.2f}".format(capacity_ratio) }}x</strong></article>
+    <article class="mcc-metric"><span>Tenor</span><strong>{{ app.tenor_months or 0 }} months</strong></article>
+    <article class="mcc-metric"><span>Interest Rate</span><strong>{{ proposed_interest_rate }}% P.A.</strong></article>
+  </section>
+
+  <div class="mcc-columns">
+    <div class="mcc-stack">
+      <section class="page-card"><div class="page-card-header"><h3 class="page-card-title">Submitted Application Details</h3><p class="page-card-subtitle">All values captured in the application form.</p></div><div class="mcc-fields">
+        {% for key,value in wizard_data.items() %}{% if value not in (none,'',[]) and key not in hidden_fields and 'signature' not in key and 'url' not in key %}<div class="mcc-field"><span>{{ key|replace('_',' ')|title }}</span><strong>{% if value is iterable and value is not string %}{{ value|join(', ') }}{% else %}{{ value }}{% endif %}</strong></div>{% endif %}{% endfor %}
+      </div></section>
+
+      <section class="page-card"><div class="page-card-header"><h3 class="page-card-title">Guarantor Details</h3></div>
+        {% for slot,label in [('guarantor_1','Guarantor 1'),('guarantor_2','Guarantor 2')] %}<h4>{{ label }}</h4><div class="mcc-fields">{% for key,value in guarantors.get(slot,{}).items() %}{% if value not in (none,'') and 'signature' not in key and 'url' not in key %}<div class="mcc-field"><span>{{ key|replace('_',' ')|title }}</span><strong>{{ value }}</strong></div>{% endif %}{% else %}<p>No details submitted.</p>{% endfor %}</div>{% endfor %}
+      </section>
+
+      <section class="page-card"><div class="page-card-header"><h3 class="page-card-title">Pledged Collateral</h3></div><div class="custom-table-container"><table class="custom-table"><thead><tr><th>Item</th><th>Description</th><th>Estimated Value</th><th>Appraised Value</th></tr></thead><tbody>{% for item in pledged_items %}<tr><td>{{ item.item_name }}</td><td>{{ item.description or '—' }}</td><td>&#8358;{{ "{:,.0f}".format(item.estimated_value or 0) }}</td><td>&#8358;{{ "{:,.0f}".format(item.appraised_value or 0) }}</td></tr>{% else %}<tr><td colspan="4">No pledged items submitted.</td></tr>{% endfor %}</tbody></table></div></section>
+
+      <section class="page-card"><div class="page-card-header"><h3 class="page-card-title">Field Visitation</h3></div><div class="mcc-fields">{% for key,value in visitation_data.items() %}{% if value not in (none,'') and 'signature' not in key and 'url' not in key and key not in ['id','loan_id','org_id'] %}<div class="mcc-field"><span>{{ key|replace('_',' ')|title }}</span><strong>{{ value }}</strong></div>{% endif %}{% else %}<p>No visitation report submitted.</p>{% endfor %}</div></section>
+    </div>
+
+    <aside class="mcc-stack">
+      <section class="page-card"><div class="page-card-header"><h3 class="page-card-title">All Workflow Recommendations</h3></div>{% for rec in recommendations %}<article class="flat-card"><strong>&#8358;{{ "{:,.0f}".format(rec.recommended_amount or 0) }}</strong><span class="status-badge verified">{{ rec.role_at_submission|replace('_',' ')|title }}</span><p>{{ rec.notes or 'No notes.' }}</p><small>{{ rec.submitter_name }} &middot; {{ rec.created_at.strftime('%d %b %Y, %H:%M') }}</small></article>{% else %}<div class="approval-empty-state">No workflow recommendations submitted.</div>{% endfor %}</section>
+
+      <section class="page-card"><div class="page-card-header"><h3 class="page-card-title">MCC Recommendations</h3></div>{% for vote in votes %}<article class="flat-card"><strong>&#8358;{{ "{:,.0f}".format(vote.recommended_amount or 0) }}</strong><p>{{ vote.notes or 'No notes.' }}</p><small>{{ vote.member_name }} &middot; {{ vote.created_at.strftime('%d %b %Y, %H:%M') }}</small></article>{% else %}<div class="approval-empty-state">No MCC recommendations submitted.</div>{% endfor %}</section>
+
+      <section class="page-card mcc-actions"><h3 class="page-card-title">Submit MCC Recommendation</h3><form method="post" action="/applications/{{ app_id }}/mcc-vote"><label class="field-label">Recommended Amount (&#8358;)<input class="field-input" type="number" name="recommended_amount" min="1" step="0.01" value="{{ app.amount or 0 }}" required></label><label class="field-label">Recommendation Notes<textarea class="field-input" name="notes" rows="4" placeholder="Explain the recommendation..." required></textarea></label><button class="btn btn-secondary" type="submit">Submit Recommendation</button></form></section>
+
+      {% if can_finalize_mcc %}<section class="page-card mcc-actions"><h3 class="page-card-title">Set Final Amount</h3><p class="page-card-subtitle">CRM alone records the final committee amount.</p><form method="post" action="/applications/{{ app_id }}/mcc-finalize"><label class="field-label">Final Amount (&#8358;)<input class="field-input" type="number" name="final_amount" min="1" step="0.01" value="{{ app.amount or 0 }}" required></label><button class="btn btn-primary" type="submit">Set Final Amount</button></form></section>{% endif %}
+    </aside>
+  </div>
+
+  <section class="page-card mcc-documents"><div class="page-card-header"><h3 class="page-card-title">Uploaded Documents</h3></div><div class="custom-table-container"><table class="custom-table"><thead><tr><th>Document</th><th>Type</th><th>Status</th><th>Uploaded</th><th></th></tr></thead><tbody>{% for doc in documents %}<tr><td>{{ doc.original_name or 'Document' }}</td><td>{{ (doc.doc_type or doc.category)|replace('_',' ')|title }}</td><td><span class="status-badge {{ 'verified' if doc.status == 'verified' else 'needs-review' }}">{{ doc.status|default('uploaded',true)|replace('_',' ')|title }}</span></td><td>{{ doc.created_at.strftime('%d %b %Y') if doc.created_at else '—' }}</td><td>{% if doc.url %}<a href="{{ doc.url }}" target="_blank" class="btn-ghost-link">View</a>{% endif %}</td></tr>{% else %}<tr><td colspan="5">No documents uploaded.</td></tr>{% endfor %}</tbody></table></div></section>
 </div>
 {% endblock %}

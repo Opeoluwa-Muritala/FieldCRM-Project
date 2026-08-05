@@ -26,7 +26,7 @@ router = APIRouter()
 
 # Resolve templates folder relatively
 base_dir = Path(__file__).resolve().parent
-templates_dir = (base_dir.parents[2] / "frontend" / "templates").resolve()
+templates_dir = (base_dir.parents[3] / "frontend" / "templates").resolve()
 templates = create_templates(str(templates_dir))
 templates.env.globals.update(
     brand_logo_black="https://res.cloudinary.com/ddezxlqjr/image/upload/v1784551475/MMFB_Logo_Black_lnma0l.png",
@@ -77,49 +77,16 @@ async def render_repayment_feasibility(
 
     _verify_loan_scope(app, current_user)
 
-    # Fetch data
-    locations = await conn.fetch(
-        "SELECT * FROM business_locations WHERE application_id = $1 ORDER BY created_at",
-        app_uuid
+    # This screen is read-only analysis; data entry lives in the officer wizard.
+    total_pledged = await conn.fetchval(
+        "SELECT COALESCE(SUM(COALESCE(face_value, force_sale_value)), 0) FROM collateral_items WHERE application_id = $1",
+        app_uuid,
     )
-    
-    collateral_items = await conn.fetch(
-        "SELECT * FROM collateral_items WHERE application_id = $1 ORDER BY created_at",
-        app_uuid
-    )
-    
-    collateral_items_with_docs = []
-    for item in collateral_items:
-        docs = await conn.fetch(
-            "SELECT * FROM collateral_documents WHERE collateral_item_id = $1 ORDER BY uploaded_at",
-            item["id"]
-        )
-        item_dict = dict(item)
-        mapped_docs = []
-        for d in docs:
-            d_dict = dict(d)
-            # Map secure preview url dynamically to avoid exposing raw cloudinary/static URLs in browser
-            d_dict["cloudinary_url"] = f"/api/v1/documents/collateral/{d['id']}/preview"
-            mapped_docs.append(d_dict)
-        item_dict["documents"] = mapped_docs
-        collateral_items_with_docs.append(item_dict)
-
     pnl = await conn.fetchrow(
         "SELECT * FROM business_pnl WHERE application_id = $1",
         app_uuid
     )
-
-    recommendations = await conn.fetch(
-        """SELECT lr.*, u.full_name AS submitter_name 
-           FROM loan_recommendations lr 
-           JOIN users u ON u.id = lr.submitted_by 
-           WHERE lr.application_id = $1 
-           ORDER BY lr.created_at DESC""",
-        app_uuid
-    )
-
-    # Compute calculations
-    total_pledged = sum(Decimal(str(item["force_sale_value"])) for item in collateral_items)
+    total_pledged = Decimal(str(total_pledged or 0))
     
     loan_amount = Decimal(str(app.amount or 0))
     coverage_ratio = Decimal("0")
@@ -148,10 +115,7 @@ async def render_repayment_feasibility(
     ctx = build_template_context(
         request, current_user,
         app=app, app_id=application_id,
-        locations=[dict(loc) for loc in locations],
-        collateral_items=collateral_items_with_docs,
         pnl=dict(pnl) if pnl else None,
-        recommendations=[dict(rec) for rec in recommendations],
         total_pledged_value=total_pledged,
         coverage_ratio=coverage_ratio,
         proposed_installment=installment_amount,
@@ -591,9 +555,10 @@ async def add_loan_recommendation(
     application_id: str,
     recommended_amount: Decimal = Form(...),
     notes: str = Form(""),
+    return_url: str = Form(""),
     conn = Depends(db_conn),
     current_user = Depends(RoleChecker([
-        "loan_officer", "relationship_officer", "branch_manager", 
+        "account_officer", "loan_officer", "relationship_officer", "branch_manager",
         "branch_supervisor", "credit_analyst", "crm", "head_crm", "ed", "md"
     ])),
 ):
@@ -627,7 +592,6 @@ async def add_loan_recommendation(
             notes=f"Submitted recommendation amount: {recommended_amount}"
         )
 
-    return RedirectResponse(
-        url=f"/applications/{application_id}/repayment-feasibility",
-        status_code=status.HTTP_303_SEE_OTHER
-    )
+    safe_prefix = f"/applications/{application_id}/"
+    destination = return_url if return_url.startswith(safe_prefix) else f"{safe_prefix}repayment-feasibility"
+    return RedirectResponse(url=destination, status_code=status.HTTP_303_SEE_OTHER)

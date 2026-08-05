@@ -37,7 +37,7 @@
         </div>
         
         {# Vertical Stage Timeline #}
-        <div class="page-card csp-s-b3a2297a12f5 supervisor-timeline-card">
+        <div class="page-card csp-s-b3a2297a12f5 supervisor-timeline-card application-timeline-card">
             <h3 class="csp-s-2e2b4cd7c4f9">Application Timeline</h3>
             <div class="csp-s-b37edfac2acb">
                 
@@ -68,7 +68,7 @@
                         {% if app.current_stage > 3 %}✓{% endif %}
                     </div>
                     <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 3 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 3 %}var(--text-main){% else %}var(--text-muted){% endif %};">Credit Risk Review</div>
-                    <div class="csp-s-c029905cd705">{% if app.current_stage >= 3 %}Assigned to Fatima{% else %}Awaiting desk{% endif %}</div>
+                    <div class="csp-s-c029905cd705">{% if app.current_stage >= 3 %}Credit review in progress{% else %}Awaiting review{% endif %}</div>
                 </div>
                 
                 {# Stage 4 #}
@@ -77,7 +77,7 @@
                         {% if app.current_stage > 4 %}✓{% endif %}
                     </div>
                     <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 4 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 4 %}var(--text-main){% else %}var(--text-muted){% endif %};">Branch Concurrence</div>
-                    <div class="csp-s-c029905cd705">{% if app.current_stage >= 4 %}Awaiting Adebayo{% else %}Awaiting signoff{% endif %}</div>
+                    <div class="csp-s-c029905cd705">{% if app.current_stage >= 4 %}Concurrence in progress{% else %}Awaiting signoff{% endif %}</div>
                 </div>
                 
                 {# Stage 5 & 6 #}
@@ -93,6 +93,7 @@
         </div>
         
         {# Quick Document List #}
+        {% if false %}
         <div class="page-card csp-s-b3a2297a12f5 supervisor-documents-card">
             <h3 class="csp-s-93e773d1eb63">Documents Checklist</h3>
             <div class="csp-s-baf2fda59eac">
@@ -136,7 +137,9 @@
             </div>
         </div>
 
+        {% endif %}
         {# Verification & Integrations Card #}
+        {% if false %}
         <div class="page-card csp-s-b3a2297a12f5">
             <h3 class="csp-s-93e773d1eb63">Verification & Screening</h3>
             <div class="csp-s-18809276c4d1">
@@ -194,6 +197,7 @@
                 
             </div>
         </div>
+        {% endif %}
 
     </div>
     
@@ -247,6 +251,14 @@
                     ('bvn_verification', 'BVN Verification'),
                     ('visitation_report', 'Field Visitation Report')
                 ] %}
+                {% set checklist_urls = {
+                    'loan_application_form': '/applications/' ~ app_id ~ '/step/1',
+                    'guarantor_form_1': '/applications/' ~ app_id ~ '/guarantors/1/step/7',
+                    'guarantor_form_2': '/applications/' ~ app_id ~ '/guarantors/2/step/7',
+                    'pledge_form': '/applications/' ~ app_id ~ '/step/8',
+                    'bvn_verification': '/applications/' ~ app_id ~ '/step/1#bvn_input',
+                    'visitation_report': '/applications/' ~ app_id ~ '/visitation?readonly=1'
+                } %}
                 
                 {% for item_key, item_label in checklist_items %}
                     {% set is_checked = checklist_map.get("concurrence:" ~ item_key, false) %}
@@ -260,7 +272,7 @@
                                    {% if is_checked %}checked{% endif %}
                                    {% if readonly %}disabled{% endif %}
                                    data-checklist-toggle>
-                            <span>{{ item_label }}</span>
+                            <a href="{{ checklist_urls[item_key] }}" class="approval-check-row-clickable">{{ item_label }} <span aria-hidden="true">&nearr;</span></a>
                         </label>
                         <span class="status-badge-indicator" id="badge-concurrence-{{ item_key }}">
                             {% if is_checked %}
@@ -342,4 +354,5 @@
         
     </div>
 </div>
+{% include "components/application_document_checklist.html" %}
 {% endblock %}

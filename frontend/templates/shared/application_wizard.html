@@ -42,27 +42,6 @@
 
     <!-- Main Card wrapper -->
     <div class="page-card no-shadow">
-        {% if request.query_params.get('signing_link') %}
-        <div class="flat-card brand csp-s-7564ec607ed8" role="status">
-            <strong>{{ request.query_params.get('success') or 'Client signing link generated.' }}</strong>
-            <div class="csp-s-d61d144f3117">
-                <input
-                    id="generatedClientSigningLink"
-                    class="field-input csp-s-276576a40b1c"
-                    type="text"
-                    value="{{ request.query_params.get('signing_link') }}"
-                    readonly
-                >
-                <button
-                    type="button"
-                    class="btn-primary-filled"
-                    data-copy-signing-link
-                >
-                    Copy Client Signing Link
-                </button>
-            </div>
-        </div>
-        {% endif %}
         {% if request.query_params.get('error') %}
         <div class="flat-card warning csp-s-7564ec607ed8" id="wizard-error" role="alert" tabindex="-1">
             <strong>We could not save this section.</strong><br>{{ request.query_params.get('error') }}
@@ -78,7 +57,6 @@
                 {% elif step == 6 %}Loan Request Details
                 {% elif step == 7 %}Disbursement Account
                 {% elif step == 8 %}Pledge and Trust Receipt (MMFB/CRM/02)
-                {% elif step == 9 %}Review Details
                 {% endif %}
             </h2>
             <p class="page-card-subtitle">
@@ -89,8 +67,7 @@
                 {% elif step == 5 %}Disclose all active loan obligations with other financial institutions.
                 {% elif step == 6 %}Specify the amount, tenor, purpose, and security.
                 {% elif step == 7 %}Where the approved facility will be paid.
-                {% elif step == 8 %}Collateral security terms and description.
-                {% elif step == 9 %}Review and confirm entered application details before submission to the Team Lead.
+                {% elif step == 8 %}Complete the collateral pledge and submit the application to the Team Lead.
                 {% endif %}
             </p>
         </div>
@@ -99,7 +76,7 @@
             
             <!-- STEP 1: APPLICANT DETAILS -->
             {% if step == 1 %}
-            <div class="csp-s-83b9537ab8aa">
+            <div class="csp-s-83b9537ab8aa applicant-details-layout">
                 <div class="form-grid-2 csp-s-44817dc3d743">
                     <div class="form-group">
                         <label class="field-label">Full Name <span class="required">*</span></label>
@@ -183,22 +160,23 @@
                 </div>
 
                 <!-- Passport Photograph Box -->
-                <div class="csp-s-1332043776d6">
-                    <div id="photo_slot" class="csp-s-b5a9a2083bbe">
+                <div class="csp-s-1332043776d6 applicant-passport-card">
+                    <div class="applicant-passport-label">Passport photograph</div>
+                    <button type="button" id="photo_slot" class="csp-s-b5a9a2083bbe applicant-passport-button" data-choose-photo aria-label="Select passport photograph">
                         {% if data.photo_url %}
                             <img src="{{ data.photo_url }}" loading="lazy" decoding="async" class="csp-s-059ba7fa4870">
                         {% else %}
-                            <span class="csp-s-f779da42d59e">Upload Photo</span>
+                            <span class="applicant-passport-placeholder" aria-hidden="true">&#128100;</span>
                         {% endif %}
-                    </div>
-                    <input type="file" id="photo_file" class="csp-s-6e22c58a7a6a">
-                    <button type="button" class="btn-ghost-link csp-s-9c9f3d773f33" data-choose-photo>Choose Image</button>
+                    </button>
+                    <input type="file" id="photo_file" accept="image/jpeg,image/png,image/webp" hidden>
+                    <span class="applicant-passport-hint">Click the box to add or replace</span>
                     <input type="hidden" name="photo_url" id="photo_url_val" value="{{ data.photo_url or '' }}">
                 </div>
             </div>
             {% endif %}
 
-            {% if step == 9 %}
+            {% if false %}
             <div class="csp-s-e6f70f9bfcdc">
                 <div class="flat-card">
                     <h4 class="csp-s-8a9eb0cb50de">Completed Intake Summary</h4>
@@ -264,6 +242,7 @@
 
             <!-- STEP 3: GUARANTORS -->
             {% if step == 3 %}
+            {% set has_second_guarantor = data.guarantor_2_name or data.guarantor_2_relationship or data.guarantor_2_phone or data.guarantor_2_status %}
             <div class="csp-s-e3d940229f43">
                 <!-- Guarantor Slot 1 -->
                 <div class="csp-s-d0919400b602">
@@ -288,12 +267,16 @@
                         </div>
                     </div>
                     <div class="csp-s-b034d5553764">
-                        <a href="/applications/{{ app_id }}/guarantors/1/step/1" class="btn-primary-filled csp-s-619cfa472455">Complete Guarantor Form &rarr;</a>
+                        {% if readonly %}
+                        <a href="/applications/{{ app_id }}/guarantors/1/step/1" class="btn-primary-filled csp-s-619cfa472455">View Guarantor Form &rarr;</a>
+                        {% else %}
+                        <button type="submit" name="open_guarantor" value="1" formnovalidate class="btn-primary-filled csp-s-619cfa472455">Complete Guarantor Form &rarr;</button>
+                        {% endif %}
                     </div>
                 </div>
 
                 <!-- Guarantor Slot 2 -->
-                <div class="csp-s-d0919400b602">
+                <div class="csp-s-d0919400b602" id="guarantorSlot2" {% if not has_second_guarantor %}hidden{% endif %}>
                     <div class="csp-s-ab4de765f5e2">
                         <h4 class="csp-s-0aab37d7ee15">Guarantor 2</h4>
                         <span class="status-badge {% if data.guarantor_2_status == 'Verified' %}verified{% elif data.guarantor_2_status == 'Submitted' %}signed{% else %}missing{% endif %}">
@@ -303,21 +286,28 @@
                     <div class="form-grid-2">
                         <div class="form-group">
                             <label class="field-label">Full Name <span class="required">*</span></label>
-                            <input type="text" name="guarantor_2_name" class="field-input" value="{{ data.guarantor_2_name or '' }}" required>
+                            <input type="text" name="guarantor_2_name" class="field-input" value="{{ data.guarantor_2_name or '' }}" required {% if not has_second_guarantor %}disabled{% endif %}>
                         </div>
                         <div class="form-group">
                             <label class="field-label">Relationship to Applicant <span class="required">*</span></label>
-                            <input type="text" name="guarantor_2_relationship" class="field-input" value="{{ data.guarantor_2_relationship or '' }}" required>
+                            <input type="text" name="guarantor_2_relationship" class="field-input" value="{{ data.guarantor_2_relationship or '' }}" required {% if not has_second_guarantor %}disabled{% endif %}>
                         </div>
                         <div class="form-group">
                             <label class="field-label">Phone Number <span class="required">*</span></label>
-                            <input type="tel" name="guarantor_2_phone" class="field-input" value="{{ data.guarantor_2_phone or '' }}" required>
+                            <input type="tel" name="guarantor_2_phone" class="field-input" value="{{ data.guarantor_2_phone or '' }}" required {% if not has_second_guarantor %}disabled{% endif %}>
                         </div>
                     </div>
                     <div class="csp-s-b034d5553764">
-                        <a href="/applications/{{ app_id }}/guarantors/2/step/1" class="btn-primary-filled csp-s-619cfa472455">Complete Guarantor Form &rarr;</a>
+                        {% if readonly %}
+                        <a href="/applications/{{ app_id }}/guarantors/2/step/1" class="btn-primary-filled csp-s-619cfa472455">View Guarantor Form &rarr;</a>
+                        {% else %}
+                        <button type="submit" name="open_guarantor" value="2" formnovalidate class="btn-primary-filled csp-s-619cfa472455">Complete Guarantor Form &rarr;</button>
+                        {% endif %}
                     </div>
                 </div>
+                {% if not readonly %}
+                <button type="button" class="text-action-button guarantor-add-button" data-add-guarantor {% if has_second_guarantor %}hidden{% endif %}>+ Add Guarantor</button>
+                {% endif %}
             </div>
             {% endif %}
 
@@ -378,8 +368,46 @@
                     <input type="number" name="monthly_turnover" id="monthly_turnover" class="field-input" value="{{ data.monthly_turnover or '' }}">
                 </div>
                 <div class="form-group-full">
-                    <label class="field-label">Business Address</label>
-                    <textarea name="business_address" class="field-textarea">{{ data.business_address or '' }}</textarea>
+                    <label class="field-label">Business Locations</label>
+                    <span class="csp-s-f779da42d59e">Add every shop, store, office, branch, or warehouse used by the business.</span>
+                    <div id="businessLocationEntries" class="collateral-entry-list">
+                        {% set location_addresses = data.get('business_location_address', []) if data.get('business_location_address') is iterable and data.get('business_location_address') is not string else [data.get('business_location_address') or data.get('business_address') or ''] %}
+                        {% set location_cities = data.get('business_location_city', []) if data.get('business_location_city') is iterable and data.get('business_location_city') is not string else [data.get('business_location_city') or ''] %}
+                        {% set location_states = data.get('business_location_state', []) if data.get('business_location_state') is iterable and data.get('business_location_state') is not string else [data.get('business_location_state') or ''] %}
+                        {% set location_functions = data.get('business_location_function', []) if data.get('business_location_function') is iterable and data.get('business_location_function') is not string else [data.get('business_location_function') or 'retail_outlet'] %}
+                        {% for address in location_addresses %}
+                        <div class="collateral-entry" data-business-location>
+                            <div class="form-grid-2">
+                                <div class="form-group-full"><label class="field-label">Address</label><textarea name="business_location_address[]" class="field-textarea" required>{{ address }}</textarea></div>
+                                <div class="form-group"><label class="field-label">City</label><input type="text" name="business_location_city[]" class="field-input" value="{{ location_cities[loop.index0] if location_cities|length > loop.index0 else '' }}" required></div>
+                                <div class="form-group"><label class="field-label">State</label><input type="text" name="business_location_state[]" class="field-input" value="{{ location_states[loop.index0] if location_states|length > loop.index0 else '' }}" required></div>
+                                <div class="form-group"><label class="field-label">Facility Used As</label><select name="business_location_function[]" class="field-select" required>{% set selected_function = location_functions[loop.index0] if location_functions|length > loop.index0 else 'retail_outlet' %}{% for value, label in [('retail_outlet','Shop / Retail Outlet'),('warehouse','Store / Warehouse'),('hq','Head Office / Factory'),('branch','Branch Office')] %}<option value="{{ value }}" {% if selected_function == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                            </div>
+                            <button type="button" class="btn-ghost-link collateral-remove" data-remove-business-location>Remove</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="button" class="text-action-button" data-add-business-location>+ Add Business Location</button>
+                </div>
+                <div class="form-group-full">
+                    <h3 class="page-card-title">Business Profit &amp; Loss</h3>
+                    <p class="page-card-subtitle">Enter figures for one consistent reporting period. A negative result is shown as a net loss.</p>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Reporting Period</label>
+                    <input type="text" name="pnl_period_label" class="field-input" placeholder="e.g. FY2025 or Last 12 months" value="{{ data.pnl_period_label or '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Revenue (&#8358;)</label>
+                    <input type="number" min="0" step="0.01" name="pnl_revenue" id="pnl_revenue" class="field-input" value="{{ data.pnl_revenue or '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Expenses (&#8358;)</label>
+                    <input type="number" min="0" step="0.01" name="pnl_expenses" id="pnl_expenses" class="field-input" value="{{ data.pnl_expenses or '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="field-label" id="pnl_result_label">Net Profit / (Loss) (&#8358;)</label>
+                    <input type="text" id="pnl_result" class="field-input" readonly value="&#8358;0.00">
                 </div>
                 <div class="form-group-full">
                     <div class="csp-s-8b79e6edbbe0">
@@ -500,21 +528,29 @@
                     <input type="number" name="tenor" class="field-input" value="{{ data.tenor or '' }}" required>
                 </div>
 
-                <div class="form-group-full">
-                    <label class="field-label">Type of Security/Collateral <span class="required">*</span></label>
-                    <div class="csp-s-611b62724d4f">
-                        {% for sec in ["Shop Stock", "Household Appliances", "Business Proceeds", "Property Documents", "Vehicles"] %}
-                        <div class="csp-s-e26cf91d9185">
-                            <input type="checkbox" name="collateral_security[]" value="{{ sec }}" id="sec_{{ sec }}" {% if sec in data.collateral_security %}checked{% endif %}>
-                            <label for="sec_{{ sec }}" class="csp-s-f46c7862068d">{{ sec }}</label>
+                <div class="form-group-full collateral-entry-section">
+                    <label class="field-label">Security / Collateral <span class="required">*</span></label>
+                    <span class="csp-s-f779da42d59e">Record each item, its narration, market worth, and forced-sale value. Total FSV should cover at least 70% of the requested loan.</span>
+                    <div id="collateralEntries" class="collateral-entry-list">
+                        {% set collateral_types = data.get('collateral_type', []) if data.get('collateral_type') is iterable and data.get('collateral_type') is not string else [data.get('collateral_type') or ''] %}
+                        {% set collateral_narrations = data.get('collateral_narration', []) if data.get('collateral_narration') is iterable and data.get('collateral_narration') is not string else [data.get('collateral_narration') or ''] %}
+                        {% set collateral_values = data.get('collateral_market_value', []) if data.get('collateral_market_value') is iterable and data.get('collateral_market_value') is not string else [data.get('collateral_market_value') or ''] %}
+                        {% set collateral_fsvs = data.get('collateral_fsv', []) if data.get('collateral_fsv') is iterable and data.get('collateral_fsv') is not string else [data.get('collateral_fsv') or ''] %}
+                        {% for collateral_type in collateral_types %}
+                        <div class="collateral-entry" data-collateral-entry>
+                            <div class="form-grid-2">
+                                <div class="form-group"><label class="field-label">Collateral Type</label><select name="collateral_type[]" class="field-select" required>{% for value, label in [('property','Property'),('equipment','Equipment / Vehicle'),('inventory','Stock / Inventory'),('cash','Cash Collateral')] %}<option value="{{ value }}" {% if collateral_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                                <div class="form-group"><label class="field-label">Market Worth (&#8358;)</label><input type="number" name="collateral_market_value[]" class="field-input" min="0" step="0.01" value="{{ collateral_values[loop.index0] if collateral_values|length > loop.index0 else '' }}" required data-collateral-value></div>
+                                <div class="form-group-full"><label class="field-label">Collateral Narration / Description</label><textarea name="collateral_narration[]" class="field-textarea" placeholder="Describe the asset, location, identifying details, and condition" required>{{ collateral_narrations[loop.index0] if collateral_narrations|length > loop.index0 else '' }}</textarea></div>
+                                <div class="form-group"><label class="field-label">Forced-Sale Value (FSV) (&#8358;)</label><input type="number" name="collateral_fsv[]" class="field-input" min="0" step="0.01" value="{{ collateral_fsvs[loop.index0] if collateral_fsvs|length > loop.index0 else '' }}" required data-collateral-fsv></div>
+                            </div>
+                            <button type="button" class="btn-ghost-link collateral-remove" data-remove-collateral>Remove</button>
                         </div>
                         {% endfor %}
                     </div>
-                </div>
-
-                <div class="form-group-full">
-                    <div id="pledgeNotice" class="flat-card warning csp-s-6e22c58a7a6a">
-                        &#x26A0; A Pledge and Trust Receipt (MMFB/CRM/02) is required for the selected collateral. You will complete this in Step 8.
+                    <div class="collateral-entry-actions">
+                        <button type="button" class="text-action-button" data-add-collateral>+ Add Collateral</button>
+                        <span id="collateralCoverageSummary" class="collateral-coverage-summary" aria-live="polite"></span>
                     </div>
                 </div>
 
@@ -589,9 +625,6 @@
                     <div class="form-group">
                         <label class="field-label">Facility Amount in Words <span class="required">*</span></label>
                         <input type="text" name="pledge_amount_words" id="pledge_amount_words" class="field-input" value="{{ data.pledge_amount_words or '' }}" readonly aria-live="polite" placeholder="Automatically generated from the facility amount">
-                    </div>
-                    <div class="form-group-full">
-                        <span id="pledgeMismatchWarning" class="csp-s-b2e7358a49c7">&#x26A0; Amount in words does not match figures — please correct.</span>
                     </div>
                     <div class="form-group-full">
                         <label class="field-label">Shop/House Address where goods are located <span class="required">*</span></label>
@@ -684,7 +717,7 @@
                 <div id="pledgeUploadFeedback" class="csp-s-3a737e15be5f">
                     <div class="csp-s-5ffb91a26b04">
                         <div>
-                            <strong id="pledge_fn">pledge_form_completed.pdf</strong>
+                            <strong id="pledge_fn"></strong>
                             <div class="csp-s-f779da42d59e">Ready to upload when you save this step.</div>
                         </div>
                         <span class="status-badge needs-review">Ready to upload</span>
@@ -705,34 +738,23 @@
                         <a href="/applications/{{ app_id }}/step/{{ step - 1 }}" class="btn-ghost-link">&larr; Back</a>
                         {% endif %}
                     {% endif %}
-                    {% if step < 9 %}
-                    <span data-save-draft class="csp-s-a904dbafb705">Save Draft</span>
-                    {% endif %}
+                    <button type="button" data-save-draft class="btn-secondary wizard-save-draft">Save Draft</button>
                 </div>
-                    {% if step == 9 %}
-                    <button
-                        type="submit"
-                        class="btn-primary-filled"
-                        id="submitToBranchManagerBtn"
-                        formaction="/applications/{{ app_id }}/submit-to-branch-manager"
-                        formmethod="POST"
-                        formnovalidate
-                        data-skip-wizard-validation
-                    >
-                        Submit to Team Lead &rarr;
-                    </button>
-                    {% elif not readonly %}
+                <div class="wizard-primary-action">
+                    {% if not readonly %}
                     <button type="submit" class="btn-primary-filled" id="continueBtn">
-                        Save &amp; Continue &rarr;
+                        {% if step == 8 %}Submit to Team Lead &rarr;{% else %}Save &amp; Continue &rarr;{% endif %}
                     </button>
-                    {% elif review_mode and step < 9 %}
+                    {% elif review_mode and step < 8 %}
                         {% if is_single and step == 1 %}
                         <a href="/applications/{{ app_id }}/step/3" class="btn-primary-filled">Next Section &rarr;</a>
                         {% else %}
                         <a href="/applications/{{ app_id }}/step/{{ step + 1 }}" class="btn-primary-filled">Next Section &rarr;</a>
                         {% endif %}
                     {% endif %}
-                    <span id="consent_remaining" class="csp-s-5f2c6d32591d">Consents still required.</span>
+                    {% if not readonly and step < 8 %}
+                    <span id="consent_remaining" class="wizard-consent-note">Consents are optional and can be completed later.</span>
+                    {% endif %}
                 </div>
             </div>
         </form>
@@ -856,19 +878,6 @@
         if (pledgeFile) pledgeFile.required = tab === 'upload';
     }
 
-    function checkPledgeAmountMismatch() {
-        const figs = document.getElementById('pledge_amount_figs').value;
-        const words = document.getElementById('pledge_amount_words').value;
-        const warning = document.getElementById('pledgeMismatchWarning');
-        if (!warning) return;
-        // Simple mock mismatch check
-        if (figs && words && words.length > 3 && !words.includes(figs.substring(0, 1))) {
-            warning.style.display = 'block';
-        } else {
-            warning.style.display = 'none';
-        }
-    }
-
     function nairaAmountToWords(value) {
         const raw = String(value || '').replace(/,/g, '').trim();
         if (!raw || !/^\d+(?:\.\d{0,2})?$/.test(raw)) return '';
@@ -915,6 +924,52 @@
             <td><input type="number" name="pledge_item_val[]" class="field-input" data-pledge-value required></td>
             <td><button type="button" class="btn-ghost-link csp-s-cdee27c94461" data-remove-pledge-row>Remove</button></td>
         `;
+    }
+
+    function updateCollateralCoverage() {
+        const summary = document.getElementById('collateralCoverageSummary');
+        if (!summary) return;
+        const loanAmount = Number(document.getElementById('loan_amount')?.value || 0);
+        const totalFsv = Array.from(document.querySelectorAll('[data-collateral-fsv]'))
+            .reduce((total, input) => total + Number(input.value || 0), 0);
+        const target = loanAmount * 0.70;
+        summary.textContent = loanAmount
+            ? `Total FSV: ₦${totalFsv.toLocaleString('en-NG')} · 70% target: ₦${target.toLocaleString('en-NG')}`
+            : `Total FSV: ₦${totalFsv.toLocaleString('en-NG')}`;
+        summary.classList.toggle('meets-target', loanAmount > 0 && totalFsv >= target);
+    }
+
+    function addCollateralEntry() {
+        const list = document.getElementById('collateralEntries');
+        if (!list) return;
+        const entry = document.createElement('div');
+        entry.className = 'collateral-entry';
+        entry.dataset.collateralEntry = '';
+        entry.innerHTML = `<div class="form-grid-2">
+            <div class="form-group"><label class="field-label">Collateral Type</label><select name="collateral_type[]" class="field-select" required><option value="property">Property</option><option value="equipment">Equipment / Vehicle</option><option value="inventory">Stock / Inventory</option><option value="cash">Cash Collateral</option></select></div>
+            <div class="form-group"><label class="field-label">Market Worth (₦)</label><input type="number" name="collateral_market_value[]" class="field-input" min="0" step="0.01" required data-collateral-value></div>
+            <div class="form-group-full"><label class="field-label">Collateral Narration / Description</label><textarea name="collateral_narration[]" class="field-textarea" placeholder="Describe the asset, location, identifying details, and condition" required></textarea></div>
+            <div class="form-group"><label class="field-label">Forced-Sale Value (FSV) (₦)</label><input type="number" name="collateral_fsv[]" class="field-input" min="0" step="0.01" required data-collateral-fsv></div>
+        </div><button type="button" class="btn-ghost-link collateral-remove" data-remove-collateral>Remove</button>`;
+        list.appendChild(entry);
+        entry.querySelector('select')?.focus();
+        updateCollateralCoverage();
+    }
+
+    function addBusinessLocation() {
+        const list = document.getElementById('businessLocationEntries');
+        if (!list) return;
+        const entry = document.createElement('div');
+        entry.className = 'collateral-entry';
+        entry.dataset.businessLocation = '';
+        entry.innerHTML = `<div class="form-grid-2">
+            <div class="form-group-full"><label class="field-label">Address</label><textarea name="business_location_address[]" class="field-textarea" required></textarea></div>
+            <div class="form-group"><label class="field-label">City</label><input type="text" name="business_location_city[]" class="field-input" required></div>
+            <div class="form-group"><label class="field-label">State</label><input type="text" name="business_location_state[]" class="field-input" required></div>
+            <div class="form-group"><label class="field-label">Facility Used As</label><select name="business_location_function[]" class="field-select" required><option value="retail_outlet">Shop / Retail Outlet</option><option value="warehouse">Store / Warehouse</option><option value="hq">Head Office / Factory</option><option value="branch">Branch Office</option></select></div>
+        </div><button type="button" class="btn-ghost-link collateral-remove" data-remove-business-location>Remove</button>`;
+        list.appendChild(entry);
+        entry.querySelector('textarea')?.focus();
     }
 
     function removePledgeRow(btn) {
@@ -1072,6 +1127,16 @@
         if (amount && words) words.value = nairaAmountToWords(amount.value);
     }
 
+    function updatePnlResult() {
+        const revenue = Number(document.getElementById('pnl_revenue')?.value || 0);
+        const expenses = Number(document.getElementById('pnl_expenses')?.value || 0);
+        const result = revenue - expenses;
+        const label = document.getElementById('pnl_result_label');
+        const output = document.getElementById('pnl_result');
+        if (label) label.textContent = `${result < 0 ? 'Net Loss' : 'Net Profit'} (₦)`;
+        if (output) output.value = `${result < 0 ? '-' : ''}₦${Math.abs(result).toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
+
     // Initialize triggers on page load
     window.addEventListener('load', () => {
         document.getElementById('wizard-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1087,6 +1152,8 @@
         updatePledgeAmountWords();
         document.getElementById('pledge_amount_figs')?.addEventListener('input', updatePledgeAmountWords);
         calculatePledgeTotal();
+        updateCollateralCoverage();
+        updatePnlResult();
         
     });
 
@@ -1122,14 +1189,21 @@
     document.querySelectorAll('[data-pledge-tab]').forEach((button) => button.addEventListener('click', () => switchPledgeTab(button.dataset.pledgeTab)));
     document.getElementById('pledge_amount_figs')?.addEventListener('input', updatePledgeAmountWords);
     document.getElementById('pledge_file')?.addEventListener('change', (event) => handlePledgeUpload(event.currentTarget));
+    document.getElementById('pnl_revenue')?.addEventListener('input', updatePnlResult);
+    document.getElementById('pnl_expenses')?.addEventListener('input', updatePnlResult);
     document.querySelector('[data-choose-pledge-file]')?.addEventListener('click', () => document.getElementById('pledge_file')?.click());
     document.querySelector('[data-save-draft]')?.addEventListener('click', saveDraft);
-    document.querySelector('[data-copy-signing-link]')?.addEventListener('click', async (event) => {
-        await navigator.clipboard.writeText(document.getElementById('generatedClientSigningLink').value);
-        event.currentTarget.textContent = 'Copied!';
+    document.querySelector('[data-add-guarantor]')?.addEventListener('click', (event) => {
+        const slot = document.getElementById('guarantorSlot2');
+        if (!slot) return;
+        slot.hidden = false;
+        slot.querySelectorAll('input, select, textarea').forEach((field) => { field.disabled = false; });
+        event.currentTarget.hidden = true;
+        slot.querySelector('input')?.focus();
     });
     document.addEventListener('input', (event) => {
         if (event.target.matches('[data-pledge-value]')) calculatePledgeTotal();
+        if (event.target.matches('[data-collateral-fsv], #loan_amount')) updateCollateralCoverage();
     });
     document.addEventListener('click', (event) => {
         const removeRow = event.target.closest('[data-remove-row]');
@@ -1138,6 +1212,12 @@
         if (removePledge) removePledgeRow(removePledge);
         if (event.target.closest('[data-add-facility]')) addFacilityRow();
         if (event.target.closest('[data-add-pledge-row]')) addPledgeRow();
+        if (event.target.closest('[data-add-collateral]')) addCollateralEntry();
+        if (event.target.closest('[data-add-business-location]')) addBusinessLocation();
+        const removeCollateral = event.target.closest('[data-remove-collateral]');
+        if (removeCollateral) { removeCollateral.closest('[data-collateral-entry]')?.remove(); updateCollateralCoverage(); }
+        const removeLocation = event.target.closest('[data-remove-business-location]');
+        if (removeLocation) removeLocation.closest('[data-business-location]')?.remove();
     });
 
     {% if readonly %}
