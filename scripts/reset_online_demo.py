@@ -547,6 +547,7 @@ async def seed_org(conn, org, users):
                 "business_address": business_address,
                 "residential_address": home_address,
                 "home_address": home_address,
+                "photo_url": f"/static/uploads/demo/generated/{ref_no}_passport_photo.pdf",
                 "landmark": landmark,
                 "gps_coordinates": f"6.{450 + idx}{variant}, 3.{390 + idx}{variant}",
                 "monthly_turnover": str(amount * Decimal("1.70")),
@@ -585,7 +586,15 @@ async def seed_org(conn, org, users):
                 "years_in_business": variant + 2,
                 "years_in_operation": variant + 2,
                 "years_employed": variant + 2,
+                "education": "Bachelor's degree",
                 "average_monthly_turnover": str(amount * Decimal("1.70")),
+                "pnl_period_label": "Average month",
+                "pnl_revenue": str(monthly_revenue),
+                "pnl_expenses": str(monthly_expenses),
+                "business_location_address": [business_address, f"Warehouse {record_no}, Industrial Estate, Lagos"],
+                "business_location_city": ["Lagos", "Ikeja"],
+                "business_location_state": ["Lagos", "Lagos"],
+                "business_location_function": ["retail_outlet", "warehouse"],
                 "facility_bank": ["Access Bank"],
                 "facility_amount": [str(amount * Decimal("0.15"))],
                 "facility_tenor": [6],
@@ -605,11 +614,27 @@ async def seed_org(conn, org, users):
                 "guarantor_2_status": "Verified",
                 "pledge_amount_figs": str(amount),
                 "pledge_amount_words": "Amount equal to requested facility",
+                "amount_words": "Amount equal to requested facility",
+                "loan_purpose_other": purpose if loan_type == "other" else "",
+                "collateral_type": ["inventory", "cash"],
+                "collateral_narration": [f"Trading stock held at {business_address}", f"Cash collateral reserved for {ref_no}"],
+                "collateral_market_value": [str(amount * Decimal("0.75")), str(amount * Decimal("0.20"))],
+                "collateral_fsv": [str(amount * Decimal("0.525")), str(amount * Decimal("0.20"))],
+                "collateral_security": ["Stock lien", "Cash lien"],
+                "pledge_borrower": applicant_name,
+                "pledge_obligor": applicant_name,
+                "pledge_location": business_address,
+                "pledge_date": str(date.today()),
+                "pledge_item_name": ["Shop Stock", "Display Refrigerator", "POS Terminal"],
+                "pledge_item_desc": ["Trading inventory", "Cold-chain equipment", "Payment terminal"],
+                "pledge_item_qty": ["1 lot", "1", "1"],
+                "pledge_item_val": [str(amount * Decimal("0.45")), str(amount * Decimal("0.20")), str(amount * Decimal("0.10"))],
                 "shop_address": business_address,
                 "house_address": home_address,
                 "expected_sales_proceeds": str(amount * Decimal("1.20")),
                 "collection_method": repayment_mode,
                 "deposit_account": account_number,
+                "sort_code": "090171",
                 "applicant_signature": "signed",
                 "signature_date": str(date.today()),
                 "witness_name": f"Witness for {name}",
@@ -626,6 +651,8 @@ async def seed_org(conn, org, users):
                 "cheque_authorisation": True,
                 "gsi_mandate": True,
                 "terms_acceptance": True,
+                "completed_steps": [1, 2, 3, 4, 5, 6, 7, 8],
+                **{f"section_{section}_completed": True for section in range(1, 9)},
             }
             await conn.execute(
                 "INSERT INTO stage_data (loan_id, stage, data_json, saved_by, saved_at) VALUES ($1,$2,$3,$4,$5)",
@@ -985,42 +1012,6 @@ async def seed_org(conn, org, users):
                 variant == 3,
                 now - timedelta(minutes=idx * variant),
             )
-
-            if stage == "disbursed":
-                monthly_principal = (amount / Decimal(tenor)).quantize(Decimal("0.01"))
-                monthly_interest = (amount * Decimal("0.045")).quantize(Decimal("0.01"))
-                for installment in range(1, tenor + 1):
-                    due = date.today() + timedelta(days=30 * installment)
-                    await conn.execute(
-                        """
-                        INSERT INTO repayment_schedule (
-                            loan_id, org_id, installment_no, due_date,
-                            principal_due, interest_due, total_due
-                        ) VALUES ($1,$2,$3,$4,$5,$6,$7)
-                        """,
-                        loan_id,
-                        org_id,
-                        installment,
-                        due,
-                        monthly_principal,
-                        monthly_interest,
-                        monthly_principal + monthly_interest,
-                    )
-                for installment in range(1, min(3, tenor) + 1):
-                    await conn.execute(
-                        """
-                        INSERT INTO repayment_records (
-                            loan_id, org_id, payment_date, amount_paid, channel, bank_ref, recorded_by
-                        ) VALUES ($1,$2,$3,$4,$5,$6,$7)
-                        """,
-                        loan_id,
-                        org_id,
-                        date.today() - timedelta(days=30 * (3 - installment)),
-                        monthly_principal + monthly_interest,
-                        "bank_transfer",
-                        f"PAY-{ref_no}-{installment}",
-                        crm,
-                    )
 
     for user in users:
         await conn.execute(
