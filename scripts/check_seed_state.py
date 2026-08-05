@@ -81,6 +81,26 @@ async def main():
         mcc_finalized = await conn.fetchval(
             "SELECT count(*) FROM loan_applications WHERE mcc_finalized_by IS NOT NULL"
         )
+        completed_wizards = await conn.fetchval(
+            """SELECT count(*) FROM stage_data
+               WHERE stage='intake'
+                 AND data_json @> '{"completed_steps":[1,2,3,4,5,6,7,8]}'::jsonb"""
+        )
+        par_scenarios = await conn.fetchrow(
+            """SELECT
+                   count(*) FILTER (WHERE payment_count > 0) AS performing,
+                   count(*) FILTER (WHERE payment_count = 0 AND overdue_count > 0) AS unpaid
+               FROM (
+                   SELECT la.id,
+                          count(DISTINCT rr.id) AS payment_count,
+                          count(DISTINCT rs.id) FILTER (WHERE rs.due_date < CURRENT_DATE) AS overdue_count
+                   FROM loan_applications la
+                   LEFT JOIN repayment_records rr ON rr.loan_id=la.id
+                   LEFT JOIN repayment_schedule rs ON rs.loan_id=la.id
+                   WHERE la.stage='disbursed'
+                   GROUP BY la.id
+               ) seeded_par"""
+        )
 
         print(
             json.dumps(
@@ -91,6 +111,8 @@ async def main():
                     "matrix_group_count": len(matrix),
                     "matrix_exceptions": matrix_exceptions,
                     "mcc_finalized_applications": mcc_finalized,
+                    "completed_wizard_sections_1_to_8": completed_wizards,
+                    "par_scenarios": dict(par_scenarios),
                     "loan_dependencies": [dict(row) for row in loan_dependencies],
                 },
                 indent=2,
