@@ -67,7 +67,8 @@ class LoanService:
         customer_type: str,
         loan_type: str,
         applicant_name: str,
-        user_id: UUID
+        user_id: UUID,
+        client_request_id: UUID | None = None,
     ) -> LoanRow:
         customer_type = _normalize_choice(customer_type, CUSTOMER_TYPE_MAP, "customer type")
         loan_type = _normalize_choice(loan_type, LOAN_TYPE_MAP, "loan type")
@@ -87,7 +88,8 @@ class LoanService:
                 customer_type=customer_type,
                 loan_type=loan_type,
                 applicant_name=applicant_name,
-                created_by=user_id
+                created_by=user_id,
+                client_request_id=client_request_id,
             )
             
             # Log audit

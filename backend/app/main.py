@@ -151,7 +151,17 @@ templates.env.globals.update(
     brand_logo_white="https://res.cloudinary.com/ddezxlqjr/image/upload/v1784551475/MMFB_logo_White_gzthxm.png",
 )
 
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+class ProtectedStaticFiles(StaticFiles):
+    """Never expose customer uploads through the unauthenticated static mount."""
+
+    async def get_response(self, path: str, scope):
+        normalized = path.replace("\\", "/").lstrip("/")
+        if normalized == "uploads" or normalized.startswith("uploads/"):
+            raise StarletteHTTPException(status_code=404)
+        return await super().get_response(path, scope)
+
+
+app.mount("/static", ProtectedStaticFiles(directory=static_dir), name="static")
 
 
 @app.get("/api/v1/documents/{document_id}/download")

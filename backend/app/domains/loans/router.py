@@ -26,6 +26,7 @@ from app.core.template_utils import (
 )
 from app.core.templates import create_templates
 from app.core.workflow import WORKFLOW_STAGES, ROLE_LABELS
+from app.domains.loans.mcc_policy import require_mcc_quorum
 from app.services.dashboard_service import DashboardService
 from app.services.email_service import EmailService
 from app.domains.documents.repository import DocumentRepository
@@ -2955,12 +2956,22 @@ async def submit_mcc_vote(application_id: str, recommended_amount: float = Form(
 async def finalize_mcc_amount(application_id: str, final_amount: float = Form(...), conn=Depends(db_conn), current_user=Depends(get_current_user)):
     if current_user.role.lower().replace(" ", "_") not in {"crm", "head_crm"}:
         raise HTTPException(status_code=403, detail="Only CRM can set the final MCC amount")
+    app_uuid = UUID(application_id)
+    quorum = await require_mcc_quorum(conn, app_uuid, current_user.org_id)
+    app = await LoanRepository(conn).get_by_id(app_uuid, current_user.org_id)
     result = await conn.execute(
         """UPDATE loan_applications SET amount=$1, mcc_finalized_by=$2, mcc_finalized_at=NOW(), updated_at=NOW()
            WHERE id=$3 AND org_id=$4 AND stage IN ('ed_approval','md_approval')""",
-        final_amount, current_user.id, UUID(application_id), current_user.org_id)
+        final_amount, current_user.id, app_uuid, current_user.org_id)
     if result != "UPDATE 1":
         raise HTTPException(status_code=409, detail="Final MCC amount could not be set")
+    await AuditService(conn).log(
+        application_id=application_id, org_id=str(current_user.org_id),
+        action="MCC Final Amount Set", from_stage=app.stage if app else None,
+        to_stage=app.stage if app else None, actor_id=str(current_user.id),
+        actor_role=current_user.role,
+        reason=f"Final amount recorded after {quorum['vote_count']} distinct MCC recommendations",
+    )
     return RedirectResponse(url=f"/applications/{application_id}/mcc", status_code=status.HTTP_303_SEE_OTHER)
 
 

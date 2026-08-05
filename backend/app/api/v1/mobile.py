@@ -1,4 +1,5 @@
 import json
+import logging
 import secrets
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -7,6 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, Query, UploadFile, status, Request
 from pydantic import BaseModel, Field
+from sqlalchemy.exc import IntegrityError
 
 from app.core.audit import AuditService
 from app.core.database import db_conn
@@ -21,6 +23,7 @@ from app.domains.guarantors.repository import GuarantorRepository
 from app.domains.guarantors.service import GuarantorService
 from app.domains.loans.repository import LoanRepository
 from app.domains.loans.service import LoanService
+from app.domains.loans.mcc_policy import require_mcc_quorum
 from app.domains.notifications.repository import NotificationRepository
 from app.domains.notifications.service import NotificationService
 from app.domains.visitation.repository import VisitationRepository
@@ -37,6 +40,7 @@ from app.config import settings
 
 
 router = APIRouter()
+log = logging.getLogger(__name__)
 
 
 class MobileUserResponse(BaseModel):
@@ -539,13 +543,16 @@ async def get_mobile_legal_queue_exact(
     _ensure_roles(current_user, {"legal"})
     rows = await conn.fetch(
         """
-        SELECT id, ref_no, applicant_name, amount, stage, updated_at,
+        SELECT la.id, la.ref_no, la.applicant_name, la.amount, la.stage, la.updated_at,
+               officer.full_name AS officer_name, manager.full_name AS branch_manager_name,
                COUNT(*) OVER() AS total_count
-        FROM loan_applications
-        WHERE org_id=$1
-          AND stage IN ('branch_manager_review','credit_analyst_review','crm_review')
-          AND deleted_at IS NULL
-        ORDER BY updated_at ASC
+        FROM loan_applications la
+        LEFT JOIN users officer ON officer.id = la.created_by AND officer.org_id = la.org_id
+        LEFT JOIN users manager ON manager.id = la.branch_manager_id AND manager.org_id = la.org_id
+        WHERE la.org_id=$1
+          AND la.stage IN ('branch_manager_review','credit_analyst_review','crm_review')
+          AND la.deleted_at IS NULL
+        ORDER BY la.updated_at ASC
         LIMIT $2 OFFSET $3
         """,
         current_user.org_id, size, (page - 1) * size,
@@ -850,27 +857,34 @@ async def create_mobile_application(
             raise HTTPException(status_code=422, detail="Invalid borrower_id") from exc
         borrower_app, personal_profile = await _customer_record(conn, selected_id, current_user.org_id)
         applicant_name = personal_profile["applicant_name"]
-    app = await _loan_service(conn).create_loan(
-        org_id=current_user.org_id,
-        customer_type=payload.customer_type,
-        loan_type=payload.loan_type,
-        applicant_name=applicant_name,
-        user_id=current_user.id,
-    )
-    if payload.client_request_id:
-        updated_idempotent = await conn.fetchrow(
-            """
-            UPDATE loan_applications
-            SET client_request_id = $1
-            WHERE id = $2 AND org_id = $3
-            RETURNING *
-            """,
-            payload.client_request_id,
-            app.id,
-            current_user.org_id,
+    try:
+        app = await _loan_service(conn).create_loan(
+            org_id=current_user.org_id,
+            customer_type=payload.customer_type,
+            loan_type=payload.loan_type,
+            applicant_name=applicant_name,
+            user_id=current_user.id,
+            client_request_id=payload.client_request_id,
         )
-        if updated_idempotent:
-            app = await LoanRepository(conn).get_by_id(app.id, current_user.org_id) or app
+    except IntegrityError:
+        if not payload.client_request_id:
+            raise
+        existing = await conn.fetchrow(
+            """SELECT id FROM loan_applications
+               WHERE org_id=$1 AND client_request_id=$2 AND deleted_at IS NULL""",
+            current_user.org_id,
+            payload.client_request_id,
+        )
+        if not existing:
+            raise
+        app = await LoanRepository(conn).get_by_id(existing["id"], current_user.org_id)
+        return {
+            "application": _mobile_application(app, current_user),
+            "borrower": None,
+            "personal_profile_snapshot": None,
+            "next": {"type": "intake_step", "step": 1},
+            "replayed": True,
+        }
     if personal_profile is not None:
         snapshot = dict(personal_profile)
         snapshot.update({
@@ -1208,7 +1222,7 @@ async def submit_mobile_visitation_signoff(
                 notification_type="visitation_signoff",
             )
     except Exception:
-        pass
+        log.exception("Visitation signoff notification failed for application %s", application_id)
     return {"report": report}
 
 
@@ -1269,7 +1283,7 @@ async def submit_mobile_credit_review(
                 notification_type="credit_review",
             )
     except Exception:
-        pass
+        log.exception("Credit review notification failed for application %s", application_id)
     return {"application": updated, "stage": stage}
 
 
@@ -1374,7 +1388,7 @@ async def approve_mobile_application(
                 notification_type="approval",
             )
     except Exception:
-        pass
+        log.exception("Approval notification failed for application %s", application_id)
     return {"application": app}
 
 
@@ -1441,7 +1455,7 @@ async def return_mobile_application(
                 notification_type="returned",
             )
     except Exception:
-        pass
+        log.exception("Return notification failed for application %s", application_id)
     return {"application": app, "return_reason": return_reason}
 
 
@@ -2673,37 +2687,6 @@ async def get_mobile_system_activity(
     }
 
 
-@router.get("/queues/legal")
-async def get_mobile_legal_queue(
-    page: int = Query(1, ge=1),
-    size: int = Query(50, ge=1, le=100),
-    conn=Depends(db_conn),
-    current_user=Depends(get_current_user),
-):
-    _ensure_roles(current_user, {"legal"})
-    rows = await conn.fetch(
-        """
-        SELECT la.id, la.ref_no, la.applicant_name, la.amount, la.stage, la.updated_at,
-               u.full_name AS officer_name, bm.full_name AS branch_manager_name,
-               COUNT(*) OVER() AS total_count
-        FROM loan_applications la
-        LEFT JOIN users u ON u.id = la.created_by AND u.org_id = la.org_id
-        LEFT JOIN users bm ON bm.id = la.branch_manager_id AND bm.org_id = la.org_id
-        WHERE la.org_id = $1
-          AND la.stage IN ('branch_manager_review', 'credit_analyst_review', 'crm_review')
-          AND la.deleted_at IS NULL
-        ORDER BY la.updated_at ASC
-        LIMIT $2 OFFSET $3
-        """,
-        current_user.org_id, size, (page - 1) * size,
-    )
-    total = int(rows[0]["total_count"]) if rows else 0
-    return {
-        "items": [{k: v for k, v in dict(row).items() if k != "total_count"} for row in rows],
-        "page": page, "size": size, "total": total,
-    }
-
-
 @router.get("/applications/{application_id}/valuation")
 async def get_mobile_valuation(
     application_id: UUID,
@@ -2830,6 +2813,7 @@ async def finalize_mobile_mcc(
 ):
     _ensure_roles(current_user, {"crm", "head_crm"})
     await _get_application_or_404(conn, application_id, current_user, enforce_officer_scope=False)
+    quorum = await require_mcc_quorum(conn, application_id, current_user.org_id)
     row = await conn.fetchrow(
         """UPDATE loan_applications SET amount=$1, mcc_finalized_by=$2,
                   mcc_finalized_at=NOW(), updated_at=NOW()
@@ -2838,6 +2822,12 @@ async def finalize_mobile_mcc(
     )
     if not row:
         raise HTTPException(status_code=409, detail="Final MCC amount could not be set")
+    await AuditService(conn).log(
+        application_id=str(application_id), org_id=str(current_user.org_id),
+        action="MCC Final Amount Set", from_stage=row["stage"], to_stage=row["stage"],
+        actor_id=str(current_user.id), actor_role=current_user.role,
+        reason=f"Final amount recorded after {quorum['vote_count']} distinct MCC recommendations",
+    )
     return {"application": _mobile_application(
         await LoanRepository(conn).get_by_id(application_id, current_user.org_id), current_user)}
 
