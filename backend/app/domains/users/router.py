@@ -117,3 +117,13 @@ async def deactivate_user(
 ):
     await service.deactivate_managed_user(current_admin, user_id)
     return {"id": str(user_id), "active": False, "message": "User deactivated."}
+
+
+@router.delete("/{user_id}")
+async def delete_user(
+    user_id: UUID,
+    service: UserService = Depends(get_user_service),
+    current_admin: UserRow = Depends(RoleChecker(["System Admin"])),
+):
+    await service.delete_managed_user(current_admin, user_id)
+    return {"id": str(user_id), "message": "User deleted."}

@@ -61,6 +61,10 @@
     border: 1px solid var(--border-color);
 }
 
+.paginated-container {
+    display: contents;
+}
+
 .loan-row {
     display: grid;
     grid-template-columns: 1fr;
@@ -127,6 +131,13 @@
 }
 
 @media (min-width: 1024px) {
+    .loan-state-hero,
+    .metrics-row,
+    .loan-table {
+        width: min(100%, 1200px);
+        margin-left: auto;
+        margin-right: auto;
+    }
     .loan-table {
         display: grid;
         gap: 0;

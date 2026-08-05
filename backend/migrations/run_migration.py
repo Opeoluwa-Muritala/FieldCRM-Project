@@ -28,6 +28,7 @@ MIGRATION_FILES = [
     "030_business_pnl.sql",
     "031_loan_recommendations.sql",
     "032_single_executive_role_holders.sql",
+    "033_user_soft_delete.sql",
 ]
 
 

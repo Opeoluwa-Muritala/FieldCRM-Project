@@ -16,6 +16,6 @@ SELECT
     COUNT(*) OVER () AS total_count
 FROM users u
 LEFT JOIN branches b ON b.id = u.branch_id
-WHERE u.org_id = $1
+WHERE u.org_id = $1 AND u.deleted_at IS NULL
 ORDER BY u.active DESC, u.role ASC, u.full_name ASC
 LIMIT $2 OFFSET $3;

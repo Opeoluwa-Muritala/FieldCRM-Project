@@ -143,6 +143,14 @@ class UserService:
 
         await self.repo.deactivate_user(user.id)
 
+    async def delete_managed_user(self, current_admin: UserRow, user_id) -> None:
+        user = await self.repo.get_by_id(user_id)
+        if not user or user.org_id != current_admin.org_id:
+            raise DomainException("User not found.", 404)
+        if user.id == current_admin.id:
+            raise DomainException("You cannot delete your own account.", 400)
+        await self.repo.delete_user(user.id)
+
     async def update_user_branch(self, current_admin: UserRow, user_id, branch_id: UUID | None) -> UserRow:
         user = await self.repo.get_by_id(user_id)
         if not user or user.org_id != current_admin.org_id:

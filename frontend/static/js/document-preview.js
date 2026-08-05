@@ -88,6 +88,23 @@
     }, true);
 
     async function renderPreviewPages(url, requestId) {
+        // Seeded/demo documents may be stored as authorised local PDFs rather
+        // than Cloudinary page images. Detect that response and embed it in the
+        // same protected modal; cloud documents continue through page images.
+        const firstResponse = await fetch(pageUrl(url, 1), { credentials: 'same-origin' });
+        if (!firstResponse.ok) throw new Error('Preview request failed');
+        const firstType = (firstResponse.headers.get('content-type') || '').split(';', 1)[0].toLowerCase();
+        if (firstType === 'application/pdf') {
+            const objectUrl = URL.createObjectURL(await firstResponse.blob());
+            const frame = document.createElement('iframe');
+            frame.className = 'preview-modal-pdf';
+            frame.title = title.textContent || 'Document preview';
+            frame.src = objectUrl;
+            frame.addEventListener('load', () => URL.revokeObjectURL(objectUrl), { once: true });
+            if (requestId === previewRequestId && !modal.hidden) preview.replaceChildren(frame);
+            return;
+        }
+
         function startLoadingPage(pageNum) {
             const image = document.createElement('img');
             image.alt = `Document page ${pageNum}`;
@@ -97,7 +114,15 @@
             return { image, loadPromise };
         }
 
-        let current = startLoadingPage(1);
+        const firstImage = document.createElement('img');
+        firstImage.alt = 'Document page 1';
+        firstImage.className = 'preview-modal-image';
+        firstImage.src = URL.createObjectURL(await firstResponse.blob());
+        const firstLoad = streamPreviewImage(firstImage).then(() => {
+            URL.revokeObjectURL(firstImage.src);
+            return firstImage;
+        });
+        let current = { image: firstImage, loadPromise: firstLoad };
 
         for (let page = 1; page <= MAX_PREVIEW_PAGES; page += 1) {
             if (modal.hidden || requestId !== previewRequestId) return;

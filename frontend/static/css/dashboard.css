@@ -3835,6 +3835,14 @@ body, body * { font-family: "Montserrat", sans-serif !important; }
     background: #fff;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
 }
+
+.preview-modal-pdf {
+    width: min(100%, 960px);
+    height: min(78vh, 1100px);
+    border: 0;
+    border-radius: 8px;
+    background: #fff;
+}
 .ocr-image-wrapper {
     position: relative;
     display: inline-block;

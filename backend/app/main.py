@@ -8,11 +8,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import logging
 from datetime import timedelta
+from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlparse
 from fastapi import FastAPI, Depends, Form, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -161,7 +162,12 @@ async def download_document(
 ):
     """Authorise in FieldCRM before issuing a short-lived Cloudinary URL."""
     document = await DocumentRepository(conn).get_by_id_for_org(document_id, current_user.org_id)
-    if not document or not document.get("cloud_public_id"):
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    local_path = resolve_local_document_path(document.get("stored_path"))
+    if not document.get("cloud_public_id") and local_path:
+        return FileResponse(local_path, media_type=document.get("mime_type"), filename=document.get("original_name"))
+    if not document.get("cloud_public_id"):
         raise HTTPException(status_code=404, detail="Document not found")
     return RedirectResponse(signed_download_url(document["cloud_public_id"], document["mime_type"]))
 
@@ -176,11 +182,7 @@ async def preview_document(
 ):
     """Stream an authorised document inline so it can be safely embedded in the UI."""
     document = await DocumentRepository(conn).get_by_id_for_org(document_id, current_user.org_id)
-    if (
-        not document
-        or not document.get("cloud_public_id")
-        or document.get("upload_status") not in (None, "done")
-    ):
+    if not document or document.get("upload_status") not in (None, "done"):
         raise HTTPException(status_code=404, detail="Document not found")
 
     stored_mime_type = normalize_mime_type(document.get("mime_type"))
@@ -191,6 +193,18 @@ async def preview_document(
     # for this page number, so the original PDF never reaches the browser.
     if stored_mime_type != "application/pdf" and page != 1:
         raise HTTPException(status_code=404, detail="Document preview page not found")
+
+    local_path = resolve_local_document_path(document.get("stored_path"))
+    if not document.get("cloud_public_id") and local_path:
+        if page != 1:
+            raise HTTPException(status_code=404, detail="Document preview page not found")
+        return FileResponse(
+            local_path,
+            media_type=stored_mime_type,
+            headers={"Content-Disposition": preview_content_disposition(document.get("original_name"))},
+        )
+    if not document.get("cloud_public_id"):
+        raise HTTPException(status_code=404, detail="Document not found")
 
     client: httpx.AsyncClient | None = None
     response: httpx.Response | None = None
@@ -208,6 +222,13 @@ async def preview_document(
         if page > 1 and exc.response.status_code in (400, 404):
             await close_cloudinary_stream(client, response, stream_context)
             raise HTTPException(status_code=404, detail="Document preview page not found") from exc
+        if page == 1 and local_path:
+            await close_cloudinary_stream(client, response, stream_context)
+            return FileResponse(
+                local_path,
+                media_type=stored_mime_type,
+                headers={"Content-Disposition": preview_content_disposition(document.get("original_name"))},
+            )
         logger.warning("Cloudinary document preview request failed (%s)", type(exc).__name__)
         await close_cloudinary_stream(client, response, stream_context)
         raise HTTPException(status_code=502, detail="Document preview is temporarily unavailable") from exc
@@ -239,6 +260,17 @@ async def preview_document(
 ALLOWED_PREVIEW_MIME_TYPES = {"application/pdf", "image/jpeg", "image/png"}
 _FILENAME_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
 _FILENAME_ASCII_UNSAFE = re.compile(r"[^A-Za-z0-9._ -]")
+
+
+def resolve_local_document_path(stored_path: str | None) -> Path | None:
+    """Resolve a seeded/static document without allowing traversal outside uploads."""
+    if not stored_path or not stored_path.startswith("/static/uploads/"):
+        return None
+    uploads_root = (Path(static_dir) / "uploads").resolve()
+    candidate = (Path(static_dir) / stored_path.removeprefix("/static/")).resolve()
+    if uploads_root not in candidate.parents or not candidate.is_file():
+        return None
+    return candidate
 
 
 def normalize_mime_type(value: str | None) -> str:
