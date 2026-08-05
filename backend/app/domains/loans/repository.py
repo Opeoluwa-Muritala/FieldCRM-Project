@@ -16,6 +16,7 @@ class LoanRepository(BaseRepository):
         loan_type: str,
         applicant_name: str,
         created_by: UUID,
+        client_request_id: UUID | None = None,
     ) -> LoanRow:
         user_row = await self.conn.fetchrow(
             "SELECT branch_id FROM users WHERE id = $1",
@@ -26,7 +27,8 @@ class LoanRepository(BaseRepository):
         row = await self.conn.fetchrow(
             self.sql("create"),
             org_id, ref_no, customer_type, loan_type, applicant_name, created_by,
-            str(branch_id) if branch_id else None
+            str(branch_id) if branch_id else None,
+            str(client_request_id) if client_request_id else None,
         )
         return LoanRow(**row)
 

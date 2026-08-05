@@ -2,7 +2,7 @@
 -- Creates a new loan application draft and returns the full row.
 -- Uses generate_loan_ref() for atomic ref_no generation.
 -- Params: $1=org_id, $2=ref_no, $3=customer_type, $4=loan_type,
---         $5=applicant_name, $6=created_by, $7=branch_id
+--         $5=applicant_name, $6=created_by, $7=branch_id, $8=client_request_id
 
 INSERT INTO loan_applications (
     org_id,
@@ -13,9 +13,10 @@ INSERT INTO loan_applications (
     created_by,
     current_owner_id,
     stage,
-    branch_id
+    branch_id,
+    client_request_id
 )
-VALUES ($1, $2, $3, $4, $5, $6, $6, 'intake', $7)
+VALUES ($1, $2, $3, $4, $5, $6, $6, 'intake', $7, $8)
 RETURNING
     id, org_id, ref_no, customer_type, loan_type, stage, applicant_name,
     bvn, phone, amount, tenor_months, purpose, repayment_mode, created_by,
