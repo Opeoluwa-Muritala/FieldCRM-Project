@@ -1937,7 +1937,144 @@ textarea,
     display: grid;
     grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.8fr);
     gap: 16px;
-    align-items: start;
+    align-items: stretch;
+}
+
+.applicant-details-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 150px;
+    align-items: start !important;
+}
+
+.applicant-passport-card {
+    width: 150px !important;
+    padding: 10px !important;
+}
+
+.applicant-passport-label {
+    margin-bottom: 8px;
+    color: var(--text-main);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.applicant-passport-button {
+    width: 120px !important;
+    height: 150px !important;
+    aspect-ratio: 4 / 5;
+    padding: 0;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.applicant-passport-button > img {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 120px;
+    max-height: 150px;
+    object-fit: cover !important;
+    object-position: center top;
+}
+
+.applicant-passport-button:hover,
+.applicant-passport-button:focus-visible {
+    border-color: var(--color-brand-shield) !important;
+    outline: 2px solid color-mix(in srgb, var(--color-brand-shield) 18%, transparent);
+}
+
+.applicant-passport-placeholder {
+    font-size: 42px;
+    opacity: 0.42;
+}
+
+.applicant-passport-hint {
+    display: block;
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.wizard-primary-action {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.wizard-consent-note {
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: 1.3;
+}
+
+.btn-secondary.wizard-save-draft {
+    min-height: 40px;
+    padding: 9px 16px;
+    border: 1px solid var(--color-brand-shield) !important;
+    border-radius: 6px;
+    background: transparent !important;
+    color: var(--color-brand-shield) !important;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-secondary.wizard-save-draft:hover {
+    background: color-mix(in srgb, var(--color-brand-shield) 7%, transparent) !important;
+}
+
+.text-action-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    padding: 9px 12px;
+    border: 0;
+    background: transparent;
+    color: var(--color-brand-shield);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.text-action-button:hover {
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--color-brand-shield) 7%, transparent);
+}
+
+.guarantor-add-button { margin-top: 6px; }
+.collateral-entry-list { display: grid; gap: 14px; margin-top: 12px; }
+.collateral-entry { padding: 16px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-secondary); }
+.collateral-remove { margin-top: 8px; color: var(--accent-danger); }
+.collateral-entry-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 8px; }
+.collateral-coverage-summary { color: var(--text-muted); font-size: 12px; font-weight: 600; }
+.collateral-coverage-summary.meets-target { color: var(--accent-success); }
+
+@media (max-width: 640px) {
+    .collateral-entry-actions { align-items: flex-start; flex-direction: column; }
+}
+
+@media (max-width: 720px) {
+    .applicant-details-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .applicant-passport-card {
+        grid-row: 1;
+    }
+
+    .wizard-primary-action {
+        align-items: stretch;
+        text-align: center;
+    }
+}
+
+.role-grid-main > .page-card,
+.role-grid-main > section {
+    height: 100%;
 }
 
 .role-section-head {
@@ -2595,7 +2732,27 @@ body { background: #F2F2F2; }
     display: grid;
     grid-template-columns: minmax(0, 1.55fr) minmax(320px, .85fr);
     gap: 24px;
-    align-items: start;
+    align-items: stretch;
+}
+
+.lo-dashboard-desktop .layout-two-col > * {
+    min-width: 0;
+    height: 100%;
+}
+
+.balanced-detail-layout {
+    align-items: stretch;
+}
+
+.balanced-detail-layout > .app-detail-sidebar {
+    align-self: stretch;
+    position: relative;
+    top: auto;
+    height: auto;
+}
+
+.balanced-detail-layout > .app-detail-sidebar > .page-card:last-child {
+    flex: 1;
 }
 
 @media (max-width: 767px) {
@@ -3003,6 +3160,105 @@ body { background: #F2F2F2; }
     margin: 8px 0 16px;
     color: #64748B;
     font-size: 13px;
+}
+
+.app-detail-layout:has(.application-timeline-card) {
+    align-items: stretch;
+}
+
+.app-detail-layout:has(.application-timeline-card) > .app-detail-sidebar {
+    align-self: stretch;
+    position: relative;
+    top: auto;
+    height: auto;
+}
+
+.application-timeline-card {
+    flex: 1;
+    min-height: 560px;
+    display: flex;
+    flex-direction: column;
+}
+
+.application-timeline-card > .csp-s-b37edfac2acb {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.application-timeline-card .csp-s-4fa00029d5b1 {
+    min-height: 78px;
+}
+
+/* Relationship Officer application timeline */
+.relationship-officer-page .relationship-timeline-card {
+    padding-bottom: 18px;
+    border-top: 3px solid var(--role-accent, var(--color-brand-shield));
+}
+
+.relationship-officer-page .relationship-timeline-card > .csp-s-b37edfac2acb {
+    position: relative !important;
+    display: flex !important;
+    flex: 1;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    gap: 0 !important;
+    padding: 4px 0 0 36px !important;
+}
+
+.relationship-officer-page .relationship-timeline-card .csp-s-1a60179c1584 {
+    position: absolute !important;
+    top: 12px !important;
+    bottom: 20px !important;
+    left: 13px !important;
+    width: 2px !important;
+    height: auto !important;
+    background: var(--border-color) !important;
+}
+
+.relationship-officer-page .relationship-timeline-card .csp-s-4fa00029d5b1 {
+    position: relative !important;
+    min-height: 68px !important;
+    margin: 0 !important;
+    padding: 4px 0 14px 8px !important;
+}
+
+.relationship-officer-page .relationship-timeline-card .csp-s-4fa00029d5b1:last-child {
+    min-height: 44px !important;
+    padding-bottom: 0 !important;
+}
+
+.relationship-officer-page .relationship-timeline-card .csp-s-4fa00029d5b1 > div:first-child {
+    left: -30px !important;
+    top: 2px !important;
+    width: 20px !important;
+    height: 20px !important;
+    border: 3px solid var(--bg-primary, #fff) !important;
+    box-shadow: 0 0 0 1px var(--role-accent, var(--color-brand-shield)) !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+}
+
+.relationship-officer-page .relationship-timeline-card .csp-s-4fa00029d5b1 > div:nth-child(2) {
+    color: var(--text-main) !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    line-height: 1.35 !important;
+}
+
+.relationship-officer-page .relationship-timeline-card .csp-s-c029905cd705 {
+    margin-top: 4px !important;
+    color: var(--text-muted) !important;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+}
+
+@media (max-width: 980px) {
+    .app-detail-layout:has(.application-timeline-card) > .app-detail-sidebar { position: static; height: auto; }
+    .application-timeline-card { min-height: auto; }
+    .application-timeline-card > .csp-s-b37edfac2acb { gap: 18px; }
+    .application-timeline-card .csp-s-4fa00029d5b1 { min-height: auto; }
 }
 .consent-signing-note {
     margin-bottom: 16px;

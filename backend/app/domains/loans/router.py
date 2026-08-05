@@ -54,6 +54,17 @@ templates.env.globals.update(
     brand_logo_white="https://res.cloudinary.com/ddezxlqjr/image/upload/v1784551475/MMFB_logo_White_gzthxm.png",
 )
 
+async def _get_loan_recommendations(conn, application_id: UUID) -> list[dict]:
+    rows = await conn.fetch(
+        """SELECT lr.*, u.full_name AS submitter_name
+           FROM loan_recommendations lr
+           JOIN users u ON u.id = lr.submitted_by
+           WHERE lr.application_id = $1
+           ORDER BY lr.created_at DESC""",
+        application_id,
+    )
+    return [dict(row) for row in rows]
+
 PREVIOUS_PIPELINE_STAGE = {
     stage: WORKFLOW_STAGES[index - 1][0]
     for index, (stage, _) in enumerate(WORKFLOW_STAGES)
@@ -775,6 +786,7 @@ async def render_application_detail(
         template_name = "branch_manager/application_detail.html"
 
     ctx = await _get_dossier_context(request, application_id, conn, current_user, active_tab="applications")
+    ctx["recommendations"] = await _get_loan_recommendations(conn, UUID(application_id))
     ctx["readonly"] = (role not in ("branch_supervisor", "branch_manager")) or ctx["app"].stage != "branch_approval"
     return templates.TemplateResponse(request, template_name, ctx)
 
@@ -787,7 +799,7 @@ async def render_wizard_step(
     current_user = Depends(get_current_user)
 ):
     """GET handler for borrower intake steps and the officer's read-only review."""
-    if step not in range(1, 10):
+    if step not in range(1, 9):
         raise HTTPException(status_code=404, detail="Unknown intake step")
     try:
         app_uuid = UUID(application_id)
@@ -799,6 +811,18 @@ async def render_wizard_step(
         raise HTTPException(status_code=404, detail="Loan Application not found")
     app, data, latest, signature_events = snapshot
     _verify_loan_scope(app, current_user)
+    if step == 4:
+        pnl = await conn.fetchrow(
+            "SELECT revenue, expenses, period_label FROM business_pnl WHERE application_id = $1",
+            app_uuid,
+        )
+        if pnl:
+            data = dict(data)
+            data.update(
+                pnl_revenue=pnl["revenue"],
+                pnl_expenses=pnl["expenses"],
+                pnl_period_label=pnl["period_label"],
+            )
         
     user_role = current_user.role.lower().replace(" ", "_")
     reviewer_roles = {
@@ -813,7 +837,7 @@ async def render_wizard_step(
     if step == 2 and data.get("marital_status") == "Single":
         return RedirectResponse(url=f"/applications/{application_id}/step/3", status_code=status.HTTP_303_SEE_OTHER)
     # Review-chain roles may inspect every completed section, but never edit it.
-    readonly = step == 9 or user_role in reviewer_roles
+    readonly = user_role in reviewer_roles
     applicant_signed = False
     signatures = {}
     if latest:
@@ -868,6 +892,12 @@ async def process_wizard_step(
         raise HTTPException(status_code=403, detail="You do not have permission to view/modify this application")
     form_data = await request.form()
     data_dict = form_data_to_jsonable_dict(form_data)
+    open_guarantor = data_dict.pop("open_guarantor", None)
+    if step == 4:
+        pnl_values = [data_dict.get("pnl_period_label"), data_dict.get("pnl_revenue"), data_dict.get("pnl_expenses")]
+        if any(value not in (None, "") for value in pnl_values) and not all(value not in (None, "") for value in pnl_values):
+            query = urlencode({"error": "Complete the reporting period, revenue, and expenses together.", "focus": "wizardForm"})
+            return RedirectResponse(url=f"/applications/{application_id}/step/4?{query}", status_code=status.HTTP_303_SEE_OTHER)
     pledge_upload = form_data.get("pledge_file") if step == 8 else None
     from app.domains.signing.service import SigningService
     from app.domains.signing.repository import SigningRepository
@@ -875,7 +905,7 @@ async def process_wizard_step(
     latest = await signing_svc.repo.latest_version(app_uuid, "applicant_stage", "intake")
     if latest and latest["status"] in ("sent", "signed"):
         raise HTTPException(status_code=403, detail="This application is frozen or signed and cannot be modified.")
-    if step not in range(1, 10):
+    if step not in range(1, 9):
         raise HTTPException(status_code=404, detail="Unknown intake step")
     try:
         await service.save_wizard_step(UUID(application_id), step, data_dict, current_user.id, current_user.org_id)
@@ -886,6 +916,88 @@ async def process_wizard_step(
         return RedirectResponse(
             url=f"/applications/{application_id}/step/{step}?{query}",
             status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    if step == 3 and str(open_guarantor or "") in {"1", "2"}:
+        guarantor_slot = int(open_guarantor)
+        prefix = f"guarantor_{guarantor_slot}_"
+        await conn.execute(
+            """INSERT INTO guarantors
+                   (loan_id, org_id, slot, full_name, relationship_to_client, phone, form_stage)
+               VALUES ($1, $2, $3, $4, $5, $6, 'draft')
+               ON CONFLICT (loan_id, slot) DO UPDATE SET
+                   full_name = COALESCE(NULLIF(EXCLUDED.full_name, ''), guarantors.full_name),
+                   relationship_to_client = COALESCE(NULLIF(EXCLUDED.relationship_to_client, ''), guarantors.relationship_to_client),
+                   phone = COALESCE(NULLIF(EXCLUDED.phone, ''), guarantors.phone)""",
+            app_uuid,
+            current_user.org_id,
+            guarantor_slot,
+            data_dict.get(f"{prefix}name", ""),
+            data_dict.get(f"{prefix}relationship", ""),
+            data_dict.get(f"{prefix}phone", ""),
+        )
+        return RedirectResponse(
+            url=f"/applications/{application_id}/guarantors/{guarantor_slot}/step/1",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    if step == 6:
+        collateral_types = form_data.getlist("collateral_type[]")
+        narrations = form_data.getlist("collateral_narration[]")
+        market_values = form_data.getlist("collateral_market_value[]")
+        forced_sale_values = form_data.getlist("collateral_fsv[]")
+        async with conn.transaction():
+            await conn.execute("DELETE FROM collateral_items WHERE application_id = $1", app_uuid)
+            for collateral_type, narration, market_value, forced_sale_value in zip(
+                collateral_types, narrations, market_values, forced_sale_values
+            ):
+                if collateral_type not in {"property", "equipment", "inventory", "cash"} or not str(narration).strip():
+                    continue
+                await conn.execute(
+                    """INSERT INTO collateral_items
+                           (application_id, collateral_type, narration, loan_based_price, face_value, created_by)
+                       VALUES ($1, $2, $3, $4, $5, $6)""",
+                    app_uuid, collateral_type, str(narration).strip(),
+                    Decimal(str(market_value or 0)), Decimal(str(forced_sale_value or 0)),
+                    current_user.id,
+                )
+
+    if step == 4:
+        location_addresses = form_data.getlist("business_location_address[]")
+        location_cities = form_data.getlist("business_location_city[]")
+        location_states = form_data.getlist("business_location_state[]")
+        location_functions = form_data.getlist("business_location_function[]")
+        async with conn.transaction():
+            await conn.execute("DELETE FROM business_locations WHERE application_id = $1", app_uuid)
+            for address, city, state_name, location_function in zip(
+                location_addresses, location_cities, location_states, location_functions
+            ):
+                if not all(str(value).strip() for value in (address, city, state_name)):
+                    continue
+                if location_function not in {"hq", "warehouse", "branch", "retail_outlet"}:
+                    continue
+                await conn.execute(
+                    """INSERT INTO business_locations
+                           (application_id, address_line, city, state, function, created_by)
+                       VALUES ($1, $2, $3, $4, $5, $6)""",
+                    app_uuid, str(address).strip(), str(city).strip(), str(state_name).strip(),
+                    location_function, current_user.id,
+                )
+
+    if step == 4 and all(data_dict.get(key) not in (None, "") for key in ("pnl_period_label", "pnl_revenue", "pnl_expenses")):
+        await conn.execute(
+            """INSERT INTO business_pnl (application_id, revenue, expenses, period_label, created_by)
+               VALUES ($1, $2, $3, $4, $5)
+               ON CONFLICT (application_id) DO UPDATE SET
+                   revenue = EXCLUDED.revenue,
+                   expenses = EXCLUDED.expenses,
+                   period_label = EXCLUDED.period_label,
+                   updated_at = NOW()""",
+            app_uuid,
+            Decimal(str(data_dict["pnl_revenue"])),
+            Decimal(str(data_dict["pnl_expenses"])),
+            str(data_dict["pnl_period_label"]).strip(),
+            current_user.id,
         )
 
     if pledge_upload is not None and getattr(pledge_upload, "filename", ""):
@@ -920,42 +1032,25 @@ async def process_wizard_step(
         if step == 1 and data_dict.get("marital_status") == "Single":
             next_step = 3
         return RedirectResponse(url=f"/applications/{application_id}/step/{next_step}", status_code=status.HTTP_303_SEE_OTHER)
-    else:
-        signing_svc = SigningService(SigningRepository(conn))
-        intake_data = await repo.get_stage_data(app_uuid, "intake")
-        payload = (intake_data or {}).get("data_json") or {}
-        
-        latest_ver = await signing_svc.repo.latest_version(app_uuid, "applicant_stage", "intake")
-        if latest_ver and latest_ver["status"] == "signed":
-            await signing_svc.correct(app_uuid, "applicant_stage", "intake", current_user.id)
-            
-        version = await signing_svc.freeze_version(
-            app_uuid, "applicant_stage", "intake", payload, current_user.id
-        )
-        
-        await signing_svc.repo.invalidate_sessions(app_uuid, "applicant", "applicant")
-        
-        raw_token = secrets.token_urlsafe(32)
-        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
-        link_session = await signing_svc.issue_session(
-            app_uuid, "applicant", "applicant", [version["id"]], current_user.id,
-            lifetime=timedelta(days=3),
-            token_hash=token_hash
-        )
-        
-        base_url = str(request.base_url).rstrip("/")
-        share_url = f"{base_url}/client-access/{raw_token}"
-        
-        query = urlencode(
-            {
-                "success": "Intake details saved. Send this secure link to the client for signing.",
-                "signing_link": share_url,
-            }
-        )
-        return RedirectResponse(
-            url=f"/applications/{application_id}/step/9?{query}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+    if app.stage != "intake":
+        raise HTTPException(status_code=409, detail="Only an intake application can be submitted to the Team Lead")
+    await repo.assign_default_branch_manager(app_uuid, current_user.org_id)
+    updated = await repo.advance_stage(app_uuid, current_user.org_id, "branch_manager_review")
+    if not updated:
+        raise HTTPException(status_code=409, detail="Application could not be submitted")
+    await AuditService(conn).log(
+        application_id=application_id,
+        org_id=str(current_user.org_id),
+        action="Intake submitted to Team Lead",
+        from_stage="intake",
+        to_stage="branch_manager_review",
+        actor_id=str(current_user.id),
+        actor_role=current_user.role,
+    )
+    return RedirectResponse(
+        url=f"/applications/{application_id}?success=Submitted+to+Team+Lead",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 @router.post("/applications/{application_id}/submit-to-branch-manager")
@@ -1062,7 +1157,17 @@ async def render_guarantor_step(
                     else:
                         signatures["primary"] = sig["signature_image_ref"]
 
-    data = await service.get_wizard_data(app_uuid, guarantor_index)
+    data = dict(await service.get_wizard_data(app_uuid, guarantor_index) or {})
+    intake_row = await loan_repo.get_stage_data(app_uuid, "intake")
+    intake_data = (intake_row or {}).get("data_json") or {}
+    prefix = f"guarantor_{guarantor_index}_"
+    for field, value in {
+        "name": intake_data.get(f"{prefix}name"),
+        "relationship": intake_data.get(f"{prefix}relationship"),
+        "phone": intake_data.get(f"{prefix}phone"),
+    }.items():
+        if not data.get(field) and value not in (None, ""):
+            data[field] = value
     ctx = build_template_context(
         request,
         current_user,
@@ -1345,6 +1450,7 @@ async def render_visitation_report(
         app_id=application_id,
         borrower_name=borrower_name,
         data=data,
+        readonly=request.query_params.get("readonly") == "1",
         active_tab="visits",
         active_page="visits",
     )
@@ -1629,7 +1735,9 @@ async def render_approval_readiness(
     borrower_name = app.applicant_name if app else "Borrower"
     
     summary = await repo.get_readiness_summary(UUID(application_id), current_user.org_id)
-    documents = await get_document_service(conn).repo.get_by_loan(UUID(application_id), current_user.org_id)
+    app_uuid = UUID(application_id)
+    documents = await get_document_service(conn).repo.get_by_loan(app_uuid, current_user.org_id)
+    recommendations = await _get_loan_recommendations(conn, app_uuid)
     
     ctx = build_template_context(
         request,
@@ -1639,6 +1747,7 @@ async def render_approval_readiness(
         app=app,
         summary=summary,
         documents=documents,
+        recommendations=recommendations,
         active_tab="awaiting",
         active_page="awaiting",
     )
@@ -1870,7 +1979,7 @@ async def render_read_only_application_view(
     """Read-only application view used by the Current Loans screen."""
     ctx = await _get_dossier_context(request, application_id, conn, current_user, active_tab="borrowers")
     ctx["readonly"] = True
-    return templates.TemplateResponse(request, "branch_manager/application_detail.html", ctx)
+    return templates.TemplateResponse(request, "shared/application_overview.html", ctx)
 
 @router.get("/notifications")
 async def render_notifications(
@@ -2032,10 +2141,12 @@ async def render_crm_review(
     documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
     readiness = await repo.get_readiness_summary(UUID(application_id), current_user.org_id)
     consent_stage = await repo.get_stage_data(UUID(application_id), "crm_review")
+    recommendations = await _get_loan_recommendations(conn, UUID(application_id))
     ctx = build_template_context(
         request, current_user,
         app=app, application=app, app_id=application_id,
         documents=documents, summary=readiness,
+        recommendations=recommendations,
         consent_data=(consent_stage or {}).get("data_json", {}),
         active_tab="crm_queue", active_page="crm_queue",
     )
@@ -2157,9 +2268,10 @@ async def render_executive_approve(
         raise HTTPException(status_code=404, detail="Loan Application not found")
     doc_svc = get_document_service(conn)
     documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
+    recommendations = await _get_loan_recommendations(conn, UUID(application_id))
     ctx = build_template_context(
         request, current_user,
-        app=app, app_id=application_id, documents=documents,
+        app=app, app_id=application_id, documents=documents, recommendations=recommendations,
         active_tab="exec_queue", active_page="exec_queue",
     )
     return templates.TemplateResponse(request, "executive/executive_approve.html", ctx)
@@ -2229,16 +2341,18 @@ async def render_ed_approve(
         raise HTTPException(status_code=404, detail="Loan Application not found")
     doc_svc = get_document_service(conn)
     documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
+    recommendations = await _get_loan_recommendations(conn, UUID(application_id))
     head_crm_data = await repo.get_stage_data(UUID(application_id), "head_crm_review")
     mcc_votes = await conn.fetch(
         """SELECT cv.recommended_amount, cv.notes, u.full_name AS member_name
            FROM committee_votes cv JOIN users u ON u.id=cv.member_id AND u.org_id=cv.org_id
-           WHERE cv.loan_id=$1 AND cv.org_id=$2 ORDER BY cv.created_at""",
+           WHERE cv.loan_id=$1 AND cv.org_id=$2 ORDER BY cv.voted_at""",
         UUID(application_id), current_user.org_id)
     ctx = build_template_context(
         request, current_user,
         app=app, app_id=application_id,
         documents=documents,
+        recommendations=recommendations,
         mcc_votes=[dict(v) for v in mcc_votes],
         head_crm_notes=(head_crm_data or {}).get("data_json", {}).get("notes", ""),
         active_tab="ed_queue", active_page="ed_queue",
@@ -2332,15 +2446,17 @@ async def render_md_approve(
     board_referrals = await repo.get_board_referrals(UUID(application_id), current_user.org_id)
     doc_svc = get_document_service(conn)
     documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
+    recommendations = await _get_loan_recommendations(conn, UUID(application_id))
     mcc_votes = await conn.fetch(
         """SELECT cv.recommended_amount, cv.notes, u.full_name AS member_name
            FROM committee_votes cv JOIN users u ON u.id=cv.member_id AND u.org_id=cv.org_id
-           WHERE cv.loan_id=$1 AND cv.org_id=$2 ORDER BY cv.created_at""",
+           WHERE cv.loan_id=$1 AND cv.org_id=$2 ORDER BY cv.voted_at""",
         UUID(application_id), current_user.org_id)
     ctx = build_template_context(
         request, current_user,
         app=app, app_id=application_id,
         documents=documents, board_referrals=board_referrals, mcc_votes=[dict(v) for v in mcc_votes],
+        recommendations=recommendations,
         active_tab="md_queue", active_page="md_queue",
     )
     return templates.TemplateResponse(request, "executive/md_approve.html", ctx)
@@ -2752,8 +2868,8 @@ async def process_valuation_submission(
 @router.get("/mcc")
 async def render_mcc_index(request: Request, conn=Depends(db_conn), current_user=Depends(get_current_user)):
     role = current_user.role.lower().replace(" ", "_")
-    if role == "client":
-        raise HTTPException(status_code=403, detail="MCC is restricted to staff")
+    if role in {"client", "system_admin"}:
+        raise HTTPException(status_code=403, detail="MCC access is not available for this role")
     dossiers = await conn.fetch(
         """SELECT id, ref_no, applicant_name, amount, stage, updated_at FROM loan_applications
            WHERE org_id=$1 AND deleted_at IS NULL AND stage IN ('ed_approval','md_approval')
@@ -2766,26 +2882,62 @@ async def render_mcc_index(request: Request, conn=Depends(db_conn), current_user
 @router.get("/applications/{application_id}/mcc")
 async def render_mcc_summary(request: Request, application_id: str, conn=Depends(db_conn), current_user=Depends(get_current_user)):
     role = current_user.role.lower().replace(" ", "_")
-    if role == "client":
-        raise HTTPException(status_code=403, detail="MCC is restricted to staff")
-    app = await LoanRepository(conn).get_by_id(UUID(application_id), current_user.org_id)
+    if role in {"client", "system_admin"}:
+        raise HTTPException(status_code=403, detail="MCC access is not available for this role")
+    app_uuid = UUID(application_id)
+    repo = LoanRepository(conn)
+    app = await repo.get_by_id(app_uuid, current_user.org_id)
     if not app or app.stage not in {"ed_approval", "md_approval"}:
         raise HTTPException(status_code=404, detail="MCC dossier not found")
     votes = await conn.fetch(
-        """SELECT cv.recommended_amount, cv.notes, cv.created_at, u.full_name AS member_name
+        """SELECT cv.recommended_amount, cv.notes, cv.voted_at AS created_at, u.full_name AS member_name
            FROM committee_votes cv JOIN users u ON u.id=cv.member_id AND u.org_id=cv.org_id
-           WHERE cv.loan_id=$1 AND cv.org_id=$2 ORDER BY cv.created_at""",
-        UUID(application_id), current_user.org_id)
-    ctx = build_template_context(request, current_user, app=app, app_id=application_id,
-                                 votes=[dict(v) for v in votes], active_tab="mcc", active_page="mcc")
+           WHERE cv.loan_id=$1 AND cv.org_id=$2 ORDER BY cv.voted_at""",
+        app_uuid, current_user.org_id)
+    snapshot = await repo.get_application_detail_snapshot(app_uuid, current_user.org_id)
+    stage_rows = await conn.fetch(
+        """SELECT DISTINCT ON (stage) stage, data_json
+           FROM stage_data WHERE loan_id=$1 AND stage IN ('guarantor_1','guarantor_2')
+           ORDER BY stage, saved_at DESC, id DESC""",
+        app_uuid,
+    )
+    guarantors = {row["stage"]: row["data_json"] or {} for row in stage_rows}
+    pledged_items = await conn.fetch("SELECT * FROM pledged_items WHERE loan_id=$1 ORDER BY item_number", app_uuid)
+    total_pledged = await conn.fetchval(
+        "SELECT COALESCE(SUM(COALESCE(face_value, force_sale_value)), 0) FROM collateral_items WHERE application_id=$1",
+        app_uuid,
+    )
+    if not total_pledged:
+        total_pledged = sum(Decimal(str(row["estimated_value"] or 0)) for row in pledged_items)
+    pnl = await conn.fetchrow("SELECT * FROM business_pnl WHERE application_id=$1", app_uuid)
+    documents = await get_document_service(conn).repo.get_by_loan(app_uuid, current_user.org_id)
+    recommendations = await _get_loan_recommendations(conn, app_uuid)
+    rate = await conn.fetchval(
+        "SELECT rate FROM interest_rate_presets WHERE loan_type=$1 ORDER BY set_at DESC LIMIT 1",
+        app.loan_type,
+    ) or 24
+    principal = Decimal(str(app.amount or 0))
+    tenor = Decimal(str(app.tenor_months or 12))
+    proposed_installment = (principal + principal * Decimal(str(rate)) / 100 * tenor / 12) / tenor if tenor > 0 else Decimal("0")
+    coverage_ratio = Decimal(str(total_pledged or 0)) / principal if principal > 0 else Decimal("0")
+    ctx = build_template_context(
+        request, current_user, app=app, app_id=application_id,
+        votes=[dict(v) for v in votes], wizard_data=snapshot.get("wizard_data") or {},
+        visitation_data=snapshot.get("visitation_data") or {}, guarantors=guarantors,
+        pledged_items=[dict(row) for row in pledged_items], documents=documents,
+        recommendations=recommendations, pnl=dict(pnl) if pnl else None,
+        total_pledged_value=Decimal(str(total_pledged or 0)), coverage_ratio=coverage_ratio,
+        proposed_installment=proposed_installment, proposed_interest_rate=rate,
+        can_finalize_mcc=role in {"crm", "head_crm"}, active_tab="mcc", active_page="mcc",
+    )
     return templates.TemplateResponse(request, "executive/mcc_summary.html", ctx)
 
 
 @router.post("/applications/{application_id}/mcc-vote")
 async def submit_mcc_vote(application_id: str, recommended_amount: float = Form(...), notes: str = Form(""), conn=Depends(db_conn), current_user=Depends(get_current_user)):
     role = current_user.role.lower().replace(" ", "_")
-    if role == "client":
-        raise HTTPException(status_code=403, detail="MCC is restricted to staff")
+    if role in {"client", "system_admin"}:
+        raise HTTPException(status_code=403, detail="MCC access is not available for this role")
     app = await LoanRepository(conn).get_by_id(UUID(application_id), current_user.org_id)
     if not app or app.stage not in {"ed_approval", "md_approval"}:
         raise HTTPException(status_code=409, detail="This dossier is not available for MCC voting")
@@ -2801,8 +2953,8 @@ async def submit_mcc_vote(application_id: str, recommended_amount: float = Form(
 
 @router.post("/applications/{application_id}/mcc-finalize")
 async def finalize_mcc_amount(application_id: str, final_amount: float = Form(...), conn=Depends(db_conn), current_user=Depends(get_current_user)):
-    if current_user.role.lower().replace(" ", "_") not in {"ed", "md"}:
-        raise HTTPException(status_code=403, detail="Only ED or MD can set the final MCC amount")
+    if current_user.role.lower().replace(" ", "_") not in {"crm", "head_crm"}:
+        raise HTTPException(status_code=403, detail="Only CRM can set the final MCC amount")
     result = await conn.execute(
         """UPDATE loan_applications SET amount=$1, mcc_finalized_by=$2, mcc_finalized_at=NOW(), updated_at=NOW()
            WHERE id=$3 AND org_id=$4 AND stage IN ('ed_approval','md_approval')""",

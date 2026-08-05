@@ -1937,7 +1937,12 @@ textarea,
     display: grid;
     grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.8fr);
     gap: 16px;
-    align-items: start;
+    align-items: stretch;
+}
+
+.role-grid-main > .page-card,
+.role-grid-main > section {
+    height: 100%;
 }
 
 .role-section-head {
@@ -2594,7 +2599,27 @@ body { background: #F2F2F2; }
     display: grid;
     grid-template-columns: minmax(0, 1.55fr) minmax(320px, .85fr);
     gap: 24px;
-    align-items: start;
+    align-items: stretch;
+}
+
+.lo-dashboard-desktop .layout-two-col > * {
+    min-width: 0;
+    height: 100%;
+}
+
+.balanced-detail-layout {
+    align-items: stretch;
+}
+
+.balanced-detail-layout > .app-detail-sidebar {
+    align-self: stretch;
+    position: relative;
+    top: auto;
+    height: auto;
+}
+
+.balanced-detail-layout > .app-detail-sidebar > .page-card:last-child {
+    flex: 1;
 }
 
 @media (max-width: 767px) {

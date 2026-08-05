@@ -32,7 +32,7 @@
         </div>
         
         {# Vertical Stage Timeline #}
-        <div class="page-card csp-s-b3a2297a12f5">
+        <div class="page-card csp-s-b3a2297a12f5 application-timeline-card">
             <h3 class="csp-s-2e2b4cd7c4f9">Application Timeline</h3>
             <div class="csp-s-b37edfac2acb">
                 
@@ -63,7 +63,7 @@
                         {% if app.current_stage > 3 %}✓{% endif %}
                     </div>
                     <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 3 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 3 %}var(--text-main){% else %}var(--text-muted){% endif %};">Credit Risk Review</div>
-                    <div class="csp-s-c029905cd705">{% if app.current_stage >= 3 %}Assigned to Fatima{% else %}Awaiting desk{% endif %}</div>
+                    <div class="csp-s-c029905cd705">{% if app.current_stage >= 3 %}Credit review in progress{% else %}Awaiting review{% endif %}</div>
                 </div>
                 
                 {# Stage 4 #}
@@ -72,7 +72,7 @@
                         {% if app.current_stage > 4 %}✓{% endif %}
                     </div>
                     <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 4 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 4 %}var(--text-main){% else %}var(--text-muted){% endif %};">Branch Concurrence</div>
-                    <div class="csp-s-c029905cd705">{% if app.current_stage >= 4 %}Awaiting Adebayo{% else %}Awaiting signoff{% endif %}</div>
+                    <div class="csp-s-c029905cd705">{% if app.current_stage >= 4 %}Concurrence in progress{% else %}Awaiting signoff{% endif %}</div>
                 </div>
                 
                 {# Stage 5 & 6 #}
@@ -88,6 +88,7 @@
         </div>
         
         {# Quick Document List #}
+        {% if false %}
         <div class="page-card csp-s-b3a2297a12f5">
             <h3 class="csp-s-93e773d1eb63">Documents Checklist</h3>
             <div class="csp-s-baf2fda59eac">
@@ -131,7 +132,9 @@
             </div>
         </div>
 
+        {% endif %}
         {# Verification & Integrations Card #}
+        {% if false %}
         <div class="page-card csp-s-b3a2297a12f5">
             <h3 class="csp-s-93e773d1eb63">Verification & Screening</h3>
             <div class="csp-s-18809276c4d1">
@@ -189,6 +192,7 @@
                 
             </div>
         </div>
+        {% endif %}
 
     </div>
     
@@ -288,4 +292,5 @@
         
     </div>
 </div>
+{% include "components/application_document_checklist.html" %}
 {% endblock %}

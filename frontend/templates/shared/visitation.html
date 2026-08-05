@@ -12,7 +12,10 @@
         <p class="page-card-subtitle">Verify business viability and residential premises for borrower {{ borrower_name }}.</p>
     </div>
 
+    {% if readonly %}<div class="review-mode-banner"><strong>Read-only evidence view</strong><span>This report cannot be changed from the audit view.</span></div>{% endif %}
+
     <form id="visitationForm" action="/applications/{{ app_id }}/visitation" method="POST">
+        <fieldset {% if readonly %}disabled{% endif %} style="border:0;padding:0;margin:0;min-width:0">
         <!-- Section 1: Visiting Officer Report -->
         <div class="csp-s-e8a8a9c051f6">
             <div class="csp-s-8e9487e647fc">Officer Report</div>
@@ -153,14 +156,15 @@
         <!-- Action Footer -->
         <div class="csp-s-2412d21f7a90">
             <a href="/applications/{{ app_id }}" class="btn-ghost-link">&larr; Back to Application</a>
-            
+            {% if not readonly %}
             {% if is_bm %}
             <button type="submit" name="action" value="concur" class="btn-primary-filled">Submit Concurrence &rarr;</button>
             {% else %}
             <button type="submit" name="action" value="save_report" class="btn-primary-filled">Save Visitation Report &rarr;</button>
             {% endif %}
+            {% endif %}
         </div>
-
+        </fieldset>
     </form>
 </div>
 

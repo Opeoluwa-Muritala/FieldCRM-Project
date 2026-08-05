@@ -1,0 +1,12 @@
+<section class="page-card application-document-checklist" style="margin-top:28px">
+  <div class="page-card-header"><h3 class="page-card-title">Documents Checklist</h3><p class="page-card-subtitle">Required evidence and its current verification status.</p></div>
+  {% set required_documents = [('passport_photo','Passport Photograph'),('id_card','Valid ID Card'),('utility_bill','Utility Bill'),('bank_statement','Bank Statement'),('guarantor_form_1','Guarantor Form 1'),('guarantor_form_2','Guarantor Form 2'),('pledge_form','Pledge Agreement')] %}
+  <div class="custom-table-container"><table class="custom-table">
+    <thead><tr><th>Required Document</th><th>Uploaded File</th><th>Status</th><th>Action</th></tr></thead>
+    <tbody>{% for category, label in required_documents %}
+      {% set item = namespace(found=false,status='missing',url='',name='') %}
+      {% for doc in documents %}{% if doc.category == category or doc.doc_type == category %}{% set item.found=true %}{% set item.status=doc.status or 'uploaded' %}{% set item.url=doc.url %}{% set item.name=doc.original_name or label %}{% endif %}{% endfor %}
+      <tr><td><strong>{{ label }}</strong></td><td>{{ item.name if item.found else 'Not uploaded' }}</td><td><span class="status-badge {{ 'verified' if item.status == 'verified' else 'needs-review' if item.found else 'returned' }}">{{ item.status|replace('_',' ')|title }}</span></td><td>{% if item.url %}<a href="{{ item.url }}" target="_blank" class="btn-ghost-link">View document</a>{% else %}&mdash;{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+</section>

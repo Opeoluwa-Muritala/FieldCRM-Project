@@ -5,12 +5,11 @@
 <div class="page-card">
   <h2 class="page-card-title">ED/MD Approval Dossiers</h2>
   <table class="custom-table">
-    <thead><tr><th>Reference</th><th>Applicant</th><th>Amount</th><th>Stage</th><th></th></tr></thead>
-    <tbody>{% for item in dossiers %}<tr>
+    <thead><tr><th>Reference</th><th>Applicant</th><th>Amount</th><th>Stage</th></tr></thead>
+    <tbody>{% for item in dossiers %}<tr data-href="/applications/{{ item.id }}/mcc" tabindex="0" aria-label="Open MCC dossier for {{ item.applicant_name }}">
       <td>{{ item.ref_no }}</td><td>{{ item.applicant_name }}</td>
       <td>&#x20A6;{{ "{:,.0f}".format(item.amount or 0) }}</td><td>{{ item.stage|replace('_',' ')|title }}</td>
-      <td><a class="btn btn-secondary" href="/applications/{{ item.id }}/mcc">Open MCC</a></td>
-    </tr>{% else %}<tr><td colspan="5">No MCC dossiers currently available.</td></tr>{% endfor %}</tbody>
+    </tr>{% else %}<tr><td colspan="4">No MCC dossiers currently available.</td></tr>{% endfor %}</tbody>
   </table>
 </div>
 {% endblock %}

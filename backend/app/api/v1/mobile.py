@@ -61,9 +61,16 @@ class CreateApplicationRequest(BaseModel):
 
 PROFILE_FIELDS = (
     "applicant_name", "full_name", "phone", "alternative_phone", "email",
-    "date_of_birth", "gender", "marital_status", "bvn", "nin",
-    "residential_address", "state", "lga", "locality", "customer_reference",
-    "account_reference", "employment_status", "employer_name",
+    "date_of_birth", "dob", "gender", "marital_status", "bvn", "nin",
+    "id_type", "id_number", "id_expiry", "residential_address", "home_address",
+    "state", "state_of_origin", "lga", "locality", "landmark", "photo_url",
+    "customer_reference", "account_reference", "employment_status", "employment_type",
+    "industry", "years_employed", "employer_name", "monthly_salary", "employer_address",
+    "business_type", "years_in_business", "monthly_sales", "monthly_turnover",
+    "business_address", "pnl_period_label", "pnl_revenue", "pnl_expenses",
+    "account_name", "account_number", "bank_name", "sort_code",
+    "spouse_name", "spouse_phone", "spouse_children", "spouse_dependants",
+    "spouse_business_address",
 )
 
 
@@ -84,9 +91,23 @@ def _personal_profile(app: Any, intake: dict[str, Any] | None = None) -> dict[st
             return app[key] if key in app.keys() else default
         return getattr(app, key, default)
     profile["applicant_name"] = profile.get("applicant_name") or profile.get("full_name") or app_value("applicant_name", "")
+    profile["full_name"] = profile.get("full_name") or profile["applicant_name"]
     for key in ("phone", "bvn"):
         if not profile.get(key) and app_value(key):
             profile[key] = app_value(key)
+    # Preserve both canonical customer-profile names and the field names used
+    # by the web intake wizard so an existing customer prefills completely.
+    aliases = {
+        "dob": "date_of_birth",
+        "home_address": "residential_address",
+        "state_of_origin": "state",
+        "employment_type": "employment_status",
+    }
+    for wizard_key, canonical_key in aliases.items():
+        value = profile.get(wizard_key) or profile.get(canonical_key)
+        if value not in (None, ""):
+            profile[wizard_key] = value
+            profile[canonical_key] = value
     profile["customer_reference"] = profile.get("customer_reference") or app_value("ref_no")
     return profile
 
@@ -2747,7 +2768,7 @@ async def get_mobile_mcc_queue(
     page: int = Query(1, ge=1), size: int = Query(50, ge=1, le=100),
     conn=Depends(db_conn), current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"ed", "md", "branch_manager", "branch_supervisor", "credit_analyst", "crm", "head_crm", "auditor", "system_admin", "account_officer", "loan_officer"})
+    _ensure_roles(current_user, {"ed", "md", "branch_manager", "branch_supervisor", "credit_analyst", "crm", "head_crm", "auditor", "account_officer", "loan_officer"})
     rows = await conn.fetch(
         """SELECT id, ref_no, applicant_name, amount, stage, updated_at, COUNT(*) OVER() AS total_count
            FROM loan_applications WHERE org_id=$1 AND deleted_at IS NULL
@@ -2764,15 +2785,15 @@ async def get_mobile_mcc_queue(
 async def get_mobile_mcc_application(
     application_id: UUID, conn=Depends(db_conn), current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"ed", "md", "branch_manager", "branch_supervisor", "credit_analyst", "crm", "head_crm", "auditor", "system_admin", "account_officer", "loan_officer"})
+    _ensure_roles(current_user, {"ed", "md", "branch_manager", "branch_supervisor", "credit_analyst", "crm", "head_crm", "auditor", "account_officer", "loan_officer"})
     app = await _get_application_or_404(conn, application_id, current_user, enforce_officer_scope=False)
     if app.stage not in {"ed_approval", "md_approval"}:
         raise HTTPException(status_code=409, detail="This dossier is not available for MCC review")
     votes = await conn.fetch(
         """SELECT cv.id, cv.member_id, u.full_name AS member_name, cv.recommendation,
-                  cv.recommended_amount, cv.notes, cv.created_at
+                  cv.recommended_amount, cv.notes, cv.voted_at AS created_at
            FROM committee_votes cv JOIN users u ON u.id=cv.member_id AND u.org_id=cv.org_id
-           WHERE cv.loan_id=$1 AND cv.org_id=$2 ORDER BY cv.created_at""",
+           WHERE cv.loan_id=$1 AND cv.org_id=$2 ORDER BY cv.voted_at""",
         application_id, current_user.org_id,
     )
     valuation = await conn.fetch("SELECT * FROM pledged_items WHERE loan_id=$1 ORDER BY item_number", application_id)
@@ -2785,7 +2806,7 @@ async def submit_mobile_mcc_vote(
     application_id: UUID, payload: MccVoteRequest,
     conn=Depends(db_conn), current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"ed", "md", "branch_manager", "branch_supervisor", "credit_analyst", "crm", "head_crm", "auditor", "system_admin", "account_officer", "loan_officer"})
+    _ensure_roles(current_user, {"ed", "md", "branch_manager", "branch_supervisor", "credit_analyst", "crm", "head_crm", "auditor", "account_officer", "loan_officer"})
     app = await _get_application_or_404(conn, application_id, current_user, enforce_officer_scope=False)
     if app.stage not in {"ed_approval", "md_approval"}:
         raise HTTPException(status_code=409, detail="This dossier is not available for MCC voting")
@@ -2807,7 +2828,7 @@ async def finalize_mobile_mcc(
     application_id: UUID, payload: MccFinalizeRequest,
     conn=Depends(db_conn), current_user=Depends(get_current_user),
 ):
-    _ensure_roles(current_user, {"ed", "md"})
+    _ensure_roles(current_user, {"crm", "head_crm"})
     await _get_application_or_404(conn, application_id, current_user, enforce_officer_scope=False)
     row = await conn.fetchrow(
         """UPDATE loan_applications SET amount=$1, mcc_finalized_by=$2,

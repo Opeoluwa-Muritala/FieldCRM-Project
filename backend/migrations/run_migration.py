@@ -27,6 +27,7 @@ MIGRATION_FILES = [
     "029_collateral_items.sql",
     "030_business_pnl.sql",
     "031_loan_recommendations.sql",
+    "032_single_executive_role_holders.sql",
 ]
 
 

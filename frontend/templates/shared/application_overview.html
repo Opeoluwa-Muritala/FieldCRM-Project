@@ -1,0 +1,64 @@
+{% extends shell %}
+
+{% block title %}Application Overview | FieldCRM{% endblock %}
+{% block page_title %}Application Overview{% endblock %}
+{% block breadcrumb %}Borrowers &rarr; {{ app.ref_no }} &rarr; Overview{% endblock %}
+
+{% block extra_css %}
+<style nonce="{{ csp_nonce }}">
+  .overview-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:1.25rem}.overview-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem 1.5rem}.overview-field{padding:.75rem 0;border-bottom:1px solid #eee8f1}.overview-field span{display:block;color:#776e7b;font-size:.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}.overview-field strong{display:block;margin-top:.3rem;color:#2e0052;overflow-wrap:anywhere}.overview-links{display:grid;gap:.65rem}.overview-link{display:flex;justify-content:space-between;align-items:center;padding:.85rem 1rem;border:1px solid #e7ddeb;border-radius:10px;text-decoration:none;color:#2e0052;font-weight:700}.overview-link:hover{border-color:#89268b;background:#faf6fb}.overview-docs{grid-column:1/-1}@media(max-width:800px){.overview-grid,.overview-fields{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+{% set hidden_fields = ['photo_url', 'spouse_signature', 'borrower_pledge_signature', 'pledge_witness_signature', 'profile_snapshot_source', 'profile_snapshot_created_at'] %}
+<div class="overview-grid">
+  <main class="page-card">
+    <div class="page-card-header">
+      <span class="status-badge verified">Read only</span>
+      <h2 class="page-card-title">{{ borrower_name }}</h2>
+      <p class="page-card-subtitle">{{ app.ref_no }} &middot; {{ app.stage|replace('_', ' ')|title }}</p>
+    </div>
+    <div class="overview-fields">
+      <div class="overview-field"><span>Requested Amount</span><strong>&#8358;{{ "{:,.2f}".format(app.amount or 0) }}</strong></div>
+      <div class="overview-field"><span>Tenor</span><strong>{{ app.tenor_months or 0 }} months</strong></div>
+      <div class="overview-field"><span>Loan Type</span><strong>{{ app.loan_type|replace('_', ' ')|title }}</strong></div>
+      <div class="overview-field"><span>Current Stage</span><strong>{{ app.stage|replace('_', ' ')|title }}</strong></div>
+      {% for key, value in wizard_data.items() %}
+        {% if value not in (none, '', []) and key not in hidden_fields and 'signature' not in key and 'url' not in key %}
+        <div class="overview-field"><span>{{ key|replace('_', ' ')|title }}</span><strong>{% if value is iterable and value is not string %}{{ value|join(', ') }}{% else %}{{ value }}{% endif %}</strong></div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </main>
+
+  <aside class="page-card">
+    <div class="page-card-header"><h3 class="page-card-title">Completed forms</h3><p class="page-card-subtitle">Open any section in read-only mode.</p></div>
+    <div class="overview-links">
+      <a class="overview-link" href="/applications/{{ app_id }}/step/1">Application details <span>&rarr;</span></a>
+      <a class="overview-link" href="/applications/{{ app_id }}/step/4">Employment &amp; business <span>&rarr;</span></a>
+      <a class="overview-link" href="/applications/{{ app_id }}/step/5">Existing facilities <span>&rarr;</span></a>
+      <a class="overview-link" href="/applications/{{ app_id }}/step/6">Loan request <span>&rarr;</span></a>
+      <a class="overview-link" href="/applications/{{ app_id }}/step/7">Payout account <span>&rarr;</span></a>
+      <a class="overview-link" href="/applications/{{ app_id }}/step/8">Pledge form <span>&rarr;</span></a>
+      <a class="overview-link" href="/applications/{{ app_id }}/guarantors/1/step/7">Guarantor Form 1 <span>&rarr;</span></a>
+      <a class="overview-link" href="/applications/{{ app_id }}/guarantors/2/step/7">Guarantor Form 2 <span>&rarr;</span></a>
+      <a class="overview-link" href="/applications/{{ app_id }}/visitation?readonly=1">Field visitation <span>&rarr;</span></a>
+    </div>
+  </aside>
+
+  <section class="page-card overview-docs">
+    <div class="page-card-header"><h3 class="page-card-title">Uploaded documents</h3><p class="page-card-subtitle">All evidence attached to this application.</p></div>
+    <div class="custom-table-container"><table class="custom-table">
+      <thead><tr><th>Document</th><th>Type</th><th>Status</th><th>Uploaded</th><th></th></tr></thead>
+      <tbody>{% for doc in documents %}<tr>
+        <td>{{ doc.original_name or doc.category|replace('_', ' ')|title }}</td>
+        <td>{{ (doc.doc_type or doc.category)|replace('_', ' ')|title }}</td>
+        <td><span class="status-badge {{ 'verified' if doc.status == 'verified' else 'needs-review' }}">{{ doc.status|default('uploaded', true)|replace('_', ' ')|title }}</span></td>
+        <td>{{ doc.created_at.strftime('%d %b %Y') if doc.created_at else '—' }}</td>
+        <td>{% if doc.url %}<a class="btn-ghost-link" href="{{ doc.url }}" target="_blank">View</a>{% endif %}</td>
+      </tr>{% else %}<tr><td colspan="5">No documents uploaded.</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </section>
+</div>
+{% endblock %}
