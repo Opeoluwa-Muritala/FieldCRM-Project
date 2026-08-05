@@ -4432,6 +4432,23 @@ async def list_progressive_borrowers(
     }
 
 
+@router.get("/api/v1/web/borrowers/summary")
+async def borrower_summary(
+    request: Request,
+    conn=Depends(db_conn),
+    current_user=Depends(RoleChecker(["Branch Manager", "Branch Supervisor", "Credit Analyst", "CRM", "Head CRM", "Auditor", "ED", "MD"])),
+):
+    applications = await LoanRepository(conn).list_recent(current_user.org_id, limit=500)
+    counts = {
+        "total": len(applications),
+        "draft": sum(1 for app in applications if app.current_stage == 1),
+        "review": sum(1 for app in applications if app.current_stage in (2, 3, 4, 5)),
+        "approved": sum(1 for app in applications if app.current_stage == 6),
+        "active": sum(1 for app in applications if app.stage == "disbursed"),
+    }
+    return templates.TemplateResponse(request, "partials/borrower_metrics.html", {"request": request, "counts": counts})
+
+
 @router.get("/api/v1/web/reports/par/loans")
 async def list_progressive_par_loans(
     request: Request,

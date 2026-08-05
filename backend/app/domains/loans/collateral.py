@@ -63,7 +63,7 @@ async def render_repayment_feasibility(
     request: Request,
     application_id: str,
     conn = Depends(db_conn),
-    current_user = Depends(get_current_user),
+    current_user = Depends(RoleChecker(["Relationship Officer", "Branch Manager", "Branch Supervisor", "CRM", "Head CRM", "Auditor", "ED", "MD", "Legal"])),
 ):
     try:
         app_uuid = UUID(application_id)
@@ -95,7 +95,7 @@ async def render_repayment_feasibility(
 
     rate = await get_loan_interest_rate(conn, app)
     tenor = int(app.tenor_months or 12)
-    installment_amount = 0.0
+    installment_amount = Decimal("0")
     if loan_amount > 0 and tenor > 0:
         try:
             rows = generate_schedule(
@@ -107,7 +107,7 @@ async def render_repayment_feasibility(
                 disbursement_date=date.today()
             )
             if rows:
-                installment_amount = rows[0]["total_due"]
+                installment_amount = Decimal(str(rows[0]["total_due"]))
         except Exception as e:
             log.error(f"Error computing proposed installment: {e}")
 

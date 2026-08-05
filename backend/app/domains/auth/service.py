@@ -48,25 +48,26 @@ class AuthService:
 
     async def rotate_mobile_session(self, refresh_token: str) -> dict:
         token_hash = self._refresh_hash(refresh_token)
-        session = await self.repo.lock_auth_session(token_hash)
-        if not session:
-            raise DomainException("Invalid refresh session.", 401)
-        if session["revoked_at"] is not None:
-            await self.repo.revoke_family(session["family_id"], "refresh_token_reuse")
-            raise DomainException("Refresh token reuse detected.", 401)
-        if session["expires_at"] <= datetime.now(timezone.utc):
-            await self.repo.revoke_family(session["family_id"], "expired")
-            raise DomainException("Refresh session expired.", 401)
-        user = await self.repo.get_user_by_id(str(session["user_id"]))
-        if not user or not user["active"]:
-            await self.repo.revoke_family(session["family_id"], "user_inactive")
-            raise DomainException("Session is no longer active.", 401)
-        replacement = secrets.token_urlsafe(48)
-        new_row = await self.repo.create_auth_session(
-            user_id=session["user_id"], org_id=session["org_id"], family_id=session["family_id"],
-            token_hash=self._refresh_hash(replacement), expires_at=session["expires_at"],
-        )
-        await self.repo.rotate_auth_session(session["id"], new_row["id"])
+        async with self.repo.conn.transaction():
+            session = await self.repo.lock_auth_session(token_hash)
+            if not session:
+                raise DomainException("Invalid refresh session.", 401)
+            if session["revoked_at"] is not None:
+                await self.repo.revoke_family(session["family_id"], "refresh_token_reuse")
+                raise DomainException("Refresh token reuse detected.", 401)
+            if session["expires_at"] <= datetime.now(timezone.utc):
+                await self.repo.revoke_family(session["family_id"], "expired")
+                raise DomainException("Refresh session expired.", 401)
+            user = await self.repo.get_user_by_id(str(session["user_id"]))
+            if not user or not user["active"]:
+                await self.repo.revoke_family(session["family_id"], "user_inactive")
+                raise DomainException("Session is no longer active.", 401)
+            replacement = secrets.token_urlsafe(48)
+            new_row = await self.repo.create_auth_session(
+                user_id=session["user_id"], org_id=session["org_id"], family_id=session["family_id"],
+                token_hash=self._refresh_hash(replacement), expires_at=session["expires_at"],
+            )
+            await self.repo.rotate_auth_session(session["id"], new_row["id"])
         return {
             "access_token": create_access_token(user["id"], role=user["role"], org_id=user["org_id"], session_type="mobile"),
             "token_type": "bearer", "refresh_token": replacement,

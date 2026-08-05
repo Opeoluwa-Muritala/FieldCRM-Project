@@ -13,7 +13,7 @@
   {% for item in queue %}
   <a href="/applications/{{ item.id }}/{{ 'disburse' if item.stage == 'disbursement_ready' else 'crm-review' }}" class="queue-card">
     <span class="queue-card-name">{{ item.applicant_name }}</span>
-    <span class="queue-card-meta">{{ item.ref_no }} — Officer: {{ item.officer_name or '—' }} | BM: {{ item.branch_manager_name or '—' }}</span>
+    <span class="queue-card-meta">{{ item.ref_no }} — Relationship Officer: {{ item.officer_name or '—' }} | TL: {{ item.branch_manager_name or '—' }}</span>
     <span class="queue-card-amount">{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% else %}No amount{% endif %}</span>
     <span class="status-badge queue-card-badge needs-review">{{ 'Generate offer letter' if item.stage == 'disbursement_ready' else (item.days_waiting|string + 'd waiting') }}</span>
   </a>

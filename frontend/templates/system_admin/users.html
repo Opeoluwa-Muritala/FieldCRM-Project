@@ -56,7 +56,7 @@
             <td data-label="Role"><span class="user-role" data-role-label data-role="{{ item.role }}">{{ role_labels.get(item.role, item.role|replace('_', ' ')|title) }}</span></td>
             <td data-label="Status"><span class="user-status {% if item.active %}is-active{% else %}is-pending{% endif %}"><i></i>{{ 'Active' if item.active else 'Pending' }}</span></td>
             <td data-label="Last login">{{ item.last_login_at|date_format('%d %b %Y') if item.last_login_at else 'Not yet signed in' }}</td>
-            <td data-label="Actions"><div class="user-row-actions">{% if item.id != user.id %}<button type="button" data-edit-role>Edit role</button><button type="button" data-save-role hidden>Save</button>{% if item.active %}<button type="button" class="is-danger" data-deactivate>Deactivate</button>{% endif %}{% else %}<span class="user-action-note">Current user</span>{% endif %}</div></td>
+            <td data-label="Actions"><div class="user-row-actions">{% if item.id != user.id %}<button type="button" data-edit-role>Edit role</button><button type="button" data-save-role hidden>Save</button>{% if item.active %}<button type="button" class="is-danger" data-deactivate>Deactivate</button>{% endif %}<button type="button" class="is-danger" data-delete-user>Delete</button>{% else %}<span class="user-action-note">Current user</span>{% endif %}</div></td>
         </tr>
         {% else %}
         <tr><td colspan="6"><div class="users-empty"><span aria-hidden="true">◌</span><strong>No team members yet</strong><p>Use the invite form above to add the first member of your team.</p></div></td></tr>{% endfor %}
@@ -154,5 +154,7 @@ document.querySelectorAll('[data-save-role]').forEach((button) => button.addEven
 }));
 
 document.querySelectorAll('[data-deactivate]').forEach((button) => button.addEventListener('click', async () => { if (button.dataset.confirm !== 'true') { button.dataset.confirm = 'true'; button.textContent = 'Confirm deactivate'; return; } const row = button.closest('tr'); button.disabled = true; try { const response = await fetch(`/api/v1/users/${row.dataset.userId}/deactivate`, {method:'POST'}); const result = await response.json(); if (!response.ok) throw new Error(result.detail || result.error || 'Unable to deactivate user.'); window.location.reload(); } catch (error) { window.showFieldMessage(error.message); button.disabled = false; button.textContent = 'Deactivate'; delete button.dataset.confirm; } }));
+
+document.querySelectorAll('[data-delete-user]').forEach((button) => button.addEventListener('click', async () => { if (button.dataset.confirm !== 'true') { button.dataset.confirm = 'true'; button.textContent = 'Confirm delete'; return; } const row = button.closest('tr'); button.disabled = true; try { const response = await fetch(`/api/v1/users/${row.dataset.userId}`, {method:'DELETE'}); const result = await response.json(); if (!response.ok) throw new Error(result.detail || result.error || 'Unable to delete user.'); row.remove(); } catch (error) { window.showFieldMessage(error.message); button.disabled = false; button.textContent = 'Delete'; delete button.dataset.confirm; } }));
 </script>
 {% endblock %}
