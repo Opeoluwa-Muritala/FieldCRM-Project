@@ -10,6 +10,32 @@ from app.core.rate_limit import enforce_login_limits
 
 router = APIRouter()
 
+
+def _request_is_secure(request: Request) -> bool:
+    """Honor direct TLS and the HTTPS signal from the trusted deployment proxy."""
+    forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",", 1)[0].strip().lower()
+    return request.url.scheme.lower() == "https" or forwarded_proto == "https"
+
+
+def _require_secure_token_transport(request: Request) -> bool:
+    """Require HTTPS for token issuance/rotation in production.
+
+    Local development may continue to use HTTP; production never sends bearer or
+    refresh credentials over a clear-text request. The bool is reused for the
+    Secure cookie attribute so transport enforcement and cookie policy cannot
+    drift apart.
+    """
+    secure = _request_is_secure(request)
+    if settings.is_production and not secure:
+        raise HTTPException(status_code=400, detail="HTTPS is required for authentication.")
+    return secure or settings.COOKIE_SECURE
+
+
+def _set_no_store(response: Response) -> None:
+    """Prevent browsers and intermediary caches from retaining token responses."""
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
+
 def get_auth_service(conn = Depends(db_conn)) -> AuthService:
     repo = AuthRepository(conn)
     return AuthService(repo)
@@ -21,6 +47,8 @@ async def login_cookie(
     form_data: OAuth2PasswordRequestForm = Depends(),
     service: AuthService = Depends(get_auth_service)
 ):
+    is_secure = _require_secure_token_transport(request)
+    _set_no_store(response)
     await enforce_login_limits(request, form_data.username)
     ip_address = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
@@ -28,8 +56,6 @@ async def login_cookie(
     session_data = await service.authenticate_web(
         form_data.username, form_data.password, user_agent=user_agent, ip_address=ip_address
     )
-    
-    is_secure = settings.COOKIE_SECURE or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
     
     response.set_cookie(
         key="refresh_token",
@@ -48,6 +74,8 @@ async def refresh_cookie(
     response: Response,
     service: AuthService = Depends(get_auth_service)
 ):
+    is_secure = _require_secure_token_transport(request)
+    _set_no_store(response)
     # CSRF protection: Origin and Referer checks
     origin = request.headers.get("origin")
     referer = request.headers.get("referer")
@@ -77,8 +105,6 @@ async def refresh_cookie(
         raw_token, client_type="web", user_agent=user_agent, ip_address=ip_address
     )
     
-    is_secure = settings.COOKIE_SECURE or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
-    
     response.set_cookie(
         key="refresh_token",
         value=session_data["refresh_token"],
@@ -93,9 +119,12 @@ async def refresh_cookie(
 @router.post("/login-bearer", response_model=Token)
 async def login_bearer(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     service: AuthService = Depends(get_auth_service)
 ):
+    _require_secure_token_transport(request)
+    _set_no_store(response)
     await enforce_login_limits(request, form_data.username)
     token = await service.authenticate_user(form_data.username, form_data.password)
     return {"access_token": token, "token_type": "bearer"}
@@ -103,10 +132,13 @@ async def login_bearer(
 @router.post("/login-mobile", response_model=Token)
 async def login_mobile(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     service: AuthService = Depends(get_auth_service)
 ):
     """Mobile credential login that issues a token stored in encrypted device storage."""
+    _require_secure_token_transport(request)
+    _set_no_store(response)
     await enforce_login_limits(request, form_data.username)
     ip_address = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
@@ -117,9 +149,12 @@ async def login_mobile(
 @router.post("/refresh-mobile", response_model=Token)
 async def refresh_mobile(
     request: Request,
+    response: Response,
     payload: RefreshRequest,
     service: AuthService = Depends(get_auth_service)
 ):
+    _require_secure_token_transport(request)
+    _set_no_store(response)
     ip_address = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
     return await service.rotate_mobile_session(
