@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Response, Request
+from fastapi import APIRouter, Depends, Response, Request, HTTPException, status
+from uuid import UUID
 from fastapi.security import OAuth2PasswordRequestForm
 from app.core.database import db_conn
 from app.domains.auth.repository import AuthRepository
@@ -21,20 +22,73 @@ async def login_cookie(
     service: AuthService = Depends(get_auth_service)
 ):
     await enforce_login_limits(request, form_data.username)
-    token = await service.authenticate_user(form_data.username, form_data.password)
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    
+    session_data = await service.authenticate_web(
+        form_data.username, form_data.password, user_agent=user_agent, ip_address=ip_address
+    )
     
     is_secure = settings.COOKIE_SECURE or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
-    # Configure HttpOnly cookie for session tracking
+    
     response.set_cookie(
-        key="session",
-        value=token,
+        key="refresh_token",
+        value=session_data["refresh_token"],
         httponly=True,
         secure=is_secure,
         samesite="strict",
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        path="/"
+        expires=session_data["expires_at"],
+        path="/api/v1/auth/refresh"
     )
-    return {"access_token": token, "token_type": "bearer"}
+    return {"access_token": session_data["access_token"], "token_type": "bearer"}
+
+@router.post("/refresh", response_model=Token)
+async def refresh_cookie(
+    request: Request,
+    response: Response,
+    service: AuthService = Depends(get_auth_service)
+):
+    # CSRF protection: Origin and Referer checks
+    origin = request.headers.get("origin")
+    referer = request.headers.get("referer")
+    allowed_origins = [o.strip().lower() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+    
+    if origin:
+        if origin.lower() not in allowed_origins:
+            raise HTTPException(status_code=403, detail="CSRF Protection: Origin not allowed")
+    elif referer:
+        from urllib.parse import urlparse
+        parsed = urlparse(referer)
+        ref_origin = f"{parsed.scheme}://{parsed.netloc}"
+        if ref_origin.lower() not in allowed_origins:
+            raise HTTPException(status_code=403, detail="CSRF Protection: Referer not allowed")
+    else:
+        if allowed_origins:
+            raise HTTPException(status_code=403, detail="CSRF Protection: Missing Origin/Referer headers")
+
+    raw_token = request.cookies.get("refresh_token")
+    if not raw_token:
+        raise HTTPException(status_code=401, detail="Refresh token cookie missing")
+        
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    
+    session_data = await service.rotate_refresh_token(
+        raw_token, client_type="web", user_agent=user_agent, ip_address=ip_address
+    )
+    
+    is_secure = settings.COOKIE_SECURE or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
+    
+    response.set_cookie(
+        key="refresh_token",
+        value=session_data["refresh_token"],
+        httponly=True,
+        secure=is_secure,
+        samesite="strict",
+        expires=session_data["expires_at"],
+        path="/api/v1/auth/refresh"
+    )
+    return {"access_token": session_data["access_token"], "token_type": "bearer"}
 
 @router.post("/login-bearer", response_model=Token)
 async def login_bearer(
@@ -46,7 +100,6 @@ async def login_bearer(
     token = await service.authenticate_user(form_data.username, form_data.password)
     return {"access_token": token, "token_type": "bearer"}
 
-
 @router.post("/login-mobile", response_model=Token)
 async def login_mobile(
     request: Request,
@@ -55,11 +108,23 @@ async def login_mobile(
 ):
     """Mobile credential login that issues a token stored in encrypted device storage."""
     await enforce_login_limits(request, form_data.username)
-    return await service.authenticate_mobile(form_data.username, form_data.password)
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    return await service.authenticate_mobile(
+        form_data.username, form_data.password, user_agent=user_agent, ip_address=ip_address
+    )
 
 @router.post("/refresh-mobile", response_model=Token)
-async def refresh_mobile(payload: RefreshRequest, service: AuthService = Depends(get_auth_service)):
-    return await service.rotate_mobile_session(payload.refresh_token)
+async def refresh_mobile(
+    request: Request,
+    payload: RefreshRequest,
+    service: AuthService = Depends(get_auth_service)
+):
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    return await service.rotate_mobile_session(
+        payload.refresh_token, user_agent=user_agent, ip_address=ip_address
+    )
 
 @router.post("/logout-mobile")
 async def logout_mobile(payload: LogoutRequest, service: AuthService = Depends(get_auth_service)):
@@ -67,7 +132,37 @@ async def logout_mobile(payload: LogoutRequest, service: AuthService = Depends(g
     return {"status": "logged_out"}
 
 @router.post("/logout")
-def logout(response: Response):
+async def logout(
+    request: Request,
+    response: Response,
+    service: AuthService = Depends(get_auth_service)
+):
+    raw_token = request.cookies.get("refresh_token")
+    if raw_token:
+        await service.revoke_web_session(raw_token)
+        
+    response.delete_cookie(key="refresh_token", path="/api/v1/auth/refresh")
     response.delete_cookie(key="session", path="/")
     response.delete_cookie(key="__Host-session", path="/")
     return {"status": "logged_out"}
+
+from app.core.dependencies import RoleChecker
+
+@router.get("/sessions/{user_id}")
+async def list_user_sessions(
+    user_id: UUID,
+    current_user = Depends(RoleChecker(["System Admin"])),
+    service: AuthService = Depends(get_auth_service)
+):
+    """Admin-only endpoint to list active sessions for a user."""
+    return await service.list_active_sessions(user_id)
+
+@router.post("/sessions/{user_id}/revoke")
+async def revoke_all_user_sessions(
+    user_id: UUID,
+    current_user = Depends(RoleChecker(["System Admin"])),
+    service: AuthService = Depends(get_auth_service)
+):
+    """Admin-only endpoint to revoke all active sessions for a user."""
+    await service.revoke_all_user_sessions(user_id)
+    return {"status": "all_sessions_revoked"}

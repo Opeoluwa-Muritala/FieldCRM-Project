@@ -308,7 +308,12 @@ data class DashboardData(
 )
 
 @kotlinx.serialization.Serializable
-data class LoanProduct(val id: String, val name: String)
+data class LoanProduct(
+    val id: String, 
+    val name: String,
+    val guarantor_required: Boolean = false,
+    val collateral_required: Boolean = false
+)
 
 @kotlinx.serialization.Serializable
 data class ConfigDropdowns(

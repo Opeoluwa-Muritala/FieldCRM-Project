@@ -334,3 +334,22 @@ The shared module contains models, API-client scaffolding, SQLDelight storage, a
 - Keep document assets authenticated/private.
 - Back up PostgreSQL and test restoration regularly.
 - Restrict production database access to application and migration principals.
+
+### Token Authentication System & Rotation Flow
+
+The application implements a secure authentication system featuring short-lived access tokens and single-use rotating refresh tokens:
+
+1. **Access Tokens**: Signed JWTs using HS256 algorithm. They expire every **10 minutes** and contain standard non-sensitive claims (`user_id`, `role`, `org_id`, `iat`, `exp`, `jti`).
+2. **Refresh Tokens**: Opaque base64url-encoded random strings stored using a secure SHA-256 hash in the database.
+3. **Session Lifetimes**: Expire after a strict timeline of **2 days**.
+4. **Cookie Security (Web)**:
+   - Delivered via `Set-Cookie` with `HttpOnly` and `Secure` flags.
+   - Restrained to `SameSite=Strict` and scoped strictly to `path=/api/v1/auth/refresh`.
+5. **JSON Delivery (Mobile)**:
+   - For native client apps, refresh tokens are transmitted via request/response JSON payloads.
+6. **Single-Use & Rotation**:
+   - The token database tracking keeps a group chain via `family_id`.
+   - Every invocation of `POST /auth/refresh` rotates the refresh token: the old token is marked as `used_at = NOW()`, and a new one is issued with the same `family_id`.
+7. **Replay Attack / Reuse Detection**:
+   - If a replayed refresh token is detected (where `used_at` is already populated), the system immediately revokes the **entire rotation chain** (`revoked_at = NOW()` on all tokens with matching `family_id`), logs a high-priority security event, and returns HTTP 401.
+

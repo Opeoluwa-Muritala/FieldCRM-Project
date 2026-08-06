@@ -54,7 +54,7 @@ class MobileUserResponse(BaseModel):
 
 class CreateApplicationRequest(BaseModel):
     customer_type: Literal["new", "existing"]
-    loan_type: Literal["enterprise", "msef", "payee", "other"]
+    loan_type: str
     applicant_name: str = "New Applicant"
     borrower_id: str | None = None
     amount: float | None = None
@@ -1467,6 +1467,17 @@ async def get_mobile_config(conn=Depends(db_conn), current_user=Depends(get_curr
         return cached
     row = await conn.fetchrow("SELECT name FROM organisations WHERE id = $1", current_user.org_id)
     org_name = row["name"] if row else "FieldCRM MFB"
+    
+    products_rows = await conn.fetch("SELECT code, name, guarantor_required, collateral_required FROM loan_products WHERE active = TRUE ORDER BY name")
+    loan_products_list = [
+        {
+            "id": r["code"], 
+            "name": r["name"],
+            "guarantor_required": r["guarantor_required"],
+            "collateral_required": r["collateral_required"]
+        } for r in products_rows
+    ]
+    
     config = {
         "org_name": org_name,
         "support_phone": "+234 1 234 5678",
@@ -1477,12 +1488,7 @@ async def get_mobile_config(conn=Depends(db_conn), current_user=Depends(get_curr
         "dropdowns": {
             "marital_status": ["Single", "Married", "Widowed", "Divorced"],
             "employment_status": ["Public Service", "Private Sector", "Self Employed", "Unemployed"],
-            "loan_products": [
-                {"id": "WC", "name": "Working Capital"},
-                {"id": "AP", "name": "Asset Purchase"},
-                {"id": "MS", "name": "MSEF"},
-                {"id": "PY", "name": "Payee"},
-            ],
+            "loan_products": loan_products_list,
             "error_categories": ["Payment Failed", "Wrong Deduction", "Not Credited", "BankOne Issue", "Other"],
             "review_reasons": [
                 "High Confidence Business Site Check",
@@ -1497,6 +1503,35 @@ async def get_mobile_config(conn=Depends(db_conn), current_user=Depends(get_curr
     }
     await set_json(cache_key, config, ttl_seconds=10 * 60, only_if_absent=True)
     return config
+
+
+@router.get("/products")
+async def list_products(conn=Depends(db_conn)):
+    rows = await conn.fetch("SELECT * FROM loan_products WHERE active = TRUE ORDER BY name")
+    return [dict(r) for r in rows]
+
+
+@router.get("/products/{code}")
+async def get_product_details(code: str, conn=Depends(db_conn)):
+    row = await conn.fetchrow("SELECT * FROM loan_products WHERE code = $1 AND active = TRUE", code)
+    if not row:
+        raise HTTPException(status_code=404, detail="Product not found or inactive")
+    product_dict = dict(row)
+    
+    docs = await conn.fetch(
+        "SELECT doc_type, is_mandatory FROM product_document_requirements WHERE product_code = $1",
+        code
+    )
+    product_dict["required_documents"] = [dict(d) for d in docs]
+    
+    # Convert Decimals/Dates to strings for json serialization compatibility
+    for k, v in list(product_dict.items()):
+        if isinstance(v, (date, datetime)):
+            product_dict[k] = v.isoformat()
+        elif hasattr(v, "__str__") and v.__class__.__name__ == "Decimal":
+            product_dict[k] = float(v)
+            
+    return product_dict
 
 
 @router.get("/search")

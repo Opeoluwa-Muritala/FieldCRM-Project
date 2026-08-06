@@ -71,7 +71,6 @@ class LoanService:
         client_request_id: UUID | None = None,
     ) -> LoanRow:
         customer_type = _normalize_choice(customer_type, CUSTOMER_TYPE_MAP, "customer type")
-        loan_type = _normalize_choice(loan_type, LOAN_TYPE_MAP, "loan type")
 
         # Generate ref_no
         year = datetime.datetime.now().year
@@ -81,6 +80,8 @@ class LoanService:
         async with get_transaction() as conn:
             tx_repo = LoanRepository(conn)
             tx_audit = AuditService(conn)
+            
+            loan_type = await tx_repo.resolve_product_code(loan_type)
             
             created_app = await tx_repo.create(
                 org_id=org_id,
@@ -126,6 +127,42 @@ class LoanService:
             if "repayment_mode" in existing_data and existing_data["repayment_mode"]:
                 existing_data["repayment_mode"] = _normalize_choice(
                     existing_data["repayment_mode"], REPAYMENT_MODE_MAP, "repayment mode"
+                )
+                
+            # Dynamic product limit checks for step 6 (Loan Request Details)
+            if step == 6:
+                amount = form_data.get("amount") or existing_data.get("amount")
+                tenor = form_data.get("tenor") or existing_data.get("tenor")
+                
+                prod = await conn.fetchrow(
+                    "SELECT min_amount, max_amount, min_tenor_months, max_tenor_months, name FROM loan_products WHERE code = $1",
+                    app.loan_type
+                )
+                if prod:
+                    if amount:
+                        f_amount = _optional_float(amount)
+                        if f_amount is not None:
+                            if f_amount < float(prod["min_amount"]):
+                                raise DomainException(f"Amount is below the minimum limit of ₦{prod['min_amount']:,.2f} for {prod['name']}", 422)
+                            if f_amount > float(prod["max_amount"]):
+                                raise DomainException(f"Amount exceeds the maximum limit of ₦{prod['max_amount']:,.2f} for {prod['name']}", 422)
+                    if tenor:
+                        i_tenor = _optional_int(tenor)
+                        if i_tenor is not None:
+                            if i_tenor < prod["min_tenor_months"]:
+                                raise DomainException(f"Tenor is below the minimum limit of {prod['min_tenor_months']} months for {prod['name']}", 422)
+                            if i_tenor > prod["max_tenor_months"]:
+                                raise DomainException(f"Tenor exceeds the maximum limit of {prod['max_tenor_months']} months for {prod['name']}", 422)
+                                
+                # Sync amount and tenor_months to the main table
+                await tx_repo.update_intake_details(
+                    loan_id=app_id,
+                    org_id=org_id,
+                    applicant_name=app.applicant_name,
+                    phone=app.phone,
+                    bvn=app.bvn,
+                    amount=_optional_float(amount),
+                    tenor_months=_optional_int(tenor),
                 )
                 
             # If step 1, we can pre-populate applicant_name/phone/bvn onto loan_application
