@@ -7,6 +7,57 @@ from app.domains.loans.schemas import LoanRow, LoanListItem, StageCount, Readine
 class LoanRepository(BaseRepository):
     domain = "loans"
 
+    async def resolve_product_code(self, input_val: str) -> str:
+        if not input_val:
+            from app.core.exceptions import DomainException
+            raise DomainException("Invalid loan product code", 422)
+            
+        cleaned = input_val.strip().lower().replace("_", " ")
+        row = await self.conn.fetchrow(
+            "SELECT code FROM loan_products WHERE LOWER(code) = $1 AND active = TRUE",
+            cleaned
+        )
+        if row:
+            return row["code"]
+            
+        alias_row = await self.conn.fetchrow(
+            "SELECT product_code FROM product_aliases WHERE LOWER(alias) = $1",
+            cleaned
+        )
+        if alias_row:
+            prod_row = await self.conn.fetchrow(
+                "SELECT code FROM loan_products WHERE code = $1 AND active = TRUE",
+                alias_row["product_code"]
+            )
+            if prod_row:
+                return prod_row["code"]
+                
+        from app.core.exceptions import DomainException
+        raise DomainException(f"Invalid or inactive loan product code: {input_val}", 422)
+
+    async def get_next_stage_for_loan(self, loan_id: UUID, current_stage: str) -> str | None:
+        row = await self.conn.fetchrow(
+            """
+            SELECT lp.workflow_stages 
+            FROM loan_applications la
+            JOIN loan_products lp ON la.loan_type = lp.code
+            WHERE la.id = $1
+            """,
+            loan_id
+        )
+        if not row or not row["workflow_stages"]:
+            from app.core.workflow import NEXT_STAGE
+            return NEXT_STAGE.get(current_stage)
+        
+        stages = [s.strip() for s in row["workflow_stages"].split(",")]
+        try:
+            idx = stages.index(current_stage)
+            if idx + 1 < len(stages):
+                return stages[idx + 1]
+        except ValueError:
+            pass
+        return None
+
     async def create(
         self,
         *,

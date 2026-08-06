@@ -45,19 +45,37 @@ fun CreateApplicationScreenView(
     onBackClick: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
-
+    val configViewModel: com.fieldcrm.android.ui.viewmodel.ConfigViewModel = org.koin.androidx.compose.koinViewModel()
+    val configState by configViewModel.uiState.collectAsState()
+    
+    val products = configState.config?.dropdowns?.loan_products ?: emptyList()
+    val loanCategoryOptions = if (products.isNotEmpty()) products.map { it.name } else listOf("Enterprise Loan", "MSEF", "PAYEE", "Other Option")
+    
+    val loanCategoryDisplayName = if (products.isNotEmpty()) {
+        products.find { it.id.equals(state.loanCategory, ignoreCase = true) }?.name ?: state.loanCategory
+    } else {
+        when (state.loanCategory) {
+            "enterprise" -> "Enterprise Loan"
+            "msef" -> "MSEF"
+            "payee" -> "PAYEE"
+            "other" -> "Other Option"
+            else -> state.loanCategory
+        }
+    }
+    
     LaunchedEffect(state.customerSearchQuery, state.customerType) {
         if (state.customerType == "existing" && state.customerSearchQuery.trim().length >= 3) {
             delay(350)
             viewModel.searchExistingCustomers()
         }
     }
-
+ 
     CreateApplicationContent(
         isLoading = state.isLoading,
         errorMessage = state.errorMessage,
         customerType = state.customerType,
-        loanCategory = state.loanCategory,
+        loanCategory = loanCategoryDisplayName,
+        loanCategoryOptions = loanCategoryOptions,
         newCustomerName = state.newCustomerName,
         newCustomerPhone = state.newCustomerPhone,
         newCustomerBvn = state.newCustomerBvn,
@@ -67,7 +85,14 @@ fun CreateApplicationScreenView(
         shareUrl = state.shareUrl,
         isGeneratingLink = state.isGeneratingLink,
         onCustomerTypeChange = { viewModel.setCustomerType(it) },
-        onLoanCategoryChange = { viewModel.setLoanCategory(it) },
+        onLoanCategoryChange = { name ->
+            val code = products.find { it.name.equals(name, ignoreCase = true) }?.id ?: when (name) {
+                "Enterprise Loan" -> "enterprise"
+                "Other Option" -> "other"
+                else -> name.lowercase()
+            }
+            viewModel.setLoanCategory(code)
+        },
         onNewCustomerNameChange = { viewModel.setNewCustomerName(it) },
         onNewCustomerPhoneChange = { viewModel.setNewCustomerPhone(it) },
         onNewCustomerBvnChange = { viewModel.setNewCustomerBvn(it) },
@@ -96,6 +121,7 @@ fun CreateApplicationContent(
     errorMessage: String?,
     customerType: String,
     loanCategory: String,
+    loanCategoryOptions: List<String> = emptyList(),
     newCustomerName: String,
     newCustomerPhone: String,
     newCustomerBvn: String,
@@ -235,7 +261,7 @@ fun CreateApplicationContent(
                 // Select Loan Category Dropdown
                 FieldDropdown(
                     value = loanCategory,
-                    options = listOf("Enterprise Loan", "MSEF", "PAYEE", "Other Option"),
+                    options = loanCategoryOptions,
                     onOptionSelected = onLoanCategoryChange,
                     label = "Select Loan Category",
                     isRequired = true

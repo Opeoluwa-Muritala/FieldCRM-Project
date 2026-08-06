@@ -108,6 +108,10 @@ fun LoanApplicationFormContent(
         bank: String, acc: String
     ) -> Unit
 ) {
+    val configViewModel: com.fieldcrm.android.ui.viewmodel.ConfigViewModel = org.koin.androidx.compose.koinViewModel()
+    val configState by configViewModel.uiState.collectAsState()
+    val products = configState.config?.dropdowns?.loan_products ?: emptyList()
+
     var currentTab by rememberSaveable(application.id) { mutableIntStateOf(0) }
     var isDirty by rememberSaveable(application.id) { mutableStateOf(false) }
     var showUnsavedDialog by rememberSaveable(application.id) { mutableStateOf(false) }
@@ -286,7 +290,8 @@ fun LoanApplicationFormContent(
 
                             val ocrVerified = (appDetail?.readiness?.get("ocr_verified") as? Boolean) ?: false
 
-                            val isGuarantorRequired = productInput.equals("MSEF", ignoreCase = true) || productInput.equals("Enterprise Loan", ignoreCase = true)
+                            val isGuarantorRequired = products.find { it.id.equals(productInput, ignoreCase = true) || it.name.equals(productInput, ignoreCase = true) }?.guarantor_required
+                                ?: (productInput.equals("MSEF", ignoreCase = true) || productInput.equals("Enterprise Loan", ignoreCase = true) || productInput.equals("corporate_sme", ignoreCase = true) || productInput.equals("msef", ignoreCase = true))
                             val guarantorComplete = !isGuarantorRequired || ((appDetail?.readiness?.get("guarantor_form_submitted") as? Boolean) == true)
 
                             val visitationSigned = (appDetail?.readiness?.get("visitation_status") as? String)?.let { it == "completed" || it == "concurred" }
@@ -1346,7 +1351,8 @@ fun WizardTabContent(
 
             val ocrVerified = (appDetail?.readiness?.get("ocr_verified") as? Boolean) == true
 
-            val isGuarantorRequired = product.equals("MSEF", ignoreCase = true) || product.equals("Enterprise Loan", ignoreCase = true)
+            val isGuarantorRequired = products.find { it.id.equals(product, ignoreCase = true) || it.name.equals(product, ignoreCase = true) }?.guarantor_required
+                ?: (product.equals("MSEF", ignoreCase = true) || product.equals("Enterprise Loan", ignoreCase = true) || product.equals("corporate_sme", ignoreCase = true) || product.equals("msef", ignoreCase = true))
             val guarantorComplete = !isGuarantorRequired || ((appDetail?.readiness?.get("guarantor_form_submitted") as? Boolean) == true)
 
             val visitationSigned = (appDetail?.readiness?.get("visitation_status") as? String)?.let { it == "completed" || it == "concurred" }

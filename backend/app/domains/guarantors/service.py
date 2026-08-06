@@ -16,6 +16,19 @@ class GuarantorService:
         return sd["data_json"] if sd and sd.get("data_json") else {}
 
     async def save_wizard_step(self, loan_id: UUID, slot: int, step: int, form_data: dict, user_id: UUID) -> None:
+        prod = await self.loan_repo.conn.fetchrow(
+            """
+            SELECT lp.guarantor_required, lp.name 
+            FROM loan_applications la
+            JOIN loan_products lp ON la.loan_type = lp.code
+            WHERE la.id = $1
+            """,
+            loan_id
+        )
+        if prod and not prod["guarantor_required"]:
+            from app.core.exceptions import DomainException
+            raise DomainException(f"Guarantors are not required or accepted for {prod['name']}", 422)
+
         existing = await self.loan_repo.get_stage_data(loan_id, f"guarantor_{slot}")
         existing_data = existing["data_json"] if existing and existing.get("data_json") else {}
         for k, v in form_data.items():

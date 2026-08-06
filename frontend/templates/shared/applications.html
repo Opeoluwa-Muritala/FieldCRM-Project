@@ -57,9 +57,9 @@
                     <label class="field-label" for="loanTypeFilter">Loan Category</label>
                     <select name="loan_type" id="loanTypeFilter" class="field-select">
                         <option value="all" {% if not current_loan_type or current_loan_type == 'all' %}selected{% endif %}>All Categories</option>
-                        <option value="enterprise" {% if current_loan_type == 'enterprise' %}selected{% endif %}>Enterprise Loan</option>
-                        <option value="msef" {% if current_loan_type == 'msef' %}selected{% endif %}>MSEF</option>
-                        <option value="payee" {% if current_loan_type == 'payee' %}selected{% endif %}>PAYEE</option>
+                        {% for prod in products %}
+                        <option value="{{ prod.code }}" {% if current_loan_type == prod.code %}selected{% endif %}>{{ prod.name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 

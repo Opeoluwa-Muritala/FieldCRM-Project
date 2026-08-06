@@ -62,26 +62,74 @@
             </div>
 
             <!-- Loan Category grid -->
+            <style nonce="{{ csp_nonce }}">
+                .product-family-group {
+                    margin-top: 16px;
+                    margin-bottom: 8px;
+                }
+                .product-family-header {
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: var(--primary);
+                    border-bottom: 1px solid var(--outline-variant);
+                    padding-bottom: 4px;
+                    margin-bottom: 8px;
+                }
+                .product-grid-layout {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 8px;
+                }
+                .product-card-container {
+                    padding: 12px !important;
+                    height: auto !important;
+                }
+                .product-title {
+                    display: block;
+                    font-size: 14px;
+                }
+                .product-desc {
+                    font-size: 11px;
+                    color: var(--on-surface-variant);
+                    display: block;
+                    margin-top: 4px;
+                    font-weight: normal;
+                    line-height: 1.3;
+                }
+                .product-limits {
+                    font-size: 10px;
+                    color: var(--primary-container);
+                    display: block;
+                    margin-top: 4px;
+                    font-weight: 500;
+                }
+            </style>
             <div class="csp-s-e8a8a9c051f6">
-                <label class="field-label csp-s-a56b14ff62f4">Loan Category</label>
-                <div class="csp-s-82461dce141b">
-                    <div class="toggle-option-card csp-s-fb5ec070f2bf" id="loanEnterprise" data-loan-type="enterprise">
-                        <input type="radio" name="loan_type" value="enterprise" id="radioEnterprise" required class="csp-s-d0466aa33fa8">
-                        <strong class="csp-s-a101ab7485d7">Enterprise Loan</strong>
-                    </div>
-                    <div class="toggle-option-card csp-s-fb5ec070f2bf" id="loanMsef" data-loan-type="msef">
-                        <input type="radio" name="loan_type" value="msef" id="radioMsef" class="csp-s-d0466aa33fa8">
-                        <strong class="csp-s-a101ab7485d7">MSEF</strong>
-                    </div>
-                    <div class="toggle-option-card csp-s-fb5ec070f2bf" id="loanPayee" data-loan-type="payee">
-                        <input type="radio" name="loan_type" value="payee" id="radioPayee" class="csp-s-d0466aa33fa8">
-                        <strong class="csp-s-a101ab7485d7">PAYEE</strong>
-                    </div>
-                    <div class="toggle-option-card csp-s-fb5ec070f2bf" id="loanOther" data-loan-type="other">
-                        <input type="radio" name="loan_type" value="other" id="radioOther" class="csp-s-d0466aa33fa8">
-                        <strong class="csp-s-a101ab7485d7">Other Option</strong>
+                <label class="field-label csp-s-a56b14ff62f4">Loan Product</label>
+                
+                {% set families = {
+                    'salary_personal': 'Salary & Personal Schemes',
+                    'education': 'Education Products (E-LMS)',
+                    'corporate_business': 'Corporate & SME Facilities'
+                } %}
+                
+                {% for family_code, family_name in families.items() %}
+                <div class="product-family-group">
+                    <h4 class="product-family-header">{{ family_name }}</h4>
+                    <div class="csp-s-82461dce141b product-grid-layout">
+                        {% for prod in products if prod.family == family_code %}
+                        <div class="toggle-option-card csp-s-fb5ec070f2bf product-card-container" id="loan_{{ prod.code }}" data-loan-type="{{ prod.code }}">
+                            <input type="radio" name="loan_type" value="{{ prod.code }}" id="radio_{{ prod.code }}" required class="csp-s-d0466aa33fa8">
+                            <strong class="csp-s-a101ab7485d7 product-title">{{ prod.name }}</strong>
+                            <span class="product-desc">{{ prod.description }}</span>
+                            <span class="product-limits">
+                                Limit: ₦{{ "{:,.0f}".format(prod.min_amount) }} - ₦{{ "{:,.0f}".format(prod.max_amount) }} | Tenor: {{ prod.min_tenor_months }}-{{ prod.max_tenor_months }} mos
+                            </span>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
+                {% endfor %}
             </div>
 
             <!-- Other Loan Category Description input (Hidden initially) -->
@@ -148,23 +196,25 @@
     }
 
     function selectLoanType(type) {
-        document.getElementById('radioEnterprise').checked = (type === 'enterprise');
-        document.getElementById('radioMsef').checked = (type === 'msef');
-        document.getElementById('radioPayee').checked = (type === 'payee');
-        document.getElementById('radioOther').checked = (type === 'other');
-
-        document.getElementById('loanEnterprise').classList.toggle('selected', type === 'enterprise');
-        document.getElementById('loanMsef').classList.toggle('selected', type === 'msef');
-        document.getElementById('loanPayee').classList.toggle('selected', type === 'payee');
-        document.getElementById('loanOther').classList.toggle('selected', type === 'other');
+        document.querySelectorAll('[data-loan-type]').forEach((card) => {
+            const code = card.dataset.loanType;
+            const isSelected = (code === type);
+            const radio = document.getElementById('radio_' + code);
+            if (radio) radio.checked = isSelected;
+            card.classList.toggle('selected', isSelected);
+        });
 
         const otherSlot = document.getElementById('otherCategorySlot');
         if (type === 'other') {
-            otherSlot.style.display = 'block';
-            document.getElementById('otherLoanDesc').setAttribute('required', 'required');
+            if (otherSlot) {
+                otherSlot.style.display = 'block';
+                document.getElementById('otherLoanDesc')?.setAttribute('required', 'required');
+            }
         } else {
-            otherSlot.style.display = 'none';
-            document.getElementById('otherLoanDesc').removeAttribute('required');
+            if (otherSlot) {
+                otherSlot.style.display = 'none';
+                document.getElementById('otherLoanDesc')?.removeAttribute('required');
+            }
         }
         validateForm();
     }
@@ -220,7 +270,11 @@
 
     function validateForm() {
         const custTypeChecked = document.getElementById('radioNew').checked || document.getElementById('radioExisting').checked;
-        const loanTypeChecked = document.getElementById('radioEnterprise').checked || document.getElementById('radioMsef').checked || document.getElementById('radioPayee').checked || document.getElementById('radioOther').checked;
+        
+        let loanTypeChecked = false;
+        document.querySelectorAll('[data-loan-type] input[type="radio"]').forEach((radio) => {
+            if (radio.checked) loanTypeChecked = true;
+        });
         
         const existingReady = !document.getElementById('radioExisting').checked || !!document.getElementById('borrowerId').value;
         document.getElementById('beginAppBtn').disabled = !(custTypeChecked && loanTypeChecked && existingReady);
@@ -271,6 +325,23 @@
     });
     document.getElementById('bvnSearch')?.addEventListener('input', () => {
         clearTimeout(searchTimer); searchTimer = setTimeout(searchCustomers, 350);
+    });
+    document.getElementById('bvnSearch')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            searchCustomers();
+        }
+    });
+    document.getElementById('newAppForm')?.addEventListener('submit', (e) => {
+        const custTypeChecked = document.getElementById('radioNew').checked || document.getElementById('radioExisting').checked;
+        let loanTypeChecked = false;
+        document.querySelectorAll('[data-loan-type] input[type="radio"]').forEach((radio) => {
+            if (radio.checked) loanTypeChecked = true;
+        });
+        const existingReady = !document.getElementById('radioExisting').checked || !!document.getElementById('borrowerId').value;
+        if (!(custTypeChecked && loanTypeChecked && existingReady)) {
+            e.preventDefault();
+        }
     });
     document.getElementById('customerSearchBtn')?.addEventListener('click', searchCustomers);
     document.getElementById('customerResults')?.addEventListener('click', (event) => {

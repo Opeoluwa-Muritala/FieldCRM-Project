@@ -20,8 +20,9 @@
                     <div class="csp-s-b9270eba65cc">
                         <label class="field-label csp-s-c3017a22a7d3">Product / Loan Type <span class="csp-s-cdee27c94461">*</span></label>
                         <select name="loan_type" class="field-select csp-s-37ab52c9d67a" required>
-                            <option value="msef">MSEF</option>
-                            <option value="enterprise">Enterprise</option>
+                            {% for prod in products %}
+                            <option value="{{ prod.code }}">{{ prod.name }}</option>
+                            {% endfor %}
                         </select>
                     </div>
 

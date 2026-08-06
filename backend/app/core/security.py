@@ -77,6 +77,7 @@ def create_access_token(
     expires_delta: Union[timedelta, None] = None,
     session_type: str = "web",
 ) -> str:
+    from uuid import uuid4
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
@@ -90,6 +91,7 @@ def create_access_token(
         "iat": datetime.utcnow(),
         "type": "access",
         "session_type": session_type,
+        "jti": str(uuid4()),
     }
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt

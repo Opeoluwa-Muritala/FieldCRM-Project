@@ -231,6 +231,35 @@
 
             <!-- STEP 3: GUARANTORS -->
             {% if step == 3 %}
+            {% if product and not product.guarantor_required %}
+            <style nonce="{{ csp_nonce }}">
+                .no-guarantor-warning {
+                    padding: 24px;
+                    border-radius: 12px;
+                    background-color: var(--surface-variant);
+                    border: 1px solid var(--outline);
+                    color: var(--on-surface-variant);
+                    text-align: center;
+                    margin-bottom: 24px;
+                }
+                .no-guarantor-warning strong {
+                    color: var(--primary);
+                }
+                .no-guarantor-title {
+                    margin: 0;
+                    font-size: 16px;
+                }
+                .no-guarantor-subtitle {
+                    margin: 8px 0 0 0;
+                    font-size: 13px;
+                    opacity: 0.8;
+                }
+            </style>
+            <div class="no-guarantor-warning">
+                <p class="no-guarantor-title"><strong>Notice:</strong> Guarantors are not required or accepted for <strong>{{ product.name }}</strong>.</p>
+                <p class="no-guarantor-subtitle">You can safely skip this step and click "Next" below.</p>
+            </div>
+            {% else %}
             <div class="csp-s-e3d940229f43">
                 <!-- Guarantor Slot 1 -->
                 <div class="csp-s-d0919400b602">
@@ -285,19 +314,22 @@
                         <a href="/client-form/apply/guarantors/2/step/1" class="btn-primary-filled csp-s-619cfa472455">Complete Guarantor Form &rarr;</a>
                     </div>
                 </div>
+            {% endif %}
             </div>
             {% endif %}
 
             <!-- STEP 4: EMPLOYMENT & BUSINESS -->
             {% if step == 4 %}
-            <div class="csp-s-f6279acc7326">
+            <div class="csp-s-f6279acc7326" {% if product.family == 'corporate_business' %}hidden{% endif %}>
                 <label class="field-label">Employment Type</label>
                 <div class="pill-radio-group" id="empTypeGroup">
                     {% for opt in ["Full-time", "Part-time", "Contract Staff", "Public Servant", "Self-employed"] %}
-                    <div class="pill-radio-btn">
-                        <input type="radio" name="employment_type" value="{{ opt }}" id="emp_{{ opt }}" {% if data.employment_type == opt or (loop.first and not data.employment_type) %}checked{% endif %}>
-                        <label for="emp_{{ opt }}">{{ opt }}</label>
-                    </div>
+                        {% if (product.family == 'salary_personal' and opt != 'Self-employed') or (product.family == 'corporate_business' and opt == 'Self-employed') or (product.family != 'salary_personal' and product.family != 'corporate_business') %}
+                        <div class="pill-radio-btn">
+                            <input type="radio" name="employment_type" value="{{ opt }}" id="emp_{{ opt }}" {% if data.employment_type == opt or (product.family == 'corporate_business' and opt == 'Self-employed') or (product.family == 'salary_personal' and opt == 'Full-time' and not data.employment_type) or (loop.first and not data.employment_type) %}checked{% endif %}>
+                            <label for="emp_{{ opt }}">{{ opt }}</label>
+                        </div>
+                        {% endif %}
                     {% endfor %}
                 </div>
             </div>
@@ -467,6 +499,28 @@
                     <label class="field-label">Loan Tenor (Months) <span class="required">*</span></label>
                     <input type="number" name="tenor" class="field-input" value="{{ data.tenor or '' }}" required>
                 </div>
+
+                {% if product.code == 'overdraft' %}
+                <div class="form-group">
+                    <label class="field-label">Overdraft Limit (₦) <span class="required">*</span></label>
+                    <input type="number" name="overdraft_limit" class="field-input" value="{{ data.overdraft_limit or '' }}" required>
+                </div>
+                {% endif %}
+
+                {% if product.code == 'asset_finance' or product.code == 'equipment_procurement' %}
+                <div class="form-group">
+                    <label class="field-label">Asset Price (₦) <span class="required">*</span></label>
+                    <input type="number" name="asset_price" class="field-input" value="{{ data.asset_price or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Equity Contribution (₦) <span class="required">*</span></label>
+                    <input type="number" name="equity_contribution" class="field-input" value="{{ data.equity_contribution or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Supplier Name <span class="required">*</span></label>
+                    <input type="text" name="supplier_name" class="field-input" value="{{ data.supplier_name or '' }}" required>
+                </div>
+                {% endif %}
 
                 <div class="form-group-full">
                     <label class="field-label">Type of Security/Collateral <span class="required">*</span></label>
@@ -1331,7 +1385,7 @@
         if (reviewConfirmed?.checked) {
             onReviewConfirmedChanged(reviewConfirmed);
         }
-        if (document.getElementById('emp_Full-time')) {
+        if (document.querySelector('input[name="employment_type"]')) {
             toggleEmploymentFields();
         }
         if (document.getElementById('sec_Shop Stock')) {

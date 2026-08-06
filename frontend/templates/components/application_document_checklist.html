@@ -1,6 +1,6 @@
 <section class="page-card application-document-checklist" style="margin-top:28px">
   <div class="page-card-header"><h3 class="page-card-title">Documents Checklist</h3><p class="page-card-subtitle">Required evidence and its current verification status.</p></div>
-  {% set required_documents = [('passport_photo','Passport Photograph'),('id_card','Valid ID Card'),('utility_bill','Utility Bill'),('bank_statement','Bank Statement'),('guarantor_form_1','Guarantor Form 1'),('guarantor_form_2','Guarantor Form 2'),('pledge_form','Pledge Agreement')] %}
+  {% set required_documents = required_documents or [('passport_photo','Passport Photograph'),('id_card','Valid ID Card'),('utility_bill','Utility Bill'),('bank_statement','Bank Statement'),('guarantor_form_1','Guarantor Form 1'),('guarantor_form_2','Guarantor Form 2'),('pledge_form','Pledge Agreement')] %}
   <div class="custom-table-container"><table class="custom-table">
     <thead><tr><th>Required Document</th><th>Uploaded File</th><th>Status</th><th>Action</th></tr></thead>
     <tbody>{% for category, label in required_documents %}

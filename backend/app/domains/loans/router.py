@@ -570,6 +570,7 @@ async def render_applications_list(
         to_date=to_date,
         branch_id=branch_id,
     )
+    products = await conn.fetch("SELECT * FROM loan_products WHERE active = TRUE ORDER BY name")
     ctx = build_template_context(
         request,
         current_user,
@@ -582,20 +583,24 @@ async def render_applications_list(
         to_date=to_date,
         active_tab="applications",
         active_page="applications",
+        products=[dict(p) for p in products],
     )
     return templates.TemplateResponse(request, "shared/applications.html", ctx)
 
 @router.get("/applications/new")
 async def render_new_application(
     request: Request,
+    conn = Depends(db_conn),
     current_user = Depends(RoleChecker(["Account Officer"]))
 ):
     """Renders Page 3 customer selection page."""
+    products = await conn.fetch("SELECT * FROM loan_products WHERE active = TRUE ORDER BY name")
     ctx = build_template_context(
         request,
         current_user,
         active_tab="new_application",
         active_page="new_application",
+        products=[dict(p) for p in products],
     )
     return templates.TemplateResponse(request, "shared/new_application.html", ctx)
 
@@ -713,6 +718,38 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
     aml_check = snapshot.get("aml_check")
     checklist_map = snapshot.get("checklist_map") or {}
 
+    friendly_labels = {
+        "passport_photo": "Passport Photograph",
+        "id_card": "Valid ID Card",
+        "utility_bill": "Utility Bill",
+        "bank_statement": "Bank Statement",
+        "guarantor_form_1": "Guarantor Form 1",
+        "guarantor_form_2": "Guarantor Form 2",
+        "pledge_form": "Pledge Agreement",
+        "business_proof": "Business Registration/Permit",
+        "employment_letter": "Employment Letter / Payslip",
+        "shop_photos": "Shop / Business Premises Photos",
+    }
+    product_docs_req = await conn.fetch(
+        "SELECT doc_type, is_mandatory FROM product_document_requirements WHERE product_code = $1",
+        app.loan_type
+    )
+    if product_docs_req:
+        required_docs_list = [
+            (r["doc_type"], friendly_labels.get(r["doc_type"], r["doc_type"].replace("_", " ").title()))
+            for r in product_docs_req
+        ]
+    else:
+        required_docs_list = [
+            ('passport_photo', 'Passport Photograph'),
+            ('id_card', 'Valid ID Card'),
+            ('utility_bill', 'Utility Bill'),
+            ('bank_statement', 'Bank Statement'),
+            ('guarantor_form_1', 'Guarantor Form 1'),
+            ('guarantor_form_2', 'Guarantor Form 2'),
+            ('pledge_form', 'Pledge Agreement')
+        ]
+
     crc_configured = bool(settings.CRC_API_KEY)
     cr_configured = bool(settings.CREDIT_REGISTRY_USERNAME and settings.CREDIT_REGISTRY_PASSWORD)
     bureau_multiple_configured = crc_configured and cr_configured
@@ -733,6 +770,7 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
         summary=readiness_summary,
         audit_events=audit_events,
         flags=flags,
+        required_documents=required_docs_list,
         ver_check=dict(ver_check) if ver_check else None,
         bureau_sub=dict(bureau_sub) if bureau_sub else None,
         bureau_multiple_configured=bureau_multiple_configured,
@@ -852,6 +890,7 @@ async def render_wizard_step(
                 else:
                     signatures["primary"] = sig["signature_image_ref"]
 
+    product = await conn.fetchrow("SELECT * FROM loan_products WHERE code = $1", app.loan_type)
     ctx = build_template_context(
         request,
         current_user,
@@ -864,6 +903,7 @@ async def render_wizard_step(
         applicant_signed=applicant_signed,
         signatures=signatures,
         review_mode=user_role in reviewer_roles,
+        product=dict(product) if product else {},
     )
     return templates.TemplateResponse(request, "shared/application_wizard.html", ctx)
 
@@ -920,6 +960,13 @@ async def process_wizard_step(
         )
 
     if step == 3 and str(open_guarantor or "") in {"1", "2"}:
+        prod = await conn.fetchrow(
+            "SELECT guarantor_required, name FROM loan_products WHERE code = $1",
+            app.loan_type
+        )
+        if prod and not prod["guarantor_required"]:
+            raise HTTPException(status_code=400, detail=f"Guarantors are not required or accepted for {prod['name']}")
+
         guarantor_slot = int(open_guarantor)
         prefix = f"guarantor_{guarantor_slot}_"
         await conn.execute(
@@ -2988,10 +3035,12 @@ async def list_interest_presets(
     rows = await conn.fetch(
         "SELECT id, loan_type, rate, rate_type, effective_from, set_at FROM interest_rate_presets ORDER BY set_at DESC;"
     )
+    products = await conn.fetch("SELECT * FROM loan_products WHERE active = TRUE ORDER BY name")
     ctx = build_template_context(
         request,
         current_user,
         presets=[dict(r) for r in rows],
+        products=[dict(p) for p in products],
         active_tab="admin",
         active_page="interest_presets"
     )
@@ -3458,9 +3507,10 @@ async def render_share_intake(
     officer = await user_repo.get_by_id(UUID(officer_id))
     officer_name = officer.full_name if officer else "Mainstreet Officer"
     
+    products = await conn.fetch("SELECT * FROM loan_products WHERE active = TRUE ORDER BY name")
     return templates.TemplateResponse(
         request, "shared/client_start.html",
-        {"token": token, "officer_name": officer_name, "error": None}
+        {"token": token, "officer_name": officer_name, "error": None, "products": [dict(p) for p in products]}
     )
 
 
@@ -3834,6 +3884,8 @@ async def render_client_wizard_step(
     officer = await UserRepository(conn).get_by_id(UUID(officer_id))
     officer_name = officer.full_name if officer else "Your Loan Officer"
 
+    product = await conn.fetchrow("SELECT * FROM loan_products WHERE code = $1", app.loan_type)
+
     ctx = build_template_context(
         request,
         user=None,
@@ -3843,6 +3895,7 @@ async def render_client_wizard_step(
         officer_name=officer_name,
         assistance_required=app.assistance_required,
         hide_tabbar=True,
+        product=dict(product) if product else {},
     )
     return templates.TemplateResponse(request, "shared/client_wizard.html", ctx)
 

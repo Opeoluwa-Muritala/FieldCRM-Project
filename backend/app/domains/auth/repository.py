@@ -82,3 +82,63 @@ class AuthRepository(BaseRepository):
             """UPDATE auth_sessions SET revoked_at=coalesce(revoked_at,NOW()), revoked_reason=$2
                WHERE refresh_token_hash=$1""", token_hash, reason
         )
+
+    # ----------------------------------------------------
+    # New single-use refresh_tokens table repository layer
+    # ----------------------------------------------------
+    async def create_refresh_token(
+        self, *, user_id: UUID, token_hash: str, family_id: UUID, expires_at: datetime, user_agent: str | None = None, ip_address: str | None = None
+    ):
+        return await self.conn.fetchrow(
+            """INSERT INTO refresh_tokens (user_id, token_hash, family_id, expires_at, user_agent, ip_address)
+               VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, family_id, expires_at""",
+            user_id, token_hash, family_id, expires_at, user_agent, ip_address
+        )
+
+    async def get_refresh_token_by_hash_for_update(self, token_hash: str):
+        return await self.conn.fetchrow(
+            "SELECT * FROM refresh_tokens WHERE token_hash = $1 FOR UPDATE",
+            token_hash
+        )
+
+    async def mark_refresh_token_used(self, token_id: UUID, replaced_by_id: UUID) -> None:
+        await self.conn.execute(
+            "UPDATE refresh_tokens SET used_at = NOW(), replaced_by = $2 WHERE id = $1",
+            token_id, replaced_by_id
+        )
+
+    async def revoke_refresh_token_family(self, family_id: UUID) -> None:
+        await self.conn.execute(
+            "UPDATE refresh_tokens SET revoked_at = NOW() WHERE family_id = $1 AND revoked_at IS NULL",
+            family_id
+        )
+
+    async def revoke_refresh_token_by_hash(self, token_hash: str) -> None:
+        await self.conn.execute(
+            "UPDATE refresh_tokens SET revoked_at = NOW() WHERE token_hash = $1 AND revoked_at IS NULL",
+            token_hash
+        )
+
+    async def cleanup_expired_tokens(self, retention_days: int = 30) -> int:
+        result = await self.conn.execute(
+            """DELETE FROM refresh_tokens 
+               WHERE expires_at < NOW() - $1 * INTERVAL '1 day' 
+                  OR revoked_at < NOW() - $1 * INTERVAL '1 day'
+                  OR (used_at < NOW() - $1 * INTERVAL '1 day' AND replaced_by IS NOT NULL)""",
+            retention_days
+        )
+        try:
+            return int(result.split()[-1])
+        except Exception:
+            return 0
+
+    async def list_active_sessions_for_user(self, user_id: UUID) -> list[dict]:
+        rows = await self.conn.fetch(
+            """SELECT DISTINCT ON (family_id) id, family_id, issued_at, expires_at, user_agent, ip_address
+               FROM refresh_tokens
+               WHERE user_id = $1 AND revoked_at IS NULL AND expires_at > NOW() AND used_at IS NULL
+               ORDER BY family_id, issued_at DESC""",
+            user_id
+        )
+        return [dict(r) for r in rows]
+
