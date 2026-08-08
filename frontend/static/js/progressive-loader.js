@@ -1,4 +1,24 @@
 (() => {
+    // Treat partial HTML and cached HTML as untrusted. Even same-origin
+    // responses can contain stored user content, so strip executable elements,
+    // event-handler attributes, and script-bearing URLs before DOM insertion.
+    const sanitizeHTML = (html) => {
+        const template = document.createElement('template');
+        template.innerHTML = String(html || '');
+        template.content.querySelectorAll('script, iframe, object, embed, base, meta, link').forEach(node => node.remove());
+        template.content.querySelectorAll('*').forEach(node => {
+            [...node.attributes].forEach(attribute => {
+                const name = attribute.name.toLowerCase();
+                const value = attribute.value.trim().toLowerCase();
+                if (name.startsWith('on') || (['href', 'src', 'action', 'formaction'].includes(name) &&
+                    (value.startsWith('javascript:') || value.startsWith('vbscript:') || value.startsWith('data:text/html')))) {
+                    node.removeAttribute(attribute.name);
+                }
+            });
+        });
+        return template.innerHTML;
+    };
+
     // Memory and LocalStorage cache for Stale-While-Revalidate
     const cacheGet = (key) => {
         try { return localStorage.getItem('fieldcrm:swr:' + key); } catch (_) { return null; }
@@ -103,7 +123,7 @@
             const doc = parser.parseFromString(html, 'text/html');
             const newElement = doc.getElementById(element.id) || doc.querySelector(`[data-section-src="${src}"]`);
             
-            const contentHTML = newElement ? newElement.innerHTML : html;
+            const contentHTML = sanitizeHTML(newElement ? newElement.innerHTML : html);
 
             // Only update DOM if changed to prevent layout shifts
             if (element.innerHTML !== contentHTML) {
@@ -177,7 +197,7 @@
             // Stale-While-Revalidate: load cache instantly if present
             const cached = cacheGet(sectionId);
             if (cached) {
-                element.innerHTML = cached;
+                element.innerHTML = sanitizeHTML(cached);
             }
             
             fetchSection(element);
