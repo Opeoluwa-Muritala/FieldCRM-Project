@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer
 from time import perf_counter
 from app.core.database import get_connection
@@ -53,6 +53,7 @@ async def get_current_user_from_token(token: str, conn=None) -> UserRow:
 
 async def get_current_user(
     request: Request,
+    response: Response,
     token: str = Depends(oauth2_scheme),
 ) -> UserRow:
     # Resolve token from OAuth2 authorization header, query params, or session cookies
@@ -65,6 +66,55 @@ async def get_current_user(
     )
     try:
         user = await get_current_user_from_token(token)
+    except HTTPException as exc:
+        if exc.status_code == 401:
+            # Attempt transparent refresh if a refresh token is present
+            refresh_token = request.cookies.get("refresh_token")
+            if refresh_token:
+                try:
+                    from app.core.database import get_connection
+                    from app.domains.auth.repository import AuthRepository
+                    from app.domains.auth.service import AuthService
+                    from app.config import settings
+                    
+                    async with get_connection() as conn:
+                        service = AuthService(AuthRepository(conn))
+                        ip_address = request.client.host if request.client else None
+                        user_agent = request.headers.get("user-agent")
+                        
+                        session_data = await service.rotate_refresh_token(
+                            refresh_token, client_type="web", user_agent=user_agent, ip_address=ip_address
+                        )
+                        
+                        new_token = session_data["access_token"]
+                        user = await get_current_user_from_token(new_token, conn=conn)
+                        
+                        is_secure = settings.COOKIE_SECURE or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
+                        response.set_cookie(
+                            key="session",
+                            value=new_token,
+                            httponly=True,
+                            secure=is_secure,
+                            samesite="lax",
+                            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                            path="/",
+                        )
+                        response.set_cookie(
+                            key="refresh_token",
+                            value=session_data["refresh_token"],
+                            httponly=True,
+                            secure=is_secure,
+                            samesite="lax",
+                            expires=session_data["expires_at"],
+                            path="/",
+                        )
+                except Exception:
+                    # Propagate original 401 if refresh attempt fails
+                    raise exc
+            else:
+                raise exc
+        else:
+            raise exc
     finally:
         record_duration("auth", started_at)
     # Response-cache invalidation uses this only after a successful write.

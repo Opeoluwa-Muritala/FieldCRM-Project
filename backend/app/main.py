@@ -529,7 +529,12 @@ async def login_web(
     repo = AuthRepository(conn)
     service = AuthService(repo)
     try:
-        token = await service.authenticate_user(username, password)
+        ip_address = request.client.host if request.client else None
+        user_agent = request.headers.get("user-agent")
+        session_data = await service.authenticate_web(
+            username, password, user_agent=user_agent, ip_address=ip_address
+        )
+        token = session_data["access_token"]
     except Exception as exc:
         logger.error("Login authentication failed for email: [REDACTED]")
         next_url = next or ""
@@ -553,12 +558,17 @@ async def login_web(
         value=token,
         httponly=True,
         secure=is_secure,
-        # Account Officers commonly open upload and visitation tasks from
-        # notification/deep links. Lax keeps the authenticated session on
-        # safe top-level navigation while retaining CSRF protection for
-        # cross-site form submissions.
         samesite="lax",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+    redirect.set_cookie(
+        key="refresh_token",
+        value=session_data["refresh_token"],
+        httponly=True,
+        secure=is_secure,
+        samesite="lax",
+        expires=session_data["expires_at"],
         path="/",
     )
     return redirect
@@ -571,6 +581,7 @@ async def logout_web(next: str = None):
 
     redirect = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
     redirect.delete_cookie(key="session", path="/")
+    redirect.delete_cookie(key="refresh_token", path="/")
     redirect.delete_cookie(key="__Host-session", path="/")
     return redirect
 
