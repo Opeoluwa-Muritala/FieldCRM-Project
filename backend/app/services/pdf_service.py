@@ -43,12 +43,12 @@ def _reportlab_pdf(html: str) -> bytes:
     from html.parser import HTMLParser
     from xml.sax.saxutils import escape
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
     from reportlab.platypus import (
-        BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer, Table, TableStyle,
+        BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer, Table, TableStyle, NextPageTemplate,
     )
 
     class DocumentParser(HTMLParser):
@@ -111,49 +111,89 @@ def _reportlab_pdf(html: str) -> bytes:
     parser = DocumentParser()
     parser.feed(html)
     styles = getSampleStyleSheet()
+    
     body = ParagraphStyle("offer-body", parent=styles["BodyText"], fontName="Helvetica", fontSize=9, leading=12, alignment=TA_JUSTIFY, spaceAfter=6)
-    heading = ParagraphStyle("offer-heading", parent=body, fontName="Helvetica-Bold", fontSize=10, leading=13, alignment=TA_CENTER, spaceBefore=8, spaceAfter=8)
+    h1_style = ParagraphStyle("offer-h1", parent=body, fontName="Helvetica-Bold", fontSize=14, leading=18, alignment=TA_CENTER, spaceBefore=12, spaceAfter=12)
+    h2_style = ParagraphStyle("offer-h2", parent=body, fontName="Helvetica-Bold", fontSize=11, leading=15, alignment=TA_CENTER, spaceBefore=10, spaceAfter=10)
+    h3_style = ParagraphStyle("offer-h3", parent=body, fontName="Helvetica-Bold", fontSize=10, leading=13, alignment=TA_LEFT, spaceBefore=8, spaceAfter=6)
     small = ParagraphStyle("offer-small", parent=body, fontSize=8, leading=10)
 
     def para(text, style=body):
         return Paragraph(escape(text).replace("&lt;br/&gt;", "<br/>") , style)
 
-    story = []
+    # Initialize story with template switch command for subsequent pages
+    story = [NextPageTemplate("LaterPages")]
     for kind, value in parser.elements:
         if kind == "block":
             tag, text = value
-            if tag in {"h1", "h2", "h3"}:
-                story.append(para(text, heading))
+            if tag == "h1":
+                story.append(para(text, h1_style))
+            elif tag == "h2":
+                story.append(para(text, h2_style))
+            elif tag == "h3":
+                story.append(para(text, h3_style))
             elif tag == "li":
                 story.append(para("• " + text, body))
             else:
                 story.append(para(text, body))
             continue
         rows = value
+        cols_count = len(rows[0]) if rows else 0
         data = [[para(cell, small) for cell in row] for row in rows if row]
         if data:
             table = Table(data, repeatRows=1 if len(data) > 1 else 0, colWidths=None)
-            table.setStyle(TableStyle([
-                ("GRID", (0, 0), (-1, -1), 0.35, colors.black),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ]))
+            if cols_count == 2:
+                # Terms and conditions table: borderless, with custom spacing
+                table.setStyle(TableStyle([
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]))
+            else:
+                # Repayment schedule: keep light grey border grids and background
+                table.setStyle(TableStyle([
+                    ("GRID", (0, 0), (-1, -1), 0.35, colors.grey),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]))
             story.extend([Spacer(1, 4), table, Spacer(1, 8)])
 
-    if not story:
+    if len(story) <= 1:
         story.append(para("FieldCRM document"))
 
     buffer = io.BytesIO()
     class OfferDocTemplate(BaseDocTemplate):
         def __init__(self, filename, **kwargs):
             super().__init__(filename, **kwargs)
-            frame = Frame(self.leftMargin, self.bottomMargin, self.width, self.height, id="offer")
-            self.addPageTemplates([PageTemplate(id="offer", frames=frame, onPage=self._footer)])
+            # First page frame: starts lower to allow letterhead space (topMargin=50mm)
+            frame_first = Frame(
+                self.leftMargin,
+                15 * mm,
+                self.width,
+                A4[1] - 50 * mm - 15 * mm,
+                id="first",
+                topPadding=0, bottomPadding=0, leftPadding=0, rightPadding=0
+            )
+            # Subsequent pages frame: standard top margin (topMargin=20mm)
+            frame_later = Frame(
+                self.leftMargin,
+                15 * mm,
+                self.width,
+                A4[1] - 20 * mm - 15 * mm,
+                id="later",
+                topPadding=0, bottomPadding=0, leftPadding=0, rightPadding=0
+            )
+            self.addPageTemplates([
+                PageTemplate(id="FirstPage", frames=frame_first, onPage=self._footer),
+                PageTemplate(id="LaterPages", frames=frame_later, onPage=self._footer)
+            ])
 
         def _footer(self, canvas, doc):
             canvas.saveState()
@@ -162,7 +202,7 @@ def _reportlab_pdf(html: str) -> bytes:
             canvas.drawRightString(A4[0] - 15 * mm, 9 * mm, f"Page {doc.page}")
             canvas.restoreState()
 
-    doc = OfferDocTemplate(buffer, pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm, topMargin=50 * mm, bottomMargin=15 * mm)
+    doc = OfferDocTemplate(buffer, pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm, topMargin=20 * mm, bottomMargin=15 * mm)
     doc.build(story)
     return buffer.getvalue()
 
