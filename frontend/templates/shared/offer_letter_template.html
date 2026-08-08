@@ -293,7 +293,7 @@
     <div class="section-title">Securities:</div>
     <ol class="numbered-list">
       {% for sec in securities %}
-      <li>{{ sec }}</li>
+      <li>{{ sec|safe }}</li>
       {% endfor %}
     </ol>
   </div>
@@ -301,7 +301,7 @@
   <!-- Boilerplate Legal Paragraphs -->
   <div class="boilerplate-section">
     {% for para in boilerplate_paragraphs %}
-    <p>{{ para }}</p>
+    <p>{{ para|safe }}</p>
     {% endfor %}
   </div>
 
@@ -310,7 +310,7 @@
     <div class="section-title">Conditions Precedent to Drawdown:</div>
     <ol class="numbered-list">
       {% for cond in conditions_precedent %}
-      <li>{{ cond }}</li>
+      <li>{{ cond|safe }}</li>
       {% endfor %}
     </ol>
   </div>

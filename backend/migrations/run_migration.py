@@ -32,6 +32,7 @@ MIGRATION_FILES = [
     "034_loan_products.sql",
     "035_refresh_tokens.sql",
     "036_offer_letter_product_configs.sql",
+    "037_offer_letter_product_templates.sql",
 ]
 
 
