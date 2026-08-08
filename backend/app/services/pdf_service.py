@@ -203,7 +203,7 @@ def _reportlab_pdf(html: str) -> bytes:
             if is_sig_table:
                 # Signature table - split into two columns with an empty gap in the middle
                 data = []
-                sig_style = ParagraphStyle("offer-sig", parent=body, fontName="Helvetica-Bold", fontSize=8, leading=10, alignment=TA_LEFT)
+                sig_style = ParagraphStyle("offer-sig", parent=body, fontName="Helvetica-Bold", fontSize=9, leading=12, alignment=TA_LEFT)
                 for row in rows:
                     if len(row) >= 2:
                         sig1 = para(row[0].upper(), sig_style)
@@ -212,18 +212,18 @@ def _reportlab_pdf(html: str) -> bytes:
                 if data:
                     printable_width = A4[0] - 30 * mm
                     col_widths = [printable_width * 0.42, printable_width * 0.16, printable_width * 0.42]
-                    table = Table(data, colWidths=col_widths, spaceBefore=20)
+                    table = Table(data, colWidths=col_widths)
                     table.setStyle(TableStyle([
                         ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
                         ("ALIGN", (0, 0), (-1, -1), "LEFT"),
                         ("LINEABOVE", (0, 0), (0, -1), 0.75, colors.black),
                         ("LINEABOVE", (2, 0), (2, -1), 0.75, colors.black),
-                        ("TOPPADDING", (0, 0), (-1, -1), 35), # space for signing
+                        ("TOPPADDING", (0, 0), (-1, -1), 6), # sit close beneath the line
                         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
                         ("LEFTPADDING", (0, 0), (-1, -1), 0),
                         ("RIGHTPADDING", (0, 0), (-1, -1), 0),
                     ]))
-                    story.extend([Spacer(1, 10), table, Spacer(1, 10)])
+                    story.extend([Spacer(1, 30), table, Spacer(1, 10)])
             else:
                 # Terms and conditions table: borderless with 32% label width
                 data = []
