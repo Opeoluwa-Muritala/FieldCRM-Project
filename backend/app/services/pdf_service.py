@@ -98,14 +98,15 @@ def _reportlab_pdf(html: str) -> bytes:
                     self.elements.append(("table", self._table))
                 self._table = None
             elif self._ignored == 0 and tag in self.block_tags:
-                text = " ".join(self._text).strip()
-                if text and self._table is None:
-                    if tag == "li" and "ol" in self._tag_stack:
-                        self.list_index += 1
-                        text = f"{self.list_index}. {text}"
-                    self.blocks.append((tag, text))
-                    self.elements.append(("block", (tag, text)))
-                self._text = []
+                if self._table is None:
+                    text = " ".join(self._text).strip()
+                    if text:
+                        if tag == "li" and "ol" in self._tag_stack:
+                            self.list_index += 1
+                            text = f"{self.list_index}. {text}"
+                        self.blocks.append((tag, text))
+                        self.elements.append(("block", (tag, text)))
+                    self._text = []
             if tag == "ol":
                 self.list_index = 0
             if self._tag_stack:
