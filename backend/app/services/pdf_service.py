@@ -170,8 +170,23 @@ def generate_audit_package(loan: dict, document_paths: list[tuple[str, bytes]], 
     return buf.getvalue()
 
 
-def generate_offer_letter_pdf(loan: dict, org: dict, rate: float, clauses: list[str]) -> bytes:
-    clause_paragraphs = "".join(f"<p style='margin: 12px 0;'>&bull; {c}</p>" for c in clauses)
+def generate_offer_letter_pdf(
+    loan: dict | None = None,
+    org: dict | None = None,
+    rate: float | None = None,
+    clauses: list[str] | None = None,
+    context: dict | None = None
+) -> bytes:
+    if context:
+        from app.core.templates import create_templates
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        templates_dir = os.path.abspath(os.path.join(base_dir, "../../../frontend/templates"))
+        templates = create_templates(templates_dir)
+        template = templates.get_template("shared/offer_letter_template.html")
+        html = template.render(context)
+        return _to_pdf(html)
+
+    clause_paragraphs = "".join(f"<p style='margin: 12px 0;'>&bull; {c}</p>" for c in (clauses or []))
     html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>Offer Letter</title>
 <style>
@@ -184,16 +199,16 @@ def generate_offer_letter_pdf(loan: dict, org: dict, rate: float, clauses: list[
   .clauses-section {{ margin-top: 24px; border-top: 2px solid #000; padding-top: 12px; }}
 </style></head><body>
 <div class="header">
-  <h1>{org.get('name', 'Mainstreet Microfinance Bank')}</h1>
+  <h1>{(org or {}).get('name', 'Mainstreet Microfinance Bank')}</h1>
   <h2>Letter of Offer for Credit Facility</h2>
-  <p>Reference: <strong>{loan.get('ref_no', '—')}</strong> &nbsp;|&nbsp; Date: <strong>{datetime.now().strftime('%d %B %Y')}</strong></p>
+  <p>Reference: <strong>{(loan or {}).get('ref_no', '—')}</strong> &nbsp;|&nbsp; Date: <strong>{datetime.now().strftime('%d %B %Y')}</strong></p>
 </div>
-<div class="row"><span class="label">Borrower Name:</span> {loan.get('applicant_name', '—')}</div>
-<div class="row"><span class="label">Facility Limit:</span> {_naira(loan.get('amount'))}</div>
+<div class="row"><span class="label">Borrower Name:</span> {(loan or {}).get('applicant_name', '—')}</div>
+<div class="row"><span class="label">Facility Limit:</span> {_naira((loan or {}).get('amount'))}</div>
 <div class="row"><span class="label">Interest Rate Snapshot:</span> {rate}% p.a.</div>
-<div class="row"><span class="label">Tenor:</span> {loan.get('tenor_months', '—')} months</div>
-<div class="row"><span class="label">Facility Type:</span> {loan.get('loan_type', '—')}</div>
-<div class="row"><span class="label">Repayment Frequency:</span> {loan.get('repayment_frequency', 'Monthly')}</div>
+<div class="row"><span class="label">Tenor:</span> {(loan or {}).get('tenor_months', '—')} months</div>
+<div class="row"><span class="label">Facility Type:</span> {(loan or {}).get('loan_type', '—')}</div>
+<div class="row"><span class="label">Repayment Frequency:</span> {(loan or {}).get('repayment_frequency', 'Monthly')}</div>
 
 <div class="clauses-section">
   <h3>Terms &amp; Special Conditions</h3>

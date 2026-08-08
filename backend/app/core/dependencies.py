@@ -55,9 +55,14 @@ async def get_current_user(
     request: Request,
     token: str = Depends(oauth2_scheme),
 ) -> UserRow:
-    # Resolve token from OAuth2 authorization header or session cookies
+    # Resolve token from OAuth2 authorization header, query params, or session cookies
     started_at = perf_counter()
-    token = token or request.cookies.get("session") or request.cookies.get("__Host-session")
+    token = (
+        token
+        or request.query_params.get("token")
+        or request.cookies.get("session")
+        or request.cookies.get("__Host-session")
+    )
     try:
         user = await get_current_user_from_token(token)
     finally:

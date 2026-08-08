@@ -170,16 +170,57 @@ async def download_document(
     current_user=Depends(get_current_user),
     conn=Depends(db_conn),
 ):
-    """Authorise in FieldCRM before issuing a short-lived Cloudinary URL."""
+    """Authorise in FieldCRM before issuing a streamed file response with client name."""
     document = await DocumentRepository(conn).get_by_id_for_org(document_id, current_user.org_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
+
+    # Determine a user-friendly filename containing the applicant name
+    filename = document.get("original_name")
+    if document.get("loan_id"):
+        loan_app = await conn.fetchrow(
+            "SELECT applicant_name FROM loan_applications WHERE id = $1;",
+            document["loan_id"]
+        )
+        if loan_app and loan_app["applicant_name"]:
+            applicant_name = loan_app["applicant_name"]
+            if document.get("doc_type") == "offer_letter":
+                filename = f"{applicant_name} - Offer Letter.pdf"
+            else:
+                orig_name = document.get("original_name", "")
+                if applicant_name.lower() not in orig_name.lower():
+                    # Format as e.g. "Oboh Cletus - utility_bill.pdf"
+                    filename = f"{applicant_name} - {orig_name}"
+
     local_path = resolve_local_document_path(document.get("stored_path"))
     if not document.get("cloud_public_id") and local_path:
-        return FileResponse(local_path, media_type=document.get("mime_type"), filename=document.get("original_name"))
+        return FileResponse(local_path, media_type=document.get("mime_type"), filename=filename)
+
     if not document.get("cloud_public_id"):
         raise HTTPException(status_code=404, detail="Document not found")
-    return RedirectResponse(signed_download_url(document["cloud_public_id"], document["mime_type"]))
+
+    import httpx
+    import urllib.parse
+    from fastapi.responses import StreamingResponse
+
+    cloud_url = signed_download_url(document["cloud_public_id"], document["mime_type"])
+
+    async def file_streamer():
+        async with httpx.AsyncClient() as client:
+            async with client.stream("GET", cloud_url) as r:
+                if r.status_code != 200:
+                    raise HTTPException(status_code=r.status_code, detail="Failed to fetch document from cloud storage")
+                async for chunk in r.aiter_bytes():
+                    yield chunk
+
+    encoded_filename = urllib.parse.quote(filename)
+    return StreamingResponse(
+        file_streamer(),
+        media_type=document.get("mime_type"),
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"; filename*=UTF-8\'\'{encoded_filename}'
+        }
+    )
 
 
 @app.get("/api/v1/documents/{document_id}/preview")

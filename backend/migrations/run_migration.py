@@ -31,6 +31,7 @@ MIGRATION_FILES = [
     "033_user_soft_delete.sql",
     "034_loan_products.sql",
     "035_refresh_tokens.sql",
+    "036_offer_letter_product_configs.sql",
 ]
 
 
