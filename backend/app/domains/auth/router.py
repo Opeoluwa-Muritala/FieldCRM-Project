@@ -64,7 +64,7 @@ async def login_cookie(
         secure=is_secure,
         samesite="strict",
         expires=session_data["expires_at"],
-        path="/api/v1/auth/refresh"
+        path="/"
     )
     return {"access_token": session_data["access_token"], "token_type": "bearer"}
 
@@ -112,7 +112,7 @@ async def refresh_cookie(
         secure=is_secure,
         samesite="strict",
         expires=session_data["expires_at"],
-        path="/api/v1/auth/refresh"
+        path="/"
     )
     return {"access_token": session_data["access_token"], "token_type": "bearer"}
 
@@ -176,7 +176,7 @@ async def logout(
     if raw_token:
         await service.revoke_web_session(raw_token)
         
-    response.delete_cookie(key="refresh_token", path="/api/v1/auth/refresh")
+    response.delete_cookie(key="refresh_token", path="/")
     response.delete_cookie(key="session", path="/")
     response.delete_cookie(key="__Host-session", path="/")
     return {"status": "logged_out"}
