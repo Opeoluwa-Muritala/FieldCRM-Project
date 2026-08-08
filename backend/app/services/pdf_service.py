@@ -146,11 +146,9 @@ def _reportlab_pdf(html: str) -> bytes:
         if kind == "block":
             tag, text = value
             
-            # Force page-breaks to match WeasyPrint's page budgeting structure
-            if "repayment schedule" in text.lower() and tag in ("h1", "h2", "h3", "div"):
-                story.append(PageBreak())
-                
-            if text.upper().startswith("OFFER LETTER FOR"):
+            if text.strip() in ("Securities:", "Conditions Precedent to Drawdown:", "REPAYMENT SCHEDULE;"):
+                story.append(para(text, ParagraphStyle("section-hdr", parent=body, fontName="Helvetica-Bold", fontSize=9, leading=12, spaceBefore=10, spaceAfter=4)))
+            elif text.upper().startswith("OFFER LETTER FOR"):
                 # Centered, bold, underlined title
                 title_text = f"<u><b>{text}</b></u>"
                 story.append(para(title_text, ParagraphStyle("offer-title-style", parent=body, fontName="Helvetica-Bold", fontSize=10, leading=14, alignment=TA_CENTER, spaceBefore=12, spaceAfter=12)))
@@ -162,10 +160,11 @@ def _reportlab_pdf(html: str) -> bytes:
                 story.append(para(text, h3_style))
             elif tag == "li":
                 import re
+                list_item_style = ParagraphStyle("offer-list-item", parent=body, leftIndent=15, spaceAfter=4)
                 if re.match(r"^\d+\.", text):
-                    story.append(para(text, body))
+                    story.append(para(text, list_item_style))
                 else:
-                    story.append(para("• " + text, body))
+                    story.append(para("• " + text, list_item_style))
             else:
                 # Custom block text style overrides for signatures / acceptance sections
                 if text.startswith("TERMS ACCEPTED BY ME") or text.startswith("WITNESSED BY"):
@@ -204,10 +203,11 @@ def _reportlab_pdf(html: str) -> bytes:
             if is_sig_table:
                 # Signature table - split into two columns with an empty gap in the middle
                 data = []
+                sig_style = ParagraphStyle("offer-sig", parent=body, fontName="Helvetica-Bold", fontSize=8, leading=10, alignment=TA_LEFT)
                 for row in rows:
                     if len(row) >= 2:
-                        sig1 = para(row[0], td_center)
-                        sig2 = para(row[1], td_center)
+                        sig1 = para(row[0].upper(), sig_style)
+                        sig2 = para(row[1].upper(), sig_style)
                         data.append([sig1, "", sig2])
                 if data:
                     printable_width = A4[0] - 30 * mm
@@ -215,7 +215,7 @@ def _reportlab_pdf(html: str) -> bytes:
                     table = Table(data, colWidths=col_widths, spaceBefore=20)
                     table.setStyle(TableStyle([
                         ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
-                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
                         ("LINEABOVE", (0, 0), (0, -1), 0.75, colors.black),
                         ("LINEABOVE", (2, 0), (2, -1), 0.75, colors.black),
                         ("TOPPADDING", (0, 0), (-1, -1), 35), # space for signing
