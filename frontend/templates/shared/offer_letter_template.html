@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Offer Letter</title>
+<style>
+  @page {
+      size: A4;
+      margin: 15mm 15mm 15mm 15mm;
+      @bottom-right {
+          content: "Page " counter(page) " of " counter(pages);
+          font-family: Arial, sans-serif;
+          font-size: 8pt;
+          color: #555;
+      }
+  }
+
+  /* Leave enough space at the top of the first page for a pre-printed letterhead */
+  @page :first {
+      margin-top: 50mm;
+  }
+
+  body {
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      line-height: 1.35;
+      color: #000;
+      margin: 0;
+      padding: 0;
+  }
+
+  .text-justify {
+      text-align: justify;
+  }
+
+  .header-table {
+      width: 100%;
+      margin-top: 0;
+      margin-bottom: 4mm;
+      border-collapse: collapse;
+      border: none;
+  }
+  .header-table td {
+      border: none;
+      padding: 0;
+      vertical-align: top;
+      font-size: 9pt;
+  }
+  .header-right {
+      text-align: right;
+  }
+
+  .letter-title {
+      text-align: center;
+      font-weight: bold;
+      text-decoration: underline;
+      text-transform: uppercase;
+      font-size: 10pt;
+      margin: 10px 0;
+  }
+
+  .intro-p {
+      text-align: justify;
+      margin-bottom: 10px;
+  }
+
+  .terms-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+      font-size: 8.5pt;
+  }
+  .terms-table td {
+      border: none;
+      padding: 3px 0;
+      vertical-align: top;
+  }
+  .terms-table td.label {
+      font-weight: bold;
+      width: 32%;
+  }
+  .terms-table td.value {
+      width: 68%;
+  }
+
+  .securities-section {
+      margin-top: 10px;
+      margin-bottom: 10px;
+  }
+  .section-title {
+      font-weight: bold;
+      margin-bottom: 6px;
+      font-size: 9pt;
+  }
+  .numbered-list {
+      margin: 0;
+      padding-left: 20px;
+  }
+  .numbered-list li {
+      margin-bottom: 4px;
+      text-align: justify;
+  }
+
+  .boilerplate-section p {
+      margin: 8px 0;
+      text-align: justify;
+  }
+
+  .conditions-section {
+      margin-top: 10px;
+      margin-bottom: 15px;
+  }
+
+  .repayment-schedule-section {
+      page-break-before: always;
+      margin-top: 15px;
+  }
+  .schedule-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 8.5pt;
+  }
+  .schedule-table th, .schedule-table td {
+      border: 1px solid #000;
+      padding: 5px 6px;
+      text-align: center;
+  }
+  .schedule-table th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+  }
+  .schedule-table td.num {
+      text-align: right;
+  }
+
+  .signature-section {
+      page-break-inside: avoid;
+      margin-top: 15px;
+  }
+  .signature-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: none;
+      margin-top: 10px;
+      margin-bottom: 15px;
+  }
+  .signature-table td {
+      border: none;
+      padding: 0;
+      width: 50%;
+      vertical-align: top;
+  }
+  .sig-line {
+      border-top: 1px solid #000;
+      width: 80%;
+      margin-top: 30px;
+      margin-bottom: 4px;
+  }
+  .sig-label {
+      font-size: 8pt;
+      font-weight: bold;
+      text-transform: uppercase;
+  }
+
+  .acceptance-section {
+      page-break-inside: avoid;
+      margin-top: 15px;
+  }
+  .acceptance-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+      font-size: 9pt;
+  }
+  .acceptance-line {
+      margin: 6px 0;
+  }
+  .witness-section {
+      margin-top: 15px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- Date and Borrower Header block -->
+  <table class="header-table">
+    <tr>
+      <td>
+        <strong>{{ borrower.name }} ({{ borrower.id }})</strong><br>
+        {{ borrower.address_lines[0] if borrower.address_lines else '' }}<br>
+        {{ borrower.address_lines[1] if borrower.address_lines and borrower.address_lines|length > 1 else '' }}<br>
+        {{ borrower.address_lines[2] if borrower.address_lines and borrower.address_lines|length > 2 else '' }}
+      </td>
+      <td class="header-right">
+        {{ date }}
+      </td>
+    </tr>
+  </table>
+
+  <p>Dear Sir/Madam</p>
+
+  <!-- Centered Title -->
+  <div class="letter-title">
+    OFFER LETTER FOR CREDIT FACILITY OF {{ loan.title_amount }}
+  </div>
+
+  <p class="intro-p">
+    We refer to your application letter dated {{ loan.application_date }} for a credit facility of {{ loan.structured_amount }} to be structured as {{ loan.loan_type }}. We are pleased to convey to you, the Management’s approval to grant you the FACILITY under the following terms and conditions:
+  </p>
+
+  <!-- Terms and Conditions Table -->
+  <table class="terms-table">
+    <tr>
+      <td class="label">Lender</td>
+      <td class="value">{{ terms.lender }}</td>
+    </tr>
+    <tr>
+      <td class="label">Borrower</td>
+      <td class="value">{{ terms.borrower_name }}</td>
+    </tr>
+    <tr>
+      <td class="label">Facility Type</td>
+      <td class="value">{{ terms.facility_type }}</td>
+    </tr>
+    <tr>
+      <td class="label">Purpose</td>
+      <td class="value">{{ terms.purpose }}</td>
+    </tr>
+    <tr>
+      <td class="label">Amount</td>
+      <td class="value">{{ terms.amount }}</td>
+    </tr>
+    <tr>
+      <td class="label">Tenor</td>
+      <td class="value">{{ terms.tenor_months }}</td>
+    </tr>
+    <tr>
+      <td class="label">Expiry Date</td>
+      <td class="value">{{ terms.expiry_date }}</td>
+    </tr>
+    <tr>
+      <td class="label">Source of Repayment</td>
+      <td class="value">{{ terms.source_of_repayment }}</td>
+    </tr>
+    <tr>
+      <td class="label">Repayment pattern</td>
+      <td class="value">{{ terms.repayment_pattern }}</td>
+    </tr>
+    <tr>
+      <td class="label">Interest Rate</td>
+      <td class="value">{{ terms.interest_rate_description }}</td>
+    </tr>
+    <tr>
+      <td class="label">Total Interest</td>
+      <td class="value">{{ terms.total_interest }}</td>
+    </tr>
+    <tr>
+      <td class="label">Amount Payable</td>
+      <td class="value">{{ terms.amount_payable }}</td>
+    </tr>
+    <!-- Dynamic Upfront Fee Rows -->
+    {% for fee in fees %}
+    <tr>
+      <td class="label">{{ fee.name }}</td>
+      <td class="value">
+        {% if fee.percentage is not none and fee.percentage > 0 %}
+          {{ fee.percentage|string|replace(".0", "") }}% ({{ fee.amount_formatted }})
+        {% else %}
+          {{ fee.amount_formatted }}
+          {% if fee.note %} {{ fee.note }}{% endif %}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    <tr>
+      <td class="label">Default Rate</td>
+      <td class="value">{{ terms.default_rate }}</td>
+    </tr>
+    <tr>
+      <td class="label">Penalty Rate</td>
+      <td class="value">{{ terms.penalty_rate }}</td>
+    </tr>
+    {% if terms.pre_liquidation_fee %}
+    <tr>
+      <td class="label">Pre Liquidation fee</td>
+      <td class="value">{{ terms.pre_liquidation_fee }}</td>
+    </tr>
+    {% endif %}
+  </table>
+
+  <!-- Securities -->
+  <div class="securities-section">
+    <div class="section-title">Securities:</div>
+    <ol class="numbered-list">
+      {% for sec in securities %}
+      <li>{{ sec }}</li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  <!-- Boilerplate Legal Paragraphs -->
+  <div class="boilerplate-section">
+    {% for para in boilerplate_paragraphs %}
+    <p>{{ para }}</p>
+    {% endfor %}
+  </div>
+
+  <!-- Conditions Precedent to Drawdown -->
+  <div class="conditions-section">
+    <div class="section-title">Conditions Precedent to Drawdown:</div>
+    <ol class="numbered-list">
+      {% for cond in conditions_precedent %}
+      <li>{{ cond }}</li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  <!-- Repayment Schedule (Conditional) -->
+  {% if repayment_schedule %}
+  <div class="repayment-schedule-section">
+    <div class="section-title">REPAYMENT SCHEDULE;</div>
+    <table class="schedule-table">
+      <thead>
+        <tr>
+          <th style="width: 10%;">S/N</th>
+          <th style="width: 30%;">Due Date</th>
+          <th style="width: 20%;">Principal</th>
+          <th style="width: 20%;">Interest</th>
+          <th style="width: 20%;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in repayment_schedule %}
+        <tr>
+          <td>{{ row.installment_no }}</td>
+          <td>{{ row.due_date }}</td>
+          <td class="num">{{ row.principal_due }}</td>
+          <td class="num">{{ row.interest_due }}</td>
+          <td class="num">{{ row.total_due }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Closing Signatures & Acceptance -->
+  <div class="signature-section">
+    <p class="text-justify" style="margin-top: 10px;">
+      If the above terms and conditions are acceptable to you, please sign the attached copy of this letter and return same to the bank.
+    </p>
+    <p>Thank you,</p>
+    <p style="margin-bottom: 15px;">Yours Faithfully,<br><strong>FOR: MAINSTREET MICROFINANCE BANK LIMITED</strong></p>
+
+    <table class="signature-table">
+      <tr>
+        <td>
+          <div class="sig-line"></div>
+          <div class="sig-label">Authorised Signatory</div>
+        </td>
+        <td>
+          <div class="sig-line"></div>
+          <div class="sig-label">Authorised Signatory</div>
+        </td>
+      </tr>
+    </table>
+
+    <div class="acceptance-section">
+      <div class="acceptance-title">TERMS ACCEPTED BY ME;</div>
+      <div class="acceptance-line">
+        NAME:............................................................ SIGNATURE:..............................................DATE:..............
+      </div>
+      <div class="acceptance-line" style="margin-top: 10px; font-style: italic;">
+        (Please sign across a =N=50 stamp)
+      </div>
+
+      <div class="witness-section">
+        <div class="acceptance-title">WITNESSED BY:</div>
+        <div class="acceptance-line">
+          NAME:...............................................................SIGNATURE:........................................... DATE:..........
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

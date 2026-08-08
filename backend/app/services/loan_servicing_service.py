@@ -83,20 +83,31 @@ def generate_schedule(
     rows = []
 
     if method == "flat_rate":
-        total_interest = P * period_rate * Decimal(str(n_installments))
+        total_interest = P * (Decimal(str(annual_rate)) / Decimal("12") / Decimal("100")) * Decimal(str(tenor_months))
         interest_per_period = (total_interest / Decimal(str(n_installments))).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
         principal_per_period = (P / Decimal(str(n_installments))).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
+        accumulated_principal = Decimal("0.00")
+        accumulated_interest = Decimal("0.00")
         for i in range(1, n_installments + 1):
+            if i == n_installments:
+                p_due = P - accumulated_principal
+                i_due = total_interest - accumulated_interest
+            else:
+                p_due = principal_per_period
+                i_due = interest_per_period
+                accumulated_principal += p_due
+                accumulated_interest += i_due
+
             rows.append({
                 "installment_no": i,
                 "due_date": next_due(disbursement_date, i),
-                "principal_due": float(principal_per_period),
-                "interest_due": float(interest_per_period),
-                "total_due": float(principal_per_period + interest_per_period),
+                "principal_due": float(p_due),
+                "interest_due": float(i_due),
+                "total_due": float(p_due + i_due),
             })
 
     else:  # reducing_balance

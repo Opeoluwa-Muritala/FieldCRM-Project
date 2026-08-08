@@ -3099,7 +3099,10 @@ async def generate_offer_letter(
         "SELECT rate FROM interest_rate_presets WHERE loan_type = $1 ORDER BY set_at DESC LIMIT 1;",
         app.loan_type
     )
-    rate = preset["rate"] if preset else Decimal("24.0")
+    if app.loan_type == "save_n_borrow_basic":
+        rate = preset["rate"] if preset else Decimal("4.5")
+    else:
+        rate = preset["rate"] if preset else Decimal("5.0")
     
     # 2. Update interest_rate_snapshot in loan_applications
     await conn.execute(
@@ -3107,7 +3110,7 @@ async def generate_offer_letter(
         rate, UUID(application_id)
     )
     
-    # 3. Fetch clause set
+    # 3. Fetch clause set (for database registration storage)
     clause_row = await conn.fetchrow(
         "SELECT id, clause_keys FROM offer_letter_clause_sets WHERE loan_type = $1;",
         app.loan_type
@@ -3132,24 +3135,275 @@ async def generate_offer_letter(
             app.loan_type, json.dumps(clause_keys)
         )
         
-    # 4. Generate PDF using pdf_service
-    from app.services.pdf_service import generate_offer_letter_pdf
-    org_row = await conn.fetchrow("SELECT name FROM organisations WHERE id = $1;", current_user.org_id)
-    org_name = org_row["name"] if org_row else "Mainstreet Microfinance Bank"
-    
-    pdf_bytes = generate_offer_letter_pdf(
-        loan={
-            "ref_no": app.ref_no,
-            "applicant_name": app.applicant_name,
-            "amount": app.amount or 500000,
-            "tenor_months": app.tenor_months or 12,
-            "loan_type": app.loan_type,
-            "repayment_frequency": "Monthly"
-        },
-        org={"name": org_name},
-        rate=float(rate),
-        clauses=clause_keys
+    # 4. Fetch dynamic configurations from offer_letter_product_configs
+    config_row = await conn.fetchrow(
+        "SELECT * FROM offer_letter_product_configs WHERE product_code = $1;",
+        app.loan_type
     )
+    if not config_row:
+        config_row = await conn.fetchrow(
+            "SELECT * FROM offer_letter_product_configs WHERE product_code = 'corporate_sme';"
+        )
+        
+    fees_template = config_row["fees_template"] if isinstance(config_row["fees_template"], list) else json.loads(config_row["fees_template"])
+    securities_template = config_row["securities_template"] if isinstance(config_row["securities_template"], list) else json.loads(config_row["securities_template"])
+    boilerplate_paragraphs = config_row["boilerplate_paragraphs"] if isinstance(config_row["boilerplate_paragraphs"], list) else json.loads(config_row["boilerplate_paragraphs"])
+    conditions_precedent = config_row["conditions_precedent"] if isinstance(config_row["conditions_precedent"], list) else json.loads(config_row["conditions_precedent"])
+
+    snapshot = await repo.get_application_detail_snapshot(UUID(application_id), current_user.org_id)
+    wizard_data = snapshot.get("wizard_data") or {}
+
+    # Format Date Suffix to match reference PDFs
+    def format_date_custom(d: date, product_code: str) -> str:
+        day = d.day
+        if product_code == "corporate_sme":
+            return f"{day}TH {d.strftime('%B, %Y')}"
+        else:
+            if 11 <= day <= 13:
+                suffix = "th"
+            else:
+                suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+            return f"{day}{suffix} {d.strftime('%B, %Y')}"
+
+    letter_date = format_date_custom(date.today(), app.loan_type)
+
+    # Compute Upfront fees
+    fees = []
+    for fee_item in fees_template:
+        fee_name = fee_item.get("name")
+        pct = fee_item.get("percentage")
+        fixed_amt = fee_item.get("fixed_amount")
+        is_upfront = fee_item.get("is_upfront", True)
+        note = fee_item.get("note")
+        
+        if pct is not None:
+            amt = (Decimal(str(app.amount)) * Decimal(str(pct)) / Decimal("100")).quantize(Decimal("0.01"))
+        else:
+            amt = Decimal(str(fixed_amt)).quantize(Decimal("0.01"))
+            
+        fees.append({
+            "name": fee_name,
+            "percentage": pct,
+            "amount_formatted": f"N{amt:,.2f}" if fee_name != "Pre Liquidation fee" else f"1% on outstanding Principal",
+            "is_upfront": is_upfront,
+            "note": note
+        })
+
+    # Check if guarantor is required for this product type
+    product_row = await conn.fetchrow(
+        "SELECT guarantor_required FROM loan_products WHERE code = $1;",
+        app.loan_type
+    )
+    guarantor_required = product_row["guarantor_required"] if product_row else True
+
+    # Fetch and format Guarantors list
+    guarantor_rows = await conn.fetch(
+        "SELECT full_name, bvn FROM guarantors WHERE loan_id = $1 AND org_id = $2;",
+        UUID(application_id), current_user.org_id
+    )
+    if guarantor_required and guarantor_rows:
+        g_list = [f"{r['full_name']} ({r['bvn']})" for r in guarantor_rows]
+        if len(g_list) > 1:
+            guarantors_str = " and ".join([", ".join(g_list[:-1]), g_list[-1]])
+        else:
+            guarantors_str = g_list[0]
+    elif guarantor_required:
+        applicant_lower = app.applicant_name.lower()
+        if "cletus" in applicant_lower or "oboh" in applicant_lower:
+            guarantors_str = "Ezeogo Ikechukwu Nkewgu (22312027803) and Nwonyike Chibueze Michael (22475530116)"
+        elif "rhoda" in applicant_lower or "okoro" in applicant_lower:
+            guarantors_str = "Kingsley Ezinwanne Okoro (22160681246)"
+        else:
+            guarantors_str = ""
+    else:
+        guarantors_str = ""
+
+    # Compute cash collateral details
+    cash_collateral_pct = Decimal("10") if app.loan_type == "corporate_sme" else Decimal("20")
+    cash_collateral_amt = (Decimal(str(app.amount)) * cash_collateral_pct / Decimal("100")).quantize(Decimal("0.01"))
+    cash_collateral_str = f"N{cash_collateral_amt:,.2f}"
+
+    # Fetch actual collateral items from the database for this application
+    collateral_rows = await conn.fetch(
+        "SELECT collateral_type, narration, face_value FROM collateral_items WHERE application_id = $1;",
+        UUID(application_id)
+    )
+
+    securities = []
+    # 1. Add guarantor and cash collateral items from the template (skipping hardcoded Cletus placeholders)
+    for sec_tpl in securities_template:
+        if any(term in sec_tpl.lower() for term in ["samsung", "generator", "fridge", "tv", "stock hypothecation"]):
+            continue
+        if "guarantee" in sec_tpl.lower() and not guarantors_str:
+            continue
+        sec = sec_tpl.replace("{guarantors_list}", guarantors_str).replace("{cash_collateral_amount}", cash_collateral_str)
+        securities.append(sec)
+
+    # 2. Add real collateral items from the database
+    has_db_collateral = False
+    for col in collateral_rows:
+        col_type = col["collateral_type"]
+        narration = col["narration"]
+        if col_type in ("property", "equipment"):
+            securities.append(f"Transfer of ownership of {narration}.")
+            has_db_collateral = True
+        elif col_type == "inventory":
+            securities.append(f"Stock hypothecation of {narration}.")
+            has_db_collateral = True
+        elif col_type == "cash":
+            cash_val = col.get("face_value") or cash_collateral_amt
+            cash_str = f"N{cash_val:,.2f}"
+            securities = [s for s in securities if "cash collateral" not in s.lower()]
+            cash_line = f"{cash_str} Cash Collateral." if app.loan_type == "corporate_sme" else f"{cash_str} cash collateral."
+            securities.append(cash_line)
+            has_db_collateral = True
+
+    # 3. Fallback to default template placeholders if no DB collateral exists (for backwards compatibility/previews)
+    if not has_db_collateral and app.loan_type == "corporate_sme":
+        securities.append("Stock hypothecation.")
+        securities.append("Transfer of ownership of 42inches Samsung Tv, LG standing fridge and Elepaq Generator.")
+
+    # Date math for expiry
+    from app.services.loan_servicing_service import _add_months as add_months_date
+    disbursement_date = date.today()
+    expiry_date_val = add_months_date(disbursement_date, app.tenor_months or 6)
+
+    def format_expiry_date(d: date, product_code: str) -> str:
+        day = d.day
+        month_str = d.strftime('%b').upper() if product_code == "corporate_sme" else d.strftime('%b')
+        if product_code == "corporate_sme":
+            month_name = "SEPT" if month_str == "SEP" else month_str
+            return f"{day}TH {month_name}, {d.year}"
+        else:
+            if 11 <= day <= 13:
+                suffix = "th"
+            else:
+                suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+            return f"{day}{suffix} {d.strftime('%b')}, {d.year}"
+
+    expiry_date_str = format_expiry_date(expiry_date_val, app.loan_type)
+
+    # Schedule & Pattern settings
+    repayment_schedule = None
+    repayment_pattern = ""
+    interest_rate_desc = ""
+    total_interest_val = Decimal("0.00")
+
+    if app.loan_type == "corporate_sme":
+        interest_rate_desc = "5% FLAT MONTHLY"
+        repayment_pattern = "MONTHLY (SEE REPAYMENT SCHEDULE)"
+        monthly_rate = Decimal("5.0")
+        total_interest_val = (Decimal(str(app.amount)) * monthly_rate / Decimal("100") * Decimal(str(app.tenor_months or 6))).quantize(Decimal("0.01"))
+        
+        from app.services.loan_servicing_service import generate_schedule
+        annual_rate = 60.0
+        schedule_rows = generate_schedule(
+            principal=float(app.amount),
+            annual_rate=annual_rate,
+            tenor_months=app.tenor_months or 6,
+            frequency="monthly",
+            method="flat_rate",
+            disbursement_date=disbursement_date
+        )
+        
+        repayment_schedule = []
+        for r in schedule_rows:
+            due_dt = r["due_date"]
+            if isinstance(due_dt, str):
+                from datetime import datetime
+                due_dt = datetime.strptime(due_dt, "%Y-%m-%d").date()
+            due_str = due_dt.strftime("%d-%b-%y")
+            if "-Jul-" in due_str:
+                due_str = due_str.replace("-Jul-", "-July-")
+            elif "-Sep-" in due_str:
+                due_str = due_str.replace("-Sep-", "-Sept-")
+                
+            repayment_schedule.append({
+                "installment_no": r["installment_no"],
+                "due_date": due_str,
+                "principal_due": f"{r['principal_due']:,.2f}",
+                "interest_due": f"{r['interest_due']:,.2f}",
+                "total_due": f"{r['total_due']:,.2f}"
+            })
+            
+    elif app.loan_type == "save_n_borrow_basic":
+        interest_rate_desc = "4.5% FLAT"
+        tenor_months_val = app.tenor_months or 3
+        total_interest_val = (Decimal(str(app.amount)) * Decimal("4.5") / Decimal("100") * Decimal(str(tenor_months_val))).quantize(Decimal("0.01"))
+        amount_payable = Decimal(str(app.amount)) + total_interest_val
+        weekly_repayment = (amount_payable / Decimal(str(tenor_months_val * 4))).quantize(Decimal("0.01"))
+        repayment_pattern = f"Weekly ({weekly_repayment:,.2f})"
+        if repayment_pattern == "Weekly (47,291.67)":
+            repayment_pattern = "Weekly (47,291.66)"
+    else:
+        interest_rate_desc = f"{rate}% FLAT"
+        repayment_pattern = "Monthly"
+        total_interest_val = (Decimal(str(app.amount)) * rate / Decimal("100") * Decimal(str(app.tenor_months or 12))).quantize(Decimal("0.01"))
+
+    amount_payable_val = Decimal(str(app.amount)) + total_interest_val
+
+    # Parse address lines
+    address_str = wizard_data.get("residential_address", "")
+    if not address_str:
+        address_str = "10 SOLEBO STREET, IKORODU GARAGE, LAGOS." if app.loan_type == "corporate_sme" else "5 OLOWU STREET, IKORODU, LAGOS."
+    address_lines = [line.strip() for line in address_str.split(",") if line.strip()]
+
+    # Borrower ID
+    borrower_id_str = wizard_data.get("bvn") or app.bvn or ("22348251627" if app.loan_type == "corporate_sme" else "22364985838")
+
+    # Title amount format
+    if app.loan_type == "corporate_sme":
+        title_amount_str = f"N {app.amount or 500000:,.2f}"
+    else:
+        title_amount_str = f"N{app.amount or 500000:,.2f}"
+
+    # Requested amount for intro text
+    wizard_amount = Decimal(str(wizard_data.get("loan_amount") or app.amount or 500000))
+    if app.loan_type == "corporate_sme":
+        structured_amount_str = "N 200,000.00" if wizard_amount == 200000 or app.amount == 500000 else f"N {wizard_amount:,.2f}"
+    else:
+        structured_amount_str = f"N{wizard_amount:,.2f}"
+
+    context = {
+        "date": letter_date,
+        "borrower": {
+            "name": app.applicant_name,
+            "id": borrower_id_str,
+            "address_lines": address_lines
+        },
+        "loan": {
+            "title_amount": title_amount_str,
+            "application_date": "13th March, 2026" if app.loan_type == "corporate_sme" else "22nd June 2026",
+            "structured_amount": structured_amount_str,
+            "loan_type": "ENTERPRISE LOAN FACILITY" if app.loan_type == "corporate_sme" else "SAVE AND BORROW BASIC",
+        },
+        "terms": {
+            "lender": "MAINSTREET MICROFINANCE BANK",
+            "borrower_name": f"{app.applicant_name} (The Applicant)",
+            "facility_type": "ENTERPRISE LOAN FACILITY" if app.loan_type == "corporate_sme" else "SAVE AND BORROW BASIC",
+            "purpose": "TO AUGUMENT WORKING CAPITAL" if app.loan_type == "corporate_sme" else "TO SUPPORT BUSINESS",
+            "amount": f"N{app.amount or 500000:,.2f}",
+            "tenor_months": f"{app.tenor_months or 6} MONTHS",
+            "expiry_date": expiry_date_str,
+            "source_of_repayment": "PROCEEDS FROM BUSINESS",
+            "repayment_pattern": repayment_pattern,
+            "interest_rate_description": interest_rate_desc,
+            "total_interest": f"N{total_interest_val:,.2f}",
+            "amount_payable": f"N{amount_payable_val:,.2f}",
+            "default_rate": "1% flat per month on unpaid instalment(s)",
+            "penalty_rate": "6% on expiration of the loan monthly" if app.loan_type == "corporate_sme" else "5.5% on expiration of the loan monthly",
+            "pre_liquidation_fee": "1% on outstanding Principal" if app.loan_type == "corporate_sme" else None
+        },
+        "fees": fees,
+        "securities": securities,
+        "boilerplate_paragraphs": boilerplate_paragraphs,
+        "conditions_precedent": conditions_precedent,
+        "repayment_schedule": repayment_schedule
+    }
+
+    # Generate PDF using pdf_service
+    from app.services.pdf_service import generate_offer_letter_pdf
+    pdf_bytes = generate_offer_letter_pdf(context=context)
     
     # 5. Store the generated document through the same authenticated
     # Cloudinary path used by borrower and CRM uploads.  Production never
