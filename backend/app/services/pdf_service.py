@@ -138,77 +138,123 @@ def _reportlab_pdf(html: str) -> bytes:
         escaped = escape(text).replace("&lt;br/&gt;", "<br/>")
         restored = escaped.replace("&lt;u&gt;", "<u>").replace("&lt;/u&gt;", "</u>")
         restored = restored.replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
+        restored = restored.replace("&lt;i&gt;", "<i>").replace("&lt;/i&gt;", "</i>")
         return Paragraph(restored, style)
+
+    # 0. Pre-scan elements to find the facility type name for bolding in intro
+    facility_type = None
+    for kind, value in parser.elements:
+        if kind == "table":
+            table_idx, rows = value
+            if table_idx == 2:  # the terms table is table_idx == 2
+                for row in rows:
+                    if len(row) >= 2 and row[0].strip().lower() == "facility type":
+                        facility_type = row[1].strip()
+                        break
 
     # Initialize story with template switch command for subsequent pages
     story = [NextPageTemplate("LaterPages")]
     for kind, value in parser.elements:
         if kind == "block":
             tag, text = value
+            clean_text = text.replace("’", "'").replace("“", '"').replace("”", '"')
             
-            if text.strip() in ("Securities:", "Conditions Precedent to Drawdown:", "REPAYMENT SCHEDULE;"):
-                story.append(para(text, ParagraphStyle("section-hdr", parent=body, fontName="Helvetica-Bold", fontSize=9, leading=12, spaceBefore=10, spaceAfter=4)))
-            elif text.upper().startswith("OFFER LETTER FOR"):
-                # Centered, bold, underlined title
-                title_text = f"<u><b>{text}</b></u>"
-                story.append(para(title_text, ParagraphStyle("offer-title-style", parent=body, fontName="Helvetica-Bold", fontSize=10, leading=14, alignment=TA_CENTER, spaceBefore=12, spaceAfter=12)))
+            if clean_text.strip() in ("Securities:", "Conditions Precedent to Drawdown:", "REPAYMENT SCHEDULE;"):
+                keep = (clean_text.strip() == "REPAYMENT SCHEDULE;")
+                story.append(para(clean_text, ParagraphStyle("section-hdr", parent=body, fontName="Helvetica-Bold", fontSize=9, leading=12, spaceBefore=10, spaceAfter=4, keepWithNext=keep)))
+            elif clean_text.upper().startswith("OFFER LETTER FOR"):
+                # Left-aligned, bold, underlined title
+                title_text = f"<u><b>{clean_text}</b></u>"
+                story.append(para(title_text, ParagraphStyle("offer-title-style", parent=body, fontName="Helvetica-Bold", fontSize=10, leading=14, alignment=TA_LEFT, spaceBefore=12, spaceAfter=12)))
             elif tag == "h1":
-                story.append(para(text, h1_style))
+                story.append(para(clean_text, h1_style))
             elif tag == "h2":
-                story.append(para(text, h2_style))
+                story.append(para(clean_text, h2_style))
             elif tag == "h3":
-                story.append(para(text, h3_style))
+                story.append(para(clean_text, h3_style))
             elif tag == "li":
-                import re
-                list_item_style = ParagraphStyle("offer-list-item", parent=body, leftIndent=15, spaceAfter=4)
-                if re.match(r"^\d+\.", text):
-                    story.append(para(text, list_item_style))
+                list_item_style = ParagraphStyle("offer-list-item", parent=body, leftIndent=163, firstLineIndent=-20, spaceAfter=4)
+                if re.match(r"^\d+\.", clean_text):
+                    story.append(para(clean_text, list_item_style))
                 else:
-                    story.append(para("• " + text, list_item_style))
+                    story.append(para("• " + clean_text, list_item_style))
             else:
                 # Custom block text style overrides for signatures / acceptance sections
-                if text.startswith("TERMS ACCEPTED BY ME") or text.startswith("WITNESSED BY"):
-                    story.append(para(text, ParagraphStyle("offer-acc-title", parent=body, fontName="Helvetica-Bold", fontSize=9, leading=12, spaceBefore=10, spaceAfter=4)))
-                elif text.startswith("(Please sign across"):
-                    story.append(para(text, ParagraphStyle("offer-acc-stamp", parent=body, fontName="Helvetica-Oblique", fontSize=8, leading=10, spaceAfter=6)))
-                elif text.startswith("NAME:"):
-                    story.append(para(text, ParagraphStyle("offer-acc-line", parent=body, fontSize=8.5, leading=14, spaceBefore=6, spaceAfter=6)))
+                if clean_text.strip() in ("TERMS ACCEPTED BY ME;", "WITNESSED BY:"):
+                    story.append(para(clean_text.strip(), ParagraphStyle("offer-acc-title", parent=body, fontName="Helvetica-Bold", fontSize=9, leading=12, spaceBefore=10, spaceAfter=4)))
+                elif clean_text.strip().startswith("(Please sign across"):
+                    story.append(para("(Please sign across a =N=50 stamp)", ParagraphStyle("offer-acc-stamp", parent=body, fontName="Helvetica-Oblique", fontSize=8, leading=10, alignment=TA_CENTER, spaceBefore=4, spaceAfter=8)))
+                elif clean_text.strip().startswith("NAME:") and "SIGNATURE:" in clean_text:
+                    if "DATE:.........." in clean_text and not "DATE:.............." in clean_text:
+                        # Witness line
+                        witness_line = "NAME:............................................SIGNATURE:............................................DATE:.........."
+                        story.append(para(witness_line, ParagraphStyle("offer-acc-line", parent=body, fontSize=8.5, leading=14, spaceBefore=6, spaceAfter=6)))
+                    else:
+                        # Acceptance line
+                        acc_line = "NAME:............................................SIGNATURE:............................................DATE:.............."
+                        story.append(para(acc_line, ParagraphStyle("offer-acc-line", parent=body, fontSize=8.5, leading=14, spaceBefore=6, spaceAfter=6)))
+                elif clean_text.startswith("We refer to your application letter"):
+                    # Intro paragraph: justified alignment
+                    intro_style = ParagraphStyle("intro-style", parent=body, alignment=TA_JUSTIFY)
+                    processed_text = clean_text
+                    if facility_type:
+                        pattern = re.compile(re.escape(facility_type), re.IGNORECASE)
+                        processed_text = pattern.sub(f"<b>{facility_type}</b>", processed_text)
+                    processed_text = processed_text.replace("the FACILITY", "the <b>FACILITY</b>")
+                    story.append(para(processed_text, intro_style))
+                elif clean_text.startswith("In the event of failure by the borrower"):
+                    # Paragraph 1
+                    processed_text = clean_text
+                    processed_text = re.sub(r"(\d+(\.\d+)?%\s+flat\s+per\s+month)", r"<b>\1</b>", processed_text)
+                    processed_text = re.sub(r"(\d+(\.\d+)?%\s+penalty\s+rate)", r"<b>\1</b>", processed_text)
+                    processed_text = re.sub(r"\b(expiration)\b", r"<b>\1</b>", processed_text)
+                    story.append(para(processed_text, ParagraphStyle("para1-style", parent=body, alignment=TA_JUSTIFY)))
+                elif clean_text.startswith("By signing this offer letter/loan agreement"):
+                    # Paragraph 2
+                    story.append(para(clean_text, ParagraphStyle("para2-style", parent=body, alignment=TA_JUSTIFY)))
+                elif clean_text.startswith("I, ") and "hereby authorize" in clean_text:
+                    # Paragraph 3: bold & justified
+                    bold_just_style = ParagraphStyle("offer-bold-justified", parent=body, fontName="Helvetica-Bold", alignment=TA_JUSTIFY)
+                    story.append(para(clean_text, bold_just_style))
+                elif clean_text.startswith("Yours Faithfully,"):
+                    # Yours Faithfully block: FOR... bold italic
+                    processed_text = clean_text.replace("FOR: MAINSTREET MICROFINANCE BANK LIMITED", "<i><b>FOR: MAINSTREET MICROFINANCE BANK LIMITED</b></i>")
+                    story.append(para(processed_text, ParagraphStyle("yours-faithfully", parent=body, fontSize=9, leading=12, spaceAfter=15)))
                 else:
-                    story.append(para(text, body))
+                    story.append(para(clean_text, body))
             continue
             
         table_idx, rows = value
         cols_count = len(rows[0]) if rows else 0
         if table_idx == 1:
-            # 1. Header table: Name/Address left-aligned, Date right-aligned on SAME line
-            data = []
-            for row in rows:
-                if len(row) >= 2:
-                    left_para = para(row[0], ParagraphStyle("header-left", parent=body, fontName="Helvetica-Bold", fontSize=9, leading=12, alignment=TA_LEFT))
-                    right_para = para(row[1], ParagraphStyle("header-right", parent=body, fontName="Helvetica-Bold", fontSize=9, leading=12, alignment=TA_RIGHT))
-                    data.append([left_para, right_para])
-            if data:
-                printable_width = A4[0] - 30 * mm
-                table = Table(data, colWidths=[printable_width * 0.7, printable_width * 0.3])
-                table.setStyle(TableStyle([
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-                    ("TOPPADDING", (0, 0), (-1, -1), 0),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
-                ]))
-                story.append(table)
+            # 1. Header block: Date on its own line (not bold), name/address ALL BOLD below
+            if len(rows[0]) >= 2:
+                name_addr_block = rows[0][0]
+                date_str = rows[0][1]
+                
+                # Date first, left-aligned, NOT bold
+                story.append(para(date_str, ParagraphStyle("header-date", parent=body, fontName="Helvetica", spaceAfter=4)))
+                
+                # Name and address lines, ALL BOLD
+                lines = [line.strip() for line in name_addr_block.split("<br/>") if line.strip()]
+                for line in lines:
+                    story.append(para(line, ParagraphStyle("header-bold-line", parent=body, fontName="Helvetica-Bold", spaceAfter=0)))
+                story.append(Spacer(1, 10))
         elif cols_count == 2:
             is_sig_table = any("authorised signatory" in str(cell).lower() for row in rows for cell in row)
             if is_sig_table:
                 # Signature table - split into two columns with an empty gap in the middle
-                data = []
-                sig_style = ParagraphStyle("offer-sig", parent=body, fontName="Helvetica-Bold", fontSize=9, leading=12, alignment=TA_LEFT)
-                for row in rows:
-                    if len(row) >= 2:
-                        sig1 = para(row[0].upper(), sig_style)
-                        sig2 = para(row[1].upper(), sig_style)
-                        data.append([sig1, "", sig2])
+                # Dotted line and italic label in each column
+                dots_para = para("....................................", ParagraphStyle("sig-dots", parent=body, fontName="Helvetica", fontSize=9, leading=10, spaceAfter=2))
+                label_para = para("AUTHORISED SIGNATORY", ParagraphStyle("sig-label-italic", parent=body, fontName="Helvetica-Oblique", fontSize=9, leading=12))
+                
+                data = [
+                    [
+                        [dots_para, label_para],
+                        "",
+                        [dots_para, label_para]
+                    ]
+                ]
                 if data:
                     printable_width = A4[0] - 30 * mm
                     col_widths = [printable_width * 0.42, printable_width * 0.16, printable_width * 0.42]
@@ -216,21 +262,34 @@ def _reportlab_pdf(html: str) -> bytes:
                     table.setStyle(TableStyle([
                         ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
                         ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                        ("LINEABOVE", (0, 0), (0, -1), 0.75, colors.black),
-                        ("LINEABOVE", (2, 0), (2, -1), 0.75, colors.black),
-                        ("TOPPADDING", (0, 0), (-1, -1), 6), # sit close beneath the line
-                        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
                         ("LEFTPADDING", (0, 0), (-1, -1), 0),
                         ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                        ("TOPPADDING", (0, 0), (-1, -1), 0),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
                     ]))
-                    story.extend([Spacer(1, 30), table, Spacer(1, 10)])
+                    story.extend([Spacer(1, 35), table, Spacer(1, 10)])
             else:
                 # Terms and conditions table: borderless with 32% label width
                 data = []
                 for row in rows:
                     if len(row) >= 2:
-                        label_para = para(row[0], ParagraphStyle("offer-td-bold", parent=body, fontName="Helvetica-Bold", fontSize=8.5, leading=11))
-                        val_para = para(row[1], ParagraphStyle("offer-td-val", parent=body, fontSize=8.5, leading=11))
+                        label = row[0].strip()
+                        val = row[1].strip()
+                        
+                        # Apply value bolding rules
+                        if label == "Borrower":
+                            if " (The Applicant)" in val:
+                                name_part = val.replace(" (The Applicant)", "")
+                                val_formatted = f"<b>{name_part}</b> (The Applicant)"
+                            else:
+                                val_formatted = f"<b>{val}</b>"
+                        elif label in ("Purpose", "Interest Rate", "Total Interest", "Amount Payable"):
+                            val_formatted = f"<b>{val}</b>"
+                        else:
+                            val_formatted = val
+                            
+                        label_para = para(label, ParagraphStyle("offer-td-bold", parent=body, fontName="Helvetica-Bold", fontSize=8.5, leading=11))
+                        val_para = para(val_formatted, ParagraphStyle("offer-td-val", parent=body, fontSize=8.5, leading=11))
                         data.append([label_para, val_para])
                 if data:
                     printable_width = A4[0] - 30 * mm
@@ -246,15 +305,28 @@ def _reportlab_pdf(html: str) -> bytes:
         else:
             # Repayment schedule: keep light grey border grids and background with aligned cells
             data = []
-            for r_idx, row in enumerate(rows):
+            
+            # S/N and Due Date left-aligned; Principal, Interest, Total right-aligned
+            # Headers are bold and centered
+            header_row = []
+            for col_name in rows[0]:
+                header_row.append(para(col_name, ParagraphStyle("sched-th", parent=body, fontName="Helvetica-Bold", fontSize=8, leading=10, alignment=TA_CENTER)))
+            data.append(header_row)
+            
+            for row in rows[1:]:
                 new_row = []
                 for c_idx, cell in enumerate(row):
-                    if r_idx == 0:
-                        style = th_style
+                    if c_idx in (0, 1):
+                        style = ParagraphStyle("sched-left", parent=body, fontSize=8, leading=10, alignment=TA_LEFT)
                     else:
-                        style = td_right if c_idx in (2, 3, 4) else td_center
+                        style = td_right
                     new_row.append(para(cell, style))
                 data.append(new_row)
+                
+            # Add one extra empty row after the last repayment row
+            empty_row = [para("", td_center) for _ in range(5)]
+            data.append(empty_row)
+            
             if data:
                 printable_width = A4[0] - 30 * mm
                 col_widths = [printable_width * 0.12, printable_width * 0.22, printable_width * 0.22, printable_width * 0.22, printable_width * 0.22]
@@ -262,7 +334,7 @@ def _reportlab_pdf(html: str) -> bytes:
                 table.setStyle(TableStyle([
                     ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f2f2f2")),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#CCCCFF")), # light lavender
                     ("LEFTPADDING", (0, 0), (-1, -1), 4),
                     ("RIGHTPADDING", (0, 0), (-1, -1), 4),
                     ("TOPPADDING", (0, 0), (-1, -1), 4),
