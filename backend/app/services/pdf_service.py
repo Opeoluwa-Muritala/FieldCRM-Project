@@ -141,16 +141,41 @@ def _reportlab_pdf(html: str) -> bytes:
         restored = restored.replace("&lt;i&gt;", "<i>").replace("&lt;/i&gt;", "</i>")
         return Paragraph(restored, style)
 
-    # 0. Pre-scan elements to find the facility type name for bolding in intro
+    # 0. Pre-scan elements to find key values
     facility_type = None
+    borrower_name = None
+    default_rate_pct = "1"
+    penalty_rate_pct = "6"
     for kind, value in parser.elements:
         if kind == "table":
             table_idx, rows = value
-            if table_idx == 2:  # the terms table is table_idx == 2
+            if table_idx == 1 and rows:
+                name_addr = rows[0][0]
+                first_line = name_addr.split("<br/>")[0].strip()
+                if " (" in first_line:
+                    borrower_name = first_line.split(" (")[0].strip()
+                else:
+                    borrower_name = first_line
+            elif table_idx == 2:  # terms table
                 for row in rows:
-                    if len(row) >= 2 and row[0].strip().lower() == "facility type":
-                        facility_type = row[1].strip()
-                        break
+                    if len(row) >= 2:
+                        label = row[0].strip().lower()
+                        val = row[1].strip()
+                        if label == "facility type":
+                            facility_type = val
+                        elif label == "borrower" and not borrower_name:
+                            if " (the applicant)" in val.lower():
+                                borrower_name = val.replace(" (The Applicant)", "").replace(" (the applicant)", "").strip()
+                            else:
+                                borrower_name = val.strip()
+                        elif label == "default rate":
+                            match = re.search(r"(\d+(\.\d+)?)%", val)
+                            if match:
+                                default_rate_pct = match.group(1)
+                        elif label == "penalty rate":
+                            match = re.search(r"(\d+(\.\d+)?)%", val)
+                            if match:
+                                penalty_rate_pct = match.group(1)
 
     # Initialize story with template switch command for subsequent pages
     story = [NextPageTemplate("LaterPages")]
@@ -159,7 +184,66 @@ def _reportlab_pdf(html: str) -> bytes:
             tag, text = value
             clean_text = text.replace("’", "'").replace("“", '"').replace("”", '"')
             
+            # Ignore any original boilerplate text that matches the database configurations to prevent duplicates
+            lower_clean = clean_text.lower()
+            if (
+                lower_clean.startswith("in the event of failure") or
+                lower_clean.startswith("by signing this offer") or
+                lower_clean.startswith("a non repayment") or
+                lower_clean.startswith("a non-repayment") or
+                lower_clean.startswith("the bank shall be at liberty") or
+                lower_clean.startswith("all legal, statutory") or
+                lower_clean.startswith("no failure or delay") or
+                lower_clean.startswith("the bank reserves the right") or
+                lower_clean.startswith("i covenant and warrant") or
+                lower_clean.startswith("i hereby waive any right") or
+                (lower_clean.startswith("i, ") and "hereby authorize" in lower_clean) or
+                lower_clean.startswith("i consent to a gsi mandate")
+            ):
+                continue
+                
             if clean_text.strip() in ("Securities:", "Conditions Precedent to Drawdown:", "REPAYMENT SCHEDULE;"):
+                if clean_text.strip() == "Conditions Precedent to Drawdown:":
+                    # Reconstruct and append the three exact boilerplate paragraphs
+                    p1_text = (
+                        f"In the event of failure by the borrower to pay any due instalment on the Facility, "
+                        f"interest shall be calculated on the unpaid instalment(s) at the Bank's default rate of additional "
+                        f"<b>{default_rate_pct}% flat per month</b> and <b>{penalty_rate_pct}% penalty rate</b> on "
+                        f"<b>expiration</b> of the loan monthly. A non repayment of two (2) instalments amounts to a default "
+                        f"of the entire facility agreement and such default entitles the bank to call in the facility and or "
+                        f"take step as it may think fit to recover its funds. The bank shall be at liberty to review the rates "
+                        f"applicable to this facility in line with prevailing money market conditions from time to time and "
+                        f"such review shall be deemed acceptable to the borrower where the facility is not fully repaid immediately. "
+                        f"All legal, statutory, regulatory and out of pocket expenses that may arise in the execution of this "
+                        f"facility or in enforcing the terms and conditions in respect of same shall be for the account of the borrower. "
+                        f"No failure or delay the bank in executing any remedy, power or right above shall operate as a waiver or "
+                        f"impairment thereof nor shall it affect or impair any such remedies powers or rights of any such subsequent default. "
+                        f"The bank reserves the right to alter, amend and vary the terms on which this offer is made without recourse to you."
+                    )
+                    p2_text = (
+                        "By signing this offer letter/loan agreement and by drawing on the loan, I covenant to repay the loan as and when due. "
+                        "In the event that I fail to repay the loan as agreed, and the loan becomes delinquent, the bank shall have the right to "
+                        "report the delinquent loan to the CBN through the Credit Risk Management System (CRMS) or by any other means, and request "
+                        "the CBN exercise its regulatory power to direct all banks and other financial institutions under its regulatory purview "
+                        "to set-off my indebtedness from any money standing to my credit in any bank account and from any other financial assets they "
+                        "may be holding for my benefit. I covenant and warrant that the bank shall have power to set-off my indebtedness under this "
+                        "loan agreement from all such monies and funds standing to my credit/benefit in any and all such accounts or from any other "
+                        "financial assets belonging to me and in the custody of any such bank. I hereby waive any right of confidentiality whether "
+                        "arising under common law or statue or in any other manner whatsoever and irrevocably agree that I shall not argue to the "
+                        "contrary before any court of law, tribunal, administrative authority or any other body acting in any judicial or quasi-judicial capacity."
+                    )
+                    p3_text = (
+                        f"I, <b>{borrower_name or 'the borrower'}</b> in furtherance of my existing facility with the Bank or Loan Application "
+                        f"hereby authorize the Bank to execute a GSI Mandate authorizing Mainstreet Microfinance Bank to recover any and all "
+                        f"monies outstanding in my account including principal and accrued interest from any and all accounts maintained by me across "
+                        f"all Financial Institutions. This shall be without any recourse to me or my Guarantors."
+                    )
+                    
+                    story.append(para(p1_text, ParagraphStyle("offer-p1", parent=body, alignment=TA_JUSTIFY)))
+                    story.append(para(p2_text, ParagraphStyle("offer-p2", parent=body, alignment=TA_JUSTIFY)))
+                    story.append(para(p3_text, ParagraphStyle("offer-p3", parent=body, fontName="Helvetica-Bold", alignment=TA_JUSTIFY)))
+                    story.append(Spacer(1, 10))
+
                 keep = (clean_text.strip() == "REPAYMENT SCHEDULE;")
                 story.append(para(clean_text, ParagraphStyle("section-hdr", parent=body, fontName="Helvetica-Bold", fontSize=9, leading=12, spaceBefore=10, spaceAfter=4, keepWithNext=keep)))
             elif clean_text.upper().startswith("OFFER LETTER FOR"):
@@ -173,11 +257,18 @@ def _reportlab_pdf(html: str) -> bytes:
             elif tag == "h3":
                 story.append(para(clean_text, h3_style))
             elif tag == "li":
+                # Standardize deed of guarantors spelling
+                li_text = clean_text
+                li_lower = li_text.lower().strip()
+                if "deed of guarantor" in li_lower or "deed of guarantors" in li_lower:
+                    li_text = re.sub(r"^\d+\.\s*", "", li_text)
+                    li_text = f"{parser.list_index}. Duly executed Deed of Guarantors."
+                    
                 list_item_style = ParagraphStyle("offer-list-item", parent=body, leftIndent=163, firstLineIndent=-20, spaceAfter=4)
-                if re.match(r"^\d+\.", clean_text):
-                    story.append(para(clean_text, list_item_style))
+                if re.match(r"^\d+\.", li_text):
+                    story.append(para(li_text, list_item_style))
                 else:
-                    story.append(para("• " + clean_text, list_item_style))
+                    story.append(para("• " + li_text, list_item_style))
             else:
                 # Custom block text style overrides for signatures / acceptance sections
                 if clean_text.strip() in ("TERMS ACCEPTED BY ME;", "WITNESSED BY:"):
