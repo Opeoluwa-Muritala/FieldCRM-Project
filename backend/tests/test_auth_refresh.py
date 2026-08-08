@@ -197,3 +197,35 @@ async def test_inactive_user_token_rejection():
     assert exc_info.value.status_code == 401
     assert "no longer active" in exc_info.value.message.lower()
     repo.revoke_refresh_token_family.assert_called_once_with(family_id)
+
+
+@pytest.mark.asyncio
+async def test_transparent_access_renewal_does_not_consume_refresh_token():
+    repo = MagicMock()
+    service = AuthService(repo)
+    user_id = uuid4()
+    expires_at = datetime.now(timezone.utc) + timedelta(days=2)
+    session = {
+        "user_id": user_id,
+        "expires_at": expires_at,
+        "used_at": None,
+        "revoked_at": None,
+    }
+    repo.get_refresh_token_by_hash_for_update = AsyncMock(return_value=session)
+    repo.get_user_by_id = AsyncMock(return_value={
+        "id": user_id,
+        "org_id": uuid4(),
+        "role": "account_officer",
+        "active": True,
+    })
+    transaction = MagicMock()
+    transaction.__aenter__ = AsyncMock()
+    transaction.__aexit__ = AsyncMock(return_value=False)
+    repo.conn.transaction = MagicMock(return_value=transaction)
+
+    result = await service.issue_access_token_from_refresh("stable-refresh-token")
+
+    assert result["access_token"]
+    assert result["expires_at"] == expires_at
+    repo.create_refresh_token.assert_not_called()
+    repo.mark_refresh_token_used.assert_not_called()

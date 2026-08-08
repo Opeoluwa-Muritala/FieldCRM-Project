@@ -76,14 +76,19 @@ async def get_current_user(
                     from app.domains.auth.repository import AuthRepository
                     from app.domains.auth.service import AuthService
                     from app.config import settings
+
+                    forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",", 1)[0].strip().lower()
+                    is_secure_request = request.url.scheme.lower() == "https" or forwarded_proto == "https"
+                    if settings.is_production and not is_secure_request:
+                        raise exc
                     
                     async with get_connection() as conn:
                         service = AuthService(AuthRepository(conn))
                         ip_address = request.client.host if request.client else None
                         user_agent = request.headers.get("user-agent")
                         
-                        session_data = await service.rotate_refresh_token(
-                            refresh_token, client_type="web", user_agent=user_agent, ip_address=ip_address
+                        session_data = await service.issue_access_token_from_refresh(
+                            refresh_token, client_type="web"
                         )
                         
                         new_token = session_data["access_token"]
@@ -97,15 +102,6 @@ async def get_current_user(
                             secure=is_secure,
                             samesite="lax",
                             max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                            path="/",
-                        )
-                        response.set_cookie(
-                            key="refresh_token",
-                            value=session_data["refresh_token"],
-                            httponly=True,
-                            secure=is_secure,
-                            samesite="lax",
-                            expires=session_data["expires_at"],
                             path="/",
                         )
                 except Exception:

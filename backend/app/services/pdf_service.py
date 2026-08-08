@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import io
 import os
+import re
 import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from html import unescape
 
 if os.name == "nt":
     # WeasyPrint's Windows runtime is provided by MSYS2/Pango. Respect an
@@ -20,9 +22,67 @@ if os.name == "nt":
 
 def _to_pdf(html: str) -> bytes:
     """Render the supplied HTML and its CSS into real PDF bytes."""
-    from weasyprint import HTML
-    project_root = Path(__file__).resolve().parents[3]
-    return HTML(string=html, base_url=str(project_root)).write_pdf()
+    try:
+        from weasyprint import HTML
+        project_root = Path(__file__).resolve().parents[3]
+        return HTML(string=html, base_url=str(project_root)).write_pdf()
+    except Exception:
+        # WeasyPrint depends on native Pango/Cairo libraries that are not
+        # available in every serverless runtime (notably Vercel). Keep document
+        # generation operational with a small, standards-compliant text PDF.
+        # The full HTML renderer remains the preferred path where available.
+        import logging
+        logging.getLogger(__name__).warning(
+            "WeasyPrint unavailable; using plain-text PDF fallback", exc_info=True
+        )
+        return _plain_text_pdf(html)
+
+
+def _plain_text_pdf(html: str) -> bytes:
+    """Build a dependency-free PDF containing the readable document text."""
+    text = unescape(re.sub(r"<[^>]+>", " ", html))
+    lines = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines()]
+    lines = [line for line in lines if line]
+    wrapped = []
+    for line in lines:
+        while len(line) > 90:
+            wrapped.append(line[:90])
+            line = line[90:]
+        if line:
+            wrapped.append(line)
+    lines = wrapped or ["FieldCRM document"]
+
+    # Keep the fallback intentionally simple: one page with a readable
+    # Helvetica text stream and escaped PDF literals.
+    content_lines = ["BT", "/F1 9 Tf", "50 760 Td", "12 TL"]
+    for line in lines[:55]:
+        escaped = line.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+        content_lines.append(f"({escaped}) Tj T*")
+    content_lines.append("ET")
+    stream = "\n".join(content_lines).encode("latin-1", "replace")
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
+    ]
+    pdf = bytearray(b"%PDF-1.4\n")
+    offsets = [0]
+    for index, obj in enumerate(objects, 1):
+        offsets.append(len(pdf))
+        pdf.extend(f"{index} 0 obj\n".encode())
+        pdf.extend(obj)
+        pdf.extend(b"\nendobj\n")
+    xref = len(pdf)
+    pdf.extend(f"xref\n0 {len(objects) + 1}\n".encode())
+    pdf.extend(b"0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        pdf.extend(f"{offset:010d} 00000 n \n".encode())
+    pdf.extend(
+        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
+    )
+    return bytes(pdf)
 
 
 def _naira(amount) -> str:
