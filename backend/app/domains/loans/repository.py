@@ -127,7 +127,28 @@ class LoanRepository(BaseRepository):
             loan_id,
             org_id,
         )
-        return dict(row) if row else {}
+        if not row:
+            return {}
+
+        data = dict(row)
+        # asyncpg returns json/jsonb as strings unless a JSON codec is
+        # registered on the connection.  Keep repository callers independent
+        # of that connection-level detail.
+        for key in (
+            "wizard_data",
+            "visitation_data",
+            "verification_check",
+            "bureau_submission",
+            "aml_check",
+            "checklist_map",
+        ):
+            value = data.get(key)
+            if isinstance(value, str):
+                try:
+                    data[key] = json.loads(value)
+                except json.JSONDecodeError:
+                    data[key] = None if key not in {"wizard_data", "checklist_map"} else {}
+        return data
 
     async def get_wizard_page_snapshot(
         self,
