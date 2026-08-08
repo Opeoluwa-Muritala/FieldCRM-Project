@@ -40,7 +40,11 @@ def _to_pdf(html: str) -> bytes:
 
 def _plain_text_pdf(html: str) -> bytes:
     """Build a dependency-free PDF containing the readable document text."""
-    text = unescape(re.sub(r"<[^>]+>", " ", html))
+    # CSS and JavaScript blocks are implementation details, not document text.
+    # Remove their complete contents before stripping the remaining markup;
+    # otherwise a serverless fallback PDF visibly prints the stylesheet.
+    without_code = re.sub(r"<(?:style|script)\b[^>]*>.*?</(?:style|script)>", " ", html, flags=re.I | re.S)
+    text = unescape(re.sub(r"<[^>]+>", " ", without_code))
     lines = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines()]
     lines = [line for line in lines if line]
     wrapped = []
