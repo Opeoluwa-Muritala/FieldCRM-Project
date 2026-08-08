@@ -112,6 +112,8 @@ pydyf==0.12.1
     # via weasyprint
 pypdfium2==5.12.1
     # via pdfplumber
+reportlab==4.4.5
+    # via -r requirements.txt
 pyphen==0.17.2
     # via weasyprint
 pytesseract==0.3.10

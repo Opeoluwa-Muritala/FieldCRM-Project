@@ -35,7 +35,136 @@ def _to_pdf(html: str) -> bytes:
         logging.getLogger(__name__).warning(
             "WeasyPrint unavailable; using plain-text PDF fallback", exc_info=True
         )
-        return _plain_text_pdf(html)
+        return _reportlab_pdf(html)
+
+
+def _reportlab_pdf(html: str) -> bytes:
+    """Render the offer HTML into a structured PDF without native libraries."""
+    from html.parser import HTMLParser
+    from xml.sax.saxutils import escape
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import (
+        BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer, Table, TableStyle,
+    )
+
+    class DocumentParser(HTMLParser):
+        block_tags = {"p", "h1", "h2", "h3", "li", "div"}
+
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.blocks: list[tuple[str, str]] = []
+            self.elements: list[tuple[str, object]] = []
+            self.tables: list[list[list[str]]] = []
+            self._table: list[list[str]] | None = None
+            self._row: list[str] | None = None
+            self._text: list[str] = []
+            self._tag_stack: list[str] = []
+            self._ignored = 0
+
+        def handle_starttag(self, tag, attrs):
+            tag = tag.lower()
+            self._tag_stack.append(tag)
+            if tag in {"style", "script"}:
+                self._ignored += 1
+            elif self._ignored == 0 and tag == "table":
+                self._table = []
+            elif self._ignored == 0 and tag == "tr" and self._table is not None:
+                self._row = []
+            elif self._ignored == 0 and tag in {"td", "th"}:
+                self._text = []
+            elif self._ignored == 0 and tag == "br":
+                self._text.append("<br/>")
+
+        def handle_endtag(self, tag):
+            tag = tag.lower()
+            if self._ignored and tag in {"style", "script"}:
+                self._ignored -= 1
+            elif self._ignored == 0 and tag in {"td", "th"} and self._row is not None:
+                self._row.append(" ".join(self._text).strip())
+                self._text = []
+            elif self._ignored == 0 and tag == "tr" and self._row is not None and self._table is not None:
+                self._table.append(self._row)
+                self._row = None
+            elif self._ignored == 0 and tag == "table" and self._table is not None:
+                if self._table:
+                    self.tables.append(self._table)
+                    self.elements.append(("table", self._table))
+                self._table = None
+            elif self._ignored == 0 and tag in self.block_tags:
+                text = " ".join(self._text).strip()
+                if text and self._table is None:
+                    self.blocks.append((tag, text))
+                    self.elements.append(("block", (tag, text)))
+                self._text = []
+            if self._tag_stack:
+                self._tag_stack.pop()
+
+        def handle_data(self, data):
+            if self._ignored:
+                return
+            self._text.append(data)
+
+    parser = DocumentParser()
+    parser.feed(html)
+    styles = getSampleStyleSheet()
+    body = ParagraphStyle("offer-body", parent=styles["BodyText"], fontName="Helvetica", fontSize=9, leading=12, alignment=TA_JUSTIFY, spaceAfter=6)
+    heading = ParagraphStyle("offer-heading", parent=body, fontName="Helvetica-Bold", fontSize=10, leading=13, alignment=TA_CENTER, spaceBefore=8, spaceAfter=8)
+    small = ParagraphStyle("offer-small", parent=body, fontSize=8, leading=10)
+
+    def para(text, style=body):
+        return Paragraph(escape(text).replace("&lt;br/&gt;", "<br/>") , style)
+
+    story = []
+    for kind, value in parser.elements:
+        if kind == "block":
+            tag, text = value
+            if tag in {"h1", "h2", "h3"}:
+                story.append(para(text, heading))
+            elif tag == "li":
+                story.append(para("• " + text, body))
+            else:
+                story.append(para(text, body))
+            continue
+        rows = value
+        data = [[para(cell, small) for cell in row] for row in rows if row]
+        if data:
+            table = Table(data, repeatRows=1 if len(data) > 1 else 0, colWidths=None)
+            table.setStyle(TableStyle([
+                ("GRID", (0, 0), (-1, -1), 0.35, colors.black),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]))
+            story.extend([Spacer(1, 4), table, Spacer(1, 8)])
+
+    if not story:
+        story.append(para("FieldCRM document"))
+
+    buffer = io.BytesIO()
+    class OfferDocTemplate(BaseDocTemplate):
+        def __init__(self, filename, **kwargs):
+            super().__init__(filename, **kwargs)
+            frame = Frame(self.leftMargin, self.bottomMargin, self.width, self.height, id="offer")
+            self.addPageTemplates([PageTemplate(id="offer", frames=frame, onPage=self._footer)])
+
+        def _footer(self, canvas, doc):
+            canvas.saveState()
+            canvas.setFont("Helvetica", 8)
+            canvas.setFillColor(colors.grey)
+            canvas.drawRightString(A4[0] - 15 * mm, 9 * mm, f"Page {doc.page}")
+            canvas.restoreState()
+
+    doc = OfferDocTemplate(buffer, pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm, topMargin=50 * mm, bottomMargin=15 * mm)
+    doc.build(story)
+    return buffer.getvalue()
 
 
 def _plain_text_pdf(html: str) -> bytes:

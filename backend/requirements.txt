@@ -24,3 +24,4 @@ cloudinary==1.40.0
 redis[hiredis]==5.0.0
 # PDF generation
 weasyprint==62.0
+reportlab==4.4.5
