@@ -140,8 +140,10 @@ def _reportlab_pdf(html: str) -> bytes:
         if kind == "block":
             tag, text = value
             
-            # Force page-break before Repayment Schedule to match CSS template structure
-            if "repayment schedule" in text.lower() and tag in ("h1", "h2", "h3", "div"):
+            # Force page-breaks to match WeasyPrint's page budgeting structure
+            if "securities:" in text.lower() and tag in ("h1", "h2", "h3", "div"):
+                story.append(PageBreak())
+            elif "repayment schedule" in text.lower() and tag in ("h1", "h2", "h3", "div"):
                 story.append(PageBreak())
                 
             if tag == "h1":
@@ -151,7 +153,11 @@ def _reportlab_pdf(html: str) -> bytes:
             elif tag == "h3":
                 story.append(para(text, h3_style))
             elif tag == "li":
-                story.append(para("• " + text, body))
+                import re
+                if re.match(r"^\d+\.", text):
+                    story.append(para(text, body))
+                else:
+                    story.append(para("• " + text, body))
             else:
                 # Custom block text style overrides for signatures / acceptance sections
                 if text.startswith("TERMS ACCEPTED BY ME") or text.startswith("WITNESSED BY"):
