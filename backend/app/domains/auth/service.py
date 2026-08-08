@@ -132,6 +132,39 @@ class AuthService:
                 "expires_at": session["expires_at"]
             }
 
+    async def issue_access_token_from_refresh(self, raw_token: str, client_type: str = "web") -> dict:
+        """Validate a browser refresh session without consuming its token.
+
+        Server-rendered pages can issue several requests at once when an access
+        token expires.  Rotating the one-time refresh token for each request
+        makes those concurrent requests look like token reuse and revokes the
+        entire family.  Transparent browser renewal therefore keeps the
+        refresh token stable; explicit refresh API calls still use rotation.
+        """
+        token_hash = self._refresh_hash(raw_token)
+        async with self.repo.conn.transaction():
+            session = await self.repo.get_refresh_token_by_hash_for_update(token_hash)
+            if not session:
+                raise DomainException("Invalid refresh session.", 401)
+            if session["used_at"] is not None or session["revoked_at"] is not None:
+                raise DomainException("Session is no longer active.", 401)
+            if session["expires_at"] <= datetime.now(timezone.utc):
+                raise DomainException("Refresh session expired.", 401)
+
+            user = await self.repo.get_user_by_id(str(session["user_id"]))
+            if not user or not user["active"]:
+                raise DomainException("Session is no longer active.", 401)
+
+            return {
+                "access_token": create_access_token(
+                    user["id"],
+                    role=user["role"],
+                    org_id=user["org_id"],
+                    session_type=client_type,
+                ),
+                "expires_at": session["expires_at"],
+            }
+
     async def rotate_mobile_session(self, refresh_token: str, user_agent: str | None = None, ip_address: str | None = None) -> dict:
         res = await self.rotate_refresh_token(refresh_token, client_type="mobile", user_agent=user_agent, ip_address=ip_address)
         return {
