@@ -87,8 +87,8 @@ async def get_current_user(
                         ip_address = request.client.host if request.client else None
                         user_agent = request.headers.get("user-agent")
                         
-                        session_data = await service.issue_access_token_from_refresh(
-                            refresh_token, client_type="web"
+                        session_data = await service.rotate_refresh_token(
+                            refresh_token, client_type="web", user_agent=user_agent, ip_address=ip_address
                         )
                         
                         new_token = session_data["access_token"]
@@ -104,6 +104,16 @@ async def get_current_user(
                             max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
                             path="/",
                         )
+                        if session_data.get("refresh_token"):
+                            response.set_cookie(
+                                key="refresh_token",
+                                value=session_data["refresh_token"],
+                                httponly=True,
+                                secure=is_secure,
+                                samesite="lax",
+                                expires=session_data["expires_at"],
+                                path="/",
+                            )
                 except Exception:
                     # Propagate original 401 if refresh attempt fails
                     raise exc

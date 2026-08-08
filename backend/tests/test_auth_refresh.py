@@ -200,7 +200,7 @@ async def test_inactive_user_token_rejection():
 
 
 @pytest.mark.asyncio
-async def test_transparent_access_renewal_does_not_consume_refresh_token():
+async def test_concurrent_refresh_reuses_access_renewal_without_family_revocation():
     repo = MagicMock()
     service = AuthService(repo)
     user_id = uuid4()
@@ -208,8 +208,10 @@ async def test_transparent_access_renewal_does_not_consume_refresh_token():
     session = {
         "user_id": user_id,
         "expires_at": expires_at,
-        "used_at": None,
+        "used_at": datetime.now(timezone.utc) - timedelta(seconds=1),
         "revoked_at": None,
+        "user_agent": "browser",
+        "ip_address": "127.0.0.1",
     }
     repo.get_refresh_token_by_hash_for_update = AsyncMock(return_value=session)
     repo.get_user_by_id = AsyncMock(return_value={
@@ -223,9 +225,11 @@ async def test_transparent_access_renewal_does_not_consume_refresh_token():
     transaction.__aexit__ = AsyncMock(return_value=False)
     repo.conn.transaction = MagicMock(return_value=transaction)
 
-    result = await service.issue_access_token_from_refresh("stable-refresh-token")
+    result = await service.rotate_refresh_token(
+        "stable-refresh-token", user_agent="browser", ip_address="127.0.0.1"
+    )
 
     assert result["access_token"]
     assert result["expires_at"] == expires_at
-    repo.create_refresh_token.assert_not_called()
-    repo.mark_refresh_token_used.assert_not_called()
+    assert result["refresh_token"] is None
+    repo.revoke_refresh_token_family.assert_not_called()
