@@ -65,6 +65,7 @@ def _reportlab_pdf(html: str) -> bytes:
             self._tag_stack: list[str] = []
             self._ignored = 0
             self.list_index = 0
+            self.table_count = 0
 
         def handle_starttag(self, tag, attrs):
             tag = tag.lower()
@@ -94,8 +95,9 @@ def _reportlab_pdf(html: str) -> bytes:
                 self._row = None
             elif self._ignored == 0 and tag == "table" and self._table is not None:
                 if self._table:
+                    self.table_count += 1
                     self.tables.append(self._table)
-                    self.elements.append(("table", self._table))
+                    self.elements.append(("table", (self.table_count, self._table)))
                 self._table = None
             elif self._ignored == 0 and tag in self.block_tags:
                 if self._table is None:
@@ -121,7 +123,7 @@ def _reportlab_pdf(html: str) -> bytes:
     parser.feed(html)
     styles = getSampleStyleSheet()
     
-    body = ParagraphStyle("offer-body", parent=styles["BodyText"], fontName="Helvetica", fontSize=9, leading=12, alignment=TA_JUSTIFY, spaceAfter=6)
+    body = ParagraphStyle("offer-body", parent=styles["BodyText"], fontName="Helvetica", fontSize=9, leading=12, alignment=TA_LEFT, spaceAfter=6)
     h1_style = ParagraphStyle("offer-h1", parent=body, fontName="Helvetica-Bold", fontSize=14, leading=18, alignment=TA_CENTER, spaceBefore=12, spaceAfter=12)
     h2_style = ParagraphStyle("offer-h2", parent=body, fontName="Helvetica-Bold", fontSize=11, leading=15, alignment=TA_CENTER, spaceBefore=10, spaceAfter=10)
     h3_style = ParagraphStyle("offer-h3", parent=body, fontName="Helvetica-Bold", fontSize=10, leading=13, alignment=TA_LEFT, spaceBefore=8, spaceAfter=6)
@@ -133,7 +135,10 @@ def _reportlab_pdf(html: str) -> bytes:
     small = ParagraphStyle("offer-small", parent=body, fontSize=8, leading=10)
 
     def para(text, style=body):
-        return Paragraph(escape(text).replace("&lt;br/&gt;", "<br/>") , style)
+        escaped = escape(text).replace("&lt;br/&gt;", "<br/>")
+        restored = escaped.replace("&lt;u&gt;", "<u>").replace("&lt;/u&gt;", "</u>")
+        restored = restored.replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
+        return Paragraph(restored, style)
 
     # Initialize story with template switch command for subsequent pages
     story = [NextPageTemplate("LaterPages")]
@@ -142,12 +147,14 @@ def _reportlab_pdf(html: str) -> bytes:
             tag, text = value
             
             # Force page-breaks to match WeasyPrint's page budgeting structure
-            if "securities:" in text.lower() and tag in ("h1", "h2", "h3", "div"):
-                story.append(PageBreak())
-            elif "repayment schedule" in text.lower() and tag in ("h1", "h2", "h3", "div"):
+            if "repayment schedule" in text.lower() and tag in ("h1", "h2", "h3", "div"):
                 story.append(PageBreak())
                 
-            if tag == "h1":
+            if text.upper().startswith("OFFER LETTER FOR"):
+                # Centered, bold, underlined title
+                title_text = f"<u><b>{text}</b></u>"
+                story.append(para(title_text, ParagraphStyle("offer-title-style", parent=body, fontName="Helvetica-Bold", fontSize=10, leading=14, alignment=TA_CENTER, spaceBefore=12, spaceAfter=12)))
+            elif tag == "h1":
                 story.append(para(text, h1_style))
             elif tag == "h2":
                 story.append(para(text, h2_style))
@@ -171,9 +178,28 @@ def _reportlab_pdf(html: str) -> bytes:
                     story.append(para(text, body))
             continue
             
-        rows = value
+        table_idx, rows = value
         cols_count = len(rows[0]) if rows else 0
-        if cols_count == 2:
+        if table_idx == 1:
+            # 1. Header table: Name/Address left-aligned, Date right-aligned on SAME line
+            data = []
+            for row in rows:
+                if len(row) >= 2:
+                    left_para = para(row[0], ParagraphStyle("header-left", parent=body, fontName="Helvetica-Bold", fontSize=9, leading=12, alignment=TA_LEFT))
+                    right_para = para(row[1], ParagraphStyle("header-right", parent=body, fontName="Helvetica-Bold", fontSize=9, leading=12, alignment=TA_RIGHT))
+                    data.append([left_para, right_para])
+            if data:
+                printable_width = A4[0] - 30 * mm
+                table = Table(data, colWidths=[printable_width * 0.7, printable_width * 0.3])
+                table.setStyle(TableStyle([
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                    ("TOPPADDING", (0, 0), (-1, -1), 0),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+                ]))
+                story.append(table)
+        elif cols_count == 2:
             is_sig_table = any("authorised signatory" in str(cell).lower() for row in rows for cell in row)
             if is_sig_table:
                 # Signature table - split into two columns with an empty gap in the middle
