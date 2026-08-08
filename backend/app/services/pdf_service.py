@@ -43,12 +43,12 @@ def _reportlab_pdf(html: str) -> bytes:
     from html.parser import HTMLParser
     from xml.sax.saxutils import escape
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT, TA_RIGHT
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
     from reportlab.platypus import (
-        BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer, Table, TableStyle, NextPageTemplate,
+        BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer, Table, TableStyle, NextPageTemplate, PageBreak,
     )
 
     class DocumentParser(HTMLParser):
@@ -64,12 +64,15 @@ def _reportlab_pdf(html: str) -> bytes:
             self._text: list[str] = []
             self._tag_stack: list[str] = []
             self._ignored = 0
+            self.list_index = 0
 
         def handle_starttag(self, tag, attrs):
             tag = tag.lower()
             self._tag_stack.append(tag)
             if tag in {"style", "script"}:
                 self._ignored += 1
+            elif tag == "ol":
+                self.list_index = 0
             elif self._ignored == 0 and tag == "table":
                 self._table = []
             elif self._ignored == 0 and tag == "tr" and self._table is not None:
@@ -97,9 +100,14 @@ def _reportlab_pdf(html: str) -> bytes:
             elif self._ignored == 0 and tag in self.block_tags:
                 text = " ".join(self._text).strip()
                 if text and self._table is None:
+                    if tag == "li" and "ol" in self._tag_stack:
+                        self.list_index += 1
+                        text = f"{self.list_index}. {text}"
                     self.blocks.append((tag, text))
                     self.elements.append(("block", (tag, text)))
                 self._text = []
+            if tag == "ol":
+                self.list_index = 0
             if self._tag_stack:
                 self._tag_stack.pop()
 
@@ -116,6 +124,11 @@ def _reportlab_pdf(html: str) -> bytes:
     h1_style = ParagraphStyle("offer-h1", parent=body, fontName="Helvetica-Bold", fontSize=14, leading=18, alignment=TA_CENTER, spaceBefore=12, spaceAfter=12)
     h2_style = ParagraphStyle("offer-h2", parent=body, fontName="Helvetica-Bold", fontSize=11, leading=15, alignment=TA_CENTER, spaceBefore=10, spaceAfter=10)
     h3_style = ParagraphStyle("offer-h3", parent=body, fontName="Helvetica-Bold", fontSize=10, leading=13, alignment=TA_LEFT, spaceBefore=8, spaceAfter=6)
+    
+    # Custom alignment helpers for tables
+    th_style = ParagraphStyle("offer-th", parent=body, fontName="Helvetica-Bold", fontSize=8, leading=10, alignment=TA_CENTER)
+    td_center = ParagraphStyle("offer-td-center", parent=body, fontSize=8, leading=10, alignment=TA_CENTER)
+    td_right = ParagraphStyle("offer-td-right", parent=body, fontSize=8, leading=10, alignment=TA_RIGHT)
     small = ParagraphStyle("offer-small", parent=body, fontSize=8, leading=10)
 
     def para(text, style=body):
@@ -126,6 +139,11 @@ def _reportlab_pdf(html: str) -> bytes:
     for kind, value in parser.elements:
         if kind == "block":
             tag, text = value
+            
+            # Force page-break before Repayment Schedule to match CSS template structure
+            if "repayment schedule" in text.lower() and tag in ("h1", "h2", "h3", "div"):
+                story.append(PageBreak())
+                
             if tag == "h1":
                 story.append(para(text, h1_style))
             elif tag == "h2":
@@ -135,35 +153,89 @@ def _reportlab_pdf(html: str) -> bytes:
             elif tag == "li":
                 story.append(para("• " + text, body))
             else:
-                story.append(para(text, body))
+                # Custom block text style overrides for signatures / acceptance sections
+                if text.startswith("TERMS ACCEPTED BY ME") or text.startswith("WITNESSED BY"):
+                    story.append(para(text, ParagraphStyle("offer-acc-title", parent=body, fontName="Helvetica-Bold", fontSize=9, leading=12, spaceBefore=10, spaceAfter=4)))
+                elif text.startswith("(Please sign across"):
+                    story.append(para(text, ParagraphStyle("offer-acc-stamp", parent=body, fontName="Helvetica-Oblique", fontSize=8, leading=10, spaceAfter=6)))
+                elif text.startswith("NAME:"):
+                    story.append(para(text, ParagraphStyle("offer-acc-line", parent=body, fontSize=8.5, leading=14, spaceBefore=6, spaceAfter=6)))
+                else:
+                    story.append(para(text, body))
             continue
+            
         rows = value
         cols_count = len(rows[0]) if rows else 0
-        data = [[para(cell, small) for cell in row] for row in rows if row]
-        if data:
-            table = Table(data, repeatRows=1 if len(data) > 1 else 0, colWidths=None)
-            if cols_count == 2:
-                # Terms and conditions table: borderless, with custom spacing
-                table.setStyle(TableStyle([
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                    ("TOPPADDING", (0, 0), (-1, -1), 4),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ]))
+        if cols_count == 2:
+            is_sig_table = any("authorised signatory" in str(cell).lower() for row in rows for cell in row)
+            if is_sig_table:
+                # Signature table - split into two columns with an empty gap in the middle
+                data = []
+                for row in rows:
+                    if len(row) >= 2:
+                        sig1 = para(row[0], td_center)
+                        sig2 = para(row[1], td_center)
+                        data.append([sig1, "", sig2])
+                if data:
+                    printable_width = A4[0] - 30 * mm
+                    col_widths = [printable_width * 0.42, printable_width * 0.16, printable_width * 0.42]
+                    table = Table(data, colWidths=col_widths, spaceBefore=20)
+                    table.setStyle(TableStyle([
+                        ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
+                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                        ("LINEABOVE", (0, 0), (0, -1), 0.75, colors.black),
+                        ("LINEABOVE", (2, 0), (2, -1), 0.75, colors.black),
+                        ("TOPPADDING", (0, 0), (-1, -1), 35), # space for signing
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                    ]))
+                    story.extend([Spacer(1, 10), table, Spacer(1, 10)])
             else:
-                # Repayment schedule: keep light grey border grids and background
+                # Terms and conditions table: borderless with 32% label width
+                data = []
+                for row in rows:
+                    if len(row) >= 2:
+                        label_para = para(row[0], ParagraphStyle("offer-td-bold", parent=body, fontName="Helvetica-Bold", fontSize=8.5, leading=11))
+                        val_para = para(row[1], ParagraphStyle("offer-td-val", parent=body, fontSize=8.5, leading=11))
+                        data.append([label_para, val_para])
+                if data:
+                    printable_width = A4[0] - 30 * mm
+                    table = Table(data, colWidths=[printable_width * 0.32, printable_width * 0.68])
+                    table.setStyle(TableStyle([
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                        ("TOPPADDING", (0, 0), (-1, -1), 3),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                    ]))
+                    story.extend([Spacer(1, 4), table, Spacer(1, 8)])
+        else:
+            # Repayment schedule: keep light grey border grids and background with aligned cells
+            data = []
+            for r_idx, row in enumerate(rows):
+                new_row = []
+                for c_idx, cell in enumerate(row):
+                    if r_idx == 0:
+                        style = th_style
+                    else:
+                        style = td_right if c_idx in (2, 3, 4) else td_center
+                    new_row.append(para(cell, style))
+                data.append(new_row)
+            if data:
+                printable_width = A4[0] - 30 * mm
+                col_widths = [printable_width * 0.12, printable_width * 0.22, printable_width * 0.22, printable_width * 0.22, printable_width * 0.22]
+                table = Table(data, repeatRows=1, colWidths=col_widths)
                 table.setStyle(TableStyle([
-                    ("GRID", (0, 0), (-1, -1), 0.35, colors.grey),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f2f2f2")),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
                     ("TOPPADDING", (0, 0), (-1, -1), 4),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
                 ]))
-            story.extend([Spacer(1, 4), table, Spacer(1, 8)])
+                story.extend([Spacer(1, 4), table, Spacer(1, 8)])
 
     if len(story) <= 1:
         story.append(para("FieldCRM document"))
