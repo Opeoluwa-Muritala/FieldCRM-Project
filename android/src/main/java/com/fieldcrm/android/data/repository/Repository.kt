@@ -209,8 +209,26 @@ class ApplicationRepository(
         return queries.selectAllApplications().executeAsList().map { it.toModel() }
     }
 
+    suspend fun getCachedFullDetail(id: String): ApplicationDetailResult? {
+        val cached = queries.selectReviewDetailCacheByApplicationId(id).executeAsOneOrNull() ?: return null
+        return decodeFullDetail(id, cached.payload_json, enrichGuarantors = false)
+    }
+
     suspend fun getFullDetail(id: String): ApplicationDetailResult? {
-        val json = apiService.getApplicationDetail(id) ?: return null
+        val json = apiService.getApplicationDetail(id) ?: return getCachedFullDetail(id)
+        val detail = decodeFullDetail(id, json, enrichGuarantors = true)
+        if (detail != null) {
+            queries.upsertReviewDetailCache(id, json, System.currentTimeMillis())
+            queries.pruneReviewDetailCache(System.currentTimeMillis() - REVIEW_CACHE_RETENTION_MILLIS)
+        }
+        return detail ?: getCachedFullDetail(id)
+    }
+
+    private suspend fun decodeFullDetail(
+        id: String,
+        json: String,
+        enrichGuarantors: Boolean
+    ): ApplicationDetailResult? {
         return try {
             val response = Json.decodeFromString<com.fieldcrm.android.data.api.ApplicationDetailResponse>(json)
             if (response.readiness == null || response.intake == null) {
@@ -246,7 +264,7 @@ class ApplicationRepository(
             var intake: Map<String, Any> = response.intake.mapNotNull { (k, v) -> safeValue(v)?.let { k to it } }.toMap()
 
             // If intake lacks flat guarantor keys, fetch from guarantor endpoint and merge
-            if (!intake.containsKey("guarantor_1_name")) {
+            if (enrichGuarantors && !intake.containsKey("guarantor_1_name")) {
                 val merged = intake.toMutableMap()
                 for (slot in 1..2) {
                     val gJson = apiService.getGuarantorData(id, slot) ?: continue
@@ -283,6 +301,10 @@ class ApplicationRepository(
         } catch (e: Exception) {
             null
         }
+    }
+
+    private companion object {
+        const val REVIEW_CACHE_RETENTION_MILLIS = 7L * 24L * 60L * 60L * 1000L
     }
 
     suspend fun getAllApplications(): List<LoanApplicationModel> {
