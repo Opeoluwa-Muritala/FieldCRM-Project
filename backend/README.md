@@ -121,6 +121,7 @@ Open `http://127.0.0.1:8000/login`, `http://127.0.0.1:8000/api/docs`, or `http:/
 With the virtual environment activated, run the repository checks from the root:
 
 ```powershell
+pip install -r requirements-dev.txt
 python test_imports.py
 python backend\test_http.py
 python backend\test_routes_render.py

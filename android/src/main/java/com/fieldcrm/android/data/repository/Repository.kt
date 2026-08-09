@@ -154,7 +154,8 @@ private object NoopMobileApiService : MobileApiService {
     override suspend fun advanceWorkflow(id: String, notes: String): com.fieldcrm.android.data.api.WorkflowAdvanceResponse? = null
     override suspend fun listUsers(): ApiResult<List<com.fieldcrm.android.data.api.MobileUserItem>> =
         ApiResult.NetworkError("User administration is unavailable offline")
-    override suspend fun createUser(fullName: String, email: String, role: String, password: String) = false
+    override suspend fun inviteUser(fullName: String, email: String, role: String, branchId: String?) =
+        ApiResult.NetworkError("User invitations are unavailable offline")
     override suspend fun pullCreditBureau(id: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
     override suspend fun getCreditChecklist(id: String, context: String) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
     override suspend fun updateCreditChecklist(id: String, request: com.fieldcrm.android.data.api.CreditChecklistUpdateRequest) = com.fieldcrm.android.core.network.ApiResult.NetworkError("Unavailable")
@@ -407,6 +408,66 @@ class ApplicationRepository(
             "loan_type" to JsonPrimitive(loanType),
             "purpose" to JsonPrimitive(purpose)
         )) != null
+    }
+
+    suspend fun submitProfileIntakeToServer(
+        id: String,
+        profile: com.fieldcrm.android.data.api.ProfileIntakeFields
+    ): Boolean {
+        fun values(vararg entries: Pair<String, String>) = entries.associate { (key, value) ->
+            key to JsonPrimitive(value)
+        }
+
+        val step1 = apiService.saveIntakeStep(id, 1, values(
+            "full_name" to profile.fullName,
+            "phone" to profile.phone,
+            "alternative_phone" to profile.alternativePhone,
+            "email" to profile.email,
+            "gender" to profile.gender,
+            "bvn" to profile.bvn,
+            "marital_status" to profile.maritalStatus,
+            "dob" to profile.dateOfBirth,
+            "id_type" to profile.idType,
+            "id_number" to profile.idNumber,
+            "id_expiry" to profile.idExpiry,
+            "home_address" to profile.residentialAddress,
+            "state_of_origin" to profile.stateOfOrigin,
+            "lga" to profile.lga,
+            "landmark" to profile.landmark,
+            "photo_url" to profile.photoUrl,
+            "customer_reference" to profile.customerReference,
+            "account_reference" to profile.accountReference
+        ))
+        val step2 = apiService.saveIntakeStep(id, 2, values(
+            "spouse_name" to profile.spouseName,
+            "spouse_phone" to profile.spousePhone,
+            "spouse_children" to profile.spouseChildren,
+            "spouse_dependants" to profile.spouseDependants,
+            "spouse_business_address" to profile.spouseBusinessAddress
+        ))
+        val step4 = apiService.saveIntakeStep(id, 4, values(
+            "employment_type" to profile.employmentType,
+            "industry" to profile.industry,
+            "years_employed" to profile.yearsEmployed,
+            "employer_name" to profile.employerName,
+            "monthly_salary" to profile.monthlySalary,
+            "employer_address" to profile.employerAddress,
+            "business_type" to profile.businessType,
+            "years_in_business" to profile.yearsInBusiness,
+            "monthly_sales" to profile.monthlySales,
+            "monthly_turnover" to profile.monthlyTurnover,
+            "business_address" to profile.businessAddress,
+            "pnl_period_label" to profile.pnlPeriodLabel,
+            "pnl_revenue" to profile.pnlRevenue,
+            "pnl_expenses" to profile.pnlExpenses
+        ))
+        val step7 = apiService.saveIntakeStep(id, 7, values(
+            "account_name" to profile.accountName,
+            "account_number" to profile.accountNumber,
+            "bank_name" to profile.bankName,
+            "sort_code" to profile.sortCode
+        ))
+        return step1 != null && step2 != null && step4 != null && step7 != null
     }
 
     suspend fun patchApplicationMeta(id: String, purpose: String, pledgeValue: Double): Boolean {

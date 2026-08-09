@@ -37,6 +37,8 @@ data class ApplicationUiState(
     val customerSearchResults: List<ExistingCustomerSearchItem> = emptyList(),
     val isSearchingCustomers: Boolean = false,
     val selectedCustomerProfile: PersonalProfileSnapshot? = null,
+    val activeApplicationProfile: PersonalProfileSnapshot? = null,
+    val activeApplicationProfileId: String? = null,
     val newCustomerName: String = "",
     val newCustomerPhone: String = "",
     val newCustomerBvn: String = "",
@@ -184,8 +186,14 @@ class ApplicationViewModel(
                         phone = profile.phone.orEmpty(),
                         bvn = profile.bvn.orEmpty(),
                         nin = profile.nin.orEmpty(),
+                        physical_address = profile.residential_address,
                         status = if (customer.active) "ACTIVE" else "INACTIVE",
-                        created_at = ""
+                        created_at = "",
+                        date_of_birth = profile.date_of_birth,
+                        marital_status = profile.marital_status,
+                        state = profile.state,
+                        lga = profile.lga,
+                        email = profile.email
                     )
                     _uiState.update {
                         it.copy(
@@ -415,7 +423,13 @@ class ApplicationViewModel(
 
             val success = repository.createApplication(newApp, if (isNew) null else borrower.id)
             if (success) {
-                _uiState.update { it.copy(applications = it.applications + newApp) }
+                _uiState.update {
+                    it.copy(
+                        applications = it.applications + newApp,
+                        activeApplicationProfile = if (isNew) null else state.selectedCustomerProfile,
+                        activeApplicationProfileId = if (isNew) null else newApp.id
+                    )
+                }
                 clearNewAppFields()
                 _uiState.update { it.copy(isLoading = false) }
                 onSuccess(newApp, borrower)
@@ -523,9 +537,15 @@ class ApplicationViewModel(
     fun submitIntakeForm(
         updatedApp: LoanApplicationModel,
         updatedBorrower: BorrowerModel,
+        profile: com.fieldcrm.android.data.api.ProfileIntakeFields,
         onSuccess: () -> Unit
     ) {
         viewModelScope.launch {
+            val profileSaved = repository.submitProfileIntakeToServer(updatedApp.id, profile)
+            if (!profileSaved) {
+                _uiState.update { it.copy(errorMessage = "Could not save the customer profile sections. Check your connection and try again.") }
+                return@launch
+            }
             val ok = repository.submitIntakeToServer(
                 id = updatedApp.id,
                 amount = updatedApp.amount ?: 0.0,

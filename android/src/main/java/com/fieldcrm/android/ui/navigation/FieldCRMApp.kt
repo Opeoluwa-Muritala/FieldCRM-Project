@@ -412,8 +412,7 @@ fun FieldCRMApp(
                         1 -> {
                             when (resolvedRole) {
                                 UserRole.SYSTEM_ADMIN -> UsersScreen(
-                                    onBackClick = null,
-                                    onViewUser = {}
+                                    onBackClick = null
                                 )
                                 UserRole.ACCOUNT_OFFICER, UserRole.LOAN_OFFICER -> RelationshipOfficerApplicationQueue(
                                     applications = applicationUiState.applications,
@@ -705,6 +704,8 @@ fun FieldCRMApp(
                 LoanApplicationFormScreen(
                     application = app,
                     borrower = borrower,
+                    customerProfile = applicationUiState.activeApplicationProfile
+                        .takeIf { applicationUiState.activeApplicationProfileId == app.id },
                     appDetail = applicationUiState.selectedAppDetail,
                     applicationViewModel = applicationViewModel,
                     borrowerViewModel = borrowerViewModel,

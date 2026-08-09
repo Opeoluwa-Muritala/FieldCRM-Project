@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import base64
 import hashlib
 import hmac
@@ -78,17 +78,18 @@ def create_access_token(
     session_type: str = "web",
 ) -> str:
     from uuid import uuid4
+    issued_at = datetime.now(UTC)
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = issued_at + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = issued_at + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode = {
         "sub": str(subject),
         "role": role,
         "org_id": str(org_id) if org_id else "",
         "exp": expire,
-        "iat": datetime.utcnow(),
+        "iat": issued_at,
         "type": "access",
         "session_type": session_type,
         "jti": str(uuid4()),

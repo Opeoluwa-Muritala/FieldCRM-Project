@@ -15,8 +15,8 @@
     <div><span class="csp-s-500708668cdd">Type</span><br><strong>{{ app.loan_type|upper }}</strong></div>
 </div>
 
-<div class="page-card" style="margin-bottom: 20px;">
-  <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary" style="display: inline-block;">Open Collateral &amp; Repayment Feasibility Analysis &rarr;</a>
+<div class="page-card workflow-analysis-card">
+  <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary workflow-analysis-link">Open Collateral &amp; Repayment Feasibility Analysis &rarr;</a>
 </div>
 
 {% if app.crm_notes %}

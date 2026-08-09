@@ -1,6 +1,6 @@
 from typing import Optional, List, Any, Dict
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 class LoanApplicationBase(BaseModel):
     borrower_id: str
@@ -17,6 +17,8 @@ class LoanApplicationCreate(LoanApplicationBase):
     org_id: str
 
 class LoanApplicationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     org_id: str
     borrower_id: str
@@ -32,9 +34,6 @@ class LoanApplicationResponse(BaseModel):
     collateral_value: Optional[float] = None
     officer_recommendation: Optional[str] = None
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 # Stage-specific data inputs
 class ManagerReview(BaseModel):
@@ -63,10 +62,12 @@ class WorkflowReturnRequest(BaseModel):
 
 # Document request (returns back to Loan Officer)
 class DocumentRequest(BaseModel):
-    requested_docs: List[str] = Field(..., min_items=1)
+    requested_docs: List[str] = Field(..., min_length=1)
     reason: str = Field(..., min_length=10)
 
 class WorkflowEventResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     application_id: str
     action: str
@@ -75,9 +76,6 @@ class WorkflowEventResponse(BaseModel):
     actor_id: str
     reason: Optional[str] = None
     timestamp: datetime
-
-    class Config:
-        from_attributes = True
 
 class DisbursementFormUpsert(BaseModel):
     form_type: str = Field(..., description="guarantor, pledge_trust_receipt, or another configured disbursement form key")

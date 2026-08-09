@@ -27,6 +27,8 @@ import com.fieldcrm.android.ui.theme.FieldTheme
 import com.fieldcrm.android.ui.viewmodel.ApplicationViewModel
 import com.fieldcrm.android.ui.viewmodel.BorrowerViewModel
 import com.fieldcrm.android.data.repository.ApplicationDetailResult
+import com.fieldcrm.android.data.api.PersonalProfileSnapshot
+import com.fieldcrm.android.data.api.ProfileIntakeFields
 import com.fieldcrm.android.ui.viewmodel.AppViewModel
 import com.fieldcrm.android.ui.viewmodel.Screen
 import com.fieldcrm.shared.model.BorrowerModel
@@ -36,6 +38,7 @@ import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 
 data class WizardTab(val index: Int, val name: String, val icon: String)
 
@@ -43,6 +46,7 @@ data class WizardTab(val index: Int, val name: String, val icon: String)
 fun LoanApplicationFormScreen(
     application: LoanApplicationModel,
     borrower: BorrowerModel?,
+    customerProfile: PersonalProfileSnapshot? = null,
     appDetail: ApplicationDetailResult? = null,
     applicationViewModel: ApplicationViewModel,
     borrowerViewModel: BorrowerViewModel,
@@ -53,10 +57,11 @@ fun LoanApplicationFormScreen(
     LoanApplicationFormContent(
         application = application,
         borrower = borrower,
+        customerProfile = customerProfile,
         appDetail = appDetail,
         onBackClick = onBackClick,
         onNavigateToGuarantorsForm = onNavigateToGuarantorsForm,
-        onSubmit = { name, phone, bvn, address, _, _, employment, employer, income, amount, tenure, product, collateralDesc, collateralVal, gName, gPhone, bank, acc ->
+        onSubmit = { name, phone, bvn, address, _, _, employment, employer, income, amount, tenure, product, collateralDesc, collateralVal, gName, gPhone, bank, acc, profile ->
             val currentBorrower = borrower ?: return@LoanApplicationFormContent
             val updatedBorrower = currentBorrower.copy(
                 name = name,
@@ -80,7 +85,7 @@ fun LoanApplicationFormScreen(
             )
 
             borrowerViewModel.updateBorrowerLocal(updatedBorrower) {
-                applicationViewModel.submitIntakeForm(updatedApp, updatedBorrower) {
+                applicationViewModel.submitIntakeForm(updatedApp, updatedBorrower, profile) {
                     appViewModel.setSelectedApplication(updatedApp)
                     appViewModel.setSelectedBorrower(updatedBorrower)
                     appViewModel.triggerSuccessScreen(
@@ -98,6 +103,7 @@ fun LoanApplicationFormScreen(
 fun LoanApplicationFormContent(
     application: LoanApplicationModel,
     borrower: BorrowerModel?,
+    customerProfile: PersonalProfileSnapshot? = null,
     appDetail: ApplicationDetailResult? = null,
     onBackClick: () -> Unit,
     onNavigateToGuarantorsForm: () -> Unit = {},
@@ -105,7 +111,7 @@ fun LoanApplicationFormContent(
         name: String, phone: String, bvn: String, address: String, dob: String, marital: String,
         employment: String, employer: String, income: String, amount: String, tenure: String,
         product: String, collateralDesc: String, collateralVal: String, gName: String, gPhone: String,
-        bank: String, acc: String
+        bank: String, acc: String, profile: ProfileIntakeFields
     ) -> Unit
 ) {
     val configViewModel: com.fieldcrm.android.ui.viewmodel.ConfigViewModel = org.koin.androidx.compose.koinViewModel()
@@ -138,26 +144,32 @@ fun LoanApplicationFormContent(
     )
 
     // Form inputs state — sourced from appDetail.intake first, then BorrowerModel, then defaults
-    var nameInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("applicant_full_name", "full_name", "applicant_name").ifBlank { borrower?.name ?: "" }) }
-    var phoneInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("phone", "phone_number", "phone_numbers").ifBlank { borrower?.phone ?: "" }) }
-    var bvnInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("bvn").ifBlank { borrower?.bvn ?: "" }) }
-    var addressInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("physical_address", "address", "residential_address").ifBlank { borrower?.physical_address ?: "" }) }
-    var dobInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("dob", "date_of_birth")) }
-    var maritalInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("marital_status").ifBlank { "Married" }) }
+    var nameInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("applicant_full_name", "full_name", "applicant_name").ifBlank { customerProfile?.full_name ?: customerProfile?.applicant_name ?: borrower?.name ?: "" }) }
+    var phoneInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("phone", "phone_number", "phone_numbers").ifBlank { customerProfile?.phone ?: borrower?.phone ?: "" }) }
+    var alternativePhoneInput by remember(appDetail, customerProfile) { mutableStateOf(intakeStr("alternative_phone").ifBlank { customerProfile?.alternative_phone ?: "" }) }
+    var emailInput by remember(appDetail, customerProfile) { mutableStateOf(intakeStr("email").ifBlank { customerProfile?.email ?: "" }) }
+    var genderInput by remember(appDetail, customerProfile) { mutableStateOf(intakeStr("gender").ifBlank { customerProfile?.gender ?: "" }) }
+    var bvnInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("bvn").ifBlank { customerProfile?.bvn ?: borrower?.bvn ?: "" }) }
+    var addressInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("physical_address", "address", "residential_address", "home_address").ifBlank { customerProfile?.residential_address ?: customerProfile?.home_address ?: borrower?.physical_address ?: "" }) }
+    var dobInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("dob", "date_of_birth").ifBlank { customerProfile?.dob ?: customerProfile?.date_of_birth ?: borrower?.date_of_birth ?: "" }) }
+    var maritalInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("marital_status").ifBlank { customerProfile?.marital_status ?: borrower?.marital_status ?: "" }) }
 
     // Step 1 additional fields
-    var idTypeInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("id_type").ifBlank { "National ID" }) }
-    var idNumberInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("id_number", "nin").ifBlank { borrower?.nin ?: "" }) }
-    var idExpiryInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("id_expiry")) }
-    var stateOfOriginInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("state_of_origin")) }
-    var lgaInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("lga")) }
-    var nearestLandmarkInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("nearest_landmark")) }
+    var idTypeInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("id_type").ifBlank { customerProfile?.id_type ?: "National ID" }) }
+    var idNumberInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("id_number", "nin").ifBlank { customerProfile?.id_number ?: customerProfile?.nin ?: borrower?.nin ?: "" }) }
+    var idExpiryInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("id_expiry").ifBlank { customerProfile?.id_expiry ?: "" }) }
+    var stateOfOriginInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("state_of_origin", "state").ifBlank { customerProfile?.state_of_origin ?: customerProfile?.state ?: borrower?.state ?: "" }) }
+    var lgaInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("lga").ifBlank { customerProfile?.lga ?: borrower?.lga ?: "" }) }
+    var nearestLandmarkInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("nearest_landmark", "landmark", "locality").ifBlank { customerProfile?.landmark ?: customerProfile?.locality ?: "" }) }
+    var photoUrlInput by remember(appDetail, customerProfile) { mutableStateOf(intakeStr("photo_url").ifBlank { customerProfile?.photo_url ?: "" }) }
+    val customerReference = intakeStr("customer_reference").ifBlank { customerProfile?.customer_reference ?: "" }
+    val accountReference = intakeStr("account_reference").ifBlank { customerProfile?.account_reference ?: "" }
 
-    var spouseNameInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("spouse_name", "spouse_full_name")) }
-    var spousePhoneInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("spouse_phone")) }
-    var spouseChildrenInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("children", "spouse_children").ifBlank { "2" }) }
-    var spouseDependantsInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("dependants", "spouse_dependants").ifBlank { "1" }) }
-    var spouseBusinessAddressInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("spouse_business_address")) }
+    var spouseNameInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("spouse_name", "spouse_full_name").ifBlank { customerProfile?.spouse_name ?: "" }) }
+    var spousePhoneInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("spouse_phone").ifBlank { customerProfile?.spouse_phone ?: "" }) }
+    var spouseChildrenInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("children", "spouse_children").ifBlank { customerProfile?.spouse_children ?: "" }) }
+    var spouseDependantsInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("dependants", "spouse_dependants").ifBlank { customerProfile?.spouse_dependants ?: "" }) }
+    var spouseBusinessAddressInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("spouse_business_address").ifBlank { customerProfile?.spouse_business_address ?: "" }) }
 
     // Step 2 spouse signature
     var spouseSignatureData by remember { mutableStateOf<String?>(null) }
@@ -165,14 +177,21 @@ fun LoanApplicationFormContent(
     var gNameInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("guarantor_1_name", "guarantor_name").ifBlank { borrower?.guarantor_name ?: "" }) }
     var gPhoneInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("guarantor_1_phone", "guarantor_phone").ifBlank { borrower?.guarantor_phone ?: "" }) }
 
-    var employmentInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("employment_status").ifBlank { borrower?.employment_status ?: "Self-employed" }) }
-    var employerInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("employer_name", "business_name").ifBlank { borrower?.employer_name ?: "" }) }
-    var incomeInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("monthly_income", "monthly_salary").ifBlank { borrower?.monthly_income?.toInt()?.toString() ?: "" }) }
+    var employmentInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("employment_status", "employment_type").ifBlank { customerProfile?.employment_type ?: customerProfile?.employment_status ?: borrower?.employment_status ?: "Self-employed" }) }
+    var employerInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("employer_name", "business_name").ifBlank { customerProfile?.employer_name ?: borrower?.employer_name ?: "" }) }
+    var incomeInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("monthly_income", "monthly_salary", "monthly_sales", "monthly_turnover").ifBlank { customerProfile?.monthly_salary ?: customerProfile?.monthly_sales ?: customerProfile?.monthly_turnover ?: borrower?.monthly_income?.toInt()?.toString() ?: "" }) }
 
-    var industryInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("industry")) }
-    var yearsEmployedInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("years_employed")) }
-    var employerAddressInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("employer_address")) }
-    var businessTypeInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("business_type")) }
+    var industryInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("industry").ifBlank { customerProfile?.industry ?: "" }) }
+    var yearsEmployedInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("years_employed", "years_in_business").ifBlank { customerProfile?.years_employed ?: customerProfile?.years_in_business ?: "" }) }
+    var employerAddressInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("employer_address", "business_address").ifBlank { customerProfile?.employer_address ?: customerProfile?.business_address ?: "" }) }
+    var businessTypeInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("business_type").ifBlank { customerProfile?.business_type ?: "" }) }
+    var yearsInBusinessInput by remember(appDetail, customerProfile) { mutableStateOf(intakeStr("years_in_business").ifBlank { customerProfile?.years_in_business ?: "" }) }
+    var monthlySalesInput by remember(appDetail, customerProfile) { mutableStateOf(intakeStr("monthly_sales").ifBlank { customerProfile?.monthly_sales ?: "" }) }
+    var monthlyTurnoverInput by remember(appDetail, customerProfile) { mutableStateOf(intakeStr("monthly_turnover").ifBlank { customerProfile?.monthly_turnover ?: "" }) }
+    var businessAddressInput by remember(appDetail, customerProfile) { mutableStateOf(intakeStr("business_address").ifBlank { customerProfile?.business_address ?: "" }) }
+    var pnlPeriodLabelInput by remember(appDetail, customerProfile) { mutableStateOf(intakeStr("pnl_period_label").ifBlank { customerProfile?.pnl_period_label ?: "" }) }
+    var pnlRevenueInput by remember(appDetail, customerProfile) { mutableStateOf(intakeStr("pnl_revenue").ifBlank { customerProfile?.pnl_revenue ?: "" }) }
+    var pnlExpensesInput by remember(appDetail, customerProfile) { mutableStateOf(intakeStr("pnl_expenses").ifBlank { customerProfile?.pnl_expenses ?: "" }) }
     var businessDetailsInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("business_details")) }
     var supportingProofInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("supporting_proof")) }
 
@@ -183,19 +202,27 @@ fun LoanApplicationFormContent(
     var amountInput by remember(application) { mutableStateOf(application.amount?.toInt()?.toString() ?: "") }
     var tenureInput by remember(application) { mutableStateOf(application.tenor_months?.toString() ?: "") }
     var productInput by remember(application) { mutableStateOf(application.loan_type) }
+    val isGuarantorRequired = products.find {
+        it.id.equals(productInput, ignoreCase = true) ||
+            it.name.equals(productInput, ignoreCase = true)
+    }?.guarantor_required ?: (
+        productInput.equals("MSEF", ignoreCase = true) ||
+            productInput.equals("Enterprise Loan", ignoreCase = true) ||
+            productInput.equals("corporate_sme", ignoreCase = true)
+        )
 
     // Step 6 mode of repayment
     var modeOfRepayment by remember(application) { mutableStateOf(application.repayment_mode ?: "direct_debit") }
 
     // Step 7 additional fields
-    var accountNameInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("account_name")) }
-    var sortCodeInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("sort_code")) }
+    var accountNameInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("account_name").ifBlank { customerProfile?.account_name ?: "" }) }
+    var sortCodeInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("sort_code").ifBlank { customerProfile?.sort_code ?: "" }) }
 
     var collateralDescInput by remember(application) { mutableStateOf(application.purpose ?: "") }
     var collateralValInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("collateral_value")) }
 
-    var bankInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("bank_name").ifBlank { borrower?.bank_name ?: "" }) }
-    var accInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("account_number").ifBlank { borrower?.account_number ?: "" }) }
+    var bankInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("bank_name").ifBlank { customerProfile?.bank_name ?: borrower?.bank_name ?: "" }) }
+    var accInput by remember(appDetail, borrower, customerProfile) { mutableStateOf(intakeStr("account_number").ifBlank { customerProfile?.account_number ?: borrower?.account_number ?: "" }) }
 
     // Step 9 consent state
     var educationLevelInput by remember(appDetail, borrower) { mutableStateOf(intakeStr("education_level").ifBlank { "Graduate" }) }
@@ -216,6 +243,27 @@ fun LoanApplicationFormContent(
     var consentChequeRecovery by remember { mutableStateOf(false) }
     var consentGsi by remember { mutableStateOf(false) }
     var step9SignatureData by remember { mutableStateOf<String?>(null) }
+
+    fun profileIntakeFields() = ProfileIntakeFields(
+        fullName = nameInput, phone = phoneInput, alternativePhone = alternativePhoneInput,
+        email = emailInput, gender = genderInput, bvn = bvnInput, maritalStatus = maritalInput,
+        dateOfBirth = dobInput, idType = idTypeInput, idNumber = idNumberInput,
+        idExpiry = idExpiryInput, residentialAddress = addressInput,
+        stateOfOrigin = stateOfOriginInput, lga = lgaInput, landmark = nearestLandmarkInput,
+        photoUrl = photoUrlInput, customerReference = customerReference,
+        accountReference = accountReference, spouseName = spouseNameInput,
+        spousePhone = spousePhoneInput, spouseChildren = spouseChildrenInput,
+        spouseDependants = spouseDependantsInput, spouseBusinessAddress = spouseBusinessAddressInput,
+        employmentType = employmentInput, industry = industryInput,
+        yearsEmployed = yearsEmployedInput, employerName = employerInput,
+        monthlySalary = incomeInput, employerAddress = employerAddressInput,
+        businessType = businessTypeInput, yearsInBusiness = yearsInBusinessInput,
+        monthlySales = monthlySalesInput, monthlyTurnover = monthlyTurnoverInput,
+        businessAddress = businessAddressInput, pnlPeriodLabel = pnlPeriodLabelInput,
+        pnlRevenue = pnlRevenueInput, pnlExpenses = pnlExpensesInput,
+        accountName = accountNameInput, accountNumber = accInput,
+        bankName = bankInput, sortCode = sortCodeInput
+    )
 
     BoxWithConstraints(
         modifier = Modifier
@@ -290,8 +338,6 @@ fun LoanApplicationFormContent(
 
                             val ocrVerified = (appDetail?.readiness?.get("ocr_verified") as? Boolean) ?: false
 
-                            val isGuarantorRequired = products.find { it.id.equals(productInput, ignoreCase = true) || it.name.equals(productInput, ignoreCase = true) }?.guarantor_required
-                                ?: (productInput.equals("MSEF", ignoreCase = true) || productInput.equals("Enterprise Loan", ignoreCase = true) || productInput.equals("corporate_sme", ignoreCase = true) || productInput.equals("msef", ignoreCase = true))
                             val guarantorComplete = !isGuarantorRequired || ((appDetail?.readiness?.get("guarantor_form_submitted") as? Boolean) == true)
 
                             val visitationSigned = (appDetail?.readiness?.get("visitation_status") as? String)?.let { it == "completed" || it == "concurred" }
@@ -307,7 +353,7 @@ fun LoanApplicationFormContent(
                                         nameInput, phoneInput, bvnInput, addressInput, dobInput, maritalInput,
                                         employmentInput, employerInput, incomeInput, amountInput, tenureInput,
                                         productInput, collateralDescInput, collateralValInput, gNameInput, gPhoneInput,
-                                        bankInput, accInput
+                                        bankInput, accInput, profileIntakeFields()
                                     )
                                 },
                                 modifier = Modifier.weight(1f)
@@ -320,7 +366,7 @@ fun LoanApplicationFormContent(
                                         nameInput, phoneInput, bvnInput, addressInput, dobInput, maritalInput,
                                         employmentInput, employerInput, incomeInput, amountInput, tenureInput,
                                         productInput, collateralDescInput, collateralValInput, gNameInput, gPhoneInput,
-                                        bankInput, accInput
+                                        bankInput, accInput, profileIntakeFields()
                                     )
                                 },
                                 enabled = consentBureauDisclosure && consentCreditCheck && consentChequeRecovery && consentGsi && step9SignatureData != null && compliesAllGates,
@@ -453,6 +499,9 @@ fun LoanApplicationFormContent(
                             tabIndex = currentTab,
                             name = nameInput, onNameChange = { nameInput = it; isDirty = true },
                             phone = phoneInput, onPhoneChange = { phoneInput = it },
+                            alternativePhone = alternativePhoneInput, onAlternativePhoneChange = { alternativePhoneInput = it },
+                            email = emailInput, onEmailChange = { emailInput = it },
+                            gender = genderInput, onGenderChange = { genderInput = it },
                             bvn = bvnInput, onBvnChange = { bvnInput = it },
                             address = addressInput, onAddressChange = { addressInput = it },
                             dob = dobInput, onDobChange = { dobInput = it },
@@ -463,6 +512,8 @@ fun LoanApplicationFormContent(
                             stateOfOrigin = stateOfOriginInput, onStateOfOriginChange = { stateOfOriginInput = it },
                             lga = lgaInput, onLgaChange = { lgaInput = it },
                             nearestLandmark = nearestLandmarkInput, onNearestLandmarkChange = { nearestLandmarkInput = it },
+                            photoUrl = photoUrlInput, onPhotoUrlChange = { photoUrlInput = it },
+                            customerReference = customerReference, accountReference = accountReference,
                             spouseName = spouseNameInput, onSpouseNameChange = { spouseNameInput = it },
                             spousePhone = spousePhoneInput, onSpousePhoneChange = { spousePhoneInput = it },
                             spouseChildren = spouseChildrenInput, onSpouseChildrenChange = { spouseChildrenInput = it },
@@ -479,6 +530,13 @@ fun LoanApplicationFormContent(
                             yearsEmployed = yearsEmployedInput, onYearsEmployedChange = { yearsEmployedInput = it },
                             employerAddress = employerAddressInput, onEmployerAddressChange = { employerAddressInput = it },
                             businessType = businessTypeInput, onBusinessTypeChange = { businessTypeInput = it },
+                            yearsInBusiness = yearsInBusinessInput, onYearsInBusinessChange = { yearsInBusinessInput = it },
+                            monthlySales = monthlySalesInput, onMonthlySalesChange = { monthlySalesInput = it },
+                            monthlyTurnover = monthlyTurnoverInput, onMonthlyTurnoverChange = { monthlyTurnoverInput = it },
+                            businessAddress = businessAddressInput, onBusinessAddressChange = { businessAddressInput = it },
+                            pnlPeriodLabel = pnlPeriodLabelInput, onPnlPeriodLabelChange = { pnlPeriodLabelInput = it },
+                            pnlRevenue = pnlRevenueInput, onPnlRevenueChange = { pnlRevenueInput = it },
+                            pnlExpenses = pnlExpensesInput, onPnlExpensesChange = { pnlExpensesInput = it },
                             businessDetails = businessDetailsInput, onBusinessDetailsChange = { businessDetailsInput = it },
                             supportingProof = supportingProofInput, onSupportingProofChange = { supportingProofInput = it },
                             facilityBank = facilityBankInput, onFacilityBankChange = { facilityBankInput = it },
@@ -486,7 +544,6 @@ fun LoanApplicationFormContent(
                             facilityTenure = facilityTenureInput, onFacilityTenureChange = { facilityTenureInput = it },
                             amount = amountInput, onAmountChange = { amountInput = it; isDirty = true },
                             tenure = tenureInput, onTenureChange = { tenureInput = it },
-                            product = productInput, onProductChange = { productInput = it },
                             modeOfRepayment = modeOfRepayment, onModeOfRepaymentChange = { modeOfRepayment = it },
                             accountName = accountNameInput, onAccountNameChange = { accountNameInput = it },
                             sortCode = sortCodeInput, onSortCodeChange = { sortCodeInput = it },
@@ -510,6 +567,7 @@ fun LoanApplicationFormContent(
                             consentChequeRecovery = consentChequeRecovery, onConsentChequeRecoveryChange = { consentChequeRecovery = it },
                             consentGsi = consentGsi, onConsentGsiChange = { consentGsi = it },
                             step9SignatureData = step9SignatureData, onStep9SignatureConfirm = { step9SignatureData = it }, onStep9SignatureClear = { step9SignatureData = null },
+                            isGuarantorRequired = isGuarantorRequired,
                             appDetail = appDetail
                         )
                     }
@@ -524,6 +582,9 @@ fun WizardTabContent(
     tabIndex: Int,
     name: String, onNameChange: (String) -> Unit,
     phone: String, onPhoneChange: (String) -> Unit,
+    alternativePhone: String, onAlternativePhoneChange: (String) -> Unit,
+    email: String, onEmailChange: (String) -> Unit,
+    gender: String, onGenderChange: (String) -> Unit,
     bvn: String, onBvnChange: (String) -> Unit,
     address: String, onAddressChange: (String) -> Unit,
     dob: String, onDobChange: (String) -> Unit,
@@ -534,6 +595,8 @@ fun WizardTabContent(
     stateOfOrigin: String, onStateOfOriginChange: (String) -> Unit,
     lga: String, onLgaChange: (String) -> Unit,
     nearestLandmark: String, onNearestLandmarkChange: (String) -> Unit,
+    photoUrl: String, onPhotoUrlChange: (String) -> Unit,
+    customerReference: String, accountReference: String,
     spouseName: String, onSpouseNameChange: (String) -> Unit,
     spousePhone: String, onSpousePhoneChange: (String) -> Unit,
     spouseChildren: String, onSpouseChildrenChange: (String) -> Unit,
@@ -550,6 +613,13 @@ fun WizardTabContent(
     yearsEmployed: String, onYearsEmployedChange: (String) -> Unit,
     employerAddress: String, onEmployerAddressChange: (String) -> Unit,
     businessType: String, onBusinessTypeChange: (String) -> Unit,
+    yearsInBusiness: String, onYearsInBusinessChange: (String) -> Unit,
+    monthlySales: String, onMonthlySalesChange: (String) -> Unit,
+    monthlyTurnover: String, onMonthlyTurnoverChange: (String) -> Unit,
+    businessAddress: String, onBusinessAddressChange: (String) -> Unit,
+    pnlPeriodLabel: String, onPnlPeriodLabelChange: (String) -> Unit,
+    pnlRevenue: String, onPnlRevenueChange: (String) -> Unit,
+    pnlExpenses: String, onPnlExpensesChange: (String) -> Unit,
     businessDetails: String, onBusinessDetailsChange: (String) -> Unit,
     supportingProof: String, onSupportingProofChange: (String) -> Unit,
     facilityBank: String, onFacilityBankChange: (String) -> Unit,
@@ -557,7 +627,6 @@ fun WizardTabContent(
     facilityTenure: String, onFacilityTenureChange: (String) -> Unit,
     amount: String, onAmountChange: (String) -> Unit,
     tenure: String, onTenureChange: (String) -> Unit,
-    product: String, onProductChange: (String) -> Unit,
     modeOfRepayment: String, onModeOfRepaymentChange: (String) -> Unit,
     accountName: String, onAccountNameChange: (String) -> Unit,
     sortCode: String, onSortCodeChange: (String) -> Unit,
@@ -581,8 +650,10 @@ fun WizardTabContent(
     consentChequeRecovery: Boolean, onConsentChequeRecoveryChange: (Boolean) -> Unit,
     consentGsi: Boolean, onConsentGsiChange: (Boolean) -> Unit,
     step9SignatureData: String?, onStep9SignatureConfirm: (String) -> Unit, onStep9SignatureClear: () -> Unit,
+    isGuarantorRequired: Boolean,
     appDetail: ApplicationDetailResult? = null
 ) {
+    val uriHandler = LocalUriHandler.current
     when (tabIndex) {
         0 -> {
             FieldCard {
@@ -614,6 +685,27 @@ fun WizardTabContent(
                     onValueChange = onPhoneChange,
                     label = "Phone Number",
                     isRequired = true
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                FieldTextField(
+                    value = alternativePhone,
+                    onValueChange = onAlternativePhoneChange,
+                    label = "Alternative Phone",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                FieldTextField(
+                    value = email,
+                    onValueChange = onEmailChange,
+                    label = "Email Address",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                FieldDropdown(
+                    value = gender,
+                    options = listOf("Female", "Male", "Other", "Prefer not to say"),
+                    onOptionSelected = onGenderChange,
+                    label = "Gender"
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 FieldTextField(
@@ -671,29 +763,36 @@ fun WizardTabContent(
                     label = "Nearest Landmark / Bus Stop"
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("PASSPORT PHOTO", style = FieldTheme.typography.label, color = FieldTheme.colors.gray500)
-                Spacer(modifier = Modifier.height(8.dp))
-                var hasPassportPhoto by remember { mutableStateOf(false) }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(0.5.dp, FieldTheme.colors.gray700, RoundedCornerShape(4.dp))
-                        .background(FieldTheme.colors.gray900, RoundedCornerShape(4.dp))
-                        .clickable { hasPassportPhoto = !hasPassportPhoto }
-                        .padding(horizontal = 12.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = if (hasPassportPhoto) FieldIcons.CheckOutlined else FieldIcons.CameraOutlined,
-                        contentDescription = "Passport Photo",
-                        tint = if (hasPassportPhoto) FieldTheme.colors.statusSuccess else FieldTheme.colors.purple400,
-                        modifier = Modifier.size(18.dp)
+                FieldTextField(
+                    value = photoUrl,
+                    onValueChange = onPhotoUrlChange,
+                    label = "Passport Photo Reference",
+                    placeholder = "No profile photo on file",
+                    readOnly = true,
+                    helperText = "Existing customer photo asset; replace through document upload when required."
+                )
+                if (photoUrl.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SecondaryButton(
+                        text = "View Existing Photo",
+                        onClick = { runCatching { uriHandler.openUri(photoUrl) } },
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = if (hasPassportPhoto) "Passport Photo uploaded / captured" else "No passport photo - tap to upload/capture",
-                        style = FieldTheme.typography.body,
-                        color = if (hasPassportPhoto) FieldTheme.colors.gray100 else FieldTheme.colors.gray500
+                }
+                if (customerReference.isNotBlank() || accountReference.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = customerReference,
+                        onValueChange = {},
+                        label = "Customer Reference",
+                        readOnly = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = accountReference,
+                        onValueChange = {},
+                        label = "Account Reference",
+                        readOnly = true
                     )
                 }
             }
@@ -901,6 +1000,21 @@ fun WizardTabContent(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     FieldTextField(
+                        value = yearsInBusiness,
+                        onValueChange = onYearsInBusinessChange,
+                        label = "Years in Business",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
+                        value = businessAddress,
+                        onValueChange = onBusinessAddressChange,
+                        label = "Business Address",
+                        singleLine = false,
+                        maxLines = 3
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldTextField(
                         value = businessDetails,
                         onValueChange = onBusinessDetailsChange,
                         label = "Business Details / Activity",
@@ -912,6 +1026,18 @@ fun WizardTabContent(
                         onValueChange = onIncomeChange,
                         label = "Monthly Average Sales / Turnover",
                         isRequired = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldAmountField(
+                        value = monthlySales,
+                        onValueChange = onMonthlySalesChange,
+                        label = "Monthly Sales"
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FieldAmountField(
+                        value = monthlyTurnover,
+                        onValueChange = onMonthlyTurnoverChange,
+                        label = "Monthly Turnover"
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     FieldTextField(
@@ -927,6 +1053,39 @@ fun WizardTabContent(
                         style = FieldTheme.typography.body,
                         color = FieldTheme.colors.gray500,
                         modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                HorizontalDivider(color = FieldTheme.colors.gray800)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("PROFIT & LOSS", style = FieldTheme.typography.label, color = FieldTheme.colors.purple400)
+                Spacer(modifier = Modifier.height(12.dp))
+                FieldTextField(
+                    value = pnlPeriodLabel,
+                    onValueChange = onPnlPeriodLabelChange,
+                    label = "Reporting Period",
+                    placeholder = "e.g. FY2025 or Last 12 months"
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                FieldAmountField(
+                    value = pnlRevenue,
+                    onValueChange = onPnlRevenueChange,
+                    label = "Revenue"
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                FieldAmountField(
+                    value = pnlExpenses,
+                    onValueChange = onPnlExpensesChange,
+                    label = "Expenses"
+                )
+                val revenue = pnlRevenue.toDoubleOrNull()
+                val expenses = pnlExpenses.toDoubleOrNull()
+                if (revenue != null && expenses != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Net profit: ₦${"%,.2f".format(revenue - expenses)}",
+                        style = FieldTheme.typography.bodyStrong,
+                        color = if (revenue >= expenses) FieldTheme.colors.statusSuccess else FieldTheme.colors.statusDanger
                     )
                 }
             }
@@ -1037,7 +1196,7 @@ fun WizardTabContent(
                     FieldDropdown(
                         value = loanPurpose,
                         options = listOf("Working Capital", "Business Asset Acquisition", "Emergency Personal Expense", "Other"),
-                        onOptionSelected = { onLoanPurposeChange(it); onProductChange(it) },
+                        onOptionSelected = onLoanPurposeChange,
                         label = "Loan Purpose",
                         isRequired = true
                     )
@@ -1351,8 +1510,6 @@ fun WizardTabContent(
 
             val ocrVerified = (appDetail?.readiness?.get("ocr_verified") as? Boolean) == true
 
-            val isGuarantorRequired = products.find { it.id.equals(product, ignoreCase = true) || it.name.equals(product, ignoreCase = true) }?.guarantor_required
-                ?: (product.equals("MSEF", ignoreCase = true) || product.equals("Enterprise Loan", ignoreCase = true) || product.equals("corporate_sme", ignoreCase = true) || product.equals("msef", ignoreCase = true))
             val guarantorComplete = !isGuarantorRequired || ((appDetail?.readiness?.get("guarantor_form_submitted") as? Boolean) == true)
 
             val visitationSigned = (appDetail?.readiness?.get("visitation_status") as? String)?.let { it == "completed" || it == "concurred" }
@@ -1443,7 +1600,7 @@ fun PreviewWizardCompact() {
             application = demoApp,
             borrower = demoBorrower,
             onBackClick = {},
-            onSubmit = { _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ -> }
+            onSubmit = { _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ -> }
         )
     }
 }

@@ -15,7 +15,7 @@
     {% if readonly %}<div class="review-mode-banner"><strong>Read-only evidence view</strong><span>This report cannot be changed from the audit view.</span></div>{% endif %}
 
     <form id="visitationForm" action="/applications/{{ app_id }}/visitation" method="POST">
-        <fieldset {% if readonly %}disabled{% endif %} style="border:0;padding:0;margin:0;min-width:0">
+        <fieldset {% if readonly %}disabled{% endif %} class="visitation-fieldset-reset">
         <!-- Section 1: Visiting Officer Report -->
         <div class="csp-s-e8a8a9c051f6">
             <div class="csp-s-8e9487e647fc">Officer Report</div>

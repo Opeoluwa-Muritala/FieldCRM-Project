@@ -52,7 +52,7 @@ def test_authorization_is_tenant_and_application_scoped(monkeypatch):
 def test_all_direct_upload_routes_are_registered():
     from app.main import app
 
-    paths = {route.path for route in app.routes}
+    paths = set(app.openapi()["paths"])
     assert {
         "/api/v1/mobile/applications/{application_id}/documents/upload-authorizations",
         "/api/v1/mobile/applications/{application_id}/documents/finalize",

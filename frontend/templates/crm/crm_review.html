@@ -27,8 +27,8 @@
   <div><span>Decision owner</span><strong>{{ 'Head CRM' if current_user.role == 'head_crm' else 'CRM Officer' }}</strong></div>
 </section>
 
-<div class="page-card" style="margin-bottom: 20px;">
-  <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary" style="display: inline-block;">Open Collateral &amp; Repayment Feasibility Analysis &rarr;</a>
+<div class="page-card workflow-analysis-card">
+  <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary workflow-analysis-link">Open Collateral &amp; Repayment Feasibility Analysis &rarr;</a>
 </div>
 
 <div class="page-card csp-s-3c4a3d440074">
@@ -107,10 +107,10 @@
   </div>
   {% endif %}
 {% if current_user.role == 'head_crm' %}
-<div class="page-card" style="margin-bottom: 20px;">
+<div class="page-card workflow-analysis-card">
   <h3 class="csp-s-4636770b4968">Head CRM Application Reference Views</h3>
   <p class="action-note">Use these read-only links to inspect the details submitted by the applicant and relationship officer:</p>
-  <div style="display: flex; gap: 15px; margin-top: 10px;">
+  <div class="workflow-reference-links">
     <a href="/applications/{{ app_id }}/step/1" class="btn btn-secondary" target="_blank">View Application Form (Step 1) &nearr;</a>
     <a href="/applications/{{ app_id }}/guarantors/1/step/7" class="btn btn-secondary" target="_blank">View Guarantor Details (Step 7) &nearr;</a>
   </div>

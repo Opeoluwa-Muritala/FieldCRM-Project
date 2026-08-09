@@ -585,3 +585,15 @@
 .csp-s-fec3619ed0de { margin-bottom: 24px !important; }
 .csp-s-ff6e192fc6b3 { display:flex !important; justify-content:space-between !important; align-items:center !important; margin-top:12px !important; font-size:12px !important; color:var(--text-muted) !important; }
 .csp-s-fffdd52c0865 { margin-bottom:10px !important; }
+
+/* Semantic CSP-safe replacements for workflow template inline styles. */
+.workflow-analysis-card { margin-bottom: 20px !important; }
+.workflow-analysis-link { display: inline-block !important; }
+.workflow-analysis-link-block { display: block !important; text-align: center !important; text-decoration: none !important; font-weight: bold !important; }
+.application-document-checklist-spaced { margin-top: 28px !important; }
+.recommendation-summary-row { display: flex !important; justify-content: space-between !important; gap: 1rem !important; align-items: center !important; }
+.recommendation-form-spaced { margin-top: 1.25rem !important; }
+.form-actions-end { display: flex !important; justify-content: flex-end !important; }
+.workflow-reference-links { display: flex !important; gap: 15px !important; margin-top: 10px !important; }
+.workflow-analysis-section { margin-top: 15px !important; margin-bottom: 15px !important; }
+.visitation-fieldset-reset { border: 0 !important; padding: 0 !important; margin: 0 !important; min-width: 0 !important; }
