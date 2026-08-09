@@ -1,7 +1,7 @@
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserBase(BaseModel):
@@ -35,17 +35,17 @@ class UserUpdate(BaseModel):
 
 
 class UserResponse(UserBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     org_id: str
     active: bool
     branch_name: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
-
 class UserRow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     """Maps directly to the new 'users' table columns.
     No aliasing needed — column names match field names exactly.
     """
@@ -102,16 +102,11 @@ class UserRow(BaseModel):
         key = self.role.lower().replace(" ", "_")
         return mapping.get(key, self.role)
 
-    class Config:
-        from_attributes = True
-
-
 class OrganisationRow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     name: str
     code: str
     active: bool
     created_at: datetime
-
-    class Config:
-        from_attributes = True

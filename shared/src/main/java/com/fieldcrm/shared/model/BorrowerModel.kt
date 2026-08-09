@@ -22,7 +22,14 @@ data class BorrowerModel(
     val account_number: String? = null,
     val guarantor_name: String? = null,
     val guarantor_phone: String? = null,
-    val created_at: String
+    val created_at: String,
+    // Profile fields returned when an existing customer is selected. These are
+    // transient form defaults; the local database schema remains unchanged.
+    val date_of_birth: String? = null,
+    val marital_status: String? = null,
+    val state: String? = null,
+    val lga: String? = null,
+    val email: String? = null
 )
 
 /**

@@ -1,7 +1,7 @@
 from typing import Optional, List, Any, Dict
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 class LoanApplicationBase(BaseModel):
     borrower_id: str
@@ -18,6 +18,8 @@ class LoanApplicationCreate(LoanApplicationBase):
     org_id: str
 
 class LoanApplicationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     org_id: str
     borrower_id: str
@@ -34,10 +36,9 @@ class LoanApplicationResponse(BaseModel):
     officer_recommendation: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
 class LoanRow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     org_id: UUID
     ref_no: str
@@ -170,10 +171,9 @@ class LoanRow(BaseModel):
     def officer_recommendation(self) -> str:
         return ""
 
-    class Config:
-        from_attributes = True
-
 class LoanListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     org_id: UUID
     ref_no: str
@@ -253,10 +253,9 @@ class LoanListItem(BaseModel):
     def current_owner(self) -> Any:
         return None
 
-    class Config:
-        from_attributes = True
-
 class RepaymentScheduleRow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     loan_id: UUID
     org_id: UUID
@@ -267,10 +266,9 @@ class RepaymentScheduleRow(BaseModel):
     total_due: float
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
 class RepaymentRecordRow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     loan_id: UUID
     org_id: UUID
@@ -280,9 +278,6 @@ class RepaymentRecordRow(BaseModel):
     bank_ref: Optional[str] = None
     recorded_by: UUID
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 class RecordPaymentRequest(BaseModel):
     payment_date: str
@@ -304,6 +299,8 @@ class StageCount(BaseModel):
     count: int
 
 class ReadinessSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     loan_form_submitted: bool
     pledge_form_submitted: bool
     guarantor_form_submitted: bool
@@ -324,6 +321,3 @@ class ReadinessSummary(BaseModel):
     credit_reviewed: bool
     branch_approved: bool
     ready_for_approval: bool
-
-    class Config:
-        from_attributes = True

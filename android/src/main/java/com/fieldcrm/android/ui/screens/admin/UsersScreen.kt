@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.data.api.MobileApiService
+import com.fieldcrm.android.data.api.MobileBranchItem
 import com.fieldcrm.android.data.api.MobileUserItem
 import com.fieldcrm.android.ui.components.*
 import com.fieldcrm.android.ui.theme.FieldCRMTheme
@@ -22,11 +23,10 @@ import com.fieldcrm.android.ui.theme.FieldTheme
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import com.fieldcrm.android.core.network.ApiResult
-import kotlinx.serialization.json.*
 
 private sealed interface UsersPageState {
     data object Loading : UsersPageState
-    data class Loaded(val users: List<MobileUserItem>, val cached: Boolean = false) : UsersPageState
+    data class Loaded(val users: List<MobileUserItem>) : UsersPageState
     data object Empty : UsersPageState
     data object PermissionDenied : UsersPageState
     data object SessionExpired : UsersPageState
@@ -36,25 +36,28 @@ private sealed interface UsersPageState {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UsersScreen(
-    onBackClick: (() -> Unit)? = null,
-    onViewUser: (String) -> Unit = {}
+    onBackClick: (() -> Unit)? = null
 ) {
     val api: MobileApiService = koinInject()
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var pageState by remember { mutableStateOf<UsersPageState>(UsersPageState.Loading) }
     // Search text can contain user identifiers, so keep it out of saved instance state.
     var searchQuery by remember { mutableStateOf("") }
-    var branches by remember { mutableStateOf<List<JsonObject>>(emptyList()) }
+    var branches by remember { mutableStateOf<List<MobileBranchItem>>(emptyList()) }
     var selectedUserForDetail by remember { mutableStateOf<MobileUserItem?>(null) }
+    var pendingDeactivation by remember { mutableStateOf<MobileUserItem?>(null) }
+    var isDeactivating by remember { mutableStateOf(false) }
 
     // Create user dialog state
     var showCreateDialog by remember { mutableStateOf(false) }
     var createName by remember { mutableStateOf("") }
     var createEmail by remember { mutableStateOf("") }
-    var createRole by remember { mutableStateOf("loan_officer") }
+    var createRole by remember { mutableStateOf("account_officer") }
     var createBranchId by remember { mutableStateOf("") }
-    var createBranchName by remember { mutableStateOf("") }
+    var createBranchName by remember { mutableStateOf("No Branch Assigned") }
+    var branchLoadError by remember { mutableStateOf<String?>(null) }
     var isCreating by remember { mutableStateOf(false) }
     var createError by remember { mutableStateOf<String?>(null) }
 
@@ -76,11 +79,10 @@ fun UsersScreen(
         scope.launch {
             val result = api.getBranches()
             if (result is ApiResult.Success) {
-                branches = (result.data as? JsonObject)?.get("items")?.jsonArray?.mapNotNull { it as? JsonObject }.orEmpty()
-                if (branches.isNotEmpty()) {
-                    createBranchId = branches.first()["id"]?.jsonPrimitive?.content.orEmpty()
-                    createBranchName = branches.first()["name"]?.jsonPrimitive?.content.orEmpty()
-                }
+                branches = result.data
+                branchLoadError = null
+            } else {
+                branchLoadError = "Branches could not be loaded. You can still invite the user without a branch."
             }
         }
         pageState = when (val result = api.listUsers()) {
@@ -135,6 +137,13 @@ fun UsersScreen(
                         style = FieldTheme.typography.body.copy(fontSize = 12.sp),
                         color = FieldTheme.colors.purple400
                     )
+                    if (branchLoadError != null) {
+                        Text(
+                            text = branchLoadError!!,
+                            style = FieldTheme.typography.body.copy(fontSize = 12.sp),
+                            color = FieldTheme.colors.statusWarning
+                        )
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                     OutlinedTextField(
                         value = createName,
@@ -181,14 +190,20 @@ fun UsersScreen(
                             expanded = branchExpanded,
                             onDismissRequest = { branchExpanded = false }
                         ) {
+                            DropdownMenuItem(
+                                text = { Text("No Branch Assigned") },
+                                onClick = {
+                                    createBranchId = ""
+                                    createBranchName = "No Branch Assigned"
+                                    branchExpanded = false
+                                }
+                            )
                             branches.forEach { br ->
-                                val brId = br["id"]?.jsonPrimitive?.content.orEmpty()
-                                val brName = br["name"]?.jsonPrimitive?.content.orEmpty()
                                 DropdownMenuItem(
-                                    text = { Text(brName) },
+                                    text = { Text(br.name) },
                                     onClick = { 
-                                        createBranchId = brId
-                                        createBranchName = brName
+                                        createBranchId = br.id
+                                        createBranchName = br.name
                                         branchExpanded = false 
                                     }
                                 )
@@ -229,19 +244,27 @@ fun UsersScreen(
             },
             confirmButton = {
                 TextButton(
-                    enabled = createName.isNotBlank() && createEmail.isNotBlank() && createBranchId.isNotBlank() && !isCreating,
+                    enabled = createName.isNotBlank() && createEmail.isNotBlank() && !isCreating,
                     onClick = {
                         isCreating = true
                         createError = null
                         scope.launch {
-                            val tempPassword = java.util.UUID.randomUUID().toString() + "aA1!"
-                            val ok = api.createUser(createName.trim(), createEmail.trim(), createRole, tempPassword)
-                            if (ok) {
-                                showCreateDialog = false
-                                createName = ""; createEmail = ""; createRole = "loan_officer"
-                                refreshUsers()
-                            } else {
-                                createError = "Failed to send invitation. Email may already exist."
+                            when (val result = api.inviteUser(
+                                createName.trim(),
+                                createEmail.trim(),
+                                createRole,
+                                createBranchId.ifBlank { null }
+                            )) {
+                                is ApiResult.Success -> {
+                                    showCreateDialog = false
+                                    createName = ""; createEmail = ""; createRole = "account_officer"
+                                    createBranchId = ""; createBranchName = "No Branch Assigned"
+                                    refreshUsers()
+                                    snackbarHostState.showSnackbar(result.data.message)
+                                }
+                                is ApiResult.Error -> createError = result.detail
+                                is ApiResult.NetworkError -> createError = result.message
+                                ApiResult.Loading -> Unit
                             }
                             isCreating = false
                         }
@@ -275,6 +298,13 @@ fun UsersScreen(
                     }
                 } else null,
                 actions = {
+                    IconButton(onClick = { refreshUsers() }) {
+                        Icon(
+                            imageVector = FieldIcons.RefreshOutlined,
+                            contentDescription = "Refresh users",
+                            tint = FieldTheme.colors.gray400
+                        )
+                    }
                     Box(
                         modifier = Modifier
                             .background(
@@ -289,7 +319,7 @@ fun UsersScreen(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "${filteredUsers.size} USERS",
+                            text = "${filteredUsers.size} ${if (filteredUsers.size == 1) "USER" else "USERS"}",
                             style = FieldTheme.typography.mono.copy(fontSize = 10.sp),
                             color = FieldTheme.colors.purple400
                         )
@@ -297,6 +327,7 @@ fun UsersScreen(
                 }
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = FieldTheme.colors.gray950
     ) { paddingValues ->
         Column(
@@ -428,8 +459,7 @@ fun UsersScreen(
         var userBranchId by remember(user) { mutableStateOf<String?>(null) }
         
         LaunchedEffect(user, branches) {
-            val matchedBranch = branches.find { (it["name"] as? JsonPrimitive)?.contentOrNull == user.branch_name }
-            userBranchId = matchedBranch?.get("id")?.jsonPrimitive?.contentOrNull
+            userBranchId = branches.find { it.name == user.branch_name }?.id
         }
 
         var isUpdatingUser by remember { mutableStateOf(false) }
@@ -487,8 +517,8 @@ fun UsersScreen(
                         expanded = branchExpanded,
                         onExpandedChange = { branchExpanded = it }
                     ) {
-                        val currentBranchName = branches.find { it["id"]?.jsonPrimitive?.contentOrNull == userBranchId }
-                            ?.get("name")?.jsonPrimitive?.contentOrNull ?: "No Branch Assigned"
+                        val currentBranchName = branches.find { it.id == userBranchId }
+                            ?.name ?: "No Branch Assigned"
                         OutlinedTextField(
                             value = currentBranchName,
                             onValueChange = {},
@@ -510,11 +540,9 @@ fun UsersScreen(
                                 onClick = { userBranchId = null; branchExpanded = false }
                             )
                             branches.forEach { branch ->
-                                val id = branch["id"]?.jsonPrimitive?.contentOrNull ?: ""
-                                val name = branch["name"]?.jsonPrimitive?.contentOrNull ?: ""
                                 DropdownMenuItem(
-                                    text = { Text(name) },
-                                    onClick = { userBranchId = id; branchExpanded = false }
+                                    text = { Text(branch.name) },
+                                    onClick = { userBranchId = branch.id; branchExpanded = false }
                                 )
                             }
                         }
@@ -525,18 +553,7 @@ fun UsersScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (user.active) {
                         TextButton(
-                            onClick = {
-                                isUpdatingUser = true
-                                scope.launch {
-                                    if (api.deactivateUser(user.id) is ApiResult.Success) {
-                                        selectedUserForDetail = null
-                                        refreshUsers()
-                                    } else {
-                                        updateError = "Failed to deactivate user."
-                                    }
-                                    isUpdatingUser = false
-                                }
-                            },
+                            onClick = { pendingDeactivation = user },
                             enabled = !isUpdatingUser
                         ) {
                             Text("Deactivate", color = FieldTheme.colors.statusDanger)
@@ -570,6 +587,48 @@ fun UsersScreen(
                 ) {
                     Text("Cancel")
                 }
+            }
+        )
+    }
+
+    pendingDeactivation?.let { user ->
+        AlertDialog(
+            onDismissRequest = { if (!isDeactivating) pendingDeactivation = null },
+            title = { Text("Deactivate user?") },
+            text = {
+                Text(
+                    "${user.full_name} will lose access to FieldCRM. Their existing records and audit history will be retained."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !isDeactivating,
+                    onClick = {
+                        isDeactivating = true
+                        scope.launch {
+                            when (val result = api.deactivateUser(user.id)) {
+                                is ApiResult.Success -> {
+                                    pendingDeactivation = null
+                                    selectedUserForDetail = null
+                                    refreshUsers()
+                                    snackbarHostState.showSnackbar("${user.full_name} was deactivated.")
+                                }
+                                is ApiResult.Error -> snackbarHostState.showSnackbar(result.detail)
+                                is ApiResult.NetworkError -> snackbarHostState.showSnackbar(result.message)
+                                ApiResult.Loading -> Unit
+                            }
+                            isDeactivating = false
+                        }
+                    }
+                ) {
+                    Text(if (isDeactivating) "Deactivating..." else "Deactivate", color = FieldTheme.colors.statusDanger)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !isDeactivating,
+                    onClick = { pendingDeactivation = null }
+                ) { Text("Cancel") }
             }
         )
     }

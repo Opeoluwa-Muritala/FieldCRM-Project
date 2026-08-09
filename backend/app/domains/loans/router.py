@@ -3692,13 +3692,14 @@ async def generate_share_link(
     current_user = Depends(RoleChecker(["Loan Officer"]))
 ):
     """Generates a cryptographically signed link for client intake."""
-    from datetime import datetime, timedelta
-    expire = datetime.utcnow() + timedelta(days=7)
+    from datetime import UTC, datetime, timedelta
+    issued_at = datetime.now(UTC)
+    expire = issued_at + timedelta(days=7)
     to_encode = {
         "sub": str(current_user.id),
         "org_id": str(current_user.org_id),
         "exp": expire,
-        "iat": datetime.utcnow(),
+        "iat": issued_at,
         "type": "client_intake",
         "random_salt": secrets.token_hex(8)
     }
@@ -3736,8 +3737,8 @@ async def render_share_intake(
         stage = row["stage"]
         if stage == "intake":
             # Resume existing draft
-            from datetime import datetime, timedelta
-            expire = datetime.utcnow() + timedelta(days=3)
+            from datetime import UTC, datetime, timedelta
+            expire = datetime.now(UTC) + timedelta(days=3)
             session_payload = {
                 "type": "client_session",
                 "app_id": app_id,
@@ -3818,8 +3819,8 @@ async def process_share_intake_start(
             token, UUID(app_id), UUID(org_id)
         )
 
-    from datetime import datetime, timedelta
-    expire = datetime.utcnow() + timedelta(days=3)
+    from datetime import UTC, datetime, timedelta
+    expire = datetime.now(UTC) + timedelta(days=3)
     session_payload = {
         "type": "client_session",
         "app_id": app_id,

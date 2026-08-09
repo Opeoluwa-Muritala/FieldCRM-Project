@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Offer Letter</title>
-<style>
+<style nonce="{{ csp_nonce }}">
   @page {
       size: A4;
       margin: 15mm 15mm 15mm 15mm;
@@ -32,6 +32,12 @@
   .text-justify {
       text-align: justify;
   }
+  .closing-acceptance-copy { margin-top: 10px; }
+  .faithfully-copy { margin-bottom: 15px; }
+  .acceptance-stamp { margin-top: 10px; font-style: italic; }
+  .schedule-col-sequence { width: 10%; }
+  .schedule-col-date { width: 30%; }
+  .schedule-col-amount { width: 20%; }
 
   .header-table {
       width: 100%;
@@ -322,11 +328,11 @@
     <table class="schedule-table">
       <thead>
         <tr>
-          <th style="width: 10%;">S/N</th>
-          <th style="width: 30%;">Due Date</th>
-          <th style="width: 20%;">Principal</th>
-          <th style="width: 20%;">Interest</th>
-          <th style="width: 20%;">Total</th>
+          <th class="schedule-col-sequence">S/N</th>
+          <th class="schedule-col-date">Due Date</th>
+          <th class="schedule-col-amount">Principal</th>
+          <th class="schedule-col-amount">Interest</th>
+          <th class="schedule-col-amount">Total</th>
         </tr>
       </thead>
       <tbody>
@@ -346,11 +352,11 @@
 
   <!-- Closing Signatures & Acceptance -->
   <div class="signature-section">
-    <p class="text-justify" style="margin-top: 10px;">
+    <p class="text-justify closing-acceptance-copy">
       If the above terms and conditions are acceptable to you, please sign the attached copy of this letter and return same to the bank.
     </p>
     <p>Thank you,</p>
-    <p style="margin-bottom: 15px;">Yours Faithfully,<br><strong>FOR: MAINSTREET MICROFINANCE BANK LIMITED</strong></p>
+    <p class="faithfully-copy">Yours Faithfully,<br><strong>FOR: MAINSTREET MICROFINANCE BANK LIMITED</strong></p>
 
     <table class="signature-table">
       <tr>
@@ -370,7 +376,7 @@
       <div class="acceptance-line">
         NAME:............................................................ SIGNATURE:..............................................DATE:..............
       </div>
-      <div class="acceptance-line" style="margin-top: 10px; font-style: italic;">
+      <div class="acceptance-line acceptance-stamp">
         (Please sign across a =N=50 stamp)
       </div>
 

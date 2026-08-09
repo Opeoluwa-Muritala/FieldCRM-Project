@@ -32,6 +32,7 @@ from app.domains.signing.repository import SigningRepository
 from app.domains.branches.repository import BranchRepository
 from app.domains.users.repository import UserRepository
 from app.domains.users.service import UserService
+from app.domains.users.schemas import UserInvitationCreate
 from app.services.dashboard_service import DashboardService
 from app.services.email_service import EmailService
 from app.core.rate_limit import enforce_reset_limits
@@ -2945,8 +2946,8 @@ async def update_mobile_interest_preset(
 
 @router.get("/branches")
 async def get_mobile_branches(
-    conn=Depends(db_conn),
     current_user=Depends(get_current_user),
+    conn=Depends(db_conn),
 ):
     return {"items": await BranchRepository(conn).list_by_org(current_user.org_id)}
 
@@ -2954,8 +2955,8 @@ async def get_mobile_branches(
 @router.post("/branches", status_code=status.HTTP_201_CREATED)
 async def create_mobile_branch(
     payload: BranchRequest,
-    conn=Depends(db_conn),
     current_user=Depends(get_current_user),
+    conn=Depends(db_conn),
 ):
     _ensure_roles(current_user, {"system_admin"})
     return await BranchRepository(conn).create(current_user.org_id, payload.name, payload.code)
@@ -2965,13 +2966,13 @@ async def create_mobile_branch(
 async def update_mobile_user_role(
     user_id: UUID,
     payload: UserRoleRequest,
-    conn=Depends(db_conn),
     current_user=Depends(get_current_user),
+    conn=Depends(db_conn),
 ):
     _ensure_roles(current_user, {"system_admin"})
     service = UserService(UserRepository(conn))
     user = await service.update_user_role(current_user, user_id, payload.role)
-    if payload.branch_id is not None:
+    if payload.branch_id is not None or "branch_id" in payload.model_fields_set:
         user = await service.update_user_branch(current_user, user_id, payload.branch_id)
     return {"id": user.id, "role": user.role, "branch_id": user.branch_id}
 
@@ -2979,8 +2980,8 @@ async def update_mobile_user_role(
 @router.post("/users/{user_id}/deactivate")
 async def deactivate_mobile_user(
     user_id: UUID,
-    conn=Depends(db_conn),
     current_user=Depends(get_current_user),
+    conn=Depends(db_conn),
 ):
     _ensure_roles(current_user, {"system_admin"})
     await UserService(UserRepository(conn)).deactivate_managed_user(current_user, user_id)
@@ -3027,14 +3028,15 @@ async def generate_share_link_mobile(
     from jose import jwt
     from app.config import settings
     import secrets
-    from datetime import datetime, timedelta
+    from datetime import UTC, datetime, timedelta
 
-    expire = datetime.utcnow() + timedelta(days=7)
+    issued_at = datetime.now(UTC)
+    expire = issued_at + timedelta(days=7)
     to_encode = {
         "sub": str(current_user.id),
         "org_id": str(current_user.org_id),
         "exp": expire,
-        "iat": datetime.utcnow(),
+        "iat": issued_at,
         "type": "client_intake",
         "random_salt": secrets.token_hex(8)
     }
@@ -3059,8 +3061,8 @@ class MobileCreateUserRequest(BaseModel):
 @router.get("/users")
 @cache_response(ttl_seconds=5 * 60)
 async def list_mobile_users(
-    conn=Depends(db_conn),
     current_user=Depends(get_current_user),
+    conn=Depends(db_conn),
 ):
     _ensure_roles(current_user, {"system_admin"})
     rows = await conn.fetch(
@@ -3099,11 +3101,46 @@ async def list_mobile_users(
     ]
 
 
+@router.post("/users/invitations", status_code=status.HTTP_201_CREATED)
+async def invite_mobile_user(
+    request: Request,
+    invitation: UserInvitationCreate,
+    current_user=Depends(get_current_user),
+    conn=Depends(db_conn),
+):
+    """Invite a staff user without exposing or inventing an administrator-set password."""
+    _ensure_roles(current_user, {"system_admin"})
+    from app.core.exceptions import DomainException
+
+    try:
+        user, token = await UserService(UserRepository(conn)).invite_user(current_user, invitation)
+        base_url = settings.APP_BASE_URL.rstrip("/") or str(request.base_url).rstrip("/")
+        delivered = EmailService().send_invitation(
+            recipient=user.email,
+            full_name=user.full_name,
+            role=user.role,
+            invitation_url=f"{base_url}/accept-invitation?token={token}",
+        )
+        return {
+            "id": str(user.id),
+            "email": user.email,
+            "role": user.role,
+            "email_sent": delivered,
+            "message": (
+                "Invitation email sent."
+                if delivered
+                else "User was invited, but the email could not be delivered. Check email delivery settings before resending."
+            ),
+        }
+    except DomainException as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
 @router.post("/users", status_code=status.HTTP_201_CREATED)
 async def create_mobile_user(
     payload: MobileCreateUserRequest,
-    conn=Depends(db_conn),
     current_user=Depends(get_current_user),
+    conn=Depends(db_conn),
 ):
     _ensure_roles(current_user, {"system_admin"})
     from app.domains.users.service import UserService

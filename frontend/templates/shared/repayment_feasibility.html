@@ -52,8 +52,8 @@
     <article class="feasibility-chart">
       <h3>Monthly repayment capacity</h3>
       <div class="capacity-bars">
-        <div class="capacity-row"><span>{% if monthly_net < 0 %}Net loss{% else %}Net profit{% endif %}</span><div class="capacity-track"><div class="capacity-fill" style="width:{{ (monthly_net|abs / comparison_max * 100) }}%"></div></div><strong>{% if monthly_net < 0 %}-{% endif %}&#8358;{{ "{:,.0f}".format(monthly_net|abs) }}</strong></div>
-        <div class="capacity-row"><span>Installment</span><div class="capacity-track"><div class="capacity-fill installment" style="width:{{ (proposed_installment / comparison_max * 100) }}%"></div></div><strong>&#8358;{{ "{:,.0f}".format(proposed_installment or 0) }}</strong></div>
+        <div class="capacity-row"><span>{% if monthly_net < 0 %}Net loss{% else %}Net profit{% endif %}</span><div class="capacity-track"><div class="capacity-fill" data-csp-style="width:{{ (monthly_net|abs / comparison_max * 100) }}%"></div></div><strong>{% if monthly_net < 0 %}-{% endif %}&#8358;{{ "{:,.0f}".format(monthly_net|abs) }}</strong></div>
+        <div class="capacity-row"><span>Installment</span><div class="capacity-track"><div class="capacity-fill installment" data-csp-style="width:{{ (proposed_installment / comparison_max * 100) }}%"></div></div><strong>&#8358;{{ "{:,.0f}".format(proposed_installment or 0) }}</strong></div>
       </div>
       <div class="capacity-status {% if capacity_ratio >= 1.5 %}good{% elif capacity_ratio >= 1 %}warning{% else %}risk{% endif %}">
         {% if capacity_ratio >= 1.5 %}<strong>Healthy capacity.</strong> The monthly result meets the recommended 1.5x buffer.

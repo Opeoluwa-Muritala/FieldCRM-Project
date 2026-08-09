@@ -7,9 +7,7 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.json.*
 import com.fieldcrm.android.core.network.ApiResult
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -96,7 +94,7 @@ interface MobileApiService {
 
     // User management (admin only)
     suspend fun listUsers(): ApiResult<List<MobileUserItem>>
-    suspend fun createUser(fullName: String, email: String, role: String, password: String): Boolean
+    suspend fun inviteUser(fullName: String, email: String, role: String, branchId: String?): ApiResult<UserInvitationResponse>
 
     suspend fun pullCreditBureau(id: String): ApiResult<JsonElement>
     suspend fun getCreditChecklist(id: String, context: String = "credit"): ApiResult<CreditChecklistResponse>
@@ -120,7 +118,7 @@ interface MobileApiService {
     suspend fun createInterestPreset(loanType: String, rate: Double, rateType: String): ApiResult<JsonElement>
     suspend fun deleteInterestPreset(id: String): ApiResult<JsonElement>
     suspend fun updateInterestPreset(id: String, loanType: String, rate: Double, rateType: String): ApiResult<JsonElement>
-    suspend fun getBranches(): ApiResult<JsonElement>
+    suspend fun getBranches(): ApiResult<List<MobileBranchItem>>
     suspend fun createBranch(name: String, code: String): ApiResult<JsonElement>
     suspend fun updateUserRole(id: String, role: String, branchId: String? = null): ApiResult<JsonElement>
     suspend fun deactivateUser(id: String): ApiResult<JsonElement>
@@ -404,12 +402,85 @@ data class MobileUserItem(
 )
 
 @kotlinx.serialization.Serializable
-data class CreateUserRequest(
+data class UserInvitationRequest(
     val full_name: String,
     val email: String,
     val role: String,
-    val password: String
+    val branch_id: String? = null
 )
+
+@kotlinx.serialization.Serializable
+data class UserInvitationResponse(
+    val id: String,
+    val email: String,
+    val role: String,
+    val email_sent: Boolean,
+    val message: String
+)
+
+internal fun decodeMobileUserDirectory(payload: JsonElement): List<MobileUserItem>? {
+    fun JsonObject.text(vararg keys: String): String = keys.firstNotNullOfOrNull { key ->
+        (this[key] as? JsonPrimitive)?.contentOrNull
+    }.orEmpty()
+
+    val items = findJsonArray(payload, "items", "users", "data") ?: return null
+    return items.mapNotNull { element ->
+        val item = element as? JsonObject ?: return@mapNotNull null
+        val id = item.text("id", "user_id")
+        val email = item.text("email")
+        if (id.isBlank()) return@mapNotNull null
+        val fullName = item.text("full_name", "name")
+            .ifBlank { email.substringBefore("@").ifBlank { "Unnamed user" } }
+        val role = item.text("role", "db_role").ifBlank { "unknown" }
+
+        MobileUserItem(
+            id = id,
+            full_name = fullName,
+            email = email.ifBlank { "No email address" },
+            role = role,
+            display_role = item.text("display_role", "role_label"),
+            active = (item["active"] as? JsonPrimitive)?.booleanOrNull
+                ?: (item["is_active"] as? JsonPrimitive)?.booleanOrNull
+                ?: true,
+            organization_name = item.text("organization_name", "org_name").ifBlank { null },
+            branch_name = item.text("branch_name").ifBlank { null },
+            last_activity_at = item.text("last_activity_at", "last_login_at").ifBlank { null },
+        )
+    }
+}
+
+@kotlinx.serialization.Serializable
+data class MobileBranchItem(
+    val id: String,
+    val name: String,
+    val code: String = "",
+    val active: Boolean = true,
+)
+
+private fun findJsonArray(element: JsonElement?, vararg envelopeKeys: String): JsonArray? = when (element) {
+    is JsonArray -> element
+    is JsonObject -> envelopeKeys.asSequence()
+        .mapNotNull { key -> element[key] }
+        .mapNotNull { child -> findJsonArray(child, *envelopeKeys) }
+        .firstOrNull()
+    else -> null
+}
+
+internal fun decodeMobileBranchDirectory(payload: JsonElement): List<MobileBranchItem>? {
+    val items = findJsonArray(payload, "items", "branches", "data") ?: return null
+    return items.mapNotNull { element ->
+        val item = element as? JsonObject ?: return@mapNotNull null
+        val id = (item["id"] as? JsonPrimitive)?.contentOrNull.orEmpty()
+        val name = (item["name"] as? JsonPrimitive)?.contentOrNull.orEmpty()
+        if (id.isBlank() || name.isBlank()) return@mapNotNull null
+        MobileBranchItem(
+            id = id,
+            name = name,
+            code = (item["code"] as? JsonPrimitive)?.contentOrNull.orEmpty(),
+            active = (item["active"] as? JsonPrimitive)?.booleanOrNull ?: true,
+        )
+    }
+}
 
 class MobileApiServiceImpl(
     private val client: HttpClient,
@@ -441,6 +512,7 @@ class MobileApiServiceImpl(
                 "/api/v1/mobile/dashboard",
                 "/api/v1/mobile/system-activity",
                 "/api/v1/mobile/users",
+                "/api/v1/mobile/branches",
                 "/api/v1/mobile/config",
                 "/api/v1/mobile/faqs",
                 "/api/v1/mobile/onboarding"
@@ -459,7 +531,7 @@ class MobileApiServiceImpl(
             if (resolved.status.value in 200..299) {
                 ApiResult.Success(resolved.body<T>(), resolved.status.value)
             } else {
-                ApiResult.Error(resolved.status.value, resolved.bodyAsText())
+                ApiResult.Error(resolved.status.value, apiErrorDetail(resolved.bodyAsText()))
             }
         } catch (e: java.io.IOException) {
             ApiResult.NetworkError(e.message ?: "Network unavailable", e)
@@ -467,6 +539,14 @@ class MobileApiServiceImpl(
             ApiResult.NetworkError(e.message ?: "Request failed", e)
         }
     }
+
+    private fun apiErrorDetail(body: String): String = runCatching {
+        val root = Json.parseToJsonElement(body) as? JsonObject
+        sequenceOf("detail", "message", "error")
+            .mapNotNull { key -> (root?.get(key) as? JsonPrimitive)?.contentOrNull }
+            .firstOrNull()
+            ?: body
+    }.getOrDefault(body).ifBlank { "Request failed" }
 
     private suspend fun refreshAccessToken(): Boolean = refreshMutex.withLock {
         val refresh = sessionStore.refreshToken() ?: return@withLock false
@@ -1148,19 +1228,32 @@ class MobileApiServiceImpl(
         }
     }
 
-    override suspend fun listUsers() = resultOf<List<MobileUserItem>> {
-        client.get("$baseUrl/api/v1/mobile/users") { authHeader() }
+    override suspend fun listUsers(): ApiResult<List<MobileUserItem>> {
+        return when (val result = resultOf<JsonElement> {
+            client.get("$baseUrl/api/v1/mobile/users") { authHeader() }
+        }) {
+            is ApiResult.Success -> {
+                val users = decodeMobileUserDirectory(result.data)
+                    ?: return ApiResult.NetworkError("The user directory response could not be read.")
+                ApiResult.Success(users, result.statusCode)
+            }
+            is ApiResult.Error -> result
+            is ApiResult.NetworkError -> result
+            ApiResult.Loading -> ApiResult.Loading
+        }
     }
 
-    override suspend fun createUser(fullName: String, email: String, role: String, password: String): Boolean {
-        return try {
-            val response: HttpResponse = client.post("$baseUrl/api/v1/mobile/users") {
+    override suspend fun inviteUser(
+        fullName: String,
+        email: String,
+        role: String,
+        branchId: String?
+    ) = resultOf<UserInvitationResponse> {
+            client.post("$baseUrl/api/v1/mobile/users/invitations") {
                 authHeader()
                 contentType(ContentType.Application.Json)
-                setBody(CreateUserRequest(fullName, email, role, password))
+                setBody(UserInvitationRequest(fullName, email, role, branchId))
             }
-            response.status == HttpStatusCode.Created || response.status == HttpStatusCode.OK
-        } catch (e: Exception) { false }
     }
 
     override suspend fun pullCreditBureau(id: String) = resultOf<JsonElement> {
@@ -1274,8 +1367,19 @@ class MobileApiServiceImpl(
                 })
             }
         }
-    override suspend fun getBranches() = resultOf<JsonElement> {
-        client.get("$baseUrl/api/v1/mobile/branches") { authHeader() }
+    override suspend fun getBranches(): ApiResult<List<MobileBranchItem>> {
+        return when (val result = resultOf<JsonElement> {
+            client.get("$baseUrl/api/v1/mobile/branches") { authHeader() }
+        }) {
+            is ApiResult.Success -> {
+                val branches = decodeMobileBranchDirectory(result.data)
+                    ?: return ApiResult.NetworkError("The branch directory response could not be read.")
+                ApiResult.Success(branches, result.statusCode)
+            }
+            is ApiResult.Error -> result
+            is ApiResult.NetworkError -> result
+            ApiResult.Loading -> ApiResult.Loading
+        }
     }
     override suspend fun createBranch(name: String, code: String) = resultOf<JsonElement> {
         client.post("$baseUrl/api/v1/mobile/branches") {
@@ -1287,7 +1391,7 @@ class MobileApiServiceImpl(
             authHeader(); contentType(ContentType.Application.Json)
             setBody(buildJsonObject {
                 put("role", role)
-                if (branchId != null) put("branch_id", branchId)
+                put("branch_id", branchId?.let(::JsonPrimitive) ?: JsonNull)
             })
         }
     }

@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fieldcrm.android.core.network.ApiResult
 import com.fieldcrm.android.data.api.MobileApiService
+import com.fieldcrm.android.data.api.MobileBranchItem
 import com.fieldcrm.android.ui.components.FieldCard
 import com.fieldcrm.android.ui.components.FieldTopAppBar
 import com.fieldcrm.android.ui.components.PrimaryButton
@@ -447,7 +448,7 @@ fun InterestPresetScreen(onBack: () -> Unit) {
 fun BranchManagementScreen(onBack: () -> Unit) {
     val api: MobileApiService = koinInject()
     val scope = rememberCoroutineScope()
-    var rows by remember { mutableStateOf<List<JsonObject>>(emptyList()) }
+    var rows by remember { mutableStateOf<List<MobileBranchItem>>(emptyList()) }
     var name by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
@@ -455,7 +456,7 @@ fun BranchManagementScreen(onBack: () -> Unit) {
     fun refresh() {
         scope.launch {
             when (val result = api.getBranches()) {
-                is ApiResult.Success -> rows = result.data.objectItems()
+                is ApiResult.Success -> rows = result.data
                 is ApiResult.Error -> error = result.detail
                 is ApiResult.NetworkError -> error = result.message
                 ApiResult.Loading -> Unit
@@ -480,8 +481,8 @@ fun BranchManagementScreen(onBack: () -> Unit) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(rows) { row ->
                 FieldCard {
-                    Text(row.text("name"), style = FieldTheme.typography.title)
-                    Text(row.text("code"), color = FieldTheme.colors.gray400)
+                    Text(row.name, style = FieldTheme.typography.title)
+                    Text(row.code, color = FieldTheme.colors.gray400)
                 }
             }
         }

@@ -19,12 +19,14 @@ def run(coro):
     return asyncio.run(coro)
 
 
-async def get(path: str, **kwargs):
+async def get(path: str, *, cookies=None, **kwargs):
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
         base_url="http://testserver",
         follow_redirects=False,
     ) as client:
+        if cookies:
+            client.cookies.update(cookies)
         return await client.get(path, **kwargs)
 
 

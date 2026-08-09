@@ -263,9 +263,10 @@ Documents are private identity/employment/loan evidence and must not be publishe
 
 ## Verification checklist
 
-Run these checks before release:
+Install the development test dependencies, then run these checks before release:
 
 ```powershell
+pip install -r requirements-dev.txt
 python test_imports.py
 python backend\test_http.py
 python backend\test_routes_render.py
@@ -352,4 +353,3 @@ The application implements a secure authentication system featuring short-lived 
    - Every invocation of `POST /auth/refresh` rotates the refresh token: the old token is marked as `used_at = NOW()`, and a new one is issued with the same `family_id`.
 7. **Replay Attack / Reuse Detection**:
    - If a replayed refresh token is detected (where `used_at` is already populated), the system immediately revokes the **entire rotation chain** (`revoked_at = NOW()` on all tokens with matching `family_id`), logs a high-priority security event, and returns HTTP 401.
-

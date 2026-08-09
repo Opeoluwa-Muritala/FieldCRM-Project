@@ -135,6 +135,12 @@ temp/
 *.tmp
 *.bak
 
+# Local coding-agent, browser automation, and Kotlin session artifacts
+.kotlin/
+.playwright-cli/
+.claude/worktrees/
+output/
+
 # ---------------------------------------------------------------------------
 # Generated reports and local exports
 # ---------------------------------------------------------------------------
