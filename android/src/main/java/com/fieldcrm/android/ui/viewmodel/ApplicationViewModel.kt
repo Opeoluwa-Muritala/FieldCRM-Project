@@ -49,6 +49,9 @@ data class ApplicationUiState(
     val newAppRepaymentFrequency: String = "",
     val newAppPurpose: String = "",
     val selectedAppDetail: ApplicationDetailResult? = null,
+    val selectedAppDetailId: String? = null,
+    val loadingAppDetailId: String? = null,
+    val detailLoadedAtMillis: Long = 0L,
     val isLoadingDetail: Boolean = false,
     val shareUrl: String? = null,
     val isGeneratingLink: Boolean = false,
@@ -113,7 +116,7 @@ class ApplicationViewModel(
                 _uiState.update { it.copy(applications = cached, isStale = true) }
             }
             _uiState.update { it.copy(isLoading = cached.isEmpty()) }
-            val fresh = repository.getAllApplications()
+            val fresh = withContext(Dispatchers.IO) { repository.getAllApplications() }
             if (fresh.isNotEmpty()) {
                 lastRefreshTime = System.currentTimeMillis()
             }
@@ -127,11 +130,53 @@ class ApplicationViewModel(
         }
     }
 
-    fun loadApplicationDetail(id: String) {
-        _uiState.update { it.copy(isLoadingDetail = true, selectedAppDetail = null) }
+    fun loadApplicationDetail(id: String, forceRefresh: Boolean = false) {
+        val current = _uiState.value
+        val now = System.currentTimeMillis()
+        val hasFreshDetail = current.selectedAppDetailId == id &&
+            current.selectedAppDetail != null &&
+            now - current.detailLoadedAtMillis < 30_000L
+        if (!forceRefresh && hasFreshDetail) return
+        if (current.isLoadingDetail && current.loadingAppDetailId == id) return
+
+        _uiState.update {
+            it.copy(
+                isLoadingDetail = true,
+                loadingAppDetailId = id,
+                selectedAppDetail = it.selectedAppDetail.takeIf { _ -> it.selectedAppDetailId == id }
+            )
+        }
         viewModelScope.launch {
-            val detail = repository.getFullDetail(id)
-            _uiState.update { it.copy(selectedAppDetail = detail, isLoadingDetail = false) }
+            val cachedDetail = withContext(Dispatchers.IO) {
+                repository.getCachedFullDetail(id)
+            }
+            if (cachedDetail != null) {
+                _uiState.update { state ->
+                    if (state.loadingAppDetailId != id) state
+                    else state.copy(
+                        selectedAppDetail = cachedDetail,
+                        selectedAppDetailId = id,
+                        detailLoadedAtMillis = System.currentTimeMillis(),
+                        // Stored content is ready. The network refresh remains
+                        // internal instead of covering usable data with a loader.
+                        isLoadingDetail = false
+                    )
+                }
+            }
+
+            val detail = withContext(Dispatchers.IO) {
+                repository.getFullDetail(id)
+            }
+            _uiState.update { state ->
+                if (state.loadingAppDetailId != id) state
+                else state.copy(
+                    selectedAppDetail = detail,
+                    selectedAppDetailId = id.takeIf { detail != null },
+                    loadingAppDetailId = null,
+                    detailLoadedAtMillis = if (detail != null) System.currentTimeMillis() else 0L,
+                    isLoadingDetail = false
+                )
+            }
         }
     }
 

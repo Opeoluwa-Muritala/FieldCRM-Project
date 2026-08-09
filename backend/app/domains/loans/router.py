@@ -17,6 +17,7 @@ from app.core.exceptions import DomainException
 from app.domains.loans.repository import LoanRepository
 from app.domains.loans.service import LoanService
 from app.core.audit import AuditService
+from app.core.cache import cache_scoped_data, get_cached_scoped_data
 from app.core.dependencies import get_current_user, RoleChecker
 from app.core.template_utils import (
     build_template_context,
@@ -666,6 +667,14 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
     _verify_loan_scope(app, current_user)
     
     app_uuid = UUID(application_id)
+    detail_cache_key, cached_detail = await get_cached_scoped_data(
+        "web-dossier-v1",
+        [
+            ("org", current_user.org_id),
+            ("user", current_user.id),
+            ("application", app_uuid),
+        ],
+    )
 
     async def load_snapshot():
         async with get_connection() as detail_conn:
@@ -704,13 +713,30 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
                 limit=200,
             )
 
-    snapshot, documents, readiness_summary, audit_events, flags = await asyncio.gather(
-        load_snapshot(),
-        load_documents(),
-        load_readiness(),
-        load_events(),
-        load_flags(),
-    )
+    if cached_detail is None:
+        snapshot, documents, readiness_summary, audit_events, flags = await asyncio.gather(
+            load_snapshot(),
+            load_documents(),
+            load_readiness(),
+            load_events(),
+            load_flags(),
+        )
+        await cache_scoped_data(
+            detail_cache_key,
+            {
+                "snapshot": snapshot,
+                "readiness_summary": readiness_summary,
+                "audit_events": audit_events,
+                "flags": flags,
+            },
+            ttl_seconds=60,
+        )
+    else:
+        documents = await load_documents()
+        snapshot = cached_detail.get("snapshot") or {}
+        readiness_summary = cached_detail.get("readiness_summary") or {}
+        audit_events = cached_detail.get("audit_events") or []
+        flags = cached_detail.get("flags") or []
     wizard_data = snapshot.get("wizard_data") or {}
     visitation_data = snapshot.get("visitation_data") or {}
     ver_check = snapshot.get("verification_check")

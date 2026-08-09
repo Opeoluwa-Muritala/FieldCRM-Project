@@ -678,7 +678,7 @@ fun FieldCRMApp(
                 },
                 onGenerateOffer = {
                     applicationViewModel.generateOffer(app.id) {
-                        applicationViewModel.loadApplicationDetail(app.id)
+                        applicationViewModel.loadApplicationDetail(app.id, forceRefresh = true)
                     }
                 }
             )

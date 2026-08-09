@@ -338,17 +338,16 @@ fun UsersScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 FieldTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     label = "Search Users",
                     placeholder = "Name, email, or role...",
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         Icon(
                             imageVector = FieldIcons.SearchOutlined,
@@ -360,7 +359,7 @@ fun UsersScreen(
                 PrimaryButton(
                     text = "+ Add",
                     onClick = { showCreateDialog = true },
-                    modifier = Modifier.wrapContentWidth()
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 

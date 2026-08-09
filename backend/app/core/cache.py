@@ -170,6 +170,37 @@ async def cache_dashboard_data(key: str, value: Any) -> None:
     )
 
 
+async def get_cached_scoped_data(
+    namespace: str,
+    scopes: list[tuple[str, object]],
+    parameters: object | None = None,
+) -> tuple[str, Any | None]:
+    """Return a versioned cache entry for non-response server data.
+
+    The same scope-version keys used by response caching ensure successful
+    writes invalidate these entries without broad Redis key scans.
+    """
+    versions = await _scope_versions(scopes)
+    scope_token = ":".join(
+        _digest(identifier) + "-" + version
+        for (_, identifier), version in zip(scopes, versions)
+    )
+    fingerprint = sha256(
+        json.dumps(
+            jsonable_encoder(parameters or {}),
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    key = f"{_PREFIX}:data:{namespace}:{scope_token}:{fingerprint}"
+    return key, await get_json(key)
+
+
+async def cache_scoped_data(key: str, value: Any, ttl_seconds: int = 30) -> None:
+    """Store versioned server data without overwriting a concurrent fill."""
+    await set_json(key, value, ttl_seconds=ttl_seconds, only_if_absent=True)
+
+
 async def invalidate_auth_user(user_id: object) -> None:
     if _redis is None:
         return

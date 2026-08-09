@@ -84,6 +84,22 @@ class AndroidSyncWorker(
                         updated_at = a.updated_at
                     )
                 }
+
+                // Refresh only dossiers the user has opened before. This
+                // keeps stored review data current without interrupting the
+                // visible screen or downloading every loan dossier at once.
+                val staleBefore = System.currentTimeMillis() - DETAIL_REFRESH_INTERVAL_MILLIS
+                val cachedDetailIds = database.appDatabaseQueries
+                    .selectStaleReviewDetailCacheIds(staleBefore, DETAIL_REFRESH_BATCH_SIZE)
+                    .executeAsList()
+                for (applicationId in cachedDetailIds) {
+                    val payload = mobileApi.getApplicationDetail(applicationId) ?: continue
+                    database.appDatabaseQueries.upsertReviewDetailCache(
+                        applicationId,
+                        payload,
+                        System.currentTimeMillis()
+                    )
+                }
             } catch (_: Exception) {
                 // Pull failure is non-fatal — cached data is still valid
             }
@@ -114,6 +130,8 @@ class AndroidSyncWorker(
 
     companion object {
         private const val UNIQUE_WORK_NAME = "AndroidSyncWorker"
+        private const val DETAIL_REFRESH_INTERVAL_MILLIS = 15L * 60L * 1000L
+        private const val DETAIL_REFRESH_BATCH_SIZE = 10L
 
         fun scheduleOneTime(context: Context) {
             val constraints = androidx.work.Constraints.Builder()

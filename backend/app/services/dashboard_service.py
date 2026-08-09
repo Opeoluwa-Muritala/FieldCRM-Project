@@ -41,13 +41,27 @@ class DashboardService:
         process pool's configured capacity. Other roles retain their existing
         single-connection behavior until their query shapes are profiled.
         """
+        from app.core.cache import cache_dashboard_data, get_cached_dashboard_data
+
         role = user.role.lower().replace(" ", "_")
+        cache_key, cached = await get_cached_dashboard_data(
+            user.org_id,
+            user.id,
+            role,
+        )
+        if cached is not None:
+            return cached
+
         if role not in ("account_officer", "loan_officer"):
             async with get_connection() as conn:
-                return await DashboardService(conn).get_dashboard_data(user)
+                result = await DashboardService(conn).get_dashboard_data(user)
+                await cache_dashboard_data(cache_key, result)
+                return result
 
         async with get_connection() as conn:
-            return await DashboardService(conn).get_account_officer_bundle(user)
+            result = await DashboardService(conn).get_account_officer_bundle(user)
+            await cache_dashboard_data(cache_key, result)
+            return result
 
     async def get_account_officer_bundle(self, user) -> dict:
         row = await self.conn.fetchrow(
@@ -92,31 +106,44 @@ class DashboardService:
 
     async def get_dashboard_data(self, user) -> dict:
         """Dispatch to role-specific data method."""
+        from app.core.cache import cache_dashboard_data, get_cached_dashboard_data
+
         role = user.role.lower().replace(" ", "_")
+        cache_key, cached = await get_cached_dashboard_data(
+            user.org_id,
+            user.id,
+            role,
+        )
+        if cached is not None:
+            return cached
+
         if role in ("account_officer", "loan_officer"):
-            return await self._loan_officer_data(user)
+            result = await self._loan_officer_data(user)
         elif role == "branch_manager":
-            return await self._branch_manager_data(user)
+            result = await self._branch_manager_data(user)
         elif role == "branch_supervisor":
-            return await self._branch_supervisor_data(user)
+            result = await self._branch_supervisor_data(user)
         elif role == "credit_analyst":
-            return await self._credit_analyst_data(user)
+            result = await self._credit_analyst_data(user)
         elif role == "auditor":
-            return await self._auditor_data(user)
+            result = await self._auditor_data(user)
         elif role == "system_admin":
-            return await self._system_admin_data(user)
+            result = await self._system_admin_data(user)
         elif role in ("crm", "head_crm"):
-            return await self._crm_data(user)
+            result = await self._crm_data(user)
         elif role == "ed":
-            return await self._ed_data(user)
+            result = await self._ed_data(user)
         elif role == "md":
-            return await self._md_data(user)
+            result = await self._md_data(user)
         elif role == "legal":
-            return await self._legal_data(user)
+            result = await self._legal_data(user)
         elif role in ("md", "ed"):
-            return await self._executive_data(user)
-        # Fallback
-        return await self._loan_officer_data(user)
+            result = await self._executive_data(user)
+        else:
+            result = await self._loan_officer_data(user)
+
+        await cache_dashboard_data(cache_key, result)
+        return result
 
     async def _loan_officer_data(self, user) -> dict:
         """Loan Officer dashboard: task-focused, personal queue.
