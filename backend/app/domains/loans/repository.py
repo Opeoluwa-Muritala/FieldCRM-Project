@@ -12,17 +12,21 @@ class LoanRepository(BaseRepository):
             from app.core.exceptions import DomainException
             raise DomainException("Invalid loan product code", 422)
             
-        cleaned = input_val.strip().lower().replace("_", " ")
+        # Product cards submit the canonical database code. Preserve its
+        # underscores for the direct lookup; only aliases use display-style
+        # whitespace normalization.
+        canonical_code = input_val.strip().lower()
         row = await self.conn.fetchrow(
             "SELECT code FROM loan_products WHERE LOWER(code) = $1 AND active = TRUE",
-            cleaned
+            canonical_code
         )
         if row:
             return row["code"]
-            
+
+        alias_key = canonical_code.replace("_", " ")
         alias_row = await self.conn.fetchrow(
             "SELECT product_code FROM product_aliases WHERE LOWER(alias) = $1",
-            cleaned
+            alias_key
         )
         if alias_row:
             prod_row = await self.conn.fetchrow(
