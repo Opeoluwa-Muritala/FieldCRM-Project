@@ -1,7 +1,8 @@
-from fastapi import Depends, HTTPException, Request, Response, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from time import perf_counter
 from app.core.database import get_connection
+from app.core.middleware import queue_response_cookie
 from app.core.performance import record_counter, record_duration
 from app.core.security import decode_access_token
 from app.core.cache import cache_auth_user, get_cached_auth_user
@@ -53,7 +54,6 @@ async def get_current_user_from_token(token: str, conn=None) -> UserRow:
 
 async def get_current_user(
     request: Request,
-    response: Response,
     token: str = Depends(oauth2_scheme),
 ) -> UserRow:
     # Resolve token from OAuth2 authorization header, query params, or session cookies
@@ -95,7 +95,8 @@ async def get_current_user(
                         user = await get_current_user_from_token(new_token, conn=conn)
                         
                         is_secure = settings.COOKIE_SECURE or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
-                        response.set_cookie(
+                        queue_response_cookie(
+                            request.scope,
                             key="session",
                             value=new_token,
                             httponly=True,
@@ -105,12 +106,13 @@ async def get_current_user(
                             path="/",
                         )
                         if session_data.get("refresh_token"):
-                            response.set_cookie(
+                            queue_response_cookie(
+                                request.scope,
                                 key="refresh_token",
                                 value=session_data["refresh_token"],
                                 httponly=True,
                                 secure=is_secure,
-                                samesite="lax",
+                                samesite="strict",
                                 expires=session_data["expires_at"],
                                 path="/",
                             )

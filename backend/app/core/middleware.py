@@ -4,12 +4,52 @@ import secrets
 import uuid
 from time import perf_counter
 from starlette.datastructures import MutableHeaders
+from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.performance import finish_request_performance, start_request_performance
 
 
 logger = logging.getLogger("FieldCRMPerformance")
+
+
+def queue_response_cookie(scope: Scope, **cookie_options) -> None:
+    """Queue a cookie for the final response produced by the endpoint.
+
+    Authentication runs in a dependency, but HTML endpoints commonly return
+    their own TemplateResponse or RedirectResponse. Cookies set on FastAPI's
+    temporary dependency response are not copied to those explicit responses,
+    so queue the rendered Set-Cookie header on the request scope instead.
+    """
+    cookie_response = Response()
+    cookie_response.set_cookie(**cookie_options)
+    cookie_header = next(
+        value for name, value in cookie_response.raw_headers if name == b"set-cookie"
+    )
+    scope.setdefault("state", {}).setdefault("pending_response_cookies", []).append(
+        cookie_header
+    )
+
+
+class PendingResponseCookiesMiddleware:
+    """Attach cookies queued by dependencies to the actual endpoint response."""
+
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_pending_cookies(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                for cookie in scope.get("state", {}).pop("pending_response_cookies", []):
+                    headers.append("set-cookie", cookie.decode("latin-1"))
+            await send(message)
+
+        await self.app(scope, receive, send_with_pending_cookies)
 
 
 def _get_header(scope: Scope, name: bytes) -> str:

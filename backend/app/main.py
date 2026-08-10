@@ -24,7 +24,12 @@ from app.config import settings
 from app.core import security
 from app.core.database import db_conn, init_engine, dispose_engine, get_connection
 from app.core.exceptions import DomainException, domain_exception_handler
-from app.core.middleware import PerformanceTimingMiddleware, RequestIDMiddleware, SecurityHeadersMiddleware
+from app.core.middleware import (
+    PendingResponseCookiesMiddleware,
+    PerformanceTimingMiddleware,
+    RequestIDMiddleware,
+    SecurityHeadersMiddleware,
+)
 from app.core.template_utils import csp_nonce_context
 from app.core.templates import create_templates
 from app.core.dependencies import get_current_user, RoleChecker
@@ -132,6 +137,7 @@ app.add_middleware(
     csp_nonce_enforced=settings.CSP_NONCE_ENFORCED,
 )
 app.add_middleware(RequestIDMiddleware)
+app.add_middleware(PendingResponseCookiesMiddleware)
 app.add_middleware(ResponseCacheInvalidationMiddleware)
 app.add_middleware(
     PerformanceTimingMiddleware,
