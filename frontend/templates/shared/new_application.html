@@ -107,17 +107,18 @@
             <div class="csp-s-e8a8a9c051f6">
                 <label class="field-label csp-s-a56b14ff62f4">Loan Product</label>
                 
-                {% set families = {
+                {% set family_labels = {
                     'salary_personal': 'Salary & Personal Schemes',
+                    'savings_personal': 'Savings-Linked Personal Schemes',
                     'education': 'Education Products (E-LMS)',
                     'corporate_business': 'Corporate & SME Facilities'
                 } %}
                 
-                {% for family_code, family_name in families.items() %}
+                {% for family in products|groupby('family') %}
                 <div class="product-family-group">
-                    <h4 class="product-family-header">{{ family_name }}</h4>
+                    <h4 class="product-family-header">{{ family_labels.get(family.grouper, family.grouper|replace('_', ' ')|title) }}</h4>
                     <div class="csp-s-82461dce141b product-grid-layout">
-                        {% for prod in products if prod.family == family_code %}
+                        {% for prod in family.list %}
                         <div class="toggle-option-card csp-s-fb5ec070f2bf product-card-container" id="loan_{{ prod.code }}" data-loan-type="{{ prod.code }}">
                             <input type="radio" name="loan_type" value="{{ prod.code }}" id="radio_{{ prod.code }}" required class="csp-s-d0466aa33fa8">
                             <strong class="csp-s-a101ab7485d7 product-title">{{ prod.name }}</strong>
