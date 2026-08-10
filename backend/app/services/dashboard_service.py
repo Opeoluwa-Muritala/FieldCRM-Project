@@ -43,7 +43,7 @@ class DashboardService:
         """
         from app.core.cache import cache_dashboard_data, get_cached_dashboard_data
 
-        role = user.role.lower().replace(" ", "_")
+        role = self._normalized_role(user.role)
         cache_key, cached = await get_cached_dashboard_data(
             user.org_id,
             user.id,
@@ -108,7 +108,7 @@ class DashboardService:
         """Dispatch to role-specific data method."""
         from app.core.cache import cache_dashboard_data, get_cached_dashboard_data
 
-        role = user.role.lower().replace(" ", "_")
+        role = self._normalized_role(user.role)
         cache_key, cached = await get_cached_dashboard_data(
             user.org_id,
             user.id,
@@ -144,6 +144,15 @@ class DashboardService:
 
         await cache_dashboard_data(cache_key, result)
         return result
+
+    @staticmethod
+    def _normalized_role(role: str) -> str:
+        normalized = role.lower().replace(" ", "_")
+        return {
+            "team_lead": "branch_manager",
+            "relationship_officer": "account_officer",
+            "supervisor": "branch_supervisor",
+        }.get(normalized, normalized)
 
     async def _loan_officer_data(self, user) -> dict:
         """Loan Officer dashboard: task-focused, personal queue.

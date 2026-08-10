@@ -42,6 +42,7 @@ from app.domains.notifications.repository import NotificationRepository
 from app.domains.notifications.service import NotificationService
 from app.domains.signing.repository import SigningRepository
 from app.domains.signing.service import SigningService
+from app.domains.feasibility.repository import FeasibilityRepository
 
 from app.config import settings
 
@@ -152,6 +153,11 @@ async def render_dashboard(
     base shells via the 'shell' context variable.
     """
     role = current_user.role.lower().replace(" ", "_")
+    role = {
+        "team_lead": "branch_manager",
+        "relationship_officer": "account_officer",
+        "supervisor": "branch_supervisor",
+    }.get(role, role)
 
     # Roles with dedicated dashboard routes
     if role in ("crm", "head_crm"):
@@ -165,7 +171,13 @@ async def render_dashboard(
 
     from app.core.cache import cache_dashboard_data, get_cached_dashboard_data
 
-    loading = request.headers.get("X-Progressive-Load") != "true"
+    # Team Lead and back-office dashboards must contain useful data in the
+    # initial HTML. Previously every first response was an empty skeleton and
+    # the page appeared blank whenever the progressive JavaScript request was
+    # delayed or blocked. Keep the lightweight first paint only for field
+    # officer dashboards, where the larger personal bundle benefits from it.
+    progressive_role = role in ("account_officer", "loan_officer")
+    loading = progressive_role and request.headers.get("X-Progressive-Load") != "true"
 
     if loading:
         data = {"metrics": {}, "tasks": [], "queue": []}
@@ -329,6 +341,8 @@ async def render_awaiting_me(
     dashboard_svc = DashboardService(conn)
     queue = await dashboard_svc.get_awaiting_concurrence(current_user)
     data = await dashboard_svc.get_dashboard_data(current_user)
+    data = dict(data)
+    data["pipeline"] = await dashboard_svc.get_branch_pipeline(current_user)
     ctx = build_template_context(
         request,
         current_user,
@@ -350,11 +364,26 @@ async def render_pending_signoffs(
     """Render visitation signoffs awaiting branch manager concurrence."""
     dashboard_svc = DashboardService(conn)
     signoffs = await dashboard_svc.get_pending_signoffs(current_user)
+    recent_visits = await conn.fetch(
+        """SELECT vr.loan_id, la.ref_no, la.applicant_name, vr.visit_date,
+                  vr.status, vr.manager_concurrence, vr.updated_at,
+                  officer.full_name AS visiting_officer_name
+           FROM visitation_reports vr
+           JOIN loan_applications la ON la.id = vr.loan_id AND la.org_id = vr.org_id
+           LEFT JOIN users officer ON officer.id = vr.visiting_officer_id
+           WHERE vr.org_id = $1
+             AND la.branch_id = $2
+             AND la.deleted_at IS NULL
+           ORDER BY vr.updated_at DESC LIMIT 20""",
+        current_user.org_id,
+        current_user.branch_id,
+    )
     data = await dashboard_svc.get_dashboard_data(current_user)
     ctx = build_template_context(
         request,
         current_user,
         signoffs=signoffs,
+        recent_visits=[dict(row) for row in recent_visits],
         data=data,
         metrics=data.get("metrics", {}),
         active_tab="signoffs",
@@ -888,6 +917,46 @@ async def render_wizard_step(
                 pnl_expenses=pnl["expenses"],
                 pnl_period_label=pnl["period_label"],
             )
+        cashflows, profile, _ = await FeasibilityRepository(conn).get_inputs(app_uuid)
+        editable_cashflows = [
+            row for row in cashflows
+            if row.get("source_type") in {"manual", "legacy_pnl_seed", "legacy_salary_seed"}
+        ]
+        data = dict(data)
+        data.update(
+            cashflow_direction=[row["flow_direction"] for row in editable_cashflows] or ["inflow"],
+            cashflow_classification=[row["classification"] for row in editable_cashflows] or ["operating"],
+            cashflow_category=[row["category"] for row in editable_cashflows] or ["sales_revenue"],
+            cashflow_amount=[row["amount"] for row in editable_cashflows] or [""],
+            cashflow_frequency=[row["frequency"] for row in editable_cashflows] or ["monthly"],
+            cashflow_period_months=[row["period_months"] for row in editable_cashflows] or [1],
+            cashflow_description=[row.get("description") or "" for row in editable_cashflows] or [""],
+            cashflow_channel=[row.get("channel") or "" for row in editable_cashflows] or [""],
+            imported_cashflows=[row for row in cashflows if row not in editable_cashflows],
+        )
+        if profile:
+            data.update(
+                household_expenses=profile["essential_household_expenses"],
+                verified_other_income=profile["verified_other_income"],
+                dependants=profile["dependants"],
+                inventory_value=profile["inventory_value"],
+                receivables_value=profile["receivables_value"],
+                payables_value=profile["payables_value"],
+                maintenance_capex=profile["maintenance_capex"],
+            )
+    elif step == 5:
+        _, _, obligations = await FeasibilityRepository(conn).get_inputs(app_uuid)
+        declared = [row for row in obligations if row.get("source_type") == "declared"]
+        data = dict(data)
+        data.update(
+            facility_bank=[row["lender_name"] for row in declared] or [""],
+            facility_amount=[row["outstanding_balance"] for row in declared] or [""],
+            facility_payment=[row["periodic_payment"] for row in declared] or [""],
+            facility_frequency=[row["payment_frequency"] for row in declared] or ["monthly"],
+            facility_tenor=[row.get("remaining_tenor_months") or "" for row in declared] or [""],
+            facility_status=[row.get("status") or "current" for row in declared] or ["current"],
+            imported_obligations=[row for row in obligations if row.get("source_type") != "declared"],
+        )
         
     user_role = current_user.role.lower().replace(" ", "_")
     reviewer_roles = {
@@ -917,6 +986,22 @@ async def render_wizard_step(
                     signatures["primary"] = sig["signature_image_ref"]
 
     product = await conn.fetchrow("SELECT * FROM loan_products WHERE code = $1", app.loan_type)
+    collateral_policies = []
+    if step == 6:
+        collateral_policies = [
+            dict(row) for row in await conn.fetch(
+                """SELECT asset_class, display_name, retention_rate,
+                          max_valuation_age_days, manual_review_required, policy_note
+                   FROM collateral_valuation_policies
+                   WHERE active = TRUE
+                   ORDER BY CASE asset_class
+                       WHEN 'property' THEN 1 WHEN 'equipment' THEN 2
+                       WHEN 'gold' THEN 3 WHEN 'inventory' THEN 4
+                       WHEN 'fast_moving_goods' THEN 5
+                       WHEN 'petty_perishable_goods' THEN 6
+                       WHEN 'cash' THEN 7 ELSE 8 END"""
+            )
+        ]
     ctx = build_template_context(
         request,
         current_user,
@@ -930,6 +1015,7 @@ async def render_wizard_step(
         signatures=signatures,
         review_mode=user_role in reviewer_roles,
         product=dict(product) if product else {},
+        collateral_policies=collateral_policies,
     )
     return templates.TemplateResponse(request, "shared/application_wizard.html", ctx)
 
@@ -960,6 +1046,47 @@ async def process_wizard_step(
     form_data = await request.form()
     data_dict = form_data_to_jsonable_dict(form_data)
     open_guarantor = data_dict.pop("open_guarantor", None)
+    collateral_rows = []
+    if step == 6:
+        collateral_types = form_data.getlist("collateral_type[]")
+        narrations = form_data.getlist("collateral_narration[]")
+        market_values = form_data.getlist("collateral_market_value[]")
+        policies = {
+            row["asset_class"]: dict(row)
+            for row in await conn.fetch(
+                "SELECT * FROM collateral_valuation_policies WHERE active = TRUE"
+            )
+        }
+        for index, asset_class in enumerate(collateral_types):
+            narration = narrations[index].strip() if index < len(narrations) else ""
+            market_value = Decimal(str(market_values[index] or 0)) if index < len(market_values) else Decimal("0")
+            policy = policies.get(asset_class)
+            if not policy or not narration or market_value <= 0:
+                continue
+            retention_rate = Decimal(str(policy["retention_rate"]))
+            forced_sale_value = (market_value * retention_rate).quantize(Decimal("0.01"))
+            collateral_rows.append({
+                "asset_class": asset_class,
+                "narration": narration,
+                "market_value": market_value,
+                "retention_rate": retention_rate,
+                "forced_sale_value": forced_sale_value,
+                "manual_review_required": policy["manual_review_required"],
+            })
+
+        loan_amount = Decimal(str(data_dict.get("amount") or app.amount or 0))
+        total_market_value = sum((row["market_value"] for row in collateral_rows), Decimal("0"))
+        total_forced_sale_value = sum((row["forced_sale_value"] for row in collateral_rows), Decimal("0"))
+        if not collateral_rows:
+            query = urlencode({"error": "Add at least one valid collateral item.", "focus": "collateralEntries"})
+            return RedirectResponse(url=f"/applications/{application_id}/step/6?{query}", status_code=status.HTTP_303_SEE_OTHER)
+        if loan_amount > 0 and total_market_value <= loan_amount:
+            query = urlencode({"error": "Total collateral market value must be greater than the requested loan amount.", "focus": "collateralEntries"})
+            return RedirectResponse(url=f"/applications/{application_id}/step/6?{query}", status_code=status.HTTP_303_SEE_OTHER)
+        if loan_amount > 0 and total_forced_sale_value < loan_amount * Decimal("0.70"):
+            query = urlencode({"error": "Policy-adjusted forced-sale value must cover at least 70% of the requested loan.", "focus": "collateralEntries"})
+            return RedirectResponse(url=f"/applications/{application_id}/step/6?{query}", status_code=status.HTTP_303_SEE_OTHER)
+        data_dict["collateral_fsv"] = [str(row["forced_sale_value"]) for row in collateral_rows]
     if step == 4:
         pnl_values = [data_dict.get("pnl_period_label"), data_dict.get("pnl_revenue"), data_dict.get("pnl_expenses")]
         if any(value not in (None, "") for value in pnl_values) and not all(value not in (None, "") for value in pnl_values):
@@ -1016,24 +1143,20 @@ async def process_wizard_step(
         )
 
     if step == 6:
-        collateral_types = form_data.getlist("collateral_type[]")
-        narrations = form_data.getlist("collateral_narration[]")
-        market_values = form_data.getlist("collateral_market_value[]")
-        forced_sale_values = form_data.getlist("collateral_fsv[]")
         async with conn.transaction():
             await conn.execute("DELETE FROM collateral_items WHERE application_id = $1", app_uuid)
-            for collateral_type, narration, market_value, forced_sale_value in zip(
-                collateral_types, narrations, market_values, forced_sale_values
-            ):
-                if collateral_type not in {"property", "equipment", "inventory", "cash"} or not str(narration).strip():
-                    continue
+            for item in collateral_rows:
                 await conn.execute(
                     """INSERT INTO collateral_items
-                           (application_id, collateral_type, narration, loan_based_price, face_value, created_by)
-                       VALUES ($1, $2, $3, $4, $5, $6)""",
-                    app_uuid, collateral_type, str(narration).strip(),
-                    Decimal(str(market_value or 0)), Decimal(str(forced_sale_value or 0)),
-                    current_user.id,
+                           (application_id, collateral_type, narration, loan_based_price,
+                            face_value, force_sale_value, retention_rate, valuation_date,
+                            valuation_source, manual_review_required, created_by)
+                       VALUES ($1, $2, $3, $4, $5, $5, $6, $7,
+                               'officer_declared_market_value', $8, $9)""",
+                    app_uuid, item["asset_class"], item["narration"],
+                    item["market_value"], item["forced_sale_value"],
+                    item["retention_rate"], date.today(),
+                    item["manual_review_required"], current_user.id,
                 )
 
     if step == 4:
@@ -1057,6 +1180,72 @@ async def process_wizard_step(
                     app_uuid, str(address).strip(), str(city).strip(), str(state_name).strip(),
                     location_function, current_user.id,
                 )
+
+        directions = form_data.getlist("cashflow_direction[]")
+        classifications = form_data.getlist("cashflow_classification[]")
+        categories = form_data.getlist("cashflow_category[]")
+        amounts = form_data.getlist("cashflow_amount[]")
+        frequencies = form_data.getlist("cashflow_frequency[]")
+        period_months = form_data.getlist("cashflow_period_months[]")
+        descriptions = form_data.getlist("cashflow_description[]")
+        channels = form_data.getlist("cashflow_channel[]")
+        allowed_directions = {"inflow", "outflow"}
+        allowed_classes = {"operating", "investing", "financing", "personal", "transfer"}
+        allowed_frequencies = {"daily", "weekly", "biweekly", "monthly", "quarterly", "annual", "period_total", "one_off"}
+        cashflow_rows = []
+        for index, amount in enumerate(amounts):
+            direction = directions[index] if index < len(directions) else ""
+            classification = classifications[index] if index < len(classifications) else ""
+            category = categories[index].strip() if index < len(categories) else ""
+            frequency = frequencies[index] if index < len(frequencies) else "monthly"
+            if not amount or not category:
+                continue
+            if direction not in allowed_directions or classification not in allowed_classes or frequency not in allowed_frequencies:
+                raise HTTPException(status_code=422, detail="Invalid cash movement classification")
+            parsed_amount = Decimal(str(amount))
+            parsed_months = Decimal(str(period_months[index] or 1)) if index < len(period_months) else Decimal("1")
+            if parsed_amount < 0 or parsed_months <= 0:
+                raise HTTPException(status_code=422, detail="Cash movement amounts and period must be positive")
+            cashflow_rows.append({
+                "flow_direction": direction,
+                "classification": classification,
+                "category": category,
+                "amount": parsed_amount,
+                "frequency": frequency,
+                "period_months": parsed_months,
+                "description": descriptions[index].strip() if index < len(descriptions) else "",
+                "channel": channels[index].strip() if index < len(channels) else "",
+                "is_recurring": frequency != "one_off",
+            })
+        feasibility_repo = FeasibilityRepository(conn)
+        async with conn.transaction():
+            await feasibility_repo.replace_declared_cashflows(app_uuid, cashflow_rows, current_user.id)
+            await feasibility_repo.upsert_profile(app_uuid, data_dict, current_user.id)
+
+    if step == 5:
+        lenders = form_data.getlist("facility_bank[]")
+        balances = form_data.getlist("facility_amount[]")
+        payments = form_data.getlist("facility_payment[]")
+        frequencies = form_data.getlist("facility_frequency[]")
+        tenors = form_data.getlist("facility_tenor[]")
+        statuses = form_data.getlist("facility_status[]")
+        obligations = []
+        for index, lender in enumerate(lenders):
+            if not str(lender).strip():
+                continue
+            frequency = frequencies[index] if index < len(frequencies) else "monthly"
+            if frequency not in {"daily", "weekly", "biweekly", "monthly", "quarterly", "annual"}:
+                raise HTTPException(status_code=422, detail="Invalid facility repayment frequency")
+            obligations.append({
+                "lender_name": str(lender).strip(),
+                "outstanding_balance": balances[index] if index < len(balances) and balances[index] else 0,
+                "periodic_payment": payments[index] if index < len(payments) and payments[index] else 0,
+                "payment_frequency": frequency,
+                "remaining_tenor_months": tenors[index] if index < len(tenors) else None,
+                "status": statuses[index] if index < len(statuses) else "current",
+            })
+        async with conn.transaction():
+            await FeasibilityRepository(conn).replace_declared_obligations(app_uuid, obligations, current_user.id)
 
     if step == 4 and all(data_dict.get(key) not in (None, "") for key in ("pnl_period_label", "pnl_revenue", "pnl_expenses")):
         await conn.execute(
@@ -1965,11 +2154,20 @@ async def render_loan_pipeline(
     if current_user.role.lower().replace(" ", "_") == "branch_manager":
         dashboard_svc = DashboardService(conn)
         pipeline = await dashboard_svc.get_branch_pipeline(current_user)
+        applications, _ = await LoanRepository(conn).list_by_stage(
+            org_id=current_user.org_id,
+            stage=None,
+            officer_id=None,
+            page=1,
+            size=100,
+            branch_id=current_user.branch_id,
+        )
         data = await dashboard_svc.get_dashboard_data(current_user)
         ctx = build_template_context(
             request,
             current_user,
             pipeline=pipeline,
+            applications=applications,
             data=data,
             metrics=data.get("metrics", {}),
             active_tab="pipeline",
@@ -2024,12 +2222,23 @@ async def render_current_loans(
 ):
     """Renders borrower loans view."""
     repo = LoanRepository(conn)
-    applications = await repo.list_recent(current_user.org_id, limit=500)
+    role_name = current_user.role.lower().replace(" ", "_")
+    if role_name in {"branch_manager", "team_lead"}:
+        applications, _ = await repo.list_by_stage(
+            org_id=current_user.org_id,
+            stage=None,
+            officer_id=None,
+            page=1,
+            size=500,
+            branch_id=current_user.branch_id,
+        )
+    else:
+        applications = await repo.list_recent(current_user.org_id, limit=500)
     state_counts = {
         "total": len(applications),
-        "draft": sum(1 for app in applications if app.current_stage == 1),
-        "review": sum(1 for app in applications if app.current_stage in [2, 3, 4, 5]),
-        "approved": sum(1 for app in applications if app.current_stage == 6),
+        "draft": sum(1 for app in applications if app.stage == "intake"),
+        "review": sum(1 for app in applications if app.stage not in {"intake", "disbursement_ready", "disbursed", "returned", "rejected"}),
+        "approved": sum(1 for app in applications if app.stage == "disbursement_ready"),
         "active": sum(1 for app in applications if app.stage == "disbursed"),
     }
     ctx = build_template_context(
@@ -4793,12 +5002,24 @@ async def borrower_summary(
     conn=Depends(db_conn),
     current_user=Depends(RoleChecker(["Branch Manager", "Branch Supervisor", "Credit Analyst", "CRM", "Head CRM", "Auditor", "ED", "MD"])),
 ):
-    applications = await LoanRepository(conn).list_recent(current_user.org_id, limit=500)
+    repo = LoanRepository(conn)
+    role_name = current_user.role.lower().replace(" ", "_")
+    if role_name in {"branch_manager", "team_lead"}:
+        applications, _ = await repo.list_by_stage(
+            org_id=current_user.org_id,
+            stage=None,
+            officer_id=None,
+            page=1,
+            size=500,
+            branch_id=current_user.branch_id,
+        )
+    else:
+        applications = await repo.list_recent(current_user.org_id, limit=500)
     counts = {
         "total": len(applications),
-        "draft": sum(1 for app in applications if app.current_stage == 1),
-        "review": sum(1 for app in applications if app.current_stage in (2, 3, 4, 5)),
-        "approved": sum(1 for app in applications if app.current_stage == 6),
+        "draft": sum(1 for app in applications if app.stage == "intake"),
+        "review": sum(1 for app in applications if app.stage not in {"intake", "disbursement_ready", "disbursed", "returned", "rejected"}),
+        "approved": sum(1 for app in applications if app.stage == "disbursement_ready"),
         "active": sum(1 for app in applications if app.stage == "disbursed"),
     }
     return templates.TemplateResponse(request, "partials/borrower_metrics.html", {"request": request, "counts": counts})

@@ -33,6 +33,10 @@ MIGRATION_FILES = [
     "035_refresh_tokens.sql",
     "036_offer_letter_product_configs.sql",
     "037_offer_letter_product_templates.sql",
+    "038_feasibility_cashflow.sql",
+    "039_collateral_valuation_policies.sql",
+    "040_collateral_policy_trigger.sql",
+    "041_recalculate_existing_collateral.sql",
 ]
 
 

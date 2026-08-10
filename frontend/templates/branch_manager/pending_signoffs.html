@@ -17,6 +17,21 @@
     </a>
     {% else %}<div class="lo-empty-state">No submitted visits awaiting signoff.</div>{% endfor %}
 </div>
+{% if not signoffs and recent_visits %}
+<section class="page-card">
+    <div class="role-section-head"><h2>Recent Branch Visits</h2></div>
+    <p class="page-card-subtitle">These visits exist but are not currently submitted for Team Lead signoff.</p>
+    <div class="role-card-list">
+        {% for item in recent_visits %}
+        <a class="role-list-card" href="/applications/{{ item.loan_id }}/visitation">
+            <strong>{{ item.applicant_name }}</strong>
+            <span>{{ item.ref_no }} &middot; {{ item.visiting_officer_name or 'Relationship Officer' }} &middot; {{ item.status|replace('_', ' ')|title }}</span>
+            <em>{{ item.visit_date or 'Date pending' }}</em>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
 <div class="custom-table-container queue-table-wrap page-card">
     <table class="custom-table"><thead><tr><th>Applicant</th><th>Officer</th><th>Met With</th><th>Status</th><th>Updated</th></tr></thead><tbody>
     {% for item in signoffs %}

@@ -15,13 +15,11 @@
 {% endblock %}
 
 {% block content %}
-{% set monthly_net = ((pnl.net_profit|float) / 12) if pnl else 0.0 %}
-{% set proposed_installment_f = proposed_installment|float %}
-{% set capacity_ratio = (monthly_net / proposed_installment_f) if proposed_installment_f > 0 else 0.0 %}
+{% set f = feasibility %}
 {% set coverage_ratio_f = coverage_ratio|float if coverage_ratio else 0.0 %}
 {% set coverage_percent = ([coverage_ratio_f / 0.70 * 100, 100]|min) if coverage_ratio_f > 0 else 0.0 %}
-{% set capacity_percent = ([capacity_ratio / 1.5 * 100, 100]|min) if capacity_ratio > 0 else 0.0 %}
-{% set comparison_max = [monthly_net|abs, proposed_installment_f, 1]|max %}
+{% set dscr_f = f.dscr|float if f.dscr is not none else 0.0 %}
+{% set comparison_max = [f.monthly_cash_available|float|abs, f.monthly_total_debt_service|float, 1]|max %}
 <nav class="feasibility-actions" aria-label="Feasibility navigation">
   <a class="feasibility-back" href="/applications/{{ app_id }}"><span aria-hidden="true">&larr;</span> Back to Application</a>
 </nav>
@@ -32,11 +30,38 @@
   </section>
 
   <section class="feasibility-metrics" aria-label="Feasibility metrics">
+    <article class="feasibility-metric"><span class="feasibility-label">Monthly Operating Inflow</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(f.monthly_operating_inflows) }}</strong><span class="feasibility-help">Recurring business or salary inflows after frequency normalisation.</span></article>
+    <article class="feasibility-metric"><span class="feasibility-label">Monthly Operating Outflow</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(f.monthly_operating_outflows) }}</strong><span class="feasibility-help">Operating costs excluding financing and own-account transfers.</span></article>
+    <article class="feasibility-metric"><span class="feasibility-label">Cash Available for Debt</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(f.monthly_cash_available) }}</strong><span class="feasibility-help">Operating cash flow plus verified other income, less household costs and maintenance capex.</span></article>
+    <article class="feasibility-metric"><span class="feasibility-label">Total Monthly Debt Service</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(f.monthly_total_debt_service) }}</strong><span class="feasibility-help">Existing obligations plus the proposed {{ proposed_payment_frequency|replace('_', ' ') }} repayment.</span></article>
+    <article class="feasibility-metric"><span class="feasibility-label">Debt Service Coverage Ratio</span><strong class="feasibility-value">{% if f.dscr is not none %}{{ "{:.2f}".format(f.dscr) }}x{% else %}&mdash;{% endif %}</strong><span class="feasibility-help">Cash available divided by all monthly-equivalent debt service. Apply the bank's approved product threshold.</span></article>
+    <article class="feasibility-metric"><span class="feasibility-label">Residual Cash After Debt</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(f.monthly_residual_cash) }}</strong><span class="feasibility-help">Amount remaining after existing and proposed repayments.</span></article>
+    <article class="feasibility-metric"><span class="feasibility-label">Working Capital Need</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(f.working_capital_need) }}</strong><span class="feasibility-help">Estimated from inventory, receivable and payable cycle values.</span></article>
+    <article class="feasibility-metric"><span class="feasibility-label">Collateral Market Value</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(total_market_value or 0) }}</strong><span class="feasibility-help">{{ "{:.2f}".format(market_coverage_ratio or 0) }}x the loan. Policy requires total current market value to exceed the requested amount.</span></article>
     <article class="feasibility-metric"><span class="feasibility-label">Total Pledged Collateral (FSV)</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(total_pledged_value or 0) }}</strong><span class="feasibility-help">Combined forced-sale value recorded in the loan form.</span></article>
     <article class="feasibility-metric"><span class="feasibility-label">Collateral Coverage Ratio</span><strong class="feasibility-value">{{ "{:.2%}".format(coverage_ratio or 0) }}</strong><span class="feasibility-help">Minimum target is 70% of the requested loan (0.70x).</span></article>
-    <article class="feasibility-metric"><span class="feasibility-label">Proposed Monthly Installment</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(proposed_installment or 0) }}</strong><span class="feasibility-help">Derived from &#8358;{{ "{:,.0f}".format(app.amount or 0) }} over {{ app.tenor_months or 0 }}m at {{ proposed_interest_rate }}% P.A.</span></article>
-    <article class="feasibility-metric"><span class="feasibility-label">{% if monthly_net < 0 %}Monthly Net Loss{% else %}Monthly Net Profit{% endif %}</span><strong class="feasibility-value">{% if monthly_net < 0 %}-{% endif %}&#8358;{{ "{:,.2f}".format(monthly_net|abs) }}</strong><span class="feasibility-help">Based on P&amp;L ({{ pnl.period_label if pnl else 'not set' }}).</span></article>
-    <article class="feasibility-metric"><span class="feasibility-label">Repayment Capacity Ratio</span><strong class="feasibility-value">{{ "{:.2f}".format(capacity_ratio) }}x</strong><span class="feasibility-help">Monthly net result divided by monthly installment. Recommended minimum is 1.5x.</span></article>
+    <article class="feasibility-metric"><span class="feasibility-label">Proposed {{ proposed_payment_frequency|replace('_', ' ')|title }} Installment</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(proposed_installment or 0) }}</strong><span class="feasibility-help">Derived from &#8358;{{ "{:,.0f}".format(app.amount or 0) }} over {{ app.tenor_months or 0 }}m at {{ proposed_interest_rate }}% P.A.</span></article>
+    <article class="feasibility-metric"><span class="feasibility-label">Evidence Quality</span><strong class="feasibility-value">{{ f.data_quality_status|title }}</strong><span class="feasibility-help">{{ f.verified_cashflow_count }} of {{ f.included_cashflow_count }} included cash movements are verified. Declared inputs require human review.</span></article>
+  </section>
+
+  <section class="feasibility-chart">
+    <h3>Collateral valuation by asset class</h3>
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead><tr><th>Asset</th><th>Market value</th><th>Retention</th><th>Policy FSV</th><th>Review basis</th></tr></thead>
+        <tbody>
+          {% for item in collateral_items %}
+          <tr>
+            <td><strong>{{ item.display_name or item.collateral_type|replace('_', ' ')|title }}</strong><br><span class="feasibility-help">{{ item.narration }}</span></td>
+            <td>&#8358;{{ "{:,.2f}".format(item.loan_based_price or 0) }}</td>
+            <td>{{ "{:.0%}".format(item.retention_rate or 0) }}</td>
+            <td>&#8358;{{ "{:,.2f}".format(item.force_sale_value or 0) }}</td>
+            <td><span class="feasibility-help">{{ item.policy_note or 'Apply approved valuation policy.' }}{% if item.manual_review_required %} Manual review required.{% endif %}</span></td>
+          </tr>
+          {% else %}<tr><td colspan="5">No collateral has been recorded.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <section class="feasibility-visuals">
@@ -52,17 +77,17 @@
     </article>
 
     <article class="feasibility-chart">
-      <h3>Monthly repayment capacity</h3>
+      <h3>Monthly-equivalent repayment capacity</h3>
       <div class="capacity-bars">
-        <div class="capacity-row"><span>{% if monthly_net < 0 %}Net loss{% else %}Net profit{% endif %}</span><div class="capacity-track"><div class="capacity-fill" data-csp-style="width:{{ (monthly_net|abs / comparison_max * 100) }}%"></div></div><strong>{% if monthly_net < 0 %}-{% endif %}&#8358;{{ "{:,.0f}".format(monthly_net|abs) }}</strong></div>
-        <div class="capacity-row"><span>Installment</span><div class="capacity-track"><div class="capacity-fill installment" data-csp-style="width:{{ (proposed_installment_f / comparison_max * 100) }}%"></div></div><strong>&#8358;{{ "{:,.0f}".format(proposed_installment or 0) }}</strong></div>
+        <div class="capacity-row"><span>Cash available</span><div class="capacity-track"><div class="capacity-fill" data-csp-style="width:{{ (f.monthly_cash_available|float|abs / comparison_max * 100) }}%"></div></div><strong>&#8358;{{ "{:,.0f}".format(f.monthly_cash_available) }}</strong></div>
+        <div class="capacity-row"><span>Total debt service</span><div class="capacity-track"><div class="capacity-fill installment" data-csp-style="width:{{ (f.monthly_total_debt_service|float / comparison_max * 100) }}%"></div></div><strong>&#8358;{{ "{:,.0f}".format(f.monthly_total_debt_service) }}</strong></div>
       </div>
-      <div class="capacity-status {% if capacity_ratio >= 1.5 %}good{% elif capacity_ratio >= 1 %}warning{% else %}risk{% endif %}">
-        {% if capacity_ratio >= 1.5 %}<strong>Healthy capacity.</strong> The monthly result meets the recommended 1.5x buffer.
-        {% elif capacity_ratio >= 1 %}<strong>Thin capacity.</strong> Repayment is covered, but the recommended buffer is not met.
-        {% elif monthly_net < 0 %}<strong>Net loss recorded.</strong> Current operations do not support the proposed installment.
-        {% else %}<strong>Capacity shortfall.</strong> Monthly profit does not cover the proposed installment.{% endif %}
+      <div class="capacity-status {% if dscr_f >= 1 %}good{% elif f.monthly_cash_available < 0 %}risk{% else %}warning{% endif %}">
+        {% if dscr_f >= 1 %}<strong>Debt service is covered.</strong> Confirm the ratio also meets the configured product and credit-policy threshold.
+        {% elif f.monthly_cash_available < 0 %}<strong>Negative cash available.</strong> Current inflows do not cover operating and household commitments.
+        {% else %}<strong>Capacity shortfall.</strong> Available cash does not cover all existing and proposed repayments.{% endif %}
       </div>
+      <p class="feasibility-help">Cash conversion cycle: {{ f.cash_conversion_cycle_days }} days. Existing obligations included: {{ obligations|length }}.</p>
     </article>
   </section>
 </div>
