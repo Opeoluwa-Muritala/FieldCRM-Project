@@ -881,7 +881,11 @@ async def render_application_detail(
 
     ctx = await _get_dossier_context(request, application_id, conn, current_user, active_tab="applications")
     ctx["recommendations"] = await _get_loan_recommendations(conn, UUID(application_id))
-    ctx["readonly"] = (role not in ("branch_supervisor", "branch_manager")) or ctx["app"].stage != "branch_approval"
+    editable_stage_by_role = {
+        "branch_manager": "branch_manager_review",
+        "branch_supervisor": "branch_supervisor_review",
+    }
+    ctx["readonly"] = ctx["app"].stage != editable_stage_by_role.get(role)
     return templates.TemplateResponse(request, template_name, ctx)
 
 @router.get("/applications/{application_id}/step/{step}")
@@ -2024,10 +2028,33 @@ async def process_approval_readiness(
     current_user = Depends(RoleChecker(["Branch Manager", "Branch Supervisor"]))
 ):
     """Record the applicable branch concurrence and forward for further review."""
+    role = current_user.role.lower().replace(" ", "_")
+    role = {"team_lead": "branch_manager", "supervisor": "branch_supervisor"}.get(role, role)
+    expected_stage, next_stage, audit_action = {
+        "branch_manager": ("branch_manager_review", "branch_supervisor_review", "Team Lead Concurrence — Forwarded to Supervisor"),
+        "branch_supervisor": ("branch_supervisor_review", "credit_analyst_review", "Supervisor Concurrence — Forwarded to Credit Analyst"),
+    }[role]
+
+    repo = LoanRepository(conn)
+    app_before = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not app_before:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    if app_before.stage != expected_stage:
+        raise HTTPException(status_code=409, detail="This application is no longer awaiting your review")
+    if (
+        role in {"branch_manager", "branch_supervisor"}
+        and getattr(current_user, "branch_id", None)
+        and app_before.branch_id != current_user.branch_id
+    ):
+        raise HTTPException(status_code=403, detail="This application belongs to another branch")
+
     form_data = await request.form()
     new_amount = form_data.get("amount")
     if new_amount:
-        await conn.execute("UPDATE loan_applications SET amount = $1 WHERE id = $2", Decimal(new_amount), UUID(application_id))
+        await conn.execute(
+            "UPDATE loan_applications SET amount = $1 WHERE id = $2 AND org_id = $3",
+            Decimal(new_amount), UUID(application_id), current_user.org_id,
+        )
 
     kyc_attested = form_data.get("kyc_attested")
     collateral_attested = form_data.get("collateral_attested")
@@ -2038,12 +2065,6 @@ async def process_approval_readiness(
         application_id, kyc_attested, collateral_attested
     )
 
-    role = current_user.role.lower().replace(" ", "_")
-    expected_stage, next_stage, audit_action = {
-        "branch_manager": ("branch_manager_review", "branch_supervisor_review", "Team Lead Concurrence — Forwarded to Supervisor"),
-        "branch_supervisor": ("branch_supervisor_review", "credit_analyst_review", "Supervisor Concurrence — Forwarded to Credit Analyst"),
-    }[role]
-    repo = LoanRepository(conn)
     app = await repo.approve(
         UUID(application_id), current_user.org_id, current_user.id,
         expected_stage=expected_stage, next_stage=next_stage,
@@ -2055,7 +2076,7 @@ async def process_approval_readiness(
     await audit.log(
         application_id=application_id,
         org_id=str(current_user.org_id),
-        action="Team Lead Concurrence — Forwarded for Further Review" if role == "branch_manager" else "Supervisor Concurrence — Forwarded for Further Review",
+        action=audit_action,
         from_stage=expected_stage,
         to_stage=next_stage,
         actor_id=str(current_user.id),
