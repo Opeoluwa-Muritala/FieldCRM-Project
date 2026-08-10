@@ -63,7 +63,7 @@ async def render_repayment_feasibility(
     request: Request,
     application_id: str,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Relationship Officer", "Branch Manager", "Branch Supervisor", "CRM", "Head CRM", "Auditor", "ED", "MD", "Legal"])),
+    current_user = Depends(RoleChecker(["Relationship Officer", "Branch Manager", "Branch Supervisor", "Credit Analyst", "CRM", "Head CRM", "Auditor", "ED", "MD", "Legal"])),
 ):
     try:
         app_uuid = UUID(application_id)
