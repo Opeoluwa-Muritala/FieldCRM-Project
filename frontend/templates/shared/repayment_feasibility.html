@@ -15,11 +15,13 @@
 {% endblock %}
 
 {% block content %}
-{% set monthly_net = (pnl.net_profit / 12) if pnl else 0 %}
-{% set capacity_ratio = (monthly_net / proposed_installment) if proposed_installment > 0 else 0 %}
-{% set coverage_percent = ([coverage_ratio / 0.70 * 100, 100]|min) if coverage_ratio > 0 else 0 %}
-{% set capacity_percent = ([capacity_ratio / 1.5 * 100, 100]|min) if capacity_ratio > 0 else 0 %}
-{% set comparison_max = [monthly_net|abs, proposed_installment, 1]|max %}
+{% set monthly_net = ((pnl.net_profit|float) / 12) if pnl else 0.0 %}
+{% set proposed_installment_f = proposed_installment|float %}
+{% set capacity_ratio = (monthly_net / proposed_installment_f) if proposed_installment_f > 0 else 0.0 %}
+{% set coverage_ratio_f = coverage_ratio|float if coverage_ratio else 0.0 %}
+{% set coverage_percent = ([coverage_ratio_f / 0.70 * 100, 100]|min) if coverage_ratio_f > 0 else 0.0 %}
+{% set capacity_percent = ([capacity_ratio / 1.5 * 100, 100]|min) if capacity_ratio > 0 else 0.0 %}
+{% set comparison_max = [monthly_net|abs, proposed_installment_f, 1]|max %}
 <nav class="feasibility-actions" aria-label="Feasibility navigation">
   <a class="feasibility-back" href="/applications/{{ app_id }}"><span aria-hidden="true">&larr;</span> Back to Application</a>
 </nav>
@@ -45,7 +47,7 @@
           <circle class="ratio-track" cx="60" cy="60" r="48"></circle>
           <circle class="ratio-value" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="{{ coverage_percent }} 100"></circle>
         </svg>
-        <div class="ratio-copy"><strong>{{ "{:.2f}".format(coverage_ratio or 0) }}x</strong><span>{% if coverage_ratio >= 0.70 %}70% target met{% else %}{{ "{:.0%}".format(0.70 - coverage_ratio) }} below the 0.70x target{% endif %}</span></div>
+        <div class="ratio-copy"><strong>{{ "{:.2f}".format(coverage_ratio or 0) }}x</strong><span>{% if coverage_ratio_f >= 0.70 %}70% target met{% else %}{{ "{:.0%}".format(0.70 - coverage_ratio_f) }} below the 0.70x target{% endif %}</span></div>
       </div>
     </article>
 
@@ -53,7 +55,7 @@
       <h3>Monthly repayment capacity</h3>
       <div class="capacity-bars">
         <div class="capacity-row"><span>{% if monthly_net < 0 %}Net loss{% else %}Net profit{% endif %}</span><div class="capacity-track"><div class="capacity-fill" data-csp-style="width:{{ (monthly_net|abs / comparison_max * 100) }}%"></div></div><strong>{% if monthly_net < 0 %}-{% endif %}&#8358;{{ "{:,.0f}".format(monthly_net|abs) }}</strong></div>
-        <div class="capacity-row"><span>Installment</span><div class="capacity-track"><div class="capacity-fill installment" data-csp-style="width:{{ (proposed_installment / comparison_max * 100) }}%"></div></div><strong>&#8358;{{ "{:,.0f}".format(proposed_installment or 0) }}</strong></div>
+        <div class="capacity-row"><span>Installment</span><div class="capacity-track"><div class="capacity-fill installment" data-csp-style="width:{{ (proposed_installment_f / comparison_max * 100) }}%"></div></div><strong>&#8358;{{ "{:,.0f}".format(proposed_installment or 0) }}</strong></div>
       </div>
       <div class="capacity-status {% if capacity_ratio >= 1.5 %}good{% elif capacity_ratio >= 1 %}warning{% else %}risk{% endif %}">
         {% if capacity_ratio >= 1.5 %}<strong>Healthy capacity.</strong> The monthly result meets the recommended 1.5x buffer.

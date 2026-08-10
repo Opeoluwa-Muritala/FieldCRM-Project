@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ status_code }} · {{ title }} | FieldCRM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style nonce="{{ csp_nonce }}">
+        :root { color: #251230; background: #f7f5f8; font-family: Montserrat, Arial, sans-serif; }
+        * { box-sizing: border-box; }
+        body { align-items: center; background: radial-gradient(circle at top, #f0e7f5, #f7f5f8 56%); display: flex; justify-content: center; margin: 0; min-height: 100vh; padding: 24px; }
+        main { background: #fff; border: 1px solid #e6ddeb; border-radius: 18px; box-shadow: 0 18px 44px rgba(46, 0, 82, .12); max-width: 560px; padding: 46px 36px; text-align: center; width: 100%; }
+        .logo { height: auto; margin-bottom: 30px; max-height: 48px; max-width: 220px; }
+        .code { color: #89268b; font-size: clamp(56px, 15vw, 76px); font-weight: 700; letter-spacing: -4px; line-height: 1; margin: 0; }
+        h1 { font-size: clamp(23px, 5vw, 28px); line-height: 1.25; margin: 16px 0 12px; }
+        .message { color: #675b6d; line-height: 1.65; margin: 0 auto 28px; max-width: 420px; }
+        .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+        .button { border: 1px solid #4b075c; border-radius: 8px; display: inline-block; font-weight: 700; padding: 12px 18px; text-decoration: none; }
+        .button-primary { background: #4b075c; color: #fff; }
+        .button-secondary { background: #fff; color: #4b075c; }
+        .button:hover, .button:focus { outline: 3px solid #d8b7df; outline-offset: 3px; }
+        .button-primary:hover, .button-primary:focus { background: #701082; }
+        .request-id { color: #8a818e; font-size: 12px; margin: 26px 0 0; overflow-wrap: anywhere; }
+        @media (max-width: 480px) { main { padding: 36px 22px; } .actions { align-items: stretch; flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <main aria-labelledby="error-title">
+        <img class="logo" src="{{ brand_logo_black }}" alt="Mainstreet Microfinance Bank">
+        <p class="code" aria-label="Error {{ status_code }}">{{ status_code }}</p>
+        <h1 id="error-title">{{ title }}</h1>
+        <p class="message">{{ message }}</p>
+        <div class="actions">
+            {% if status_code >= 500 %}
+            <a class="button button-secondary" href="{{ retry_url }}">Try again</a>
+            {% endif %}
+            <a class="button button-primary" href="/dashboard">Return to dashboard</a>
+        </div>
+        {% if request_id and request_id != 'unknown' %}
+        <p class="request-id">Reference: {{ request_id }}</p>
+        {% endif %}
+    </main>
+</body>
+</html>

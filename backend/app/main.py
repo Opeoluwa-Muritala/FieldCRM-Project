@@ -10,9 +10,11 @@ import logging
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 from fastapi import FastAPI, Depends, Form, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -398,39 +400,57 @@ async def iter_cloudinary_content(
         await close_cloudinary_stream(client, response, stream_context)
 
 
-def render_not_found_page(request: Request, message: str = "The page you requested could not be found."):
+ERROR_PAGE_CONTENT = {
+    400: ("We couldn't process that request", "Check the information you entered and try again."),
+    403: ("You don't have access", "Your account does not have permission to view this page or perform this action."),
+    404: ("Page not found", "The page you requested could not be found."),
+    405: ("That action isn't allowed", "This page does not support the action you tried."),
+    408: ("The request took too long", "Please try again in a moment."),
+    409: ("We couldn't complete that action", "The information may have changed. Refresh the page and try again."),
+    413: ("That file is too large", "Choose a smaller file and try again."),
+    415: ("That file type isn't supported", "Choose a supported file format and try again."),
+    422: ("Check the information you entered", "Some details are missing or invalid. Review them and try again."),
+    429: ("Too many requests", "Please wait a moment before trying again."),
+    500: ("Something went wrong", "We couldn't complete your request. Please try again."),
+    502: ("A service is temporarily unavailable", "Please try again in a few moments."),
+    503: ("Service temporarily unavailable", "We're unable to handle your request right now. Please try again shortly."),
+    504: ("A service took too long to respond", "Please try again in a few moments."),
+}
+
+
+def render_error_page(
+    request: Request,
+    status_code: int,
+    detail: Any = None,
+    headers: dict[str, str] | None = None,
+):
+    """Render a safe, useful error screen for browser page requests."""
+    title, default_message = ERROR_PAGE_CONTENT.get(
+        status_code,
+        ("We couldn't complete your request", "Please return to the dashboard and try again."),
+    )
+    # Validation and other client-error details help users correct their input.
+    # Server-error details can expose implementation or infrastructure data.
+    message = detail if status_code < 500 and isinstance(detail, str) and detail else default_message
+    request_id = getattr(request.state, "request_id", None)
     return templates.TemplateResponse(
         request,
-        "shared/not_found.html",
-        {"message": message},
-        status_code=status.HTTP_404_NOT_FOUND,
+        "shared/error.html",
+        {
+            "status_code": status_code,
+            "title": title,
+            "message": message,
+            "request_id": request_id,
+            "retry_url": str(request.url.path),
+        },
+        status_code=status_code,
+        headers=headers,
     )
 
 
-def return_to_internal_referrer(request: Request):
-    """Keep users on their previous app page when an internal link is unimplemented."""
-    if request.method not in {"GET", "HEAD"}:
-        return None
-
-    referrer = request.headers.get("referer")
-    if not referrer:
-        return None
-
-    parsed = urlparse(referrer)
-    if parsed.scheme not in {"http", "https"} or parsed.netloc != request.url.netloc:
-        return None
-    if parsed.path == request.url.path and parsed.query == request.url.query:
-        return None
-
-    return RedirectResponse(url=referrer, status_code=status.HTTP_303_SEE_OTHER)
-
-
 async def browser_domain_exception_handler(request: Request, exc: DomainException):
-    if exc.status_code == status.HTTP_404_NOT_FOUND and not request.url.path.startswith("/api/"):
-        redirect = return_to_internal_referrer(request)
-        if redirect:
-            return redirect
-        return render_not_found_page(request, exc.message)
+    if not request.url.path.startswith("/api/"):
+        return render_error_page(request, exc.status_code, exc.message)
     return await domain_exception_handler(request, exc)
 
 
@@ -455,13 +475,9 @@ import urllib.parse
 @app.exception_handler(StarletteHTTPException)
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    # Only redirect page requests (non-API) to login on 401/403
+    # Authentication failures still lead to login. All other browser failures
+    # render an HTML screen; API clients retain the JSON error contract.
     is_api = request.url.path.startswith("/api/")
-    if exc.status_code == status.HTTP_403_FORBIDDEN and not is_api:
-        # A signed-in user does not become authorized by visiting /login again.
-        # Send forbidden page requests to their dashboard instead of creating
-        # a protected-page -> login -> protected-page redirect loop.
-        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
     if exc.status_code == status.HTTP_401_UNAUTHORIZED and not is_api:
         next_url = str(request.url.path)
         if request.url.query:
@@ -471,17 +487,41 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             url=f"/login?next={encoded_next}",
             status_code=status.HTTP_303_SEE_OTHER
         )
-    if exc.status_code == status.HTTP_404_NOT_FOUND and not is_api:
-        redirect = return_to_internal_referrer(request)
-        if redirect:
-            return redirect
-        return render_not_found_page(request, str(exc.detail))
+    if not is_api:
+        return render_error_page(request, exc.status_code, exc.detail, exc.headers)
 
     request_id = getattr(request.state, "request_id", "unknown")
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail, "request_id": request_id}
+        content={"detail": exc.detail, "request_id": request_id},
+        headers=exc.headers,
     )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Render form/page validation failures while retaining FastAPI's API JSON."""
+    if request.url.path.startswith("/api/"):
+        return await request_validation_exception_handler(request, exc)
+    return render_error_page(request, status.HTTP_422_UNPROCESSABLE_CONTENT)
+
+
+@app.exception_handler(Exception)
+async def unexpected_exception_handler(request: Request, exc: Exception):
+    """Give users a branded 500 page without leaking exception details."""
+    request_id = getattr(request.state, "request_id", "unknown")
+    logger.exception(
+        "Unhandled request error path=%s request_id=%s",
+        request.url.path,
+        request_id,
+        exc_info=(type(exc), exc, exc.__traceback__),
+    )
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "Internal server error", "request_id": request_id},
+        )
+    return render_error_page(request, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 def raise_login_redirect():
     raise HTTPException(
