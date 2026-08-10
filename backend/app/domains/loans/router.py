@@ -2461,7 +2461,7 @@ async def render_crm_review(
 async def process_crm_review(
     request: Request,
     application_id: str,
-    action: str = Form(...),
+    action: str = Form("advance"),
     crm_notes: str = Form(""),
     conn=Depends(db_conn),
     current_user=Depends(RoleChecker(["crm", "head_crm"])),
@@ -2476,7 +2476,10 @@ async def process_crm_review(
         raise HTTPException(status_code=403, detail="Staff cannot submit an applicant signature")
     new_amount = form_data.get("amount")
     if new_amount:
-        await conn.execute("UPDATE loan_applications SET amount = $1 WHERE id = $2", Decimal(new_amount), UUID(application_id))
+        await conn.execute(
+            "UPDATE loan_applications SET amount = $1 WHERE id = $2 AND org_id = $3",
+            Decimal(new_amount), UUID(application_id), current_user.org_id,
+        )
 
     role = current_user.role
     if role == "crm" and application.stage != "crm_review":
@@ -2492,7 +2495,6 @@ async def process_crm_review(
                 "consent_credit_check": "Credit Check Authorisation",
                 "consent_cheque": "Cheque Recovery Authorisation",
                 "consent_gsi": "Global Standing Instruction (GSI) Mandate",
-                "applicant_signature": "Applicant Signature",
                 "final_declaration": "Final declaration",
             }
             missing = [label for key, label in required.items() if not form_data.get(key)]
@@ -2503,8 +2505,6 @@ async def process_crm_review(
             for key in ("consent_credit_bureau", "consent_credit_check", "consent_cheque", "consent_gsi", "final_declaration"):
                 if form_data.get(key):
                     consent_data[key] = "true"
-            if form_data.get("applicant_signature"):
-                consent_data["applicant_signature"] = str(form_data.get("applicant_signature"))
             if missing:
                 await repo.save_stage_data(UUID(application_id), "crm_review", consent_data, current_user.id)
                 query = urlencode({"error": "Please complete: " + ", ".join(missing), "focus": "crm-consents"})
