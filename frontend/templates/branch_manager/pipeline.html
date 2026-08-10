@@ -16,4 +16,17 @@
     </a>
     {% else %}<div class="lo-empty-state">No assigned branch files.</div>{% endfor %}
 </div>
+
+<section class="page-card">
+    <div class="role-section-head"><h2>Branch Applications</h2><span>{{ applications|length }} file(s)</span></div>
+    <div class="role-card-list">
+        {% for item in applications %}
+        <a class="role-list-card" href="/applications/{{ item.id }}/view">
+            <strong>{{ item.applicant_name }}</strong>
+            <span>{{ item.ref_no }} &middot; {{ item.stage|replace('_', ' ')|title }} &middot; {{ item.officer_name or 'Relationship Officer' }}</span>
+            <em>{% if item.amount %}&#8358;{{ "{:,.0f}".format(item.amount) }}{% else %}Amount pending{% endif %}</em>
+        </a>
+        {% else %}<div class="lo-empty-state">No application files are assigned to this branch.</div>{% endfor %}
+    </div>
+</section>
 {% endblock %}

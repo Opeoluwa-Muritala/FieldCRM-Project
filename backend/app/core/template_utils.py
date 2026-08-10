@@ -32,6 +32,9 @@ _VALID_ROLES = frozenset({
 
 _ROLE_TEMPLATE_ALIASES = {
     "account_officer": "loan_officer",
+    "relationship_officer": "loan_officer",
+    "team_lead": "branch_manager",
+    "supervisor": "branch_supervisor",
     "head_crm": "crm",
 }
 
@@ -104,7 +107,8 @@ def build_template_context(request, user, **kwargs) -> dict:
     context variables across all role-specific templates.
     """
     device = detect_device_type(request)
-    normalized_role = user.role.lower().replace(" ", "_") if user else "loan_officer"
+    raw_role = user.role.lower().replace(" ", "_") if user else "loan_officer"
+    normalized_role = _ROLE_TEMPLATE_ALIASES.get(raw_role, raw_role)
 
     if "documents" in kwargs and isinstance(kwargs["documents"], list):
         mapped_docs = []

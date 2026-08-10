@@ -422,30 +422,56 @@
                     <button type="button" class="text-action-button" data-add-business-location>+ Add Business Location</button>
                 </div>
                 <div class="form-group-full">
-                    <h3 class="page-card-title">Business Profit &amp; Loss</h3>
-                    <p class="page-card-subtitle">Enter figures for one consistent reporting period. A negative result is shown as a net loss.</p>
+                    <h3 class="page-card-title">Cash Inflows &amp; Outflows</h3>
+                    <p class="page-card-subtitle">Record recurring business and household cash movements. Loan proceeds and transfers between your own accounts must be classified separately so they are not counted as income.</p>
                 </div>
-                <div class="form-group">
-                    <label class="field-label">Reporting Period</label>
-                    <input type="text" name="pnl_period_label" class="field-input" placeholder="e.g. FY2025 or Last 12 months" value="{{ data.pnl_period_label or '' }}">
-                </div>
-                <div class="form-group">
-                    <label class="field-label">Revenue (&#8358;)</label>
-                    <input type="number" min="0" step="0.01" name="pnl_revenue" id="pnl_revenue" class="field-input" value="{{ data.pnl_revenue or '' }}">
-                </div>
-                <div class="form-group">
-                    <label class="field-label">Expenses (&#8358;)</label>
-                    <input type="number" min="0" step="0.01" name="pnl_expenses" id="pnl_expenses" class="field-input" value="{{ data.pnl_expenses or '' }}">
-                </div>
-                <div class="form-group">
-                    <label class="field-label" id="pnl_result_label">Net Profit / (Loss) (&#8358;)</label>
-                    <input type="text" id="pnl_result" class="field-input" readonly value="&#8358;0.00">
+                <div class="form-group-full">
+                    {% set cashflow_amounts = data.get('cashflow_amount', []) if data.get('cashflow_amount') is iterable and data.get('cashflow_amount') is not string else [data.get('cashflow_amount') or ''] %}
+                    {% set cashflow_directions = data.get('cashflow_direction', []) if data.get('cashflow_direction') is iterable and data.get('cashflow_direction') is not string else [data.get('cashflow_direction') or 'inflow'] %}
+                    {% set cashflow_classes = data.get('cashflow_classification', []) if data.get('cashflow_classification') is iterable and data.get('cashflow_classification') is not string else [data.get('cashflow_classification') or 'operating'] %}
+                    {% set cashflow_categories = data.get('cashflow_category', []) if data.get('cashflow_category') is iterable and data.get('cashflow_category') is not string else [data.get('cashflow_category') or 'sales_revenue'] %}
+                    {% set cashflow_frequencies = data.get('cashflow_frequency', []) if data.get('cashflow_frequency') is iterable and data.get('cashflow_frequency') is not string else [data.get('cashflow_frequency') or 'monthly'] %}
+                    {% set cashflow_months = data.get('cashflow_period_months', []) if data.get('cashflow_period_months') is iterable and data.get('cashflow_period_months') is not string else [data.get('cashflow_period_months') or 1] %}
+                    {% set cashflow_descriptions = data.get('cashflow_description', []) if data.get('cashflow_description') is iterable and data.get('cashflow_description') is not string else [data.get('cashflow_description') or ''] %}
+                    {% set cashflow_channels = data.get('cashflow_channel', []) if data.get('cashflow_channel') is iterable and data.get('cashflow_channel') is not string else [data.get('cashflow_channel') or ''] %}
+                    <div id="cashflowEntries" class="collateral-entry-list">
+                        {% for amount in cashflow_amounts %}
+                        {% set row_index = loop.index0 %}
+                        {% set selected_direction = cashflow_directions[row_index] if cashflow_directions|length > row_index else 'inflow' %}
+                        {% set selected_class = cashflow_classes[row_index] if cashflow_classes|length > row_index else 'operating' %}
+                        {% set selected_category = cashflow_categories[row_index] if cashflow_categories|length > row_index else 'sales_revenue' %}
+                        {% set selected_frequency = cashflow_frequencies[row_index] if cashflow_frequencies|length > row_index else 'monthly' %}
+                        <div class="collateral-entry" data-cashflow-entry>
+                            <div class="form-grid-2">
+                                <div class="form-group"><label class="field-label">Direction</label><select name="cashflow_direction[]" class="field-select">{% for value, label in [('inflow','Inflow'),('outflow','Outflow')] %}<option value="{{ value }}" {% if selected_direction == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                                <div class="form-group"><label class="field-label">Cash-flow class</label><select name="cashflow_classification[]" class="field-select">{% for value, label in [('operating','Business operating'),('personal','Personal / household'),('financing','Loan / financing'),('investing','Asset purchase / sale'),('transfer','Own-account transfer')] %}<option value="{{ value }}" {% if selected_class == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                                <div class="form-group"><label class="field-label">Category</label><select name="cashflow_category[]" class="field-select">{% for value, label in [('sales_revenue','Sales revenue'),('salary','Salary'),('other_recurring_income','Other recurring income'),('customer_collection','Customer collection'),('inventory_purchase','Inventory / raw materials'),('payroll','Payroll'),('rent','Rent'),('utilities','Utilities'),('transport','Transport / logistics'),('taxes','Taxes and levies'),('operating_expenses','Other operating expenses'),('household_withdrawal','Household withdrawal'),('school_fees','School fees'),('medical','Medical expense'),('existing_debt_payment','Existing debt payment'),('loan_proceeds','Loan proceeds'),('asset_purchase','Asset purchase'),('asset_sale','Asset sale'),('own_account_transfer','Own-account transfer'),('other','Other')] %}<option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                                <div class="form-group"><label class="field-label">Amount (&#8358;)</label><input type="number" min="0" step="0.01" name="cashflow_amount[]" class="field-input" value="{{ amount }}" required></div>
+                                <div class="form-group"><label class="field-label">Frequency</label><select name="cashflow_frequency[]" class="field-select" data-cashflow-frequency>{% for value, label in [('daily','Daily'),('weekly','Weekly'),('biweekly','Every two weeks'),('monthly','Monthly'),('quarterly','Quarterly'),('annual','Annual'),('period_total','Total for a period'),('one_off','One-off')] %}<option value="{{ value }}" {% if selected_frequency == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                                <div class="form-group"><label class="field-label">Period length (months)</label><input type="number" min="0.01" step="0.01" name="cashflow_period_months[]" class="field-input" value="{{ cashflow_months[row_index] if cashflow_months|length > row_index else 1 }}" data-cashflow-period-months {% if selected_frequency != 'period_total' %}readonly{% endif %}></div>
+                                <div class="form-group"><label class="field-label">Channel</label><select name="cashflow_channel[]" class="field-select">{% set selected_channel = cashflow_channels[row_index] if cashflow_channels|length > row_index else '' %}{% for value, label in [('','Not stated'),('cash','Cash'),('bank_transfer','Bank transfer'),('pos','POS'),('mobile_money','Mobile money'),('payroll','Payroll'),('other','Other')] %}<option value="{{ value }}" {% if selected_channel == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                                <div class="form-group"><label class="field-label">Description / source</label><input type="text" name="cashflow_description[]" class="field-input" value="{{ cashflow_descriptions[row_index] if cashflow_descriptions|length > row_index else '' }}" placeholder="e.g. weekly shop sales"></div>
+                            </div>
+                            <button type="button" class="btn-ghost-link collateral-remove" data-remove-cashflow>Remove</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="button" class="text-action-button" data-add-cashflow>+ Add Cash Movement</button>
                 </div>
                 <div class="form-group-full">
                     <div class="csp-s-8b79e6edbbe0">
-                        &#x26A0; The bank may compare declared sales figures against bank statement inflows.
+                        Declared entries are reviewed against statements, POS settlements, receipts, invoices, payroll records, credit reports, and field observations before approval.
                     </div>
                 </div>
+                {% if data.imported_cashflows %}<div class="form-group-full"><div class="flat-card"><strong>Imported evidence</strong><p>{{ data.imported_cashflows|length }} protected transaction record(s) were imported from supporting sources and will be reconciled by the Credit Analyst.</p></div></div>{% endif %}
+                <div class="form-group-full"><h3 class="page-card-title">Household &amp; Working-Capital Details</h3><p class="page-card-subtitle">These values supplement cash movements where statements do not show unpaid stock, customer debts, supplier credit, or essential household commitments.</p></div>
+                <div class="form-group"><label class="field-label">Essential Household Expenses / Month (&#8358;)</label><input type="number" min="0" step="0.01" name="household_expenses" class="field-input" value="{{ data.household_expenses or 0 }}"></div>
+                <div class="form-group"><label class="field-label">Verified Other Income / Month (&#8358;)</label><input type="number" min="0" step="0.01" name="verified_other_income" class="field-input" value="{{ data.verified_other_income or 0 }}"></div>
+                <div class="form-group"><label class="field-label">Number of Dependants</label><input type="number" min="0" step="1" name="dependants" class="field-input" value="{{ data.dependants or 0 }}"></div>
+                <div class="form-group"><label class="field-label">Maintenance Capital Expenditure / Month (&#8358;)</label><input type="number" min="0" step="0.01" name="maintenance_capex" class="field-input" value="{{ data.maintenance_capex or 0 }}"></div>
+                <div class="form-group"><label class="field-label">Inventory Value (&#8358;)</label><input type="number" min="0" step="0.01" name="inventory_value" class="field-input" value="{{ data.inventory_value or 0 }}"></div>
+                <div class="form-group"><label class="field-label">Customer Receivables (&#8358;)</label><input type="number" min="0" step="0.01" name="receivables_value" class="field-input" value="{{ data.receivables_value or 0 }}"></div>
+                <div class="form-group"><label class="field-label">Supplier Payables (&#8358;)</label><input type="number" min="0" step="0.01" name="payables_value" class="field-input" value="{{ data.payables_value or 0 }}"></div>
             </div>
 
             <!-- Required Documents slots -->
@@ -489,20 +515,28 @@
             <div id="facilitiesContainer" class="csp-s-18809276c4d1">
                 {% set facility_banks = data.facility_bank if data.facility_bank is iterable and data.facility_bank is not string else [data.facility_bank or ''] %}
                 {% set facility_amounts = data.facility_amount if data.facility_amount is iterable and data.facility_amount is not string else [data.facility_amount or ''] %}
+                {% set facility_payments = data.facility_payment if data.facility_payment is iterable and data.facility_payment is not string else [data.facility_payment or ''] %}
+                {% set facility_frequencies = data.facility_frequency if data.facility_frequency is iterable and data.facility_frequency is not string else [data.facility_frequency or 'monthly'] %}
                 {% set facility_tenors = data.facility_tenor if data.facility_tenor is iterable and data.facility_tenor is not string else [data.facility_tenor or ''] %}
+                {% set facility_statuses = data.facility_status if data.facility_status is iterable and data.facility_status is not string else [data.facility_status or 'current'] %}
                 {% for bank in facility_banks %}
-                <div class="csp-s-351648caf81a">
+                <div class="collateral-entry" data-facility-row>
+                    <div class="form-grid-2">
                     <div class="form-group">
                         <label class="field-label">Bank Name</label>
                         <input type="text" name="facility_bank[]" class="field-input" value="{{ bank }}" placeholder="e.g. Access Bank">
                     </div>
                     <div class="form-group">
-                        <label class="field-label">Amount (₦)</label>
+                        <label class="field-label">Outstanding Balance (₦)</label>
                         <input type="number" name="facility_amount[]" class="field-input" value="{{ facility_amounts[loop.index0] if facility_amounts|length > loop.index0 else '' }}" placeholder="e.g. 200000">
                     </div>
+                    <div class="form-group"><label class="field-label">Repayment Amount (₦)</label><input type="number" min="0" step="0.01" name="facility_payment[]" class="field-input" value="{{ facility_payments[loop.index0] if facility_payments|length > loop.index0 else '' }}"></div>
+                    <div class="form-group"><label class="field-label">Repayment Frequency</label><select name="facility_frequency[]" class="field-select">{% set selected_frequency = facility_frequencies[loop.index0] if facility_frequencies|length > loop.index0 else 'monthly' %}{% for value, label in [('daily','Daily'),('weekly','Weekly'),('biweekly','Every two weeks'),('monthly','Monthly'),('quarterly','Quarterly'),('annual','Annual')] %}<option value="{{ value }}" {% if selected_frequency == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
                     <div class="form-group">
-                        <label class="field-label">Tenor (Months)</label>
+                        <label class="field-label">Remaining Tenor (Months)</label>
                         <input type="number" name="facility_tenor[]" class="field-input" value="{{ facility_tenors[loop.index0] if facility_tenors|length > loop.index0 else '' }}" placeholder="e.g. 12">
+                    </div>
+                    <div class="form-group"><label class="field-label">Status</label><select name="facility_status[]" class="field-select">{% set selected_status = facility_statuses[loop.index0] if facility_statuses|length > loop.index0 else 'current' %}{% for value, label in [('current','Current'),('past_due','Past due'),('restructured','Restructured'),('disputed','Disputed')] %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
                     </div>
                     <div class="csp-s-af04a756ec2b">
                         <button type="button" class="btn-ghost-link csp-s-cdee27c94461" data-remove-row>Remove</button>
@@ -510,6 +544,8 @@
                 </div>
                 {% endfor %}
             </div>
+
+            {% if data.imported_obligations %}<div class="flat-card"><strong>Externally verified obligations</strong><p>{{ data.imported_obligations|length }} obligation(s) from internal, bureau, or CRMS sources are protected from borrower editing and included in feasibility analysis.</p></div>{% endif %}
 
             <div class="csp-s-58df280da3d6">
                 <button type="button" class="btn-ghost-link csp-s-e448a1ff7229" data-add-facility>+ Add Another Facility</button>
@@ -584,7 +620,7 @@
 
                 <div class="form-group-full collateral-entry-section">
                     <label class="field-label">Security / Collateral <span class="required">*</span></label>
-                    <span class="csp-s-f779da42d59e">Record each item, its narration, market worth, and forced-sale value. Total FSV should cover at least 70% of the requested loan.</span>
+                    <span class="csp-s-f779da42d59e">Total market value must exceed the loan. Forced-sale value is calculated from the selected asset class and must cover at least 70% of the loan.</span>
                     <div id="collateralEntries" class="collateral-entry-list">
                         {% set collateral_types = data.get('collateral_type', []) if data.get('collateral_type') is iterable and data.get('collateral_type') is not string else [data.get('collateral_type') or ''] %}
                         {% set collateral_narrations = data.get('collateral_narration', []) if data.get('collateral_narration') is iterable and data.get('collateral_narration') is not string else [data.get('collateral_narration') or ''] %}
@@ -593,10 +629,10 @@
                         {% for collateral_type in collateral_types %}
                         <div class="collateral-entry" data-collateral-entry>
                             <div class="form-grid-2">
-                                <div class="form-group"><label class="field-label">Collateral Type</label><select name="collateral_type[]" class="field-select" required>{% for value, label in [('property','Property'),('equipment','Equipment / Vehicle'),('inventory','Stock / Inventory'),('cash','Cash Collateral')] %}<option value="{{ value }}" {% if collateral_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                                <div class="form-group"><label class="field-label">Collateral Type</label><select name="collateral_type[]" class="field-select" required data-collateral-type>{% for policy in collateral_policies %}<option value="{{ policy.asset_class }}" data-retention="{{ policy.retention_rate }}" data-policy-note="{{ policy.policy_note }}" {% if collateral_type == policy.asset_class %}selected{% endif %}>{{ policy.display_name }} ({{ "{:.0%}".format(policy.retention_rate) }})</option>{% endfor %}</select><span class="field-help" data-collateral-policy-note></span></div>
                                 <div class="form-group"><label class="field-label">Market Worth (&#8358;)</label><input type="number" name="collateral_market_value[]" class="field-input" min="0" step="0.01" value="{{ collateral_values[loop.index0] if collateral_values|length > loop.index0 else '' }}" required data-collateral-value></div>
                                 <div class="form-group-full"><label class="field-label">Collateral Narration / Description</label><textarea name="collateral_narration[]" class="field-textarea" placeholder="Describe the asset, location, identifying details, and condition" required>{{ collateral_narrations[loop.index0] if collateral_narrations|length > loop.index0 else '' }}</textarea></div>
-                                <div class="form-group"><label class="field-label">Forced-Sale Value (FSV) (&#8358;)</label><input type="number" name="collateral_fsv[]" class="field-input" min="0" step="0.01" value="{{ collateral_fsvs[loop.index0] if collateral_fsvs|length > loop.index0 else '' }}" required data-collateral-fsv></div>
+                                <div class="form-group"><label class="field-label">Policy Forced-Sale Value (FSV) (&#8358;)</label><input type="number" name="collateral_fsv[]" class="field-input" min="0" step="0.01" value="{{ collateral_fsvs[loop.index0] if collateral_fsvs|length > loop.index0 else '' }}" readonly data-collateral-fsv></div>
                             </div>
                             <button type="button" class="btn-ghost-link collateral-remove" data-remove-collateral>Remove</button>
                         </div>
@@ -878,32 +914,46 @@
         notice.style.display = isPledgeable ? 'block' : 'none';
     }
 
-    // Add Dynamic rows to facilities disclosure
+    // Add dynamic rows to the facilities disclosure.
     function addFacilityRow() {
         const container = document.getElementById('facilitiesContainer');
-        const newRow = document.createElement('div');
-        newRow.style.display = 'grid';
-        newRow.style.gridTemplateColumns = '2fr 1fr 1fr auto';
-        newRow.style.gap = '12px';
-        newRow.style.alignItems = 'end';
-        newRow.innerHTML = `
-            <div class="form-group">
-                <label class="field-label">Bank Name</label>
-                <input type="text" name="facility_bank[]" class="field-input">
+        if (!container) return;
+        const row = document.createElement('div');
+        row.className = 'collateral-entry';
+        row.dataset.facilityRow = '';
+        row.innerHTML = `
+            <div class="form-grid-2">
+                <div class="form-group"><label class="field-label">Bank Name</label><input type="text" name="facility_bank[]" class="field-input"></div>
+                <div class="form-group"><label class="field-label">Outstanding Balance (&#8358;)</label><input type="number" min="0" step="0.01" name="facility_amount[]" class="field-input"></div>
+                <div class="form-group"><label class="field-label">Repayment Amount (&#8358;)</label><input type="number" min="0" step="0.01" name="facility_payment[]" class="field-input"></div>
+                <div class="form-group"><label class="field-label">Repayment Frequency</label><select name="facility_frequency[]" class="field-select"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="biweekly">Every two weeks</option><option value="monthly" selected>Monthly</option><option value="quarterly">Quarterly</option><option value="annual">Annual</option></select></div>
+                <div class="form-group"><label class="field-label">Remaining Tenor (Months)</label><input type="number" min="0" name="facility_tenor[]" class="field-input"></div>
+                <div class="form-group"><label class="field-label">Status</label><select name="facility_status[]" class="field-select"><option value="current">Current</option><option value="past_due">Past due</option><option value="restructured">Restructured</option><option value="disputed">Disputed</option></select></div>
             </div>
-            <div class="form-group">
-                <label class="field-label">Amount (₦)</label>
-                <input type="number" name="facility_amount[]" class="field-input">
+            <button type="button" class="btn-ghost-link collateral-remove" data-remove-row>Remove</button>`;
+        container.appendChild(row);
+    }
+
+    function addCashflowRow() {
+        const container = document.getElementById('cashflowEntries');
+        if (!container) return;
+        const row = document.createElement('div');
+        row.className = 'collateral-entry';
+        row.dataset.cashflowEntry = '';
+        row.innerHTML = `
+            <div class="form-grid-2">
+                <div class="form-group"><label class="field-label">Direction</label><select name="cashflow_direction[]" class="field-select"><option value="inflow">Inflow</option><option value="outflow">Outflow</option></select></div>
+                <div class="form-group"><label class="field-label">Cash-flow class</label><select name="cashflow_classification[]" class="field-select"><option value="operating">Business operating</option><option value="personal">Personal / household</option><option value="financing">Loan / financing</option><option value="investing">Asset purchase / sale</option><option value="transfer">Own-account transfer</option></select></div>
+                <div class="form-group"><label class="field-label">Category</label><select name="cashflow_category[]" class="field-select"><option value="sales_revenue">Sales revenue</option><option value="salary">Salary</option><option value="other_recurring_income">Other recurring income</option><option value="customer_collection">Customer collection</option><option value="inventory_purchase">Inventory / raw materials</option><option value="payroll">Payroll</option><option value="rent">Rent</option><option value="utilities">Utilities</option><option value="transport">Transport / logistics</option><option value="taxes">Taxes and levies</option><option value="operating_expenses">Other operating expenses</option><option value="household_withdrawal">Household withdrawal</option><option value="school_fees">School fees</option><option value="medical">Medical expense</option><option value="existing_debt_payment">Existing debt payment</option><option value="loan_proceeds">Loan proceeds</option><option value="asset_purchase">Asset purchase</option><option value="asset_sale">Asset sale</option><option value="own_account_transfer">Own-account transfer</option><option value="other">Other</option></select></div>
+                <div class="form-group"><label class="field-label">Amount (&#8358;)</label><input type="number" min="0" step="0.01" name="cashflow_amount[]" class="field-input" required></div>
+                <div class="form-group"><label class="field-label">Frequency</label><select name="cashflow_frequency[]" class="field-select" data-cashflow-frequency><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="biweekly">Every two weeks</option><option value="monthly" selected>Monthly</option><option value="quarterly">Quarterly</option><option value="annual">Annual</option><option value="period_total">Total for a period</option><option value="one_off">One-off</option></select></div>
+                <div class="form-group"><label class="field-label">Period length (months)</label><input type="number" min="0.01" step="0.01" value="1" name="cashflow_period_months[]" class="field-input" data-cashflow-period-months readonly></div>
+                <div class="form-group"><label class="field-label">Channel</label><select name="cashflow_channel[]" class="field-select"><option value="">Not stated</option><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="pos">POS</option><option value="mobile_money">Mobile money</option><option value="payroll">Payroll</option><option value="other">Other</option></select></div>
+                <div class="form-group"><label class="field-label">Description / source</label><input type="text" name="cashflow_description[]" class="field-input" placeholder="e.g. weekly shop sales"></div>
             </div>
-            <div class="form-group">
-                <label class="field-label">Tenor (Months)</label>
-                <input type="number" name="facility_tenor[]" class="field-input">
-            </div>
-            <div class="csp-s-af04a756ec2b">
-                <button type="button" class="btn-ghost-link csp-s-cdee27c94461" data-remove-row>Remove</button>
-            </div>
-        `;
-        container.appendChild(newRow);
+            <button type="button" class="btn-ghost-link collateral-remove" data-remove-cashflow>Remove</button>`;
+        container.appendChild(row);
+        row.querySelector('input[name="cashflow_amount[]"]')?.focus();
     }
 
     // Pledge fields tab toggles
@@ -980,17 +1030,32 @@
         `;
     }
 
+    function calculateCollateralEntry(entry) {
+        if (!entry) return;
+        const type = entry.querySelector('[data-collateral-type]');
+        const market = Number(entry.querySelector('[data-collateral-value]')?.value || 0);
+        const selected = type?.selectedOptions?.[0];
+        const retention = Number(selected?.dataset.retention || 0);
+        const fsv = entry.querySelector('[data-collateral-fsv]');
+        if (fsv) fsv.value = (market * retention).toFixed(2);
+        const note = entry.querySelector('[data-collateral-policy-note]');
+        if (note) note.textContent = selected?.dataset.policyNote || '';
+    }
+
     function updateCollateralCoverage() {
         const summary = document.getElementById('collateralCoverageSummary');
         if (!summary) return;
         const loanAmount = Number(document.getElementById('loan_amount')?.value || 0);
+        document.querySelectorAll('[data-collateral-entry]').forEach(calculateCollateralEntry);
+        const totalMarket = Array.from(document.querySelectorAll('[data-collateral-value]'))
+            .reduce((total, input) => total + Number(input.value || 0), 0);
         const totalFsv = Array.from(document.querySelectorAll('[data-collateral-fsv]'))
             .reduce((total, input) => total + Number(input.value || 0), 0);
         const target = loanAmount * 0.70;
         summary.textContent = loanAmount
-            ? `Total FSV: ₦${totalFsv.toLocaleString('en-NG')} · 70% target: ₦${target.toLocaleString('en-NG')}`
-            : `Total FSV: ₦${totalFsv.toLocaleString('en-NG')}`;
-        summary.classList.toggle('meets-target', loanAmount > 0 && totalFsv >= target);
+            ? `Market: ₦${totalMarket.toLocaleString('en-NG')} · Policy FSV: ₦${totalFsv.toLocaleString('en-NG')} · Minimum FSV: ₦${target.toLocaleString('en-NG')}`
+            : `Market: ₦${totalMarket.toLocaleString('en-NG')} · Policy FSV: ₦${totalFsv.toLocaleString('en-NG')}`;
+        summary.classList.toggle('meets-target', loanAmount > 0 && totalMarket > loanAmount && totalFsv >= target);
     }
 
     function addCollateralEntry() {
@@ -1000,10 +1065,10 @@
         entry.className = 'collateral-entry';
         entry.dataset.collateralEntry = '';
         entry.innerHTML = `<div class="form-grid-2">
-            <div class="form-group"><label class="field-label">Collateral Type</label><select name="collateral_type[]" class="field-select" required><option value="property">Property</option><option value="equipment">Equipment / Vehicle</option><option value="inventory">Stock / Inventory</option><option value="cash">Cash Collateral</option></select></div>
+            <div class="form-group"><label class="field-label">Collateral Type</label><select name="collateral_type[]" class="field-select" required data-collateral-type>{% for policy in collateral_policies %}<option value="{{ policy.asset_class }}" data-retention="{{ policy.retention_rate }}" data-policy-note="{{ policy.policy_note }}">{{ policy.display_name }} ({{ "{:.0%}".format(policy.retention_rate) }})</option>{% endfor %}</select><span class="field-help" data-collateral-policy-note></span></div>
             <div class="form-group"><label class="field-label">Market Worth (₦)</label><input type="number" name="collateral_market_value[]" class="field-input" min="0" step="0.01" required data-collateral-value></div>
             <div class="form-group-full"><label class="field-label">Collateral Narration / Description</label><textarea name="collateral_narration[]" class="field-textarea" placeholder="Describe the asset, location, identifying details, and condition" required></textarea></div>
-            <div class="form-group"><label class="field-label">Forced-Sale Value (FSV) (₦)</label><input type="number" name="collateral_fsv[]" class="field-input" min="0" step="0.01" required data-collateral-fsv></div>
+            <div class="form-group"><label class="field-label">Policy Forced-Sale Value (FSV) (&#8358;)</label><input type="number" name="collateral_fsv[]" class="field-input" min="0" step="0.01" readonly data-collateral-fsv></div>
         </div><button type="button" class="btn-ghost-link collateral-remove" data-remove-collateral>Remove</button>`;
         list.appendChild(entry);
         entry.querySelector('select')?.focus();
@@ -1257,14 +1322,26 @@
     });
     document.addEventListener('input', (event) => {
         if (event.target.matches('[data-pledge-value]')) calculatePledgeTotal();
-        if (event.target.matches('[data-collateral-fsv], #loan_amount')) updateCollateralCoverage();
+        if (event.target.matches('[data-collateral-value], [data-collateral-fsv], #loan_amount')) updateCollateralCoverage();
+    });
+    document.addEventListener('change', (event) => {
+        if (event.target.matches('[data-collateral-type]')) {
+            updateCollateralCoverage();
+            return;
+        }
+        if (!event.target.matches('[data-cashflow-frequency]')) return;
+        const period = event.target.closest('[data-cashflow-entry]')?.querySelector('[data-cashflow-period-months]');
+        if (!period) return;
+        period.readOnly = event.target.value !== 'period_total';
+        if (period.readOnly) period.value = '1';
     });
     document.addEventListener('click', (event) => {
         const removeRow = event.target.closest('[data-remove-row]');
-        if (removeRow) removeRow.parentElement.parentElement.remove();
+        if (removeRow) removeRow.closest('[data-facility-row]')?.remove();
         const removePledge = event.target.closest('[data-remove-pledge-row]');
         if (removePledge) removePledgeRow(removePledge);
         if (event.target.closest('[data-add-facility]')) addFacilityRow();
+        if (event.target.closest('[data-add-cashflow]')) addCashflowRow();
         if (event.target.closest('[data-add-pledge-row]')) addPledgeRow();
         if (event.target.closest('[data-add-collateral]')) addCollateralEntry();
         if (event.target.closest('[data-add-business-location]')) addBusinessLocation();
@@ -1272,6 +1349,8 @@
         if (removeCollateral) { removeCollateral.closest('[data-collateral-entry]')?.remove(); updateCollateralCoverage(); }
         const removeLocation = event.target.closest('[data-remove-business-location]');
         if (removeLocation) removeLocation.closest('[data-business-location]')?.remove();
+        const removeCashflow = event.target.closest('[data-remove-cashflow]');
+        if (removeCashflow) removeCashflow.closest('[data-cashflow-entry]')?.remove();
     });
 
     {% if readonly %}
@@ -1285,7 +1364,7 @@
                     el.style.opacity = '0.7';
                 }
             });
-            form.querySelectorAll('.signature-clear-btn, [data-remove-row], [data-remove-pledge-row], [data-add-facility], [data-add-pledge-row]').forEach(el => {
+            form.querySelectorAll('.signature-clear-btn, [data-remove-row], [data-remove-pledge-row], [data-remove-cashflow], [data-add-facility], [data-add-cashflow], [data-add-pledge-row]').forEach(el => {
                 el.style.display = 'none';
             });
         }

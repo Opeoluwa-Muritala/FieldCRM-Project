@@ -17,6 +17,8 @@ from app.core.audit import AuditService
 from app.core.template_utils import build_template_context
 from app.core.templates import create_templates
 from app.domains.loans.repository import LoanRepository
+from app.domains.feasibility.calculator import calculate_feasibility
+from app.domains.feasibility.repository import FeasibilityRepository
 from app.domains.documents.service import prepare_upload_file
 from app.services.loan_servicing_service import generate_schedule
 from app.services.cloud_storage_service import signed_preview_url
@@ -78,21 +80,33 @@ async def render_repayment_feasibility(
     _verify_loan_scope(app, current_user)
 
     # This screen is read-only analysis; data entry lives in the officer wizard.
-    total_pledged = await conn.fetchval(
-        "SELECT COALESCE(SUM(COALESCE(face_value, force_sale_value)), 0) FROM collateral_items WHERE application_id = $1",
+    collateral_items = await conn.fetch(
+        """SELECT ci.*, p.display_name, p.policy_note, p.max_valuation_age_days
+           FROM collateral_items ci
+           LEFT JOIN collateral_valuation_policies p ON p.asset_class = ci.collateral_type
+           WHERE ci.application_id = $1 ORDER BY ci.created_at, ci.id""",
         app_uuid,
     )
-    pnl = await conn.fetchrow(
-        "SELECT * FROM business_pnl WHERE application_id = $1",
-        app_uuid
-    )
+    total_market = sum((Decimal(str(row["loan_based_price"] or 0)) for row in collateral_items), Decimal("0"))
+    total_pledged = sum((Decimal(str(row["force_sale_value"] or 0)) for row in collateral_items), Decimal("0"))
+    cashflows, financial_profile, obligations = await FeasibilityRepository(conn).get_inputs(app_uuid)
     total_pledged = Decimal(str(total_pledged or 0))
     
     loan_amount = Decimal(str(app.amount or 0))
     coverage_ratio = Decimal("0")
+    market_coverage_ratio = Decimal("0")
     if loan_amount > 0:
         coverage_ratio = (total_pledged / loan_amount)
+        market_coverage_ratio = (total_market / loan_amount)
 
+    product = await conn.fetchrow(
+        """SELECT repayment_frequency, interest_calculation_type
+           FROM loan_products WHERE code = $1 AND active = TRUE""",
+        app.loan_type,
+    )
+    repayment_frequency = (product["repayment_frequency"] if product else None) or "monthly"
+    interest_method = (product["interest_calculation_type"] if product else None) or "flat"
+    schedule_method = "reducing_balance" if interest_method in {"reducing", "reducing_balance"} else "flat_rate"
     rate = await get_loan_interest_rate(conn, app)
     tenor = int(app.tenor_months or 12)
     installment_amount = Decimal("0")
@@ -102,23 +116,38 @@ async def render_repayment_feasibility(
                 principal=float(loan_amount),
                 annual_rate=rate,
                 tenor_months=tenor,
-                frequency="monthly",
-                method="flat_rate",
+                frequency=repayment_frequency,
+                method=schedule_method,
                 disbursement_date=date.today()
             )
             if rows:
-                installment_amount = Decimal(str(rows[0]["total_due"]))
+                installment_amount = max(Decimal(str(row["total_due"])) for row in rows)
         except Exception as e:
             log.error(f"Error computing proposed installment: {e}")
+
+    feasibility = calculate_feasibility(
+        cashflows,
+        financial_profile,
+        obligations,
+        proposed_payment=installment_amount,
+        proposed_payment_frequency=repayment_frequency,
+    )
 
     # Build response context
     ctx = build_template_context(
         request, current_user,
         app=app, app_id=application_id,
-        pnl=dict(pnl) if pnl else None,
+        cashflows=cashflows,
+        financial_profile=financial_profile or {},
+        obligations=obligations,
+        feasibility=feasibility,
+        collateral_items=[dict(row) for row in collateral_items],
+        total_market_value=total_market,
         total_pledged_value=total_pledged,
+        market_coverage_ratio=market_coverage_ratio,
         coverage_ratio=coverage_ratio,
         proposed_installment=installment_amount,
+        proposed_payment_frequency=repayment_frequency,
         proposed_interest_rate=rate,
         active_tab="queue", active_page="queue"
     )

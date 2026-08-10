@@ -17,6 +17,17 @@
     </a>
     {% else %}<div class="lo-empty-state">No files awaiting concurrence.</div>{% endfor %}
 </div>
+{% if not queue and data.pipeline %}
+<section class="page-card">
+    <div class="role-section-head"><h2>Other Branch Files</h2><a href="/pipeline">Open pipeline</a></div>
+    <p class="page-card-subtitle">These files exist in the branch but have not reached Team Lead concurrence.</p>
+    <div class="role-pipeline-list">
+        {% for stage in data.pipeline %}
+        <a href="/applications?stage={{ stage.stage }}" class="role-pipeline-row"><span>{{ stage.stage|replace('_', ' ')|title }}</span><strong>{{ stage.count }}</strong></a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
 <div class="custom-table-container queue-table-wrap page-card">
     <table class="custom-table"><thead><tr><th>Applicant</th><th>Officer</th><th>Amount</th><th>Visit</th><th>Waiting</th></tr></thead><tbody>
     {% for item in queue %}
