@@ -149,8 +149,12 @@ class PerformanceTimingMiddleware:
 
         performance, token = start_request_performance()
         scope.setdefault("state", {})["performance"] = performance
+        response_status = None
 
         async def send_with_timing(message: Message) -> None:
+            nonlocal response_status
+            if message["type"] == "http.response.start":
+                response_status = message["status"]
             if message["type"] == "http.response.start" and self.expose_server_timing:
                 headers = MutableHeaders(scope=message)
                 components = [
@@ -172,6 +176,7 @@ class PerformanceTimingMiddleware:
                         "event": "request_performance",
                         "method": scope.get("method"),
                         "path": scope.get("path"),
+                        "status": response_status,
                         "total_ms": round(total_ms, 1),
                         "query_count": performance.query_count,
                         "counters": performance.counters,
