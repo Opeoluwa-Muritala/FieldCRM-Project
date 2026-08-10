@@ -22,6 +22,7 @@ SELECT
     la.current_owner_id,
     la.credit_officer_id,
     la.branch_manager_id,
+    la.branch_id,
     la.return_reason,
     la.returned_at,
     la.approved_by,

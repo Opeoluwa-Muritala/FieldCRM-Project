@@ -7,7 +7,7 @@
     <div class="page-card-header"><h1 class="page-card-title">Files awaiting supervisory review</h1><p class="page-card-subtitle">Review files cleared by the Team Lead before underwriting.</p></div>
     <div class="queue-cards">
         {% for item in queue %}
-        <a href="/applications/{{ item.id }}" class="queue-card"><span class="queue-card-name">{{ item.applicant_name }}</span><span class="queue-card-meta">{{ item.ref_no }} · {{ item.loan_type|title }}</span><span class="queue-card-amount">₦{{ "{:,.0f}".format(item.amount or 0) }}</span><span class="status-badge queue-card-badge needs-review">Supervisory review</span></a>
+        <a href="/applications/{{ item.id }}/approve" class="queue-card"><span class="queue-card-name">{{ item.applicant_name }}</span><span class="queue-card-meta">{{ item.ref_no }} · {{ item.loan_type|title }}</span><span class="queue-card-amount">₦{{ "{:,.0f}".format(item.amount or 0) }}</span><span class="status-badge queue-card-badge needs-review">Supervisory review</span></a>
         {% else %}<div class="lo-empty-state">No files are awaiting supervisory review.</div>{% endfor %}
     </div>
 </section>
