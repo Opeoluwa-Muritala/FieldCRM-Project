@@ -1,5 +1,7 @@
 # FieldCRM
 
+> This document covers the complete web, backend, Android, data, workflow, and role model for the project.
+
 FieldCRM is a role-based loan origination, approval, disbursement, and servicing platform for Mainstreet Microfinance Bank workflows. It combines a FastAPI web backend, Jinja2 desktop interface, PostgreSQL data store, Cloudinary-backed private documents, and a Kotlin Android client foundation.
 
 ## What it does
@@ -24,7 +26,7 @@ Account Officer
 Rules:
 
 - CRM Officer completes dossier review and sends the file to Head CRM.
-- Head CRM is the approving authority for the CRM desk and sends approved files to Audit.
+- Head CRM is the approving authority for the CRM desk and sends approved files to the Executive Director.
 - Executive Director may request MD input; the file returns to ED for ED’s final decision.
 - Loans above the configured ₦10m threshold require ED and MD approval.
 - CRM records disbursement and maintains repayment/portfolio information.
@@ -38,11 +40,121 @@ Rules:
 | Branch Supervisor | Supervision | Review branch-manager submissions before credit analysis. |
 | Credit Analyst | Underwriting | Review credit files, resolve OCR/data exceptions, submit recommendation. |
 | CRM Officer | Dossier review | Validate dossier completeness and send it to Head CRM. |
-| Head CRM | CRM approval | Approve/reject CRM dossier review and route approved files to Audit. |
+| Head CRM | CRM approval | Approve/reject CRM dossier review and route approved files to the Executive Director. |
 | Auditor | Compliance | Review controls, exceptions, workflow history, and audit trail. |
 | Executive Director | Executive approval | Review executive queue; request MD input when needed; retain final ED approval. |
 | Managing Director | Escalations | Provide advice to ED, approve required high-value files, and manage board referrals. |
+| Legal | Legal and collateral | Review the legal queue, pledged assets, supporting evidence, and valuations. |
 | System Admin | Administration | Invite users, assign roles, deactivate access, and review system activity. |
+
+## Detailed role functions
+
+### Relationship Officer (`account_officer`)
+
+- Search existing customers and prefill reusable customer information.
+- Create applications and select active server-managed loan products.
+- Capture personal, contact, employment, business, location, income, expense, and loan-purpose data.
+- Capture guarantors, references, pledged assets, collateral, business P&L, and field-visitation information.
+- Upload required documents, review OCR results, add a recommendation, and submit a complete file.
+- Work personal, returned, and task queues from web or Android.
+- Read previously pulled Android data while offline; later approval decisions remain outside this role.
+
+### Team Lead (`branch_manager`)
+
+- Work the branch/team review queue and inspect the full dossier.
+- Review documents, recommendations, readiness information, and visitation evidence.
+- Sign off permitted visitation reports and record branch concurrence.
+- Return incomplete files with a reason or forward satisfactory files to the Supervisor.
+- Monitor branch pipeline and pending signoffs.
+
+### Supervisor (`branch_supervisor`)
+
+- Perform the second branch-control review after Team Lead concurrence.
+- Inspect the dossier, evidence, documents, and prior recommendations.
+- Add a recommendation, return the file with a reason, or advance it to Credit Analyst review.
+- View permitted current-loan and workflow-history information.
+
+### Credit Analyst (`credit_analyst`)
+
+- Work the underwriting queue and review affordability, repayment feasibility, P&L, and collateral.
+- Pull or inspect configured credit-bureau data.
+- Review OCR/data-quality exceptions and checklist requirements.
+- Record a recommended amount and underwriting notes.
+- Return an incomplete file or advance an acceptable file to CRM review.
+
+### CRM Officer (`crm`)
+
+- Validate the assembled dossier, readiness status, consents, documents, and recommendations.
+- Upload CRM memos, add CRM notes, and return or advance the file to Head CRM.
+- Generate configured offer letters where permitted.
+- Record disbursement after final approval and maintain repayment/servicing information.
+- Review CRM queues, recent disbursements, and portfolio-at-risk reports.
+- Never submit an applicant signature on the applicant's behalf.
+
+### Head CRM (`head_crm`)
+
+- Review the CRM Officer's completed dossier and recommendations.
+- Record Head CRM notes and approve or return the file.
+- Advance approved files to Executive Director review.
+- Monitor CRM dashboards, portfolio queues, disbursement readiness, and PAR information.
+
+### Audit (`auditor`)
+
+- Review audit history, compliance flags, workflow events, OCR/document exceptions, and authorized dossiers.
+- Review reporting views made available to Audit.
+- Confirm decision traceability without silently changing operational data.
+- Operate as independent oversight rather than a mandatory approval stage.
+
+### Executive Director (`ed`)
+
+- Work the ED queue and review Head CRM-approved files, documents, recommendations, and committee evidence.
+- Issue the final ED approval/disbursement instruction where applicable.
+- Escalate eligible files to MD for input.
+- Receive MD advice returned to ED and make the applicable final decision.
+- Review executive dashboards and PAR information.
+
+### Managing Director (`md`)
+
+- Work the MD queue and review the complete executive dossier.
+- Approve files for which MD is the final authority.
+- Add comments or return an advisory file to ED.
+- Record board referrals and preserve them in application history.
+- Review executive dashboards and PAR information.
+
+### Legal (`legal`)
+
+- Work the legal queue and inspect authorized application/collateral information.
+- Capture or update valuation information.
+- Review pledged assets, ownership evidence, and supporting documents.
+- Preserve valuation/legal actions in audit history.
+- Provide legal/collateral review without replacing credit or executive approval.
+
+### System Admin (`system_admin`)
+
+- Invite users and manage registration flows.
+- Assign roles and branches; activate, deactivate, or soft-delete managed users subject to service rules.
+- Create and manage organisation branches.
+- Review administrative activity and system metrics.
+- Manage configured interest presets and related administrative settings.
+- Operate within the authenticated organisation; the role does not grant cross-organisation access.
+
+### Role identifiers and legacy names
+
+| Display name | Current identifier | Compatibility name |
+| --- | --- | --- |
+| Relationship Officer | `account_officer` | `loan_officer` |
+| Team Lead | `branch_manager` | Branch Manager |
+| Supervisor | `branch_supervisor` | Branch Supervisor |
+| Credit Analyst | `credit_analyst` | - |
+| CRM Officer | `crm` | - |
+| Head CRM | `head_crm` | - |
+| Audit | `auditor` | Auditor |
+| Executive Director | `ed` | - |
+| Managing Director | `md` | - |
+| Legal | `legal` | - |
+| System Admin | `system_admin` | Admin |
+
+The Android `EXECUTIVE` enum is retained only for compatibility with older saved sessions. New assignments should use ED or MD.
 
 ### Role capability matrix
 
@@ -54,7 +166,7 @@ Rules:
 | Review branch file | — | Yes | Yes | — | — | — | — | — | — | — |
 | Complete underwriting recommendation | — | — | — | Yes | — | — | Read | Read | Read | Read |
 | Review CRM dossier | — | — | — | — | Yes | — | Read | Read | Read | Read |
-| Approve CRM dossier and route to Audit | — | — | — | — | — | Yes | — | — | — | — |
+| Approve CRM dossier and route to ED | — | — | — | — | — | Yes | — | — | — | — |
 | Review controls and audit trail | — | — | — | — | — | — | Yes | Read | Read | Read |
 | Executive approval / MD advice | — | — | — | — | — | — | — | Yes | Advice / required approval | — |
 | Record disbursement and repayments | — | — | — | — | Yes | Oversight | Read | Read | Read | — |
@@ -128,6 +240,63 @@ android/                 Jetpack Compose Android app
 shared/                  Kotlin Multiplatform shared models and sync foundation
 ```
 
+### Runtime data flow
+
+```text
+Web browser / Android app
+          |
+          v
+FastAPI authentication, authorization, and workflow services
+          |
+          +--> PostgreSQL (authoritative business data)
+          +--> Redis (short-lived server cache and rate limiting)
+          +--> private document storage / Cloudinary
+
+Android also uses SQLDelight/SQLite for device cache and offline work.
+```
+
+## Caching, offline storage, and synchronization
+
+### Web and API cache
+
+- PostgreSQL remains the server system of record.
+- Redis stores short-lived authenticated user profiles, role dashboard bundles, selected dossier/review data, branch/mobile reads, and long-lived fixed mobile content.
+- Cache keys include organisation, user, role, parameters, and application scope where applicable.
+- Successful writes increment scoped cache versions so affected reads are refreshed.
+- If Redis is unavailable, the backend logs the problem and continues against PostgreSQL.
+- `CACHE_REDIS_URL` may share `RATE_LIMIT_REDIS_URL`; production Redis connections must use `rediss://`.
+
+### Android device cache
+
+- Application summaries are stored in SQLDelight after the first successful list pull.
+- A full review dossier is stored after its first successful detail pull.
+- Stored content is rendered immediately on later opens while network refresh runs silently.
+- A connected WorkManager job refreshes summaries and up to ten oldest stored dossiers per cycle.
+- Failed pulls preserve the last successful local copy.
+- Supported offline mutations remain queued until synchronization succeeds.
+- Pending documents are encrypted locally before upload.
+- Network, JSON parsing, and SQLDelight work run off the Compose UI thread.
+
+### Android synchronization order
+
+1. Push queued local application mutations.
+2. Pull current application summaries and refresh eligible stored dossiers.
+3. Decrypt and upload pending documents, then mark successful uploads synchronized.
+
+The device database is a replaceable cache/offline store, not a second source of truth.
+
+## Security and authorization summary
+
+- Role, organisation, branch, assignment, and workflow-stage checks are enforced by the backend.
+- A visible navigation item does not grant access; manually entered unauthorized routes must still return `403`.
+- Browser sessions use HttpOnly cookies and production HTTPS settings.
+- Android session material uses encrypted Android preferences.
+- Refresh tokens are rotated, stored as hashes server-side, and checked for replay.
+- Production Redis connections use TLS.
+- Documents are validated and served through private or signed delivery.
+- Material workflow and administrative changes produce audit and/or workflow records.
+- Secrets belong in environment/deployment settings and must never be committed.
+
 ### Backend stack
 
 - Python 3.10+
@@ -177,6 +346,13 @@ JWT_SECRET_KEY=replace-with-a-long-random-secret
 COOKIE_SECURE=false
 APP_BASE_URL=http://127.0.0.1:8000
 
+# Optional locally; required for production distributed rate limiting.
+RATE_LIMIT_REDIS_URL=redis://127.0.0.1:6379/0
+CACHE_REDIS_URL=redis://127.0.0.1:6379/0
+
+# Keep nonce enforcement enabled unless a reviewed deployment requires otherwise.
+CSP_NONCE_ENFORCED=true
+
 # Emailope / transactional email
 EMAIL_SERVICE_URL=https://emailope.vercel.app/
 
@@ -190,6 +366,10 @@ Important production settings:
 
 - Use a managed PostgreSQL database and a stable, secret `JWT_SECRET_KEY`.
 - Set `COOKIE_SECURE=true` behind HTTPS.
+- Configure `RATE_LIMIT_REDIS_URL` for production distributed rate limiting.
+- Configure `CACHE_REDIS_URL` or let it share the rate-limit Redis deployment.
+- Use `rediss://` for production Redis URLs.
+- Keep `CSP_NONCE_ENFORCED=true` unless a reviewed deployment constraint requires otherwise.
 - Store Cloudinary and database credentials only in deployment secrets.
 - Do not commit `backend/.env`.
 
@@ -306,6 +486,22 @@ Build Android:
 .\gradlew.bat :android:assembleDebug
 ```
 
+Before building, set the backend endpoint in `gradle.properties`:
+
+```properties
+FIELDCRM_API_BASE_URL=http://10.0.2.2:8000
+```
+
+`10.0.2.2` reaches the development machine from the standard Android emulator. Use a reachable LAN address for a physical device.
+
+Android prerequisites:
+
+- JDK 17.
+- Android SDK 36.
+- Android Studio for emulator/device workflows.
+
+The first Android build can take several minutes while Gradle resolves and compiles dependencies.
+
 The shared module contains models, API-client scaffolding, SQLDelight storage, and sync foundations.
 
 ## Development conventions
@@ -313,6 +509,9 @@ The shared module contains models, API-client scaffolding, SQLDelight storage, a
 - Keep routers thin; place workflow/business rules in services.
 - Keep SQL in domain query files and parameterize every value.
 - Scope every database query by organization and authenticated user where applicable.
+- Treat PostgreSQL as authoritative and caches as replaceable copies.
+- Keep network calls, JSON parsing, and database work out of Compose UI code.
+- Preserve last-known-good device data on transient network failure.
 - Add audit/workflow events for every state-changing loan decision.
 - Do not trust client-provided user, organization, or document ownership identifiers.
 - Add migrations for schema changes; never alter production tables manually without a reviewed migration.
