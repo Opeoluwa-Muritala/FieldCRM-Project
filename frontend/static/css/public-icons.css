@@ -1,0 +1,66 @@
+.capability-icon {
+    position: relative;
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    border: 2px solid #2e0052;
+    border-radius: 3px;
+}
+
+.icon-device::after {
+    position: absolute;
+    right: 4px;
+    bottom: 2px;
+    left: 4px;
+    height: 2px;
+    background: #2e0052;
+    content: "";
+}
+
+.icon-document::before {
+    position: absolute;
+    inset: 4px;
+    border-top: 2px solid #2e0052;
+    border-bottom: 2px solid #2e0052;
+    content: "";
+}
+
+.icon-approval,
+.icon-audit { border-radius: 50%; }
+
+.icon-approval::before,
+.icon-approval::after {
+    position: absolute;
+    top: 5px;
+    width: 5px;
+    height: 5px;
+    border: 2px solid #2e0052;
+    border-radius: 50%;
+    content: "";
+}
+
+.icon-approval::before { left: 3px; }
+.icon-approval::after { right: 3px; }
+
+.icon-audit::before {
+    position: absolute;
+    top: 3px;
+    left: 9px;
+    width: 2px;
+    height: 8px;
+    background: #2e0052;
+    content: "";
+}
+
+.icon-audit::after {
+    position: absolute;
+    top: 10px;
+    left: 9px;
+    width: 6px;
+    height: 2px;
+    background: #2e0052;
+    content: "";
+}
+
+.field-grid li::before { content: "+"; }

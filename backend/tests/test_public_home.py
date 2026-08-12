@@ -28,6 +28,8 @@ async def test_home_renders_public_product_and_preview_metadata(monkeypatch):
     assert "fieldcrm-social-preview.png" in body
     assert "Android release coming soon" in body
     assert "Staff login" in body
+    assert "capability-icon icon-device" in body
+    assert "â" not in body
 
 
 async def test_home_labels_debug_channel_as_preview(monkeypatch):
