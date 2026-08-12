@@ -546,7 +546,7 @@ async def root_view(request: Request):
         "sha256": settings.ANDROID_APK_SHA256,
         "channel": settings.ANDROID_APK_CHANNEL,
     }
-    return templates.TemplateResponse(request, "public/home.html", {"release": release})
+    return templates.TemplateResponse(request, "shared/public_home.html", {"release": release})
 
 
 @app.get("/download/android")
@@ -562,7 +562,7 @@ async def download_android():
 
 @app.get("/privacy")
 async def privacy_view(request: Request):
-    return templates.TemplateResponse(request, "public/privacy.html", {})
+    return templates.TemplateResponse(request, "shared/public_privacy.html", {})
 
 
 @app.get("/robots.txt", response_class=PlainTextResponse)
