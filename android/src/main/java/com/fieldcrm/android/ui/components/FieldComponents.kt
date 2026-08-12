@@ -57,9 +57,9 @@ import java.util.Locale
 // ==========================================
 
 @Composable
-fun FieldBrandMark(modifier: Modifier = Modifier, contentDescription: String? = "FieldCRM") {
+fun FieldBrandMark(modifier: Modifier = Modifier, contentDescription: String? = "Mainstreet Microfinance Bank") {
     Image(
-        painter = painterResource(R.drawable.fieldcrm_mark),
+        painter = painterResource(R.drawable.mainstreet_mark),
         contentDescription = contentDescription,
         modifier = modifier,
         contentScale = ContentScale.Fit,
