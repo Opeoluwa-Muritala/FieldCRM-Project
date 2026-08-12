@@ -147,6 +147,9 @@ output/
 reports/
 exports/
 scripts/
+!scripts/
+scripts/*
+!scripts/publish_android_release.py
 *.csv.local
 *.xlsx.local
 *.pdf.local

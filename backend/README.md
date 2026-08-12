@@ -44,7 +44,7 @@ backend/
 └── test_*.py                   route, HTTP and responsive smoke checks
 ```
 
-Domain routers and services own application rules; repositories execute parameterized SQL from each domain's `queries/` directory. `app/main.py` applies CORS, request-ID and security-header middleware, mounts `/static`, and manages the connection pool over the application lifecycle.
+Domain routers and services own application rules; repositories execute parameterized SQL from each domain's `queries/` directory. `app/main.py` applies CORS, request-ID, security-header, and pending-response-cookie middleware, mounts `/static`, and manages the connection pool over the application lifecycle.
 
 ## Prerequisites
 
@@ -87,6 +87,14 @@ SMTP_USE_TLS=true
 CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
+
+# Public signed Android release (populated after Cloudinary publishing)
+ANDROID_APK_URL=
+ANDROID_APK_VERSION=1.0
+ANDROID_APK_RELEASED_AT=
+ANDROID_APK_SIZE_BYTES=0
+ANDROID_APK_SHA256=
+ANDROID_APK_CHANNEL=release
 
 # Optional verification and screening providers
 QORE_API_KEY=

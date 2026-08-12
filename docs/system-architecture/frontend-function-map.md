@@ -44,6 +44,6 @@ All entries are **Confirmed** unless marked otherwise.
 
 ## Template and asset inventory
 
-Every `.html` file under `frontend/templates` was included in the inspection. There are 108 templates across `base`, `components`, `shared`, and the role directories listed in the overview. Five first-party stylesheets exist: `dashboard.css`, `role-themes.css`, `login.css`, `borrowers.css`, `motion.css`. Three first-party scripts exist: `dashboard.js`, `motion.js`, and `document-preview.js`; `pdf.min.mjs` is a vendored generated asset and was not treated as application logic.
+Every `.html` file under `frontend/templates` participates in the application UI. There are 108 templates across `base`, `components`, `shared`, and the role directories listed in the overview. Five first-party stylesheets exist: `dashboard.css`, `role-themes.css`, `login.css`, `borrowers.css`, `motion.css`. Three first-party scripts exist: `dashboard.js`, `motion.js`, and `document-preview.js`; `pdf.min.mjs` is a vendored generated asset and the system does not treat it as application logic.
 
-No WebSocket use, XMLHttpRequest outside document upload, browser authentication-token storage, or JavaScript cookie parsing was found. `localStorage` stores the role usage-guide completion key; `sessionStorage` stores wizard previous-step keys. Authentication is cookie-based for the web UI.
+No WebSocket use, XMLHttpRequest outside document upload, browser authentication-token storage, or JavaScript cookie parsing exists. `localStorage` stores the role usage-guide completion key; `sessionStorage` stores wizard previous-step keys. Authentication is cookie-based for the web UI.

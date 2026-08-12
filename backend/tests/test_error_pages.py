@@ -41,7 +41,7 @@ async def test_browser_400_renders_user_facing_page():
     assert response.status_code == 400
     assert response.media_type == "text/html"
     assert "Enter a valid loan amount." in body
-    assert "Return to dashboard" in body
+    assert "Return home" in body
 
 
 async def test_browser_403_renders_access_denied_page():

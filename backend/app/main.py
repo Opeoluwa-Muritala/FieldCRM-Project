@@ -15,7 +15,7 @@ from fastapi import FastAPI, Depends, Form, HTTPException, Query, Request, Respo
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -509,7 +509,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     """Render form/page validation failures while retaining FastAPI's API JSON."""
     if request.url.path.startswith("/api/"):
         return await request_validation_exception_handler(request, exc)
-    return render_error_page(request, status.HTTP_422_UNPROCESSABLE_CONTENT)
+    return render_error_page(request, status.HTTP_422_UNPROCESSABLE_ENTITY)
 
 
 @app.exception_handler(Exception)
@@ -535,10 +535,53 @@ def raise_login_redirect():
         headers={"Location": "/login"}
     )
 
-# Root redirects
+# Public product pages
 @app.get("/")
 async def root_view(request: Request):
-    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    release = {
+        "available": bool(settings.ANDROID_APK_URL),
+        "version": settings.ANDROID_APK_VERSION,
+        "released_at": settings.ANDROID_APK_RELEASED_AT,
+        "size_bytes": settings.ANDROID_APK_SIZE_BYTES,
+        "sha256": settings.ANDROID_APK_SHA256,
+        "channel": settings.ANDROID_APK_CHANNEL,
+    }
+    return templates.TemplateResponse(request, "public/home.html", {"release": release})
+
+
+@app.get("/download/android")
+async def download_android():
+    if not settings.ANDROID_APK_URL:
+        raise HTTPException(status_code=404, detail="The Android release is not available yet.")
+    return RedirectResponse(
+        url=settings.ANDROID_APK_URL,
+        status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.get("/privacy")
+async def privacy_view(request: Request):
+    return templates.TemplateResponse(request, "public/privacy.html", {})
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+async def robots_txt(request: Request):
+    origin = str(request.base_url).rstrip("/")
+    return f"User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /dashboard\nSitemap: {origin}/sitemap.xml\n"
+
+
+@app.get("/sitemap.xml")
+async def sitemap_xml(request: Request):
+    origin = str(request.base_url).rstrip("/")
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f'<url><loc>{origin}/</loc></url>'
+        f'<url><loc>{origin}/privacy</loc></url>'
+        '</urlset>'
+    )
+    return Response(content=body, media_type="application/xml")
 
 @app.get("/login")
 async def render_login(request: Request):

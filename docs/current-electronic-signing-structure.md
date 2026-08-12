@@ -60,7 +60,8 @@ The current templates contain fields for:
 
 The declaration-and-consent page containing the main applicant signature is coded as step 9. The server currently permits only steps 1 through 8, so this signing page is not reachable through the normal client flow.
 
-The CRM review screen separately provides an `Applicant Signature` canvas. That screen is used by an authenticated CRM officer rather than an independently authenticated applicant. The resulting image is stored in CRM review stage data under `applicant_signature`.
+The CRM review flow does not permit capturing or submitting an `Applicant Signature` canvas. Staff cannot submit an applicant signature during CRM review, and `applicant_signature` is not stored under CRM review stage data. This enforces the boundary that staff must not submit applicant signatures.
+
 
 ### Present evidential meaning
 
@@ -281,7 +282,7 @@ Applicant completes wizard steps 1-8
 Application advances to staff workflow
               |
               v
-CRM screen can capture "Applicant Signature" under CRM authentication
+CRM review processes dossier without capturing applicant signature (system blocks staff signing)
               |
               v
 Stage JSON + general audit/workflow events stored

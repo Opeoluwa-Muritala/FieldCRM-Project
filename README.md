@@ -504,6 +504,29 @@ The first Android build can take several minutes while Gradle resolves and compi
 
 The shared module contains models, API-client scaffolding, SQLDelight storage, and sync foundations.
 
+### Publish the Android release
+
+Release builds must be signed. Keep the keystore and passwords outside the
+repository and configure these Gradle properties in the CI secret store or the
+developer's user-level `gradle.properties`:
+
+```properties
+FIELDCRM_RELEASE_STORE_FILE=C:/secure/fieldcrm-release.jks
+FIELDCRM_RELEASE_STORE_PASSWORD=...
+FIELDCRM_RELEASE_KEY_ALIAS=fieldcrm
+FIELDCRM_RELEASE_KEY_PASSWORD=...
+```
+
+Build and publish a verified release:
+
+```powershell
+.\gradlew.bat :android:assembleRelease
+python scripts\publish_android_release.py android\build\outputs\apk\release\android-release.apk --version 1.0 --released-at 2026-08-12
+```
+
+The publisher prints the `ANDROID_APK_*` deployment values required by the
+public homepage and stable `/download/android` route. Never publish a debug APK.
+
 ## Development conventions
 
 - Keep routers thin; place workflow/business rules in services.
@@ -543,8 +566,8 @@ The application implements a secure authentication system featuring short-lived 
 2. **Refresh Tokens**: Opaque base64url-encoded random strings stored using a secure SHA-256 hash in the database.
 3. **Session Lifetimes**: Expire after a strict timeline of **2 days**.
 4. **Cookie Security (Web)**:
-   - Delivered via `Set-Cookie` with `HttpOnly` and `Secure` flags.
-   - Restrained to `SameSite=Strict` and scoped strictly to `path=/api/v1/auth/refresh`.
+   - Sets cookies via `Set-Cookie` with `HttpOnly` and `Secure` flags.
+   - Restricts the refresh token to `SameSite=Strict` and the session cookie to `SameSite=Lax`, with both scoped to `path="/"`.
 5. **JSON Delivery (Mobile)**:
    - For native client apps, refresh tokens are transmitted via request/response JSON payloads.
 6. **Single-Use & Rotation**:

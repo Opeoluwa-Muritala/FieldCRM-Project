@@ -39,7 +39,7 @@ There is no `fetch`-driven page bootstrap. **Confirmed:** FastAPI renders initia
 
 ## Backend structure and entry points
 
-`backend/app/main.py` creates `app = FastAPI(...)`, registers CORS and three custom middleware classes, configures Jinja/static paths, declares protected document delivery, registers auth/users/mobile routers under `/api/v1`, and registers the unprefixed loan/web router. Its lifespan initializes/disposes the database engine, Redis rate limiter and cache.
+`backend/app/main.py` creates `app = FastAPI(...)`, registers CORS and five custom middleware classes, configures Jinja/static paths, declares protected document delivery, registers auth/users/mobile routers under `/api/v1`, and registers the unprefixed loan/web router. Its lifespan initializes/disposes the database engine, Redis rate limiter and cache.
 
 Major boundaries:
 

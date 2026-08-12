@@ -23,7 +23,7 @@ All entries are **Confirmed**.
 | PDF functions | `services/pdf_service.py` | request | offer generation | WeasyPrint/zip | application/clauses | bytes | CPU/memory |
 | repository classes | `domains/*/repository.py` | request | services/routes | connection adapter + SQL | IDs/data | rows/scalars | SQL reads/writes |
 | `SQLAlchemyConnection` / SQLite wrapper | `core/database.py` | request | repositories/routes | async SQLAlchemy/aiosqlite | SQL + args | rows/results | pooled DB I/O/transactions |
-| middleware classes | `core/middleware.py`, `core/cache.py` | request | ASGI app | headers/cache invalidation | scope/messages | HTTP response | request ID/security/cache headers |
+| middleware classes | `core/middleware.py`, `core/cache.py` | request | ASGI app | headers/cache invalidation | scope/messages | HTTP response | request ID/security/cache/cookie headers |
 | domain/browser exception handlers | `core/exceptions.py`, `main.py` | request error | FastAPI | JSON/template/redirect | exception/request | 4xx/5xx response | none |
 
 Important direct-SQL route logic remains in `domains/loans/router.py` and `api/v1/mobile.py`; the repository layer is not universal. Pydantic request models are strongest in the JSON APIs. Server-rendered routes commonly use FastAPI `Form`, `Query`, `Path`, `UploadFile`, and manual domain validation instead.
