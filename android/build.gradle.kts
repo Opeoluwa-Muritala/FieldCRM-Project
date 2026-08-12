@@ -5,6 +5,17 @@ plugins {
     kotlin("plugin.serialization")
 }
 
+val releaseStoreFile = providers.gradleProperty("FIELDCRM_RELEASE_STORE_FILE")
+val releaseStorePassword = providers.gradleProperty("FIELDCRM_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = providers.gradleProperty("FIELDCRM_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = providers.gradleProperty("FIELDCRM_RELEASE_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { it.isPresent }
+
 android {
     namespace = "com.fieldcrm.android"
     compileSdk = 36
@@ -27,8 +38,22 @@ android {
         }
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile.get())
+                storePassword = releaseStorePassword.get()
+                keyAlias = releaseKeyAlias.get()
+                keyPassword = releaseKeyPassword.get()
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -59,6 +84,16 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+tasks.matching { it.name == "assembleRelease" || it.name == "bundleRelease" }.configureEach {
+    doFirst {
+        check(hasReleaseSigning) {
+            "Release signing is not configured. Set FIELDCRM_RELEASE_STORE_FILE, " +
+                "FIELDCRM_RELEASE_STORE_PASSWORD, FIELDCRM_RELEASE_KEY_ALIAS, and " +
+                "FIELDCRM_RELEASE_KEY_PASSWORD in user-level Gradle properties or CI secrets."
         }
     }
 }

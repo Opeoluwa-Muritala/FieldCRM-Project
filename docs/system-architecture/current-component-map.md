@@ -25,6 +25,7 @@ flowchart TD
     subgraph Middleware["Middleware execution order"]
         Performance["PerformanceTimingMiddleware"]
         CacheInvalidation["ResponseCacheInvalidationMiddleware"]
+        PendingCookies["PendingResponseCookiesMiddleware"]
         RequestID["RequestIDMiddleware"]
         Security["SecurityHeadersMiddleware<br/>CSP nonce and security headers"]
         CORS["CORSMiddleware"]
@@ -62,7 +63,8 @@ flowchart TD
     Vercel --> App
     App --> Performance
     Performance --> CacheInvalidation
-    CacheInvalidation --> RequestID
+    CacheInvalidation --> PendingCookies
+    PendingCookies --> RequestID
     RequestID --> Security
     Security --> CORS
 

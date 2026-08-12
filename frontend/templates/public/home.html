@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FieldCRM | Field credit operations for Mainstreet Microfinance Bank</title>
+    <meta name="description" content="FieldCRM helps Mainstreet teams capture loan applications, verify documents, coordinate role-based reviews, and maintain a complete audit trail.">
+    <meta name="theme-color" content="#2E0052">
+    <link rel="canonical" href="{{ request.url_for('root_view') }}">
+    <link rel="icon" href="/static/icons/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/static/icons/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="shortcut icon" href="/static/icons/favicon.ico">
+    <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+    <link rel="manifest" href="/static/site.webmanifest">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="FieldCRM">
+    <meta property="og:title" content="FieldCRM | One accountable credit process">
+    <meta property="og:description" content="Capture applications, verify documents, coordinate approvals, and keep a complete audit trail.">
+    <meta property="og:url" content="{{ request.url_for('root_view') }}">
+    <meta property="og:image" content="{{ request.url_for('static', path='img/fieldcrm-social-preview.png') }}">
+    <meta property="og:image:secure_url" content="{{ request.url_for('static', path='img/fieldcrm-social-preview.png') }}">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="FieldCRM, a Mainstreet Microfinance Bank field credit operations platform">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="FieldCRM | One accountable credit process">
+    <meta name="twitter:description" content="Field credit operations from application to disbursement.">
+    <meta name="twitter:image" content="{{ request.url_for('static', path='img/fieldcrm-social-preview.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/home.css?v=20260812">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <header class="site-header">
+        <a class="product-brand" href="/" aria-label="FieldCRM home">
+            <img src="/static/img/fieldcrm-logo.png" alt="FieldCRM">
+            <span>A Mainstreet Microfinance Bank platform</span>
+        </a>
+        <nav aria-label="Public navigation">
+            <a href="#platform">Platform</a><a href="#workflow">Workflow</a><a href="#mobile-app">Mobile app</a><a href="#security">Security</a><a href="#help">Help</a>
+        </nav>
+        <div class="header-actions"><a class="button button-ghost" href="/login">Staff login</a><a class="button button-primary" href="#mobile-app">Download Android</a></div>
+    </header>
+
+    <main id="main-content">
+        <section class="hero" id="platform">
+            <div class="hero-copy">
+                <p class="eyebrow">Field credit operations</p>
+                <h1>One accountable process, from application to disbursement.</h1>
+                <p class="hero-intro">FieldCRM helps Mainstreet teams capture loan applications, verify documents, coordinate role-based reviews, and keep a complete audit trail.</p>
+                <div class="hero-actions"><a class="button button-primary" href="#mobile-app">Download Android</a><a class="text-link" href="/login">Staff login <span aria-hidden="true">→</span></a></div>
+                <p class="release-note">Version {{ release.version }} · Android 8.0 and later{% if release.channel == 'preview' %} · Testing build{% endif %}</p>
+            </div>
+            <div class="product-preview" aria-label="Example Relationship Officer dashboard">
+                <div class="preview-bar"><img src="/static/img/fieldcrm-mark.png" alt=""><strong>FIELDCRM</strong><span>Relationship Officer</span></div>
+                <div class="preview-greeting"><small>RELATIONSHIP OFFICER WORKSPACE</small><h2>Good morning.</h2><p>Your field activity at a glance</p></div>
+                <div class="preview-metrics"><article><strong>12</strong><span>Applications Today</span></article><article><strong>5</strong><span>Pending Sync</span></article><article><strong>8</strong><span>Visits Due</span></article><article><strong>3</strong><span>Missing Docs</span></article></div>
+                <div class="preview-tasks"><div><strong>Today’s Tasks</strong><span>View all</span></div><article><b>Application intake</b><span>Capture</span></article><article><b>Document review</b><span>Verify</span></article><article><b>Approval follow-up</b><span>Review</span></article></div>
+            </div>
+        </section>
+
+        <section class="capability-band" aria-label="Core capabilities"><div>▣ <span>Offline field capture</span></div><div>▤ <span>Document scan &amp; OCR</span></div><div>◆ <span>Role-based approvals</span></div><div>◈ <span>Audit history</span></div></section>
+
+        <section class="section workflow" id="workflow">
+            <p class="eyebrow">A controlled path</p><h2>Built around the credit workflow</h2>
+            <ol><li><b>Capture</b><span>Applications and documents</span></li><li><b>Verify</b><span>Identity and evidence</span></li><li><b>Review</b><span>Risk and customer information</span></li><li><b>Approve</b><span>Policy-based decisions</span></li><li><b>Disburse</b><span>Record the transaction</span></li><li><b>Monitor</b><span>Portfolio follow-up</span></li></ol>
+        </section>
+
+        <section class="section field-grid" id="security">
+            <article><p class="eyebrow">Field operations</p><h2>Work securely in the field</h2><ul><li>Encrypted session and document storage</li><li>Background synchronization</li><li>Camera document capture and OCR review</li><li>Role-aware work queues and approvals</li></ul></article>
+            <article class="download-panel" id="mobile-app"><img src="/static/img/fieldcrm-mark.png" alt="" width="64" height="64"><div><p class="eyebrow">Android application{% if release.channel == 'preview' %} · Preview{% endif %}</p><h2>Get FieldCRM for Android</h2><dl><div><dt>Version</dt><dd>{{ release.version }}</dd></div><div><dt>Requires</dt><dd>Android 8.0+</dd></div>{% if release.released_at %}<div><dt>Released</dt><dd>{{ release.released_at }}</dd></div>{% endif %}</dl>{% if release.channel == 'preview' %}<p class="preview-warning">Testing build: signed with the Android debug certificate. Do not use as a production release.</p>{% endif %}{% if release.available %}<a class="button button-primary" href="/download/android">Download {% if release.channel == 'preview' %}Preview {% endif %}APK</a>{% else %}<span class="button button-disabled" aria-disabled="true">Android release coming soon</span>{% endif %}{% if release.sha256 %}<p class="checksum">SHA-256: <code>{{ release.sha256 }}</code></p>{% endif %}</div></article>
+        </section>
+
+        <section class="section faq" id="help"><p class="eyebrow">Help</p><h2>Frequently asked questions</h2><div class="faq-grid"><details><summary>Who can use FieldCRM?</summary><p>Authorized Mainstreet staff receive role-based access for field capture, review, approval, administration, and audit work.</p></details><details><summary>Can I work offline?</summary><p>The Android app can retain supported field data locally and synchronize it when connectivity returns. Server confirmation remains authoritative.</p></details><details><summary>How do I install the APK?</summary><p>Download the signed APK on an Android 8.0+ device, approve installation from this source when prompted, and open FieldCRM.</p></details><details><summary>Where can I get support?</summary><p>Contact your Mainstreet system administrator or internal technology support team.</p></details></div></section>
+    </main>
+
+    <footer><div><img src="/static/img/MMFB logo White.png" alt="Mainstreet Microfinance Bank"><span>FieldCRM supports Mainstreet’s field credit operations.</span></div><nav aria-label="Footer navigation"><a href="/privacy">Privacy</a><a href="#security">Security</a><a href="#help">Support</a><a href="/login">Staff login</a></nav></footer>
+</body>
+</html>

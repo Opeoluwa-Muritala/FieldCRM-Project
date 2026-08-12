@@ -1,6 +1,6 @@
 # FieldCRM Android role-screen parity — Phase 0 summary
 
-This index ranks the ten roles requested in the Phase 0 scope by confirmed/inferred High-severity gap count. Web templates and authorized web routes were treated as the reference; Android catalogues were verified against `WorkspaceRegistry`, `FieldCRMApp`, composables, ViewModels, repositories and mobile API routes.
+This index ranks the ten roles requested in the Phase 0 scope by confirmed/inferred High-severity gap count. Web templates and authorized web routes serve as the reference; Android catalogues match against `WorkspaceRegistry`, `FieldCRMApp`, composables, ViewModels, repositories and mobile API routes.
 
 | Rank | Role | High | Medium | Low | Most consequential gap | Report |
 |---:|---|---:|---:|---:|---|---|
@@ -23,7 +23,7 @@ This index ranks the ten roles requested in the Phase 0 scope by confirmed/infer
 - Missing-entirely/reachability findings are listed separately inside every role report and are always classified High.
 - The most common cross-role gap is role-specific naming applied over a shared application-shaped result or review surface without equivalent role-specific fields, filters, evidence or destinations.
 - Several Android capabilities exist at the API, ViewModel or composable layer but are excluded by `WorkspaceRegistry`; these are recorded as reachability gaps rather than claiming the implementation is wholly absent.
-- Differences in portrait bottom navigation, landscape rail behavior and the single Navigation 3 back stack were not classified as gaps.
+- The audit does not classify differences in portrait bottom navigation, landscape rail behavior and the single Navigation 3 back stack as gaps.
 
 ## Evidence interpretation
 

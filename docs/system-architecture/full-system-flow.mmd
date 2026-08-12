@@ -51,7 +51,7 @@ flowchart LR
     subgraph FB["3. FastAPI backend"]
         direction TB
         App["backend/app/main.py<br/>app = FastAPI()<br/>backend.app.main:app<br/>Runtime: Python serverless"]
-        Middleware["CORSMiddleware; SecurityHeadersMiddleware;<br/>RequestIDMiddleware; ResponseCacheInvalidationMiddleware"]
+        Middleware["CORSMiddleware; SecurityHeadersMiddleware;<br/>RequestIDMiddleware; PendingResponseCookiesMiddleware;<br/>ResponseCacheInvalidationMiddleware; PerformanceTimingMiddleware"]
         StaticMount["app.mount('/static', StaticFiles(frontend/static))"]
         TemplateEngine["Jinja2Templates(frontend/templates)"]
         AuthRoutes["GET/POST /login; GET /logout;<br/>/api/v1/auth/login[-bearer|-mobile]"]

@@ -189,8 +189,9 @@ Sidebar arrangement: Dashboard, Review Queue, Borrowers.
 | Screen | Informational elements | Clickable/editable elements and result |
 |---|---|---|
 | Dashboard | Awaiting review and returned-this-week metrics; post-manager files | Open Review Queue, View all, application cards. |
-| Review Queue | Files cleared by Team Lead; applicant, reference, product, amount and Supervisory Review badge | Each card opens the full dossier. |
+| Review Queue | Files awaiting review after Team Lead clearance; applicant, reference, product, amount and Supervisory Review badge | Each card opens the approval readiness workstation. |
 | Application Detail | Identity; complete timeline; seven-document checklist; Qore/CreditRegistry/Youverify states; structural checklist; credit recommendation; six verification audit items | Preview every available document; toggle audit items; Return to Relationship Officer; Concur & Forward. Layout is a sticky evidence sidebar plus review cards and decision footer. |
+| Approval Readiness | Full shared approval workstation | Read-only forms/evidence, attestations, amount, return and concurrence controls. |
 | Borrowers | Current-loan states and amounts | Search/filter and row links open read-only loan view. |
 
 ## Credit Analyst (credit_analyst)

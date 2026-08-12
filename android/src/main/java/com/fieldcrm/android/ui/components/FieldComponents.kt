@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
@@ -66,9 +67,15 @@ fun FieldBrandMark(modifier: Modifier = Modifier, contentDescription: String? = 
 }
 
 @Composable
-fun FieldBrandLogo(modifier: Modifier = Modifier, contentDescription: String? = "FieldCRM") {
+fun FieldBrandLogo(
+    modifier: Modifier = Modifier,
+    contentDescription: String? = "Mainstreet Microfinance Bank",
+) {
     Image(
-        painter = painterResource(R.drawable.fieldcrm_logo),
+        painter = painterResource(
+            if (isSystemInDarkTheme()) R.drawable.mainstreet_logo_white
+            else R.drawable.mainstreet_logo
+        ),
         contentDescription = contentDescription,
         modifier = modifier,
         contentScale = ContentScale.Fit,

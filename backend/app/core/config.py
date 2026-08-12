@@ -107,6 +107,22 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str = os.getenv("CLOUDINARY_API_KEY", "")
     CLOUDINARY_API_SECRET: str = os.getenv("CLOUDINARY_API_SECRET", "")
 
+    # Public Android release metadata. The APK itself is stored as a public
+    # Cloudinary raw asset; the application keeps the download URL stable.
+    ANDROID_APK_URL: str = os.getenv(
+        "ANDROID_APK_URL",
+        "https://github.com/Opeoluwa-Muritala/FieldCRM-Project/releases/download/"
+        "android-preview-v1.0-20260812/android-debug.apk",
+    )
+    ANDROID_APK_VERSION: str = os.getenv("ANDROID_APK_VERSION", "1.0 preview")
+    ANDROID_APK_RELEASED_AT: str = os.getenv("ANDROID_APK_RELEASED_AT", "12 August 2026")
+    ANDROID_APK_SIZE_BYTES: int = int(os.getenv("ANDROID_APK_SIZE_BYTES", "71365053"))
+    ANDROID_APK_SHA256: str = os.getenv(
+        "ANDROID_APK_SHA256",
+        "73098ed8d4c61993fd17cf30048685aab7a63adf1056af17f0df237407efc21f",
+    )
+    ANDROID_APK_CHANNEL: str = os.getenv("ANDROID_APK_CHANNEL", "preview")
+
     # External Integrations settings
     QORE_API_KEY: str | None = os.getenv("QORE_API_KEY", None)
     QORE_BASE_URL: str = os.getenv("QORE_BASE_URL", "https://api.qoreid.com")
@@ -170,6 +186,13 @@ class Settings(BaseSettings):
                 raise ValueError("RATE_LIMIT_REDIS_URL is required in production for distributed rate limiting.")
             if self.CACHE_REDIS_URL and not self.CACHE_REDIS_URL.startswith("rediss://"):
                 raise ValueError("CACHE_REDIS_URL must use rediss:// in production.")
+        if self.ANDROID_APK_URL and not self.ANDROID_APK_URL.startswith("https://"):
+            raise ValueError("ANDROID_APK_URL must use https://.")
+        if self.ANDROID_APK_SHA256 and (
+            len(self.ANDROID_APK_SHA256) != 64
+            or any(character not in "0123456789abcdefABCDEF" for character in self.ANDROID_APK_SHA256)
+        ):
+            raise ValueError("ANDROID_APK_SHA256 must be a 64-character hexadecimal digest.")
         return self
 
 settings = Settings()

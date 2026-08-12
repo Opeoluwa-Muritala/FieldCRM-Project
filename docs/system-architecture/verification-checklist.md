@@ -24,7 +24,7 @@ py -3.12 backend/test_responsive_smoke.py
 py -3.12 -m pytest backend/tests -q
 ```
 
-No configured mypy, Ruff, Black, or Flake8 command was found (**Confirmed**).
+No configured mypy, Ruff, Black, or Flake8 command exists (**Confirmed**).
 
 ## Manual checks
 
@@ -55,4 +55,4 @@ No configured mypy, Ruff, Black, or Flake8 command was found (**Confirmed**).
 - [x] Unverified nodes use dashed styling.
 - [x] No secret values included.
 
-No Mermaid CLI or repository Mermaid validator was found; syntax is manually validated.
+No Mermaid CLI or repository Mermaid validator exists; syntax is manually validated.

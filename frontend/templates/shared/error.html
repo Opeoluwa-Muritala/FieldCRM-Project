@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ status_code }} · {{ title }} | FieldCRM</title>
+    <meta name="theme-color" content="#2E0052">
+    <link rel="icon" href="/static/icons/favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -36,7 +38,7 @@
             {% if status_code >= 500 %}
             <a class="button button-secondary" href="{{ retry_url }}">Try again</a>
             {% endif %}
-            <a class="button button-primary" href="/dashboard">Return to dashboard</a>
+            <a class="button button-primary" href="{% if status_code == 401 or status_code == 403 %}/login{% else %}/{% endif %}">{% if status_code == 401 or status_code == 403 %}Staff login{% else %}Return home{% endif %}</a>
         </div>
         {% if request_id and request_id != 'unknown' %}
         <p class="request-id">Reference: {{ request_id }}</p>
