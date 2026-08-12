@@ -67,9 +67,17 @@ async def test_robots_and_sitemap_reference_public_origin():
     assert "https://fieldcrm.example/" in sitemap.body.decode()
 
 
-async def test_privacy_page_is_reachable():
-    response = await main.privacy_view(make_request("/privacy"))
+async def test_terms_page_is_reachable_and_uses_home_header():
+    response = await main.terms_view(make_request("/terms"))
     body = await response_body(response)
     assert response.status_code == 200
-    assert "FieldCRM privacy information" in body
+    assert "Terms for using FieldCRM" in body
     assert "Mainstreet Microfinance Bank" in body
+    assert 'href="/">Home</a>' in body
+    assert response.headers["cache-control"].startswith("public")
+
+
+async def test_home_is_edge_cacheable(monkeypatch):
+    monkeypatch.setattr(main.settings, "ANDROID_APK_CHANNEL", "preview")
+    response = await main.root_view(make_request())
+    assert "s-maxage=3600" in response.headers["cache-control"]

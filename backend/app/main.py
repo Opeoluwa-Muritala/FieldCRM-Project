@@ -166,7 +166,10 @@ class ProtectedStaticFiles(StaticFiles):
         normalized = path.replace("\\", "/").lstrip("/")
         if normalized == "uploads" or normalized.startswith("uploads/"):
             raise StarletteHTTPException(status_code=404)
-        return await super().get_response(path, scope)
+        response = await super().get_response(path, scope)
+        if response.status_code == 200:
+            response.headers["Cache-Control"] = "public, max-age=86400, stale-while-revalidate=604800"
+        return response
 
 
 app.mount("/static", ProtectedStaticFiles(directory=static_dir), name="static")
@@ -546,7 +549,9 @@ async def root_view(request: Request):
         "sha256": settings.ANDROID_APK_SHA256,
         "channel": settings.ANDROID_APK_CHANNEL,
     }
-    return templates.TemplateResponse(request, "shared/public_home.html", {"release": release})
+    response = templates.TemplateResponse(request, "shared/public_home.html", {"release": release})
+    response.headers["Cache-Control"] = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400"
+    return response
 
 
 @app.get("/download/android")
@@ -560,9 +565,11 @@ async def download_android():
     )
 
 
-@app.get("/privacy")
-async def privacy_view(request: Request):
-    return templates.TemplateResponse(request, "shared/public_privacy.html", {})
+@app.get("/terms")
+async def terms_view(request: Request):
+    response = templates.TemplateResponse(request, "shared/public_terms.html", {})
+    response.headers["Cache-Control"] = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800"
+    return response
 
 
 @app.get("/robots.txt", response_class=PlainTextResponse)
@@ -578,7 +585,7 @@ async def sitemap_xml(request: Request):
         '<?xml version="1.0" encoding="UTF-8"?>'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
         f'<url><loc>{origin}/</loc></url>'
-        f'<url><loc>{origin}/privacy</loc></url>'
+        f'<url><loc>{origin}/terms</loc></url>'
         '</urlset>'
     )
     return Response(content=body, media_type="application/xml")
