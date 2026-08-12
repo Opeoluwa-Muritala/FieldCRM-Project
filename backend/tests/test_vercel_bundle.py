@@ -9,4 +9,4 @@ def test_vercel_function_bundles_jinja_templates_and_static_assets():
     includes = function["includeFiles"]
     assert "frontend/templates/**" in includes
     assert "frontend/static/**" in includes
-    assert (root / "frontend/templates/public/home.html").is_file()
+    assert (root / "frontend/templates/shared/public_home.html").is_file()
