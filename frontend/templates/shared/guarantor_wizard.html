@@ -19,8 +19,8 @@
     {% endif %}
     <!-- Horizontal Step Indicator -->
     <div class="wizard-steps">
-        {% set step_labels = ["Identity", "Obligations", "Family", "Employment", "Business & Docs", "Declaration", "Guarantee Limit", "Signatures"] %}
-        {% for s_num in range(1, 9) %}
+        {% set step_labels = ["Identity", "Obligations", "Family", "Employment", "Business & Docs", "Declaration", "Guarantee Limit"] %}
+        {% for s_num in range(1, 8) %}
             {% set is_active = (s_num == step) %}
             {% set is_completed = (s_num < step) %}
             <div class="wizard-step-segment {% if is_active %}active{% elif is_completed %}completed{% endif %}">
@@ -43,7 +43,6 @@
                 {% elif step == 5 %}Business & Supporting Documents
                 {% elif step == 6 %}Declaration
                 {% elif step == 7 %}Guarantee Limits & Bank details
-                {% elif step == 8 %}Signatures & Witnesses
                 {% endif %}
             </h2>
             <p class="page-card-subtitle">
@@ -54,7 +53,6 @@
                 {% elif step == 5 %}Business address, sales, and upload required supporting documents.
                 {% elif step == 6 %}Guarantor's legal statements.
                 {% elif step == 7 %}Guarantee limit, bank account details, and cheque references.
-                {% elif step == 8 %}Digital signatures of guarantor and witness.
                 {% endif %}
             </p>
         </div>
@@ -226,23 +224,6 @@
                     <input type="text" name="account_number" class="field-input" value="{{ data.account_number or '' }}" maxlength="10" required>
                 </div>
             </div>
-            {% if step == 7 and signatures and signatures.primary %}
-            <div class="csp-s-831c7ab7ba1b">
-                <h4 class="csp-s-bd256d0a30d3">Captured Electronic Evidence</h4>
-                <div class="form-grid-2">
-                    <div>
-                        <span class="csp-s-bffd32daa889">Guarantor Signature</span>
-                        <img src="{{ signatures.primary }}" alt="Guarantor Signature" class="csp-s-0a77b6cf03f2">
-                    </div>
-                    {% if signatures.witness %}
-                    <div>
-                        <span class="csp-s-bffd32daa889">Witness Signature</span>
-                        <img src="{{ signatures.witness }}" alt="Witness Signature" class="csp-s-0a77b6cf03f2">
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-            {% endif %}
             {% endif %}
 
             <!-- Wizard Footer Action Buttons -->
@@ -253,7 +234,7 @@
                     {% endif %}
                 </div>
                 <button type="submit" class="btn-primary-filled">
-                    {% if step == 7 %}Complete &amp; Generate Link &rarr;{% else %}Save &amp; Continue &rarr;{% endif %}
+                    {% if step == 7 %}Complete Guarantor Details &rarr;{% else %}Save &amp; Continue &rarr;{% endif %}
                 </button>
             </div>
 

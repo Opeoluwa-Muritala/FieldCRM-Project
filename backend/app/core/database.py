@@ -12,7 +12,9 @@ import json
 import re
 import sqlite3
 import ssl
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass
 from time import perf_counter
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -25,6 +27,48 @@ from app.core.performance import record_duration, record_query
 _engine: AsyncEngine | None = None
 _sqlite_pool = None
 _is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+
+
+@dataclass(frozen=True)
+class DatabaseIdentity:
+    org_id: str
+    user_id: str
+    role: str
+    branch_id: str | None = None
+    request_id: str | None = None
+
+
+_database_identity: ContextVar[DatabaseIdentity | None] = ContextVar(
+    "fieldcrm_database_identity", default=None
+)
+
+
+@contextmanager
+def database_identity(identity: DatabaseIdentity):
+    """Bind trusted identity to this request/task, including child tasks."""
+    token = _database_identity.set(identity)
+    try:
+        yield
+    finally:
+        _database_identity.reset(token)
+
+
+async def _install_database_identity(conn) -> None:
+    """Install transaction-local PostgreSQL variables used by RLS policies."""
+    identity = _database_identity.get()
+    if _is_sqlite or identity is None:
+        return
+    values = {
+        "app.org_id": identity.org_id,
+        "app.user_id": identity.user_id,
+        "app.user_role": identity.role,
+        "app.branch_id": identity.branch_id or "",
+        "app.request_id": (identity.request_id or "")[:128],
+    }
+    for setting_name, setting_value in values.items():
+        # set_config with is_local=true cannot leak identity through a pooled
+        # connection after commit/rollback. Both values are bound parameters.
+        await conn.execute("SELECT set_config($1, $2, TRUE)", setting_name, setting_value)
 
 
 def _async_database_url(url: str) -> tuple[str, dict[str, object]]:
@@ -286,7 +330,9 @@ async def get_connection():
     record_duration("db_acquire", acquisition_started_at)
 
     try:
-        yield SQLAlchemyConnection(conn)
+        wrapped = SQLAlchemyConnection(conn)
+        await _install_database_identity(wrapped)
+        yield wrapped
     except Exception:
         if conn.in_transaction():
             await conn.rollback()

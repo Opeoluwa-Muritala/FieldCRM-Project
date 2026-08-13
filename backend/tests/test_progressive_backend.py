@@ -139,11 +139,11 @@ def test_application_section_endpoints_reject_cross_tenant_application(monkeypat
 
 def test_compliance_section_pagination_passes_bounded_offset(monkeypatch):
     application_id = uuid4()
-    user = SimpleNamespace(org_id=uuid4())
+    user = SimpleNamespace(org_id=uuid4(), id=uuid4(), role="auditor", is_active=True)
     observed = {}
 
     async def found(self, requested_id, org_id):
-        return SimpleNamespace(id=requested_id)
+        return SimpleNamespace(id=requested_id, org_id=org_id)
 
     async def flags(self, current_user, requested_id, limit, offset):
         observed.update(limit=limit, offset=offset, application_id=requested_id)

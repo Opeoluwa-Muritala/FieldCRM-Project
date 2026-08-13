@@ -1,5 +1,6 @@
 from app.core.sql import load_sql
 from uuid import UUID
+from app.core.loan_authorization import canonical_role
 
 
 def _as_uuid(value):
@@ -27,7 +28,7 @@ class AuditService:
         request_id=None,
     ) -> None:
         sql = load_sql("audit", "insert_entry")
-        db_role = user_role.lower().replace(" ", "_")
+        db_role = canonical_role(user_role)
         await self.conn.execute(
             sql,
             _as_uuid(org_id), entity_type, _as_uuid(entity_id), action,
@@ -72,7 +73,7 @@ class AuditService:
             )
             org_id = row["org_id"] if row else None
 
-        db_role = actor_role.lower().replace(" ", "_")
+        db_role = canonical_role(actor_role)
 
         await self.conn.execute(
             sql,

@@ -11,12 +11,18 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 
 from app.core.audit import AuditService
-from app.core.database import db_conn
+from app.core.dependencies import authenticated_db_conn as db_conn
 from app.core.dependencies import get_current_user
 from app.core.workflow import NEXT_STAGE, ROLE_LABELS, STAGE_ROLE, WORKFLOW_STAGES
 from app.domains.documents.repository import DocumentRepository
 from app.domains.documents.service import DocumentService
 from app.domains.documents.direct_upload import DirectDocumentUploadService
+from app.core.loan_authorization import (
+    canonical_role,
+    require_document_upload,
+    require_intake_edit,
+    require_view,
+)
 from app.domains.documents.schemas import DirectUploadAuthorizationRequest, DirectUploadFinalizeRequest
 from app.domains.ocr.repository import OcrRepository
 from app.domains.guarantors.repository import GuarantorRepository
@@ -410,31 +416,13 @@ async def _get_application_or_404(
     app = await repo.get_by_id(application_id, current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
-    if enforce_officer_scope and _role(current_user) == "system_admin":
-        raise HTTPException(status_code=403, detail="System Admin does not have access to loan dossiers")
-    if (
-        enforce_officer_scope
-        and _role(current_user) in {"account_officer", "loan_officer"}
-        and str(app.created_by) != str(current_user.id)
-    ):
-        raise HTTPException(status_code=403, detail="You do not have permission to access this application")
-    if (
-        enforce_officer_scope
-        and _role(current_user) == "branch_manager"
-        and getattr(app, "branch_id", None) is not None
-        and getattr(current_user, "branch_id", None) is not None
-        and str(app.branch_id) != str(current_user.branch_id)
-    ):
-        raise HTTPException(status_code=403, detail="You do not have permission to access applications outside your branch")
+    if enforce_officer_scope:
+        require_view(current_user, app)
     return app
 
 
 def _ensure_intake_writer(app, current_user) -> None:
-    user_role = _role(current_user)
-    if user_role not in ("system_admin", "account_officer", "loan_officer"):
-        raise HTTPException(status_code=403, detail="Insufficient permissions for this action")
-    if user_role in {"account_officer", "loan_officer"} and app.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="You do not have permission to modify this application")
+    require_intake_edit(current_user, app)
 
 
 def _ensure_roles(current_user, allowed_roles: set[str]) -> None:
@@ -1024,11 +1012,13 @@ async def upload_mobile_document(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    await _get_application_or_404(conn, application_id, current_user)
+    app = await _get_application_or_404(conn, application_id, current_user)
+    effective_doc_type = doc_type or category or "other"
+    require_document_upload(current_user, app, effective_doc_type)
     document = await _document_service(conn).save_upload(
         loan_id=application_id,
         org_id=current_user.org_id,
-        doc_type=doc_type or category or "other",
+        doc_type=effective_doc_type,
         form_code=form_code,
         file=file,
         uploaded_by=current_user.id,
@@ -1044,13 +1034,8 @@ async def authorize_mobile_document_upload(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    await _get_application_or_404(conn, application_id, current_user)
-    crm_categories = {
-        "offer_acceptance", "disbursement_mandate", "direct_debit_mandate",
-        "insurance_certificate", "legal_clearance", "other_crm",
-    }
-    if payload.doc_type in crm_categories:
-        _ensure_roles(current_user, {"crm", "head_crm"})
+    app = await _get_application_or_404(conn, application_id, current_user)
+    require_document_upload(current_user, app, payload.doc_type)
     authorization = await DirectDocumentUploadService(conn).authorize(
         application_id=application_id,
         org_id=current_user.org_id,
@@ -1072,7 +1057,15 @@ async def finalize_mobile_document_upload(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    await _get_application_or_404(conn, application_id, current_user)
+    app = await _get_application_or_404(conn, application_id, current_user)
+    intent = await conn.fetchrow(
+        """SELECT document_type FROM document_upload_intents
+           WHERE id=$1 AND application_id=$2 AND organization_id=$3 AND actor_id=$4""",
+        payload.intent_id, application_id, current_user.org_id, current_user.id,
+    )
+    if not intent:
+        raise HTTPException(status_code=404, detail="Upload authorization not found")
+    require_document_upload(current_user, app, intent["document_type"])
     document = await DirectDocumentUploadService(conn).finalize(
         intent_id=payload.intent_id,
         application_id=application_id,

@@ -53,6 +53,13 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "postgres")
     POSTGRES_DB: str = os.getenv("POSTGRES_DB", "fieldcrm")
     DATABASE_URL: str = os.getenv("DATABASE_URL", default_database_url())
+    RLS_ENFORCED: bool = os.getenv("RLS_ENFORCED", "false").lower() in ("true", "1", "yes")
+    DATABASE_EXPECTED_RUNTIME_USER: str = os.getenv("DATABASE_EXPECTED_RUNTIME_USER", "fieldcrm_app")
+
+    # URL-safe base64 values that each decode to 32 random bytes. Encryption
+    # and lookup keys are separate to avoid using ciphertext keys for search.
+    FIELD_ENCRYPTION_KEY: str = os.getenv("FIELD_ENCRYPTION_KEY", "")
+    FIELD_LOOKUP_KEY: str = os.getenv("FIELD_LOOKUP_KEY", "")
 
     
     # Security / CORS
@@ -179,13 +186,30 @@ class Settings(BaseSettings):
         if not self.cors_origins or "*" in self.cors_origins:
             raise ValueError("CORS_ORIGINS must contain one or more explicit origins; wildcards are forbidden.")
         if self.is_production:
-            host = urlparse(self.DATABASE_URL).hostname or ""
+            parsed_database = urlparse(self.DATABASE_URL)
+            host = parsed_database.hostname or ""
             if not self.DATABASE_URL.startswith("postgresql") or "-pooler" not in host:
                 raise ValueError("Production DATABASE_URL must use Neon's pooled (-pooler) PostgreSQL host.")
             if not self.RATE_LIMIT_REDIS_URL:
                 raise ValueError("RATE_LIMIT_REDIS_URL is required in production for distributed rate limiting.")
             if self.CACHE_REDIS_URL and not self.CACHE_REDIS_URL.startswith("rediss://"):
                 raise ValueError("CACHE_REDIS_URL must use rediss:// in production.")
+            if not self.FIELD_ENCRYPTION_KEY or not self.FIELD_LOOKUP_KEY:
+                raise ValueError("FIELD_ENCRYPTION_KEY and FIELD_LOOKUP_KEY are required in production.")
+            if self.RLS_ENFORCED and parsed_database.username != self.DATABASE_EXPECTED_RUNTIME_USER:
+                raise ValueError("RLS_ENFORCED requires the configured non-owner runtime database user.")
+        for setting_name, encoded_key in (
+            ("FIELD_ENCRYPTION_KEY", self.FIELD_ENCRYPTION_KEY),
+            ("FIELD_LOOKUP_KEY", self.FIELD_LOOKUP_KEY),
+        ):
+            if encoded_key:
+                import base64
+                try:
+                    decoded_key = base64.urlsafe_b64decode(encoded_key.encode("ascii"))
+                except Exception as exc:
+                    raise ValueError(f"{setting_name} must be URL-safe base64.") from exc
+                if len(decoded_key) != 32:
+                    raise ValueError(f"{setting_name} must decode to exactly 32 bytes.")
         if self.ANDROID_APK_URL and not self.ANDROID_APK_URL.startswith("https://"):
             raise ValueError("ANDROID_APK_URL must use https://.")
         if self.ANDROID_APK_SHA256 and (

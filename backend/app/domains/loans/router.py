@@ -12,13 +12,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status, Query
 from fastapi.responses import RedirectResponse
 
-from app.core.database import db_conn, get_connection
+from app.core.database import get_connection
 from app.core.exceptions import DomainException
 from app.domains.loans.repository import LoanRepository
 from app.domains.loans.service import LoanService
 from app.core.audit import AuditService
 from app.core.cache import cache_scoped_data, get_cached_scoped_data
-from app.core.dependencies import get_current_user, RoleChecker
+from app.core.dependencies import authenticated_db_conn as db_conn, get_current_user, RoleChecker
 from app.core.template_utils import (
     build_template_context,
     csp_nonce_context,
@@ -27,6 +27,13 @@ from app.core.template_utils import (
 )
 from app.core.templates import create_templates
 from app.core.workflow import WORKFLOW_STAGES, ROLE_LABELS
+from app.core.loan_authorization import (
+    canonical_role,
+    capabilities_for,
+    require_document_upload,
+    require_intake_edit,
+    require_view,
+)
 from app.domains.loans.mcc_policy import require_mcc_quorum
 from app.services.dashboard_service import DashboardService
 from app.services.email_service import EmailService
@@ -678,14 +685,7 @@ async def process_new_application(
     return RedirectResponse(url=f"/applications/{app.id}/step/1", status_code=status.HTTP_303_SEE_OTHER)
 
 def _verify_loan_scope(app, current_user):
-    role = current_user.role.lower().replace(" ", "_")
-    created_by = app.get("created_by") if isinstance(app, dict) else getattr(app, "created_by", None)
-    if role in ("account_officer", "loan_officer") and created_by:
-        if str(created_by) != str(current_user.id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to access this application."
-            )
+    require_view(current_user, app)
 
 async def _get_dossier_context(request: Request, application_id: str, conn, current_user, active_tab="applications"):
     repo = LoanRepository(conn)
@@ -734,6 +734,14 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
                 limit=200,
             )
 
+    async def load_activity():
+        async with get_connection() as detail_conn:
+            return await LoanRepository(detail_conn).list_application_activity(
+                current_user.org_id,
+                app_uuid,
+                limit=200,
+            )
+
     async def load_flags():
         async with get_connection() as detail_conn:
             return await DashboardService(detail_conn).get_application_compliance_flags(
@@ -743,11 +751,12 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
             )
 
     if cached_detail is None:
-        snapshot, documents, readiness_summary, audit_events, flags = await asyncio.gather(
+        snapshot, documents, readiness_summary, audit_events, activity_events, flags = await asyncio.gather(
             load_snapshot(),
             load_documents(),
             load_readiness(),
             load_events(),
+            load_activity(),
             load_flags(),
         )
         await cache_scoped_data(
@@ -756,6 +765,7 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
                 "snapshot": snapshot,
                 "readiness_summary": readiness_summary,
                 "audit_events": audit_events,
+                "activity_events": activity_events,
                 "flags": flags,
             },
             ttl_seconds=60,
@@ -765,7 +775,22 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
         snapshot = cached_detail.get("snapshot") or {}
         readiness_summary = cached_detail.get("readiness_summary") or {}
         audit_events = cached_detail.get("audit_events") or []
+        activity_events = cached_detail.get("activity_events") or []
         flags = cached_detail.get("flags") or []
+    # Defense-in-depth for legacy audit rows created before field masking was
+    # enforced at write time. Never render a restricted historical value.
+    from app.core.field_encryption import mask_sensitive
+    redacted_activity = []
+    for event_row in activity_events:
+        event = dict(event_row)
+        field_name = str(event.get("field_name") or "").lower()
+        if any(marker in field_name for marker in ("bvn", "nin", "account", "password", "token", "signature")):
+            for value_key in ("old_value", "new_value"):
+                value = event.get(value_key)
+                if value and not str(value).startswith("masked:"):
+                    event[value_key] = f"masked:{mask_sensitive(str(value))}"
+        redacted_activity.append(event)
+    activity_events = redacted_activity
     wizard_data = snapshot.get("wizard_data") or {}
     visitation_data = snapshot.get("visitation_data") or {}
     ver_check = snapshot.get("verification_check")
@@ -824,6 +849,8 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
         visitation_data=visitation_data,
         summary=readiness_summary,
         audit_events=audit_events,
+        activity_events=activity_events,
+        latest_activity=activity_events[0] if activity_events else None,
         flags=flags,
         required_documents=required_docs_list,
         ver_check=dict(ver_check) if ver_check else None,
@@ -837,6 +864,7 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
         AML_SCREENING_ENABLED=settings.AML_SCREENING_ENABLED,
         active_tab=active_tab,
         active_page=active_tab,
+        capabilities=capabilities_for(current_user, app).to_dict(),
     )
     return ctx
 
@@ -975,7 +1003,7 @@ async def render_wizard_step(
     if step == 2 and data.get("marital_status") == "Single":
         return RedirectResponse(url=f"/applications/{application_id}/step/3", status_code=status.HTTP_303_SEE_OTHER)
     # Review-chain roles may inspect every completed section, but never edit it.
-    readonly = user_role in reviewer_roles
+    readonly = user_role in reviewer_roles and not capabilities_for(current_user, app).can_edit_intake
     applicant_signed = False
     signatures = {}
     if latest:
@@ -1042,11 +1070,7 @@ async def process_wizard_step(
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
-    user_role = current_user.role.lower().replace(" ", "_")
-    if user_role not in ("account_officer", "loan_officer"):
-        raise HTTPException(status_code=403, detail="Insufficient permissions for this action")
-    if app.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="You do not have permission to view/modify this application")
+    require_intake_edit(current_user, app)
     form_data = await request.form()
     data_dict = form_data_to_jsonable_dict(form_data)
     open_guarantor = data_dict.pop("open_guarantor", None)
@@ -1401,28 +1425,7 @@ async def render_guarantor_step(
         "head_crm", "auditor", "ed", "md",
     }
 
-    guarantor_row = await conn.fetchrow(
-        "SELECT id FROM guarantors WHERE loan_id = $1 AND slot = $2",
-        app_uuid, guarantor_index
-    )
-    
     readonly = user_role in reviewer_roles
-    signatures = {}
-    if guarantor_row:
-        from app.domains.signing.service import SigningService
-        from app.domains.signing.repository import SigningRepository
-        signing_svc = SigningService(SigningRepository(conn))
-        latest = await signing_svc.repo.latest_version(app_uuid, "guarantor", str(guarantor_row["id"]))
-        if latest:
-            if latest["status"] in ("sent", "signed"):
-                readonly = True
-            if latest["status"] == "signed":
-                sigs = await conn.fetch("SELECT * FROM signature_events WHERE version_id = $1", latest["id"])
-                for sig in sigs:
-                    if sig.get("witness_for_event_id"):
-                        signatures["witness"] = sig["signature_image_ref"]
-                    else:
-                        signatures["primary"] = sig["signature_image_ref"]
 
     data = dict(await service.get_wizard_data(app_uuid, guarantor_index) or {})
     intake_row = await loan_repo.get_stage_data(app_uuid, "intake")
@@ -1445,7 +1448,6 @@ async def render_guarantor_step(
         hide_tabbar=True,
         mobile_title_text=f"Guarantor: Step {step}",
         readonly=readonly,
-        signatures=signatures,
         review_mode=user_role in reviewer_roles,
     )
     return templates.TemplateResponse(request, "shared/guarantor_wizard.html", ctx)
@@ -1484,14 +1486,6 @@ async def process_guarantor_step(
     if not guarantor_row:
         raise HTTPException(status_code=404, detail="Guarantor not found")
         
-    guarantor_id = guarantor_row["id"]
-    from app.domains.signing.service import SigningService
-    from app.domains.signing.repository import SigningRepository
-    signing_svc = SigningService(SigningRepository(conn))
-    latest = await signing_svc.repo.latest_version(app_uuid, "guarantor", str(guarantor_id))
-    if latest and latest["status"] in ("sent", "signed"):
-        raise HTTPException(status_code=403, detail="This guarantor is frozen or signed and cannot be modified.")
-
     form_data = await request.form()
     data_dict = form_data_to_jsonable_dict(form_data)
     await service.save_wizard_step(app_uuid, guarantor_index, step, data_dict, current_user.id)
@@ -1507,31 +1501,7 @@ async def process_guarantor_step(
             user_role=current_user.role,
         )
         
-        loan_repo = LoanRepository(conn)
-        stage_data_row = await loan_repo.get_stage_data(app_uuid, f"guarantor_{guarantor_index}")
-        payload = (stage_data_row or {}).get("data_json") or {}
-        
-        latest_ver = await signing_svc.repo.latest_version(app_uuid, "guarantor", str(guarantor_id))
-        if latest_ver and latest_ver["status"] == "signed":
-            await signing_svc.correct(app_uuid, "guarantor", str(guarantor_id), current_user.id)
-        version = await signing_svc.freeze_version(
-            app_uuid, "guarantor", str(guarantor_id), payload, current_user.id
-        )
-        
-        await signing_svc.repo.invalidate_sessions(app_uuid, "guarantor", str(guarantor_id))
-        
-        raw_token = secrets.token_urlsafe(32)
-        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
-        link_session = await signing_svc.issue_session(
-            app_uuid, "guarantor", str(guarantor_id), [version["id"]], current_user.id,
-            lifetime=timedelta(minutes=1440),
-            token_hash=token_hash
-        )
-        
-        base_url = str(request.base_url).rstrip("/")
-        share_url = f"{base_url}/guarantor-access/{raw_token}"
-        
-        query = urlencode({"success": f"Guarantor slot {guarantor_index} completed. Guarantor link: {share_url}"})
+        query = urlencode({"success": f"Guarantor slot {guarantor_index} completed."})
         return RedirectResponse(url=f"/applications/{application_id}?{query}", status_code=status.HTTP_303_SEE_OTHER)
 
 @router.get("/applications/{application_id}/documents/upload")
@@ -1571,13 +1541,14 @@ async def process_document_upload(
     current_user = Depends(get_current_user)
 ):
     """POST handler to store documents on server side."""
-    repo = LoanRepository(service.audit_svc.conn)
+    repo = LoanRepository(service.audit.conn)
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
     _verify_loan_scope(app, current_user)
 
     doc_type = category or type or "other"
+    require_document_upload(current_user, app, doc_type)
     await service.save_upload(
         loan_id=UUID(application_id),
         org_id=current_user.org_id,
@@ -1600,6 +1571,7 @@ async def authorize_staff_document_upload(
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
     _verify_loan_scope(app, current_user)
+    require_document_upload(current_user, app, payload.doc_type)
     return {
         "authorization": await DirectDocumentUploadService(conn).authorize(
             application_id=application_id, org_id=current_user.org_id,
@@ -1622,6 +1594,16 @@ async def finalize_staff_document_upload(
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
     _verify_loan_scope(app, current_user)
+    intent = await conn.fetchrow(
+        """SELECT document_type FROM document_upload_intents
+           WHERE id=$1 AND application_id=$2 AND organization_id=$3 AND actor_id=$4""",
+        payload.intent_id, application_id, current_user.org_id, current_user.id,
+    )
+    if not intent:
+        raise HTTPException(status_code=404, detail="Upload authorization not found")
+    # Re-evaluate the original type so assignment/stage changes between
+    # authorization and finalization cannot preserve stale privileges.
+    require_document_upload(current_user, app, intent["document_type"])
     document = await DirectDocumentUploadService(conn).finalize(
         intent_id=payload.intent_id, application_id=application_id,
         org_id=current_user.org_id, actor_id=current_user.id,
@@ -4133,6 +4115,10 @@ async def redeem_guarantor_client_link(
     token: str,
     conn=Depends(db_conn),
 ):
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Guarantor signing is no longer part of the application process.",
+    )
     link = decode_access_token(token)
     if not link or link.get("type") != "guarantor_signing":
         return templates.TemplateResponse(
@@ -4653,6 +4639,8 @@ async def render_client_guarantor_step(
     session = Depends(get_client_session_data),
     conn = Depends(db_conn)
 ):
+    if step not in range(1, 8):
+        raise HTTPException(status_code=404, detail="Unknown guarantor step")
     app_id = session.get("app_id")
     org_id = session.get("org_id")
 
@@ -4684,6 +4672,8 @@ async def process_client_guarantor_step(
     session = Depends(get_client_session_data),
     conn = Depends(db_conn)
 ):
+    if step not in range(1, 8):
+        raise HTTPException(status_code=404, detail="Unknown guarantor step")
     app_id = session.get("app_id")
     org_id = session.get("org_id")
     officer_id = session.get("officer_id")
@@ -4699,7 +4689,7 @@ async def process_client_guarantor_step(
     service = get_guarantor_service(conn)
     await service.save_wizard_step(UUID(app_id), guarantor_index, step, data_dict, UUID(officer_id))
 
-    if step < 8:
+    if step < 7:
         return RedirectResponse(
             url=f"/client-form/apply/guarantors/{guarantor_index}/step/{step + 1}", 
             status_code=status.HTTP_303_SEE_OTHER
@@ -4721,6 +4711,10 @@ async def render_guarantor_signing_page(
     session = Depends(get_client_session_data),
     conn = Depends(db_conn),
 ):
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Guarantor signing is no longer part of the application process.",
+    )
     app_id = session.get("app_id")
     org_id = session.get("org_id")
     slot = session.get("guarantor_slot")
@@ -4756,6 +4750,10 @@ async def process_guarantor_signature(
     session = Depends(get_client_session_data),
     conn = Depends(db_conn)
 ):
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Guarantor signing is no longer part of the application process.",
+    )
     app_id = session.get("app_id")
     org_id = session.get("org_id")
     officer_id = session.get("officer_id")
@@ -4954,6 +4952,7 @@ async def list_web_application_compliance_flags(
     app = await repo.get_by_id(application_id, current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
+    _verify_loan_scope(app, current_user)
     
     offset = (page - 1) * size
     from app.services.dashboard_service import DashboardService

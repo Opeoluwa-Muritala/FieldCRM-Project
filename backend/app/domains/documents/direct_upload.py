@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.domains.documents.repository import DocumentRepository
 from app.domains.documents.service import ALLOWED_EXTENSIONS, FORM_CODES
 from app.services.cloud_storage_service import _configure_cloudinary
+from app.core.loan_authorization import canonical_role
 
 
 ALLOWED_MIME_TYPES = {"application/pdf", "image/jpeg", "image/png"}
@@ -67,7 +68,7 @@ class DirectDocumentUploadService:
                 expected_size_bytes, cloud_public_id, expires_at
             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
             """,
-            intent_id, org_id, application_id, actor_id, actor_role, doc_type or "other",
+            intent_id, org_id, application_id, actor_id, canonical_role(actor_role), doc_type or "other",
             form_code, Path(original_name).name, mime_type, size_bytes, public_id, expires_at,
         )
         _configure_cloudinary()

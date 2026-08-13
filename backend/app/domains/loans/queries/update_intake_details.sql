@@ -1,13 +1,14 @@
 -- loans/queries/update_intake_details.sql
 -- Updates the denormalized applicant fields captured during intake.
 -- Params: $1=applicant_name, $2=phone, $3=bvn, $4=amount,
---         $5=tenor_months, $6=loan_id, $7=org_id
+--         $5=tenor_months, $6=loan_id, $7=org_id, $8=bvn_lookup_hash
 
 UPDATE loan_applications
 SET
     applicant_name = $1,
     phone = $2,
     bvn = $3,
+    bvn_lookup_hash = $8,
     amount = $4,
     tenor_months = $5,
     updated_at = NOW()

@@ -226,20 +226,6 @@ class LoanRepository(BaseRepository):
         total = rows[0]["total_count"]
         return [LoanRow(**r) for r in rows], total
 
-    async def list_workflow_events_for_application(
-        self, org_id: UUID, application_id: UUID, limit: int = 10, offset: int = 0
-    ) -> list[dict]:
-        rows = await self.conn.fetch(
-            """
-            SELECT * FROM workflow_events
-            WHERE org_id = $1 AND loan_id = $2
-            ORDER BY created_at DESC, id DESC
-            LIMIT $3 OFFSET $4
-            """,
-            org_id, application_id, limit, offset
-        )
-        return [dict(r) for r in rows] if rows else []
-
     async def search(self, org_id: UUID, query: str) -> list[LoanRow]:
         rows = await self.conn.fetch(
             """
@@ -265,15 +251,20 @@ class LoanRepository(BaseRepository):
         amount: float | None,
         tenor_months: int | None,
     ) -> LoanRow | None:
+        from app.core.field_encryption import blind_index, encrypt_sensitive
+
+        encrypted_bvn = encrypt_sensitive(bvn, context="loan_application:bvn")
+        bvn_lookup_hash = blind_index(bvn, context="loan_application:bvn")
         row = await self.conn.fetchrow(
             self.sql("update_intake_details"),
             applicant_name,
             phone,
-            bvn,
+            encrypted_bvn,
             amount,
             tenor_months,
             loan_id,
             org_id,
+            bvn_lookup_hash,
         )
         return LoanRow(**row) if row else None
 
@@ -296,6 +287,21 @@ class LoanRepository(BaseRepository):
     ):
         return await self.conn.fetch(
             self.sql("list_workflow_events_for_application"),
+            org_id,
+            loan_id,
+            limit,
+            offset,
+        )
+
+    async def list_application_activity(
+        self,
+        org_id: UUID,
+        loan_id: UUID,
+        limit: int = 200,
+        offset: int = 0,
+    ):
+        return await self.conn.fetch(
+            self.sql("list_application_activity"),
             org_id,
             loan_id,
             limit,
