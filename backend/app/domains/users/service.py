@@ -8,12 +8,13 @@ from app.core.security import get_password_hash
 from app.core.exceptions import DomainException
 from app.domains.users.schemas import UserRow
 from app.core.database import get_transaction
+from app.core.cache import invalidate_auth_user
+from app.core.loan_authorization import canonical_role
 
 class UserService:
     ALLOWED_ROLES = {
         "account_officer", "branch_manager", "branch_supervisor", "credit_analyst",
         "crm", "head_crm", "auditor", "ed", "md", "legal", "system_admin",
-        "team_lead", "relationship_officer", "supervisor",
     }
     def __init__(self, repo: UserRepository):
         self.repo = repo
@@ -55,17 +56,9 @@ class UserService:
             raise DomainException("A user with this email already exists.", 400)
 
         hashed = get_password_hash(user_in.password)
-        db_role = user_in.role.lower().replace(" ", "_")
+        db_role = canonical_role(user_in.role)
         if db_role not in self.ALLOWED_ROLES:
             raise DomainException("Select a valid role.", 400)
-        
-        # Equate Team Lead -> branch_manager, Relationship Officer -> account_officer, Supervisor -> branch_supervisor
-        role_map = {
-            "team_lead": "branch_manager",
-            "relationship_officer": "account_officer",
-            "supervisor": "branch_supervisor",
-        }
-        db_role = role_map.get(db_role, db_role)
 
         user = await self.repo.create_user(
             org_id=user_in.org_id,
@@ -82,17 +75,9 @@ class UserService:
         if await self.repo.get_by_email(email):
             raise DomainException("A user with this email already exists.", 400)
 
-        role = invite_in.role.strip().lower().replace(" ", "_")
+        role = canonical_role(invite_in.role)
         if role not in self.ALLOWED_ROLES:
             raise DomainException("Select a valid role.", 400)
-
-        # Equate Team Lead -> branch_manager, Relationship Officer -> account_officer, Supervisor -> branch_supervisor
-        role_map = {
-            "team_lead": "branch_manager",
-            "relationship_officer": "account_officer",
-            "supervisor": "branch_supervisor",
-        }
-        role = role_map.get(role, role)
 
         user = await self.repo.create_user(
             org_id=current_admin.org_id,
@@ -117,19 +102,12 @@ class UserService:
         if user.id == current_admin.id:
             raise DomainException("You cannot change your own role.", 400)
 
-        normalized_role = role.strip().lower().replace(" ", "_")
+        normalized_role = canonical_role(role)
         if normalized_role not in self.ALLOWED_ROLES:
             raise DomainException("Select a valid role.", 400)
 
-        # Equate Team Lead -> branch_manager, Relationship Officer -> account_officer, Supervisor -> branch_supervisor
-        role_map = {
-            "team_lead": "branch_manager",
-            "relationship_officer": "account_officer",
-            "supervisor": "branch_supervisor",
-        }
-        normalized_role = role_map.get(normalized_role, normalized_role)
-
         await self.repo.update_role(user.id, normalized_role)
+        await invalidate_auth_user(user.id)
         return await self.repo.get_by_id(user.id)
 
     async def deactivate_managed_user(self, current_admin: UserRow, user_id) -> None:
@@ -142,6 +120,7 @@ class UserService:
             raise DomainException("This user is already inactive.", 400)
 
         await self.repo.deactivate_user(user.id)
+        await invalidate_auth_user(user.id)
 
     async def delete_managed_user(self, current_admin: UserRow, user_id) -> None:
         user = await self.repo.get_by_id(user_id)
@@ -150,6 +129,7 @@ class UserService:
         if user.id == current_admin.id:
             raise DomainException("You cannot delete your own account.", 400)
         await self.repo.delete_user(user.id)
+        await invalidate_auth_user(user.id)
 
     async def update_user_branch(self, current_admin: UserRow, user_id, branch_id: UUID | None) -> UserRow:
         user = await self.repo.get_by_id(user_id)
@@ -159,4 +139,5 @@ class UserService:
             raise DomainException("You cannot change your own branch.", 400)
 
         await self.repo.update_branch(user.id, branch_id)
+        await invalidate_auth_user(user.id)
         return await self.repo.get_by_id(user.id)

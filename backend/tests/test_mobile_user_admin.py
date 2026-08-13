@@ -6,6 +6,7 @@ import pytest
 from starlette.requests import Request
 
 from app.api.v1 import mobile
+from app.core.dependencies import RoleChecker
 from app.domains.users.schemas import UserInvitationCreate
 
 
@@ -60,3 +61,10 @@ def test_mobile_admin_routes_authenticate_before_opening_database():
     for endpoint in (mobile.list_mobile_users, mobile.invite_mobile_user, mobile.create_mobile_user):
         parameter_names = list(signature(endpoint).parameters)
         assert parameter_names.index("current_user") < parameter_names.index("conn")
+
+
+def test_legacy_admin_role_is_authorized_as_system_admin():
+    legacy_admin = SimpleNamespace(role="admin")
+
+    mobile._ensure_roles(legacy_admin, {"system_admin"})
+    assert RoleChecker(["System Admin"])(legacy_admin) is legacy_admin

@@ -181,6 +181,16 @@ class ProtectedStaticFiles(StaticFiles):
 app.mount("/static", ProtectedStaticFiles(directory=static_dir), name="static")
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Serve the FieldCRM favicon for browsers that probe the conventional root path."""
+    return FileResponse(
+        os.path.join(static_dir, "icons", "favicon.ico"),
+        media_type="image/x-icon",
+        headers={"Cache-Control": "public, max-age=86400, stale-while-revalidate=604800"},
+    )
+
+
 @app.get("/api/v1/documents/{document_id}/download")
 async def download_document(
     document_id: UUID,

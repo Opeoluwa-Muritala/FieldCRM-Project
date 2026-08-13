@@ -41,7 +41,7 @@ async def main() -> None:
                WHERE n.nspname='public' AND c.relname='loan_applications'"""
         )
         roles = await conn.fetch(
-            "SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname IN ('fieldcrm_app','fieldcrm_worker') ORDER BY rolname"
+            "SELECT rolname, rolcanlogin, rolsuper, rolbypassrls FROM pg_roles WHERE rolname IN ('fieldcrm_app','fieldcrm_worker') ORDER BY rolname"
         )
         columns = await conn.fetchval(
             """SELECT count(*) FROM information_schema.columns
@@ -58,6 +58,8 @@ async def main() -> None:
         print(f"loan_rls_enabled={protected['rls_enabled'] if protected else 'missing'}")
         print(f"loan_rls_forced={protected['rls_forced'] if protected else 'missing'}")
         print(f"runtime_roles={','.join(row['rolname'] for row in roles) or 'missing'}")
+        for runtime_role in roles:
+            print(f"{runtime_role['rolname']}_can_login={runtime_role['rolcanlogin']}")
         print(f"sensitive_lookup_columns={columns}/3")
         can_migrate = bool(state["rolsuper"] or (protected and protected["owner"] == state["role_name"]))
         print(f"can_apply_schema_migrations={str(can_migrate).lower()}")
