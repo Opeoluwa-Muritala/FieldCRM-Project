@@ -3,7 +3,7 @@ import asyncio
 from app.core.middleware import CrossSiteRequestMiddleware
 
 
-async def invoke(*, origin="", fetch_site="", cookie="session=token"):
+async def invoke(*, origin="", fetch_site="", cookie="session=token", host="fieldcrm.example"):
     called = []
 
     async def downstream(scope, receive, send):
@@ -11,7 +11,7 @@ async def invoke(*, origin="", fetch_site="", cookie="session=token"):
         await send({"type": "http.response.start", "status": 204, "headers": []})
         await send({"type": "http.response.body", "body": b""})
 
-    headers = [(b"cookie", cookie.encode())]
+    headers = [(b"cookie", cookie.encode()), (b"host", host.encode())]
     if origin:
         headers.append((b"origin", origin.encode()))
     if fetch_site:
@@ -21,7 +21,7 @@ async def invoke(*, origin="", fetch_site="", cookie="session=token"):
         sent.append(message)
     middleware = CrossSiteRequestMiddleware(downstream, ["https://fieldcrm.example"])
     await middleware(
-        {"type": "http", "method": "POST", "path": "/applications/1", "headers": headers},
+        {"type": "http", "method": "POST", "path": "/applications/1", "scheme": "https", "headers": headers},
         lambda: None,
         send,
     )
@@ -37,6 +37,24 @@ def test_cookie_mutation_requires_allowed_origin():
 
 def test_fetch_metadata_blocks_cross_site_even_with_forged_origin():
     called, sent = asyncio.run(invoke(origin="https://fieldcrm.example", fetch_site="cross-site"))
+    assert not called and sent[0]["status"] == 403
+
+
+def test_cookie_mutation_accepts_exact_deployment_same_origin():
+    called, sent = asyncio.run(invoke(
+        origin="https://field-crm-project.vercel.app",
+        fetch_site="same-origin",
+        host="field-crm-project.vercel.app",
+    ))
+    assert called and sent[0]["status"] == 204
+
+
+def test_cookie_mutation_rejects_different_origin_from_request_host():
+    called, sent = asyncio.run(invoke(
+        origin="https://attacker.example",
+        fetch_site="same-site",
+        host="field-crm-project.vercel.app",
+    ))
     assert not called and sent[0]["status"] == 403
 
 

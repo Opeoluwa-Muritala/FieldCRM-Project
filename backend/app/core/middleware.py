@@ -27,6 +27,20 @@ class CrossSiteRequestMiddleware:
         self.app = app
         self.allowed_origins = {origin.rstrip("/").lower() for origin in allowed_origins}
 
+    @staticmethod
+    def _request_origin(scope: Scope) -> str:
+        """Return the exact origin serving this request behind a trusted proxy.
+
+        A browser's same-origin request is safe even when a deployment hostname
+        was not duplicated in CORS_ORIGINS. Cross-site callers cannot make their
+        Origin match the victim Host while retaining the victim's cookies.
+        """
+        forwarded_proto = _get_header(scope, b"x-forwarded-proto").split(",", 1)[0].strip().lower()
+        scheme = forwarded_proto or str(scope.get("scheme") or "http").lower()
+        forwarded_host = _get_header(scope, b"x-forwarded-host").split(",", 1)[0].strip().lower()
+        host = forwarded_host or _get_header(scope, b"host").strip().lower()
+        return f"{scheme}://{host}" if host else ""
+
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope.get("type") != "http" or scope.get("method") not in self._UNSAFE:
             await self.app(scope, receive, send)
@@ -49,7 +63,9 @@ class CrossSiteRequestMiddleware:
         if not origin and referer:
             parsed = urlsplit(referer)
             origin = f"{parsed.scheme}://{parsed.netloc}".lower()
-        if not origin or origin not in self.allowed_origins:
+        accepted_origins = self.allowed_origins | {self._request_origin(scope)}
+        accepted_origins.discard("")
+        if not origin or origin not in accepted_origins:
             response = Response("CSRF origin validation failed", status_code=403)
             await response(scope, receive, send)
             return
