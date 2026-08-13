@@ -14,6 +14,7 @@ from fastapi import HTTPException, status
 
 
 ROLE_ALIASES = {
+    "admin": "system_admin",
     "loan_officer": "account_officer",
     "relationship_officer": "account_officer",
     "team_lead": "branch_manager",

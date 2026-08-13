@@ -156,27 +156,11 @@ class RoleChecker:
         # canonical workflow and mobile API use "account_officer".  Treat
         # these as the same role at the authorization boundary so legacy web
         # links do not bounce a valid Account Officer back to the dashboard.
-        role_aliases = {
-            "loan_officer": "account_officer",
-            "relationship_officer": "account_officer",
-            "team_lead": "branch_manager",
-            "supervisor": "branch_supervisor",
-        }
-        self.allowed_roles = [
-            role_aliases.get(r.lower().replace(" ", "_"), r.lower().replace(" ", "_"))
-            for r in allowed_roles
-        ]
+        self.allowed_roles = [canonical_role(role) for role in allowed_roles]
 
     def __call__(self, current_user: UserRow = Depends(get_current_user)) -> UserRow:
         # UserRow.role is already stored as lowercase snake_case in the new schema
-        user_role = current_user.role.lower().replace(" ", "_")
-        role_aliases = {
-            "loan_officer": "account_officer",
-            "relationship_officer": "account_officer",
-            "team_lead": "branch_manager",
-            "supervisor": "branch_supervisor",
-        }
-        user_role = role_aliases.get(user_role, user_role)
+        user_role = canonical_role(current_user.role)
         if user_role not in self.allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

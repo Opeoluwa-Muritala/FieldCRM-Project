@@ -265,7 +265,7 @@ class UserRoleRequest(BaseModel):
 
 
 def _role(user) -> str:
-    return user.role.lower().replace(" ", "_")
+    return canonical_role(user.role)
 
 
 def _mobile_role(user) -> str:
@@ -426,7 +426,8 @@ def _ensure_intake_writer(app, current_user) -> None:
 
 
 def _ensure_roles(current_user, allowed_roles: set[str]) -> None:
-    if _role(current_user) not in allowed_roles:
+    normalized_allowed = {canonical_role(role) for role in allowed_roles}
+    if _role(current_user) not in normalized_allowed:
         raise HTTPException(status_code=403, detail="Insufficient permissions for this action")
 
 
