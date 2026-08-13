@@ -1,6 +1,7 @@
 from uuid import UUID
 import datetime
 import random
+import json
 from app.domains.loans.repository import LoanRepository
 from app.core.audit import AuditService
 from app.core.exceptions import DomainException
@@ -106,7 +107,12 @@ class LoanService:
 
     async def get_wizard_data(self, app_id: UUID) -> dict:
         sd = await self.repo.get_stage_data(app_id, "intake")
-        return sd["data_json"] if sd and sd.get("data_json") else {}
+        data = dict(sd["data_json"]) if sd and sd.get("data_json") else {}
+        from app.core.field_encryption import decrypt_sensitive
+        for field in ("bvn", "nin", "account_number", "bank_account_number", "spouse_bvn"):
+            if field in data:
+                data[field] = decrypt_sensitive(data[field], context=f"intake:{field}")
+        return data
 
     async def save_wizard_step(self, app_id: UUID, step: int, form_data: dict, user_id: UUID, org_id: UUID) -> None:
         async with get_transaction() as conn:
@@ -118,7 +124,21 @@ class LoanService:
                 raise DomainException("Application not found", 404)
                 
             existing = await tx_repo.get_stage_data(app_id, "intake")
-            existing_data = existing["data_json"] if existing and existing.get("data_json") else {}
+            existing_data = dict(existing["data_json"]) if existing and existing.get("data_json") else {}
+            before = dict(existing_data)
+
+            protected_fields = {
+                "id", "org_id", "created_by", "created_at", "updated_at",
+                "branch_id", "branch_manager_id", "current_owner_id", "stage",
+                "approved_by", "approved_at", "disbursed_at", "deleted_at",
+                "saved_by", "saved_at",
+            }
+            attempted = protected_fields.intersection(form_data)
+            if attempted:
+                raise DomainException(
+                    f"Protected intake fields cannot be changed: {', '.join(sorted(attempted))}",
+                    422,
+                )
             
             # Merge form data
             for k, v in form_data.items():
@@ -191,4 +211,82 @@ class LoanService:
                     except Exception as e:
                         logger.error(f"Failed to run BVN verification hook: {e}")
                 
+            from app.core.field_encryption import decrypt_sensitive, encrypt_sensitive, mask_sensitive
+            restricted_intake_fields = {
+                "bvn", "nin", "account_number", "bank_account_number", "spouse_bvn",
+            }
+            for field in restricted_intake_fields.intersection(form_data):
+                existing_data[field] = encrypt_sensitive(
+                    existing_data.get(field), context=f"intake:{field}"
+                )
+
             await tx_repo.save_stage_data(app_id, "intake", existing_data, user_id)
+
+            actor = await conn.fetchrow(
+                "SELECT role FROM users WHERE id = $1 AND org_id = $2 AND active = TRUE",
+                user_id,
+                org_id,
+            )
+            actor_role = (actor["role"] if actor else "unknown").lower().replace(" ", "_")
+            actor_role = {
+                "loan_officer": "account_officer",
+                "relationship_officer": "account_officer",
+                "team_lead": "branch_manager",
+                "supervisor": "branch_supervisor",
+            }.get(actor_role, actor_role)
+            source = "team_lead_correction" if actor_role == "branch_manager" else "relationship_officer_intake"
+
+            sensitive_fields = {
+                "bvn", "nin", "account_number", "bank_account_number",
+                "spouse_bvn", "guarantor_bvn", "signature", "password", "token",
+            }
+
+            def audit_value(field: str, value) -> str | None:
+                if value is None:
+                    return None
+                serialized = json.dumps(value, ensure_ascii=True, sort_keys=True) if isinstance(value, (dict, list)) else str(value)
+                lowered = field.lower()
+                if any(secret in lowered for secret in sensitive_fields):
+                    if isinstance(value, str) and value.startswith("enc:v1:"):
+                        try:
+                            serialized = decrypt_sensitive(value, context=f"intake:{field}") or ""
+                        except Exception:
+                            return "masked"
+                    return f"masked:{mask_sensitive(serialized)}"
+                return serialized[:1000]
+
+            changed_fields = []
+            for field in sorted(form_data):
+                old_value = before.get(field)
+                new_value = existing_data.get(field)
+                def comparable(value):
+                    if field in restricted_intake_fields and isinstance(value, str) and value.startswith("enc:v1:"):
+                        return decrypt_sensitive(value, context=f"intake:{field}")
+                    return value
+                if comparable(old_value) == comparable(new_value):
+                    continue
+                changed_fields.append(field)
+                await tx_audit.insert(
+                    org_id=org_id,
+                    entity_type="loan_application",
+                    entity_id=app_id,
+                    action="intake.field_changed",
+                    user_id=user_id,
+                    user_role=actor_role,
+                    field_name=field,
+                    old_value=audit_value(field, old_value),
+                    new_value=audit_value(field, new_value),
+                    source=source,
+                    notes=f"Intake step {step}",
+                )
+            if changed_fields:
+                await tx_audit.insert(
+                    org_id=org_id,
+                    entity_type="loan_application",
+                    entity_id=app_id,
+                    action="intake.updated",
+                    user_id=user_id,
+                    user_role=actor_role,
+                    source=source,
+                    notes=f"Updated {len(changed_fields)} field(s) in intake step {step}",
+                )

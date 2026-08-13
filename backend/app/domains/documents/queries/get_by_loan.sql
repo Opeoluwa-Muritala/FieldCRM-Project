@@ -3,24 +3,29 @@
 -- Params: $1=loan_id, $2=org_id
 
 SELECT
-    id,
-    loan_id,
-    org_id,
-    doc_type,
-    form_code,
-    original_name,
-    stored_path,
-    mime_type,
-    size_bytes,
-    verified,
-    uploaded_by,
-    uploaded_at,
-    cloud_public_id,
-    cloud_preview_url,
-    uploaded_at AS created_at,
-    uploaded_at AS updated_at
-FROM documents
-WHERE loan_id = $1
-  AND org_id = $2
-  AND deleted_at IS NULL
-ORDER BY uploaded_at DESC;
+    d.id,
+    d.loan_id,
+    d.org_id,
+    d.doc_type,
+    d.form_code,
+    d.original_name,
+    d.stored_path,
+    d.mime_type,
+    d.size_bytes,
+    d.verified,
+    d.uploaded_by,
+    uploader.full_name AS uploaded_by_name,
+    uploader.role AS uploaded_by_role,
+    d.uploaded_at,
+    d.cloud_public_id,
+    d.cloud_preview_url,
+    d.uploaded_at AS created_at,
+    d.uploaded_at AS updated_at
+FROM documents d
+LEFT JOIN users uploader
+  ON uploader.id = d.uploaded_by
+ AND uploader.org_id = d.org_id
+WHERE d.loan_id = $1
+  AND d.org_id = $2
+  AND d.deleted_at IS NULL
+ORDER BY d.uploaded_at DESC;

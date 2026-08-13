@@ -11,7 +11,8 @@ from fastapi.responses import RedirectResponse, FileResponse, StreamingResponse
 import httpx
 
 from app.config import settings
-from app.core.database import db_conn, get_connection
+from app.core.database import get_connection
+from app.core.dependencies import authenticated_db_conn as db_conn
 from app.core.dependencies import get_current_user, RoleChecker
 from app.core.audit import AuditService
 from app.core.template_utils import build_template_context

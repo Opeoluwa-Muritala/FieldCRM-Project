@@ -27,11 +27,11 @@ def test_relationship_officer_dashboard_metrics_match_web_bundle():
 
 def test_relationship_officer_can_write_only_owned_intake():
     mobile._ensure_intake_writer(
-        SimpleNamespace(created_by="officer-1"), relationship_officer()
+        SimpleNamespace(created_by="officer-1", org_id="org-1", stage="intake"), relationship_officer()
     )
     with pytest.raises(mobile.HTTPException) as error:
         mobile._ensure_intake_writer(
-            SimpleNamespace(created_by="officer-2"), relationship_officer()
+            SimpleNamespace(created_by="officer-2", org_id="org-1", stage="intake"), relationship_officer()
         )
     assert error.value.status_code == 403
 

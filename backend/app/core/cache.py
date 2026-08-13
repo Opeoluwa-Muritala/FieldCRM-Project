@@ -142,6 +142,7 @@ async def cache_auth_user(user: Any) -> None:
             "email": user.email,
             "password_hash": "",
             "role": user.role,
+            "branch_id": user.branch_id,
             "active": user.active,
             "last_login_at": user.last_login_at,
             "created_at": user.created_at,

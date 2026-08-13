@@ -13,7 +13,12 @@ class GuarantorService:
 
     async def get_wizard_data(self, loan_id: UUID, slot: int) -> dict:
         sd = await self.loan_repo.get_stage_data(loan_id, f"guarantor_{slot}")
-        return sd["data_json"] if sd and sd.get("data_json") else {}
+        data = dict(sd["data_json"]) if sd and sd.get("data_json") else {}
+        from app.core.field_encryption import decrypt_sensitive
+        for field in ("bvn", "account_number", "cheque_number"):
+            if field in data:
+                data[field] = decrypt_sensitive(data[field], context=f"guarantor_stage:{field}")
+        return data
 
     async def save_wizard_step(self, loan_id: UUID, slot: int, step: int, form_data: dict, user_id: UUID) -> None:
         prod = await self.loan_repo.conn.fetchrow(
@@ -33,6 +38,18 @@ class GuarantorService:
         existing_data = existing["data_json"] if existing and existing.get("data_json") else {}
         for k, v in form_data.items():
             existing_data[k] = v
+        from app.core.field_encryption import encrypt_sensitive
+        # Guarantors no longer sign; silently discard obsolete clients' fields
+        # so historical mobile/web versions cannot reintroduce signature data.
+        existing_data.pop("guarantor_signature", None)
+        existing_data.pop("witness_signature", None)
+        form_data.pop("guarantor_signature", None)
+        form_data.pop("witness_signature", None)
+        for field in ("bvn", "account_number", "cheque_number"):
+            if field in form_data:
+                existing_data[field] = encrypt_sensitive(
+                    existing_data.get(field), context=f"guarantor_stage:{field}"
+                )
         await self.loan_repo.save_stage_data(loan_id, f"guarantor_{slot}", existing_data, user_id)
 
     async def mark_slot_submitted(
@@ -83,12 +100,6 @@ class GuarantorService:
         account_number = g_data.get("account_number")
         cheque_number = g_data.get("cheque_number")
 
-        sig = g_data.get("guarantor_signature")
-        signature_detected = bool(sig and len(sig) > 50)
-
-        wit_sig = g_data.get("witness_signature")
-        witness_signature_detected = bool(wit_sig and len(wit_sig) > 50)
-
         guarantor = await self.repo.upsert_submitted(
             loan_id=loan_id,
             org_id=org_id,
@@ -104,8 +115,8 @@ class GuarantorService:
             bank_name=bank_name,
             account_number=account_number,
             cheque_number=cheque_number,
-            signature_detected=signature_detected,
-            witness_signature_detected=witness_signature_detected,
+            signature_detected=False,
+            witness_signature_detected=False,
         )
 
         await self.audit.insert(

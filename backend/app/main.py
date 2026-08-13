@@ -29,11 +29,15 @@ from app.core.middleware import (
     PerformanceTimingMiddleware,
     RequestIDMiddleware,
     SecurityHeadersMiddleware,
+    CrossSiteRequestMiddleware,
 )
 from app.core.template_utils import csp_nonce_context
 from app.core.templates import create_templates
-from app.core.dependencies import get_current_user, RoleChecker
+from app.core.dependencies import authenticated_db_conn, get_current_user, RoleChecker
+from app.core.loan_authorization import require_view
+from app.core.audit import AuditService
 from app.domains.documents.repository import DocumentRepository
+from app.domains.loans.repository import LoanRepository
 from app.services.cloud_storage_service import signed_download_url, signed_preview_url
 from app.core.rate_limit import close_rate_limiter, init_rate_limiter, enforce_login_limits, enforce_reset_limits
 from app.core.cache import ResponseCacheInvalidationMiddleware, close_cache, init_cache
@@ -116,8 +120,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
+    docs_url=None if settings.is_production else "/api/docs",
+    redoc_url=None if settings.is_production else "/api/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
     lifespan=lifespan
 )
 
@@ -127,7 +132,7 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allow_headers=["*"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-CSRF-Token"],
 )
 
 # Custom Middlewares
@@ -137,6 +142,7 @@ app.add_middleware(
     csp_nonce_enforced=settings.CSP_NONCE_ENFORCED,
 )
 app.add_middleware(RequestIDMiddleware)
+app.add_middleware(CrossSiteRequestMiddleware, allowed_origins=settings.cors_origins)
 app.add_middleware(PendingResponseCookiesMiddleware)
 app.add_middleware(ResponseCacheInvalidationMiddleware)
 app.add_middleware(
@@ -179,12 +185,26 @@ app.mount("/static", ProtectedStaticFiles(directory=static_dir), name="static")
 async def download_document(
     document_id: UUID,
     current_user=Depends(get_current_user),
-    conn=Depends(db_conn),
+    conn=Depends(authenticated_db_conn),
 ):
     """Authorise in FieldCRM before issuing a streamed file response with client name."""
     document = await DocumentRepository(conn).get_by_id_for_org(document_id, current_user.org_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
+    if document.get("loan_id"):
+        loan = await LoanRepository(conn).get_by_id(document["loan_id"], current_user.org_id)
+        if not loan:
+            raise HTTPException(status_code=404, detail="Document not found")
+        require_view(current_user, loan)
+        await AuditService(conn).insert(
+            org_id=current_user.org_id,
+            entity_type="document",
+            entity_id=document_id,
+            action="document.downloaded",
+            user_id=current_user.id,
+            user_role=current_user.role,
+            source="document_proxy",
+        )
 
     # Determine a user-friendly filename containing the applicant name
     filename = document.get("original_name")
@@ -205,7 +225,12 @@ async def download_document(
 
     local_path = resolve_local_document_path(document.get("stored_path"))
     if not document.get("cloud_public_id") and local_path:
-        return FileResponse(local_path, media_type=document.get("mime_type"), filename=filename)
+        return FileResponse(
+            local_path,
+            media_type=document.get("mime_type"),
+            filename=filename,
+            headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+        )
 
     if not document.get("cloud_public_id"):
         raise HTTPException(status_code=404, detail="Document not found")
@@ -229,7 +254,9 @@ async def download_document(
         file_streamer(),
         media_type=document.get("mime_type"),
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"; filename*=UTF-8\'\'{encoded_filename}'
+            "Content-Disposition": f'attachment; filename="{filename}"; filename*=UTF-8\'\'{encoded_filename}',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
         }
     )
 
@@ -240,12 +267,27 @@ async def preview_document(
     request: Request,
     page: int = Query(default=1, ge=1, le=100),
     current_user=Depends(get_current_user),
-    conn=Depends(db_conn),
+    conn=Depends(authenticated_db_conn),
 ):
     """Stream an authorised document inline so it can be safely embedded in the UI."""
     document = await DocumentRepository(conn).get_by_id_for_org(document_id, current_user.org_id)
     if not document or document.get("upload_status") not in (None, "done"):
         raise HTTPException(status_code=404, detail="Document not found")
+    if document.get("loan_id"):
+        loan = await LoanRepository(conn).get_by_id(document["loan_id"], current_user.org_id)
+        if not loan:
+            raise HTTPException(status_code=404, detail="Document not found")
+        require_view(current_user, loan)
+        await AuditService(conn).insert(
+            org_id=current_user.org_id,
+            entity_type="document",
+            entity_id=document_id,
+            action="document.previewed",
+            user_id=current_user.id,
+            user_role=current_user.role,
+            source="document_proxy",
+            notes=f"Page {page}",
+        )
 
     stored_mime_type = normalize_mime_type(document.get("mime_type"))
     if stored_mime_type and stored_mime_type not in ALLOWED_PREVIEW_MIME_TYPES:
@@ -263,7 +305,11 @@ async def preview_document(
         return FileResponse(
             local_path,
             media_type=stored_mime_type,
-            headers={"Content-Disposition": preview_content_disposition(document.get("original_name"))},
+            headers={
+                "Content-Disposition": preview_content_disposition(document.get("original_name")),
+                "Cache-Control": "private, no-store",
+                "X-Content-Type-Options": "nosniff",
+            },
         )
     if not document.get("cloud_public_id"):
         raise HTTPException(status_code=404, detail="Document not found")

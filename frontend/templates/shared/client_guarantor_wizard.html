@@ -1,6 +1,5 @@
 {% extends "base/shell.html" %}
 {% set hide_tabbar = true %}
-{% set hide_tabbar = true %}
 {% set mobile_title_text = "Guarantor: Step " ~ step %}
 
 {% block title %}Guarantor Wizard - Step {{ step }} | FieldCRM{% endblock %}
@@ -18,8 +17,8 @@
     <div class="csp-s-8e9fc9e85a4e">
     <!-- Horizontal Step Indicator -->
     <div class="wizard-steps">
-        {% set step_labels = ["Identity", "Obligations", "Family", "Employment", "Business & Docs", "Declaration", "Guarantee Limit", "Signatures"] %}
-        {% for s_num in range(1, 9) %}
+        {% set step_labels = ["Identity", "Obligations", "Family", "Employment", "Business & Docs", "Declaration", "Guarantee Limit"] %}
+        {% for s_num in range(1, 8) %}
             {% set is_active = (s_num == step) %}
             {% set is_completed = (s_num < step) %}
             <div class="wizard-step-segment {% if is_active %}active{% elif is_completed %}completed{% endif %}">
@@ -42,7 +41,6 @@
                 {% elif step == 5 %}Business & Supporting Documents
                 {% elif step == 6 %}Declaration
                 {% elif step == 7 %}Guarantee Limits & Bank details
-                {% elif step == 8 %}Signatures & Witnesses
                 {% endif %}
             </h2>
             <p class="page-card-subtitle">
@@ -53,7 +51,6 @@
                 {% elif step == 5 %}Business address, sales, and upload required supporting documents.
                 {% elif step == 6 %}Guarantor's legal statements.
                 {% elif step == 7 %}Guarantee limit, bank account details, and cheque references.
-                {% elif step == 8 %}Digital signatures of guarantor and witness.
                 {% endif %}
             </p>
         </div>
@@ -227,36 +224,6 @@
             </div>
             {% endif %}
 
-            <!-- STEP 8: SIGNATURES -->
-            {% if step == 8 %}
-            <div class="form-grid-2 csp-s-fec3619ed0de">
-                <div class="form-group">
-                    <label class="field-label">Guarantor Signature <span class="required">*</span></label>
-                    <div class="signature-box">
-                        <canvas id="guarantor_sig_canvas"></canvas>
-                        <button type="button" class="signature-clear-btn" data-clear-signature="guarantor_sig_canvas">Clear</button>
-                    </div>
-                    <input type="hidden" name="guarantor_signature" id="guarantor_sig_val">
-                </div>
-                <div class="form-group">
-                    <label class="field-label">Witness Signature <span class="required">*</span></label>
-                    <div class="signature-box">
-                        <canvas id="witness_sig_canvas"></canvas>
-                        <button type="button" class="signature-clear-btn" data-clear-signature="witness_sig_canvas">Clear</button>
-                    </div>
-                    <input type="hidden" name="witness_signature" id="witness_sig_val">
-                </div>
-                <div class="form-group">
-                    <label class="field-label">Witness Name</label>
-                    <input type="text" name="witness_name" class="field-input" value="{{ data.witness_name or '' }}">
-                </div>
-                <div class="form-group">
-                    <label class="field-label">Witness Date <span class="required">*</span></label>
-                    <input type="date" name="witness_date" class="field-input" value="{{ data.witness_date or '' }}" required>
-                </div>
-            </div>
-            {% endif %}
-
             <!-- Wizard Footer Action Buttons -->
             <div class="wizard-footer">
                 <div>
@@ -265,7 +232,7 @@
                     {% endif %}
                 </div>
                 <button type="submit" class="btn-primary-filled">
-                    {% if step == 8 %}Complete & Return &rarr;{% else %}Save & Continue &rarr;{% endif %}
+                    {% if step == 7 %}Complete & Return &rarr;{% else %}Save & Continue &rarr;{% endif %}
                 </button>
             </div>
 

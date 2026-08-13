@@ -6,11 +6,54 @@ from time import perf_counter
 from starlette.datastructures import MutableHeaders
 from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from urllib.parse import urlsplit
 
 from app.core.performance import finish_request_performance, start_request_performance
 
 
 logger = logging.getLogger("FieldCRMPerformance")
+
+
+class CrossSiteRequestMiddleware:
+    """Reject cross-site state changes that rely on browser cookies.
+
+    API clients using Authorization headers are not subject to browser CSRF.
+    Cookie-authenticated mutations must originate from an explicitly allowed
+    origin, and modern Fetch Metadata is used as an additional deny signal.
+    """
+    _UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
+
+    def __init__(self, app: ASGIApp, allowed_origins: list[str]):
+        self.app = app
+        self.allowed_origins = {origin.rstrip("/").lower() for origin in allowed_origins}
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope.get("type") != "http" or scope.get("method") not in self._UNSAFE:
+            await self.app(scope, receive, send)
+            return
+        cookie_header = _get_header(scope, b"cookie")
+        uses_auth_cookie = any(
+            marker in f";{cookie_header}" for marker in (";session=", ";__Host-session=", ";refresh_token=")
+        )
+        if not uses_auth_cookie:
+            await self.app(scope, receive, send)
+            return
+
+        fetch_site = _get_header(scope, b"sec-fetch-site").lower()
+        origin = _get_header(scope, b"origin").rstrip("/").lower()
+        referer = _get_header(scope, b"referer")
+        if fetch_site == "cross-site":
+            response = Response("Cross-site request blocked", status_code=403)
+            await response(scope, receive, send)
+            return
+        if not origin and referer:
+            parsed = urlsplit(referer)
+            origin = f"{parsed.scheme}://{parsed.netloc}".lower()
+        if not origin or origin not in self.allowed_origins:
+            response = Response("CSRF origin validation failed", status_code=403)
+            await response(scope, receive, send)
+            return
+        await self.app(scope, receive, send)
 
 
 def queue_response_cookie(scope: Scope, **cookie_options) -> None:

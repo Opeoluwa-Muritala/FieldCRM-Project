@@ -1,7 +1,7 @@
 from typing import Optional, List, Any, Dict
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class LoanApplicationBase(BaseModel):
     borrower_id: str
@@ -77,6 +77,12 @@ class LoanRow(BaseModel):
     current_owner_name: Optional[str] = None
     credit_officer_name: Optional[str] = None
     branch_manager_name: Optional[str] = None
+
+    @field_validator("bvn", mode="before")
+    @classmethod
+    def decrypt_bvn(cls, value):
+        from app.core.field_encryption import decrypt_sensitive
+        return decrypt_sensitive(value, context="loan_application:bvn")
 
     # Compatibility layer properties
     @property
@@ -197,6 +203,12 @@ class LoanListItem(BaseModel):
     updated_at: datetime
     officer_name: Optional[str] = None
     total_count: int
+
+    @field_validator("bvn", mode="before")
+    @classmethod
+    def decrypt_bvn(cls, value):
+        from app.core.field_encryption import decrypt_sensitive
+        return decrypt_sensitive(value, context="loan_application:bvn")
 
     @property
     def current_stage(self) -> int:

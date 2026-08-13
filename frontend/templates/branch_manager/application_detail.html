@@ -30,10 +30,60 @@
                 'rejected': 'missing'
             } %}
             <span class="status-badge {{ stage_class.get(app.stage, '') }}">{{ app.status }}</span>
+
+            <div class="application-attribution">
+                <div><strong>Created by</strong></div>
+                <div>{{ app.created_by_name or 'Unknown user' }}</div>
+                <div class="page-card-subtitle">
+                    {{ (app.created_by_role or 'relationship_officer')|replace('_', ' ')|title }}
+                    {% if app.created_at %}&middot; {{ app.created_at.strftime('%d %b %Y %H:%M') }}{% endif %}
+                </div>
+                {% if latest_activity %}
+                <div class="application-last-updated">
+                    <strong>Last updated by</strong><br>
+                    {{ latest_activity.actor_name or latest_activity.actor_role|replace('_', ' ')|title }}
+                    &middot; {{ latest_activity.created_at.strftime('%d %b %Y %H:%M') if latest_activity.created_at else '' }}
+                </div>
+                {% endif %}
+            </div>
+
+            {% if capabilities.can_edit_intake or capabilities.can_upload_documents %}
+            <div class="application-secure-actions">
+                {% if capabilities.can_edit_intake %}
+                <a href="/applications/{{ app_id }}/step/1" class="btn btn-secondary">Edit intake</a>
+                {% endif %}
+                {% if capabilities.can_upload_documents %}
+                <a href="/applications/{{ app_id }}/documents/upload" class="btn btn-secondary">Upload document</a>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
         
         <div class="page-card csp-s-b3a2297a12f5">
             <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary workflow-analysis-link-block">Feasibility Analysis &rarr;</a>
+        </div>
+
+        <div class="page-card csp-s-b3a2297a12f5 application-activity-card">
+            <h3 class="csp-s-2e2b4cd7c4f9">Recent Activity</h3>
+            <div class="application-activity-list">
+                {% for event in activity_events[:20] %}
+                <div class="application-activity-item">
+                    <strong>{{ event.actor_name or event.actor_role|replace('_', ' ')|title }}</strong>
+                    <span>{{ event.action|replace('.', ' ')|replace('_', ' ')|title }}</span>
+                    {% if event.field_name %}
+                    <div class="page-card-subtitle">
+                        {{ event.field_name|replace('_', ' ')|title }}:
+                        {{ event.old_value or 'empty' }} &rarr; {{ event.new_value or 'empty' }}
+                    </div>
+                    {% elif event.notes %}
+                    <div class="page-card-subtitle">{{ event.notes }}</div>
+                    {% endif %}
+                    <time class="page-card-subtitle">{{ event.created_at.strftime('%d %b %Y %H:%M') if event.created_at else '' }}</time>
+                </div>
+                {% else %}
+                <p class="page-card-subtitle">No recorded changes yet.</p>
+                {% endfor %}
+            </div>
         </div>
         
         {# Vertical Stage Timeline #}

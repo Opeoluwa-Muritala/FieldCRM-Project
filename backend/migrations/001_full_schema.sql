@@ -90,6 +90,7 @@ CREATE TABLE loan_applications (
                         )),
     applicant_name      TEXT NOT NULL,
     bvn                 TEXT,
+    bvn_lookup_hash     TEXT,
     phone               TEXT,
     amount              NUMERIC(15,2) CHECK (amount > 0),
     tenor_months        INTEGER CHECK (tenor_months > 0),
@@ -142,6 +143,7 @@ CREATE TABLE guarantors (
     full_name                   TEXT,
     relationship_to_client      TEXT,
     bvn                         TEXT,
+    bvn_lookup_hash             TEXT,
     phone                       TEXT,
     home_address                TEXT,
     employment_type             TEXT,
@@ -150,6 +152,7 @@ CREATE TABLE guarantors (
     max_guarantee_amount_words  TEXT,
     bank_name                   TEXT,
     account_number              TEXT,
+    account_lookup_hash         TEXT,
     cheque_number               TEXT,
     form_stage                  TEXT NOT NULL DEFAULT 'draft' CHECK (form_stage IN (
                                     'draft','submitted','ocr_review',

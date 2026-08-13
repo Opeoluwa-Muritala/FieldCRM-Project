@@ -103,11 +103,6 @@ class GuarantorsFormModel(BaseModel):
     cheque_number: FieldWithMeta
     
     declaration_text: FieldWithMeta
-    guarantor_signature: FieldWithMeta
-    signature_date: FieldWithMeta
-    witness_name: FieldWithMeta
-    witness_signature: FieldWithMeta
-    witness_date: FieldWithMeta
 
 class PledgeTrustReceiptFormModel(BaseModel):
     borrower_name: FieldWithMeta

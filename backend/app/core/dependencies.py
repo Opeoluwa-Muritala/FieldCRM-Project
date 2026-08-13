@@ -1,7 +1,8 @@
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from time import perf_counter
-from app.core.database import get_connection
+from app.core.database import DatabaseIdentity, database_identity, get_connection
+from app.core.loan_authorization import canonical_role
 from app.core.middleware import queue_response_cookie
 from app.core.performance import record_counter, record_duration
 from app.core.security import decode_access_token
@@ -56,11 +57,11 @@ async def get_current_user(
     request: Request,
     token: str = Depends(oauth2_scheme),
 ) -> UserRow:
-    # Resolve token from OAuth2 authorization header, query params, or session cookies
+    # Resolve tokens only from the standard Authorization header or protected
+    # cookies. Query-string bearer tokens leak through logs and referrers.
     started_at = perf_counter()
     token = (
         token
-        or request.query_params.get("token")
         or request.cookies.get("session")
         or request.cookies.get("__Host-session")
     )
@@ -129,6 +130,24 @@ async def get_current_user(
     # It does not change the authentication or direct database read path.
     request.state.cache_user = user
     return user
+
+
+async def authenticated_db_conn(
+    request: Request,
+    current_user: UserRow = Depends(get_current_user),
+):
+    """Yield a connection carrying trusted transaction-local RLS identity."""
+    request_id = request.headers.get("x-request-id") or getattr(request.state, "request_id", None)
+    identity = DatabaseIdentity(
+        org_id=str(current_user.org_id),
+        user_id=str(current_user.id),
+        role=canonical_role(current_user.role),
+        branch_id=str(current_user.branch_id) if getattr(current_user, "branch_id", None) else None,
+        request_id=str(request_id) if request_id else None,
+    )
+    with database_identity(identity):
+        async with get_connection() as conn:
+            yield conn
 
 
 class RoleChecker:
