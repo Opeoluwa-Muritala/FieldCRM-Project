@@ -61,6 +61,14 @@ class Settings(BaseSettings):
     FIELD_ENCRYPTION_KEY: str = os.getenv("FIELD_ENCRYPTION_KEY", "")
     FIELD_LOOKUP_KEY: str = os.getenv("FIELD_LOOKUP_KEY", "")
 
+    # Demo presenter mode is permitted only outside Vercel Production. It uses
+    # a synthetic tenant in the normal database and never bypasses RLS.
+    DEMO_ENABLED: bool = os.getenv("DEMO_ENABLED", "false").lower() in ("true", "1", "yes")
+    DEMO_ORG_ID: str = os.getenv("DEMO_ORG_ID", "")
+    DEMO_ACCESS_SECRET: str = os.getenv("DEMO_ACCESS_SECRET", "")
+    DEMO_SESSION_MINUTES: int = int(os.getenv("DEMO_SESSION_MINUTES", "120"))
+    VERCEL_ENV: str = os.getenv("VERCEL_ENV", "")
+
     
     # Security / CORS
     # Keep this as a string for compatibility with older pydantic-settings
@@ -146,19 +154,25 @@ class Settings(BaseSettings):
 
     @property
     def VERIFICATION_ENABLED(self) -> bool:
-        return bool(self.QORE_API_KEY)
+        return bool(self.QORE_API_KEY) and not self.demo_mode
 
     @property
     def BUREAU_REPORTING_ENABLED(self) -> bool:
-        return bool((self.CREDIT_REGISTRY_USERNAME and self.CREDIT_REGISTRY_PASSWORD) or self.CRC_API_KEY)
+        return bool((self.CREDIT_REGISTRY_USERNAME and self.CREDIT_REGISTRY_PASSWORD) or self.CRC_API_KEY) and not self.demo_mode
 
     @property
     def AML_SCREENING_ENABLED(self) -> bool:
-        return bool(self.AML_YOUVERIFY_TOKEN)
+        return bool(self.AML_YOUVERIFY_TOKEN) and not self.demo_mode
 
     @property
     def cloudinary_enabled(self) -> bool:
+        # Demo documents still need durable storage on serverless previews.
+        # Cloudinary object paths are already scoped by organisation and loan.
         return bool(self.CLOUDINARY_CLOUD_NAME and self.CLOUDINARY_API_KEY and self.CLOUDINARY_API_SECRET)
+
+    @property
+    def demo_mode(self) -> bool:
+        return self.DEMO_ENABLED and self.VERCEL_ENV.lower() != "production"
 
     @property
     def is_production(self) -> bool:
@@ -217,6 +231,16 @@ class Settings(BaseSettings):
             or any(character not in "0123456789abcdefABCDEF" for character in self.ANDROID_APK_SHA256)
         ):
             raise ValueError("ANDROID_APK_SHA256 must be a 64-character hexadecimal digest.")
+        if self.DEMO_ENABLED:
+            from uuid import UUID
+            try:
+                UUID(self.DEMO_ORG_ID)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("DEMO_ORG_ID must be a valid UUID when DEMO_ENABLED=true.") from exc
+            if len(self.DEMO_ACCESS_SECRET) < 32:
+                raise ValueError("DEMO_ACCESS_SECRET must contain at least 32 characters.")
+            if not 10 <= self.DEMO_SESSION_MINUTES <= 240:
+                raise ValueError("DEMO_SESSION_MINUTES must be between 10 and 240.")
         return self
 
 settings = Settings()
