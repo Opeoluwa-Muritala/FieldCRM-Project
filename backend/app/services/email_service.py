@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class EmailService:
     def is_configured(self) -> bool:
-        return bool(settings.EMAIL_SERVICE_URL)
+        return bool(settings.EMAIL_SERVICE_URL) and not settings.demo_mode
 
     def _deliver(self, *, recipient: str, payload: dict) -> bool:
         if not self.is_configured():

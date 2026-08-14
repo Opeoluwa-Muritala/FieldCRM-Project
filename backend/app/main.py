@@ -56,6 +56,7 @@ from app.domains.loans.router import router as loans_router
 from app.domains.loans.collateral import router as collateral_router
 from app.domains.ocr.router import router as ocr_router
 from app.api.v1.mobile import router as mobile_api_router, warm_mobile_static_cache
+from app.domains.demo.router import router as demo_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -163,6 +164,8 @@ templates = create_templates(templates_dir)
 templates.env.globals.update(
     brand_logo_black="https://res.cloudinary.com/ddezxlqjr/image/upload/v1784551475/MMFB_Logo_Black_lnma0l.png",
     brand_logo_white="https://res.cloudinary.com/ddezxlqjr/image/upload/v1784551475/MMFB_logo_White_gzthxm.png",
+    demo_enabled=settings.demo_mode,
+    demo_org_id=settings.DEMO_ORG_ID,
 )
 
 class ProtectedStaticFiles(StaticFiles):
@@ -527,6 +530,7 @@ app.include_router(users_router, prefix=f"{settings.API_V1_STR}/users", tags=["U
 app.include_router(branches_router, tags=["Branches"])
 app.include_router(mobile_api_router, prefix=f"{settings.API_V1_STR}/mobile", tags=["Mobile API"])
 app.include_router(ocr_router)
+app.include_router(demo_router)
 
 # Mount Loan pages at root
 app.include_router(loans_router)
