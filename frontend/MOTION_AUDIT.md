@@ -12,7 +12,6 @@ colour or spacing changes and treats `DESIGN.md` as the visual source of truth.
 | Branch manager/supervisor and credit analyst/officer | Static review queues and detail status. | Queue rows stagger only on initial render; changed status badges cross-fade/pulse once; action forms retain width while submitting. |
 | CRM, committee, executive, auditor and legal | Static dashboard/report/review content. | Main report/review panel enters once; metric grids/table rows sequence; evidentiary timeline entries remain static unless inserted dynamically. |
 | System administration | Static users/activity tables and feedback. | User/activity rows sequence; success/error feedback uses an accessible fade-in toast; destructive actions retain quiet press feedback. |
-| External client intake (start, application/guarantor forms, upload, success/error) | Static forms and abrupt upload feedback. | Form content enters once, validation fades in, real upload progress eases, and empty/success/error panels fade rather than bounce. |
 
 ## Shared element rules
 

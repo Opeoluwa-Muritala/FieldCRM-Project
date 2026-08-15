@@ -3,7 +3,7 @@ import hashlib
 from uuid import uuid4, UUID
 from datetime import datetime, timedelta, timezone
 
-from app.core.security import verify_password, create_access_token, get_password_hash
+from app.core.security import verify_password, create_access_token, get_password_hash, validate_password_strength
 from app.domains.auth.repository import AuthRepository
 from app.core.exceptions import DomainException
 
@@ -22,7 +22,10 @@ class AuthService:
             raise DomainException("Incorrect email or password.", 401)
 
         await self.repo.record_login(str(user.id))
-        token = create_access_token(user.id, role=user.role, org_id=user.org_id, session_type=session_type)
+        token = create_access_token(
+            user.id, role=user.role, org_id=user.org_id,
+            password_hash=user.password_hash, session_type=session_type,
+        )
         return token
 
     @staticmethod
@@ -52,7 +55,10 @@ class AuthService:
             ip_address=ip_address
         )
         
-        access_token = create_access_token(user.id, role=user.role, org_id=user.org_id, session_type="web")
+        access_token = create_access_token(
+            user.id, role=user.role, org_id=user.org_id,
+            password_hash=user.password_hash, session_type="web",
+        )
         
         return {
             "access_token": access_token,
@@ -79,7 +85,10 @@ class AuthService:
             ip_address=ip_address
         )
         return {
-            "access_token": create_access_token(user.id, role=user.role, org_id=user.org_id, session_type="mobile"),
+            "access_token": create_access_token(
+                user.id, role=user.role, org_id=user.org_id,
+                password_hash=user.password_hash, session_type="mobile",
+            ),
             "token_type": "bearer", "refresh_token": refresh_token,
             "access_expires_in": 600, "session_expires_at": absolute_expiry.isoformat(),
         }
@@ -111,7 +120,8 @@ class AuthService:
                     if user and user["active"]:
                         return {
                             "access_token": create_access_token(
-                                user["id"], role=user["role"], org_id=user["org_id"], session_type=client_type
+                                user["id"], role=user["role"], org_id=user["org_id"],
+                                password_hash=user["password_hash"], session_type=client_type
                             ),
                             "refresh_token": None,
                             "expires_at": session["expires_at"],
@@ -147,7 +157,10 @@ class AuthService:
             
             await self.repo.mark_refresh_token_used(session["id"], new_row["id"])
             
-            access_token = create_access_token(user["id"], role=user["role"], org_id=user["org_id"], session_type=client_type)
+            access_token = create_access_token(
+                user["id"], role=user["role"], org_id=user["org_id"],
+                password_hash=user["password_hash"], session_type=client_type,
+            )
             
             return {
                 "access_token": access_token,
@@ -188,29 +201,47 @@ class AuthService:
         return str(row["user_id"]) if row else None
 
     async def reset_password(self, token: str, new_password: str) -> bool:
-        user_id = await self.validate_reset_token(token)
-        if not user_id:
-            return False
+        try:
+            validate_password_strength(new_password)
+        except ValueError as exc:
+            raise DomainException(str(exc), 400) from exc
         hashed = get_password_hash(new_password)
-        await self.repo.update_password(user_id, hashed)
-        await self.repo.mark_token_used(token)
+        async with self.repo.conn.transaction():
+            row = await self.repo.consume_valid_reset_token(token)
+            if not row:
+                return False
+            user_id = str(row["user_id"])
+            await self.repo.update_password(user_id, hashed)
+            await self.repo.revoke_all_sessions_for_user(user_id)
         from app.core.cache import invalidate_auth_user
         await invalidate_auth_user(user_id)
         return True
 
     async def change_password(self, user_id: str, current_password: str, new_password: str) -> bool:
+        try:
+            validate_password_strength(new_password)
+        except ValueError as exc:
+            raise DomainException(str(exc), 400) from exc
         user = await self.repo.get_user_by_id(user_id)
         if not user or not verify_password(current_password, user["password_hash"]):
             return False
         hashed = get_password_hash(new_password)
         await self.repo.update_password(str(user["id"]), hashed)
+        await self.repo.revoke_all_sessions_for_user(str(user["id"]))
+        from app.core.cache import invalidate_auth_user
+        await invalidate_auth_user(user["id"])
         return True
 
-    async def list_active_sessions(self, user_id: UUID) -> list[dict]:
+    async def _require_managed_user(self, current_admin, user_id: UUID) -> dict:
+        user = await self.repo.get_user_by_id(str(user_id))
+        if not user or str(user["org_id"]) != str(current_admin.org_id):
+            raise DomainException("User not found.", 404)
+        return user
+
+    async def list_active_sessions(self, current_admin, user_id: UUID) -> list[dict]:
+        await self._require_managed_user(current_admin, user_id)
         return await self.repo.list_active_sessions_for_user(user_id)
 
-    async def revoke_all_user_sessions(self, user_id: UUID) -> None:
-        await self.repo.conn.execute(
-            "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL",
-            user_id
-        )
+    async def revoke_all_user_sessions(self, current_admin, user_id: UUID) -> None:
+        await self._require_managed_user(current_admin, user_id)
+        await self.repo.revoke_all_sessions_for_user(user_id)

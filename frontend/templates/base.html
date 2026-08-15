@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="/static/css/dashboard.css?v=20260729">
     <link rel="stylesheet" href="/static/css/csp-utilities.css?v=20260809">
     <script defer src="/static/js/csp-styles.js?v=20260729"></script>
+    <script defer src="/static/js/csrf.js?v=20260815"></script>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -123,9 +124,11 @@
                     <div class="sidebar-user-name">{{ current_user.name if current_user else "Team Lead" }}</div>
                     <div class="sidebar-user-role">{{ role }}</div>
                 </div>
-                <a href="/logout" title="Logout" class="csp-s-c2db7e0bbb5e">
-                    &#x21aa;
-                </a>
+                <form method="post" action="/logout">
+                    <button type="submit" title="Logout" class="csp-s-c2db7e0bbb5e" aria-label="Logout">
+                        &#x21aa;
+                    </button>
+                </form>
             </div>
         </aside>
         <button class="sidebar-overlay" type="button" aria-label="Close navigation menu" data-sidebar-close></button>

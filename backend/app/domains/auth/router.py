@@ -190,7 +190,7 @@ async def list_user_sessions(
     service: AuthService = Depends(get_auth_service)
 ):
     """Admin-only endpoint to list active sessions for a user."""
-    return await service.list_active_sessions(user_id)
+    return await service.list_active_sessions(current_user, user_id)
 
 @router.post("/sessions/{user_id}/revoke")
 async def revoke_all_user_sessions(
@@ -199,5 +199,5 @@ async def revoke_all_user_sessions(
     service: AuthService = Depends(get_auth_service)
 ):
     """Admin-only endpoint to revoke all active sessions for a user."""
-    await service.revoke_all_user_sessions(user_id)
+    await service.revoke_all_user_sessions(current_user, user_id)
     return {"status": "all_sessions_revoked"}

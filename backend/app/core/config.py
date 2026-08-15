@@ -74,6 +74,7 @@ class Settings(BaseSettings):
     # Keep this as a string for compatibility with older pydantic-settings
     # releases; use ``cors_origins`` where FastAPI needs a list.
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "")
+    TRUSTED_HOSTS: str = os.getenv("TRUSTED_HOSTS", "")
     COOKIE_SECURE: bool = os.getenv("COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
     # Strict script enforcement is the default now that inline scripts are
     # nonced and HTML event-handler attributes have been removed.
@@ -191,6 +192,29 @@ class Settings(BaseSettings):
             return [item.strip() for item in parsed if item.strip()]
         return [origin.strip() for origin in value.split(",") if origin.strip()]
 
+    @property
+    def trusted_hosts(self) -> list[str]:
+        hosts = {host.strip().lower() for host in self.TRUSTED_HOSTS.split(",") if host.strip()}
+        for url in [self.APP_BASE_URL, *self.cors_origins]:
+            hostname = urlparse(url).hostname if url else None
+            if hostname:
+                hosts.add(hostname.lower())
+        vercel_url = os.getenv("VERCEL_URL", "").strip()
+        if vercel_url:
+            hosts.add(vercel_url.lower())
+        if self.VERCEL_ENV:
+            # Preview deployment names are generated dynamically by Vercel.
+            hosts.add("*.vercel.app")
+        if not self.is_production:
+            hosts.update({"localhost", "127.0.0.1", "testserver"})
+        return sorted(hosts)
+
+    @property
+    def public_base_url(self) -> str:
+        if self.APP_BASE_URL.strip():
+            return self.APP_BASE_URL.rstrip("/")
+        return self.cors_origins[0].rstrip("/")
+
     @model_validator(mode="after")
     def normalize_database_url(self):
         if self.DATABASE_URL == "sqlite:///./fieldcrm.db":
@@ -199,6 +223,16 @@ class Settings(BaseSettings):
             raise ValueError("JWT_SECRET_KEY is required; configure a fixed secret in the environment.")
         if not self.cors_origins or "*" in self.cors_origins:
             raise ValueError("CORS_ORIGINS must contain one or more explicit origins; wildcards are forbidden.")
+        if not self.trusted_hosts:
+            raise ValueError("TRUSTED_HOSTS or a hostname in APP_BASE_URL/CORS_ORIGINS is required.")
+        for origin in self.cors_origins:
+            parsed_origin = urlparse(origin)
+            if parsed_origin.scheme not in {"http", "https"} or not parsed_origin.hostname:
+                raise ValueError("CORS_ORIGINS entries must be absolute HTTP(S) origins.")
+        if self.APP_BASE_URL:
+            parsed_base = urlparse(self.APP_BASE_URL)
+            if parsed_base.scheme not in {"http", "https"} or not parsed_base.hostname:
+                raise ValueError("APP_BASE_URL must be an absolute HTTP(S) URL.")
         if self.is_production:
             parsed_database = urlparse(self.DATABASE_URL)
             host = parsed_database.hostname or ""
@@ -210,6 +244,8 @@ class Settings(BaseSettings):
                 raise ValueError("CACHE_REDIS_URL must use rediss:// in production.")
             if not self.FIELD_ENCRYPTION_KEY or not self.FIELD_LOOKUP_KEY:
                 raise ValueError("FIELD_ENCRYPTION_KEY and FIELD_LOOKUP_KEY are required in production.")
+            if not self.public_base_url.startswith("https://"):
+                raise ValueError("APP_BASE_URL or the primary CORS origin must use HTTPS in production.")
             if self.RLS_ENFORCED and parsed_database.username != self.DATABASE_EXPECTED_RUNTIME_USER:
                 raise ValueError("RLS_ENFORCED requires the configured non-owner runtime database user.")
         for setting_name, encoded_key in (

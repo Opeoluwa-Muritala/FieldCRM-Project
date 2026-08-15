@@ -188,22 +188,36 @@ def test_dashboard_bundle_uses_one_query_and_preserves_sections():
 def test_password_reset_invalidates_auth_cache(monkeypatch):
     calls = []
 
+    class Transaction:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return False
+
+    class Connection:
+        def transaction(self):
+            return Transaction()
+
     class Repository:
-        async def get_valid_reset_token(self, token):
+        conn = Connection()
+
+        async def consume_valid_reset_token(self, token):
+            calls.append(("token", token))
             return {"user_id": uuid4()}
 
         async def update_password(self, user_id, hashed_password):
             calls.append(("password", str(user_id)))
 
-        async def mark_token_used(self, token):
-            calls.append(("token", token))
+        async def revoke_all_sessions_for_user(self, user_id):
+            calls.append(("sessions", str(user_id)))
 
     async def invalidate(user_id):
         calls.append(("invalidate", str(user_id)))
 
     monkeypatch.setattr("app.core.cache.invalidate_auth_user", invalidate)
     assert run(AuthService(Repository()).reset_password("reset-token", "new-password"))
-    assert [name for name, _ in calls] == ["password", "token", "invalidate"]
+    assert [name for name, _ in calls] == ["token", "password", "sessions", "invalidate"]
 
 
 def test_template_factory_reuses_one_environment():

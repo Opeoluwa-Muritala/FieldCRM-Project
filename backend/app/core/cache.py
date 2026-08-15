@@ -133,6 +133,8 @@ async def get_cached_auth_user(user_id: object) -> dict[str, Any] | None:
 
 
 async def cache_auth_user(user: Any) -> None:
+    from app.core.security import credential_fingerprint
+
     await set_json(
         _auth_user_key(user.id),
         {
@@ -140,6 +142,9 @@ async def cache_auth_user(user: Any) -> None:
             "org_id": user.org_id,
             "full_name": user.full_name,
             "email": user.email,
+            # Cache only the keyed credential marker required for session
+            # invalidation. The password hash itself must never enter Redis.
+            "credential_fingerprint": credential_fingerprint(user.password_hash),
             "password_hash": "",
             "role": user.role,
             "branch_id": user.branch_id,

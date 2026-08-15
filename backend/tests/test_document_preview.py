@@ -236,3 +236,7 @@ def test_preview_helpers_normalise_and_produce_safe_rfc5987_filenames():
     assert main.normalize_mime_type(" Application/PDF; charset=utf-8 ") == "application/pdf"
     assert main.sanitize_preview_filename('a\x00b\r\n/c\\d".pdf') == "a_b___c_d.pdf"
     assert main.preview_content_disposition("doc.pdf") == "inline; filename=\"doc.pdf\"; filename*=UTF-8''doc.pdf"
+    assert main.download_content_disposition('offer\r\nX-Evil: yes.pdf') == (
+        "attachment; filename=\"offer__X-Evil_ yes.pdf\"; "
+        "filename*=UTF-8''offer__X-Evil%3A%20yes.pdf"
+    )

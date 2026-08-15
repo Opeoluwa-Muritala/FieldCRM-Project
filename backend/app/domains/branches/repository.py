@@ -18,3 +18,10 @@ class BranchRepository(BaseRepository):
             str(org_id)
         )
         return [BranchResponse(**r) for r in rows]
+
+    async def belongs_to_org(self, branch_id: UUID, org_id: UUID) -> bool:
+        return bool(await self.conn.fetchval(
+            "SELECT EXISTS(SELECT 1 FROM branches WHERE id = $1 AND org_id = $2 AND active = TRUE)",
+            branch_id,
+            org_id,
+        ))

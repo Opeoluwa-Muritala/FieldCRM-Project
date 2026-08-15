@@ -12,6 +12,28 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 PBKDF2_PREFIX = "pbkdf2_sha256"
 PBKDF2_ITERATIONS = 260000
+PASSWORD_MIN_LENGTH = 12
+PASSWORD_MAX_LENGTH = 128
+_COMMON_PASSWORDS = {
+    "123456789012",
+    "administrator",
+    "letmeinplease",
+    "password1234",
+    "qwerty123456",
+}
+
+
+def validate_password_strength(password: str) -> str:
+    """Validate one shared password policy at every credential write boundary."""
+    if not isinstance(password, str):
+        raise ValueError("Password must be text.")
+    if len(password) < PASSWORD_MIN_LENGTH:
+        raise ValueError(f"Password must be at least {PASSWORD_MIN_LENGTH} characters.")
+    if len(password) > PASSWORD_MAX_LENGTH:
+        raise ValueError(f"Password must be no more than {PASSWORD_MAX_LENGTH} characters.")
+    if password.casefold() in _COMMON_PASSWORDS:
+        raise ValueError("Choose a less common password.")
+    return password
 
 
 def _verify_pbkdf2_sha256(plain_password: str, encoded: str) -> bool:
@@ -56,6 +78,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return False
 
 def get_password_hash(password: str) -> str:
+    password = validate_password_strength(password)
     salt = secrets.token_bytes(16)
     digest = hashlib.pbkdf2_hmac(
         "sha256",
@@ -70,14 +93,26 @@ def get_password_hash(password: str) -> str:
         f"{base64.b64encode(digest).decode('ascii')}"
     )
 
+
+def credential_fingerprint(password_hash: str) -> str:
+    """Bind access tokens to the current credential without exposing its hash."""
+    return hmac.new(
+        settings.JWT_SECRET_KEY.encode("utf-8"),
+        password_hash.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
 def create_access_token(
     subject: Union[str, Any],
     role: str = "loan_officer",
     org_id: str = "",
+    password_hash: str = "",
     expires_delta: Union[timedelta, None] = None,
     session_type: str = "web",
 ) -> str:
     from uuid import uuid4
+    if not password_hash:
+        raise ValueError("Access tokens must be bound to a credential hash")
     issued_at = datetime.now(UTC)
     if expires_delta:
         expire = issued_at + expires_delta
@@ -93,6 +128,7 @@ def create_access_token(
         "type": "access",
         "session_type": session_type,
         "jti": str(uuid4()),
+        "credential": credential_fingerprint(password_hash),
     }
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt

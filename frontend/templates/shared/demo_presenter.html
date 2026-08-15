@@ -7,6 +7,7 @@
     <meta name="robots" content="noindex,nofollow">
     <link rel="icon" href="/static/icons/favicon.svg?v=20260813" type="image/svg+xml">
     <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script defer src="/static/js/csrf.js?v=20260815"></script>
 </head>
 <body class="demo-presenter-page">
     <main class="demo-presenter-card">
@@ -33,7 +34,7 @@
             <div class="demo-role-grid">
                 {% for demo_user in users %}
                 <form method="post" action="/demo/switch" class="demo-role-card {% if selected_user_id == demo_user.id|string %}active{% endif %}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="demo_csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="user_id" value="{{ demo_user.id }}">
                     <strong>{{ role_labels.get(demo_user.role, demo_user.role|replace('_',' ')|title) }}</strong>
                     <span>{{ demo_user.full_name }}</span>
@@ -43,7 +44,10 @@
                 </form>
                 {% endfor %}
             </div>
-            <a href="/demo/lock" class="demo-lock-link">End demo session</a>
+            <form method="post" action="/demo/lock">
+                <input type="hidden" name="demo_csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="demo-lock-link">End demo session</button>
+            </form>
         {% endif %}
     </main>
 </body>

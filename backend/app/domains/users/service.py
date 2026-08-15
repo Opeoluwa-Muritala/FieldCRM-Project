@@ -19,6 +19,13 @@ class UserService:
     def __init__(self, repo: UserRepository):
         self.repo = repo
 
+    async def _validate_branch(self, org_id: UUID, branch_id: UUID | None) -> None:
+        if branch_id is None:
+            return
+        from app.domains.branches.repository import BranchRepository
+        if not await BranchRepository(self.repo.conn).belongs_to_org(branch_id, org_id):
+            raise DomainException("Select a valid branch.", 400)
+
     async def register_organisation(
         self,
         org_name: str,
@@ -37,7 +44,10 @@ class UserService:
             org_code = org_name.lower().replace(" ", "_")
             org = await tx_repo.create_organisation(org_name, org_code)
             
-            hashed = get_password_hash(admin_password)
+            try:
+                hashed = get_password_hash(admin_password)
+            except ValueError as exc:
+                raise DomainException(str(exc), 400) from exc
             user = await tx_repo.create_user(
                 org_id=org.id,
                 full_name=admin_name,
@@ -48,6 +58,8 @@ class UserService:
             return user
 
     async def register_user(self, current_admin: UserRow, user_in) -> UserRow:
+        if canonical_role(current_admin.role) != "system_admin":
+            raise DomainException("Only a system administrator can create users.", 403)
         if str(current_admin.org_id) != str(user_in.org_id):
             raise DomainException("Cannot register user outside your own organisation.", 403)
 
@@ -55,10 +67,14 @@ class UserService:
         if existing:
             raise DomainException("A user with this email already exists.", 400)
 
-        hashed = get_password_hash(user_in.password)
+        try:
+            hashed = get_password_hash(user_in.password)
+        except ValueError as exc:
+            raise DomainException(str(exc), 400) from exc
         db_role = canonical_role(user_in.role)
         if db_role not in self.ALLOWED_ROLES:
             raise DomainException("Select a valid role.", 400)
+        await self._validate_branch(current_admin.org_id, user_in.branch_id)
 
         user = await self.repo.create_user(
             org_id=user_in.org_id,
@@ -78,6 +94,7 @@ class UserService:
         role = canonical_role(invite_in.role)
         if role not in self.ALLOWED_ROLES:
             raise DomainException("Select a valid role.", 400)
+        await self._validate_branch(current_admin.org_id, invite_in.branch_id)
 
         user = await self.repo.create_user(
             org_id=current_admin.org_id,
@@ -138,6 +155,7 @@ class UserService:
         if user.id == current_admin.id:
             raise DomainException("You cannot change your own branch.", 400)
 
+        await self._validate_branch(current_admin.org_id, branch_id)
         await self.repo.update_branch(user.id, branch_id)
         await invalidate_auth_user(user.id)
         return await self.repo.get_by_id(user.id)

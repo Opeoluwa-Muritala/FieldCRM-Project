@@ -34,7 +34,6 @@ from app.domains.notifications.repository import NotificationRepository
 from app.domains.notifications.service import NotificationService
 from app.domains.visitation.repository import VisitationRepository
 from app.domains.visitation.service import VisitationService
-from app.domains.signing.repository import SigningRepository
 from app.domains.branches.repository import BranchRepository
 from app.domains.users.repository import UserRepository
 from app.domains.users.service import UserService
@@ -2375,47 +2374,6 @@ async def update_mobile_credit_checklist(
     return dict(row)
 
 
-def _signing_link(request: Request, path: str, claims: dict[str, Any], minutes: int) -> dict[str, Any]:
-    from jose import jwt
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=minutes)
-    token = jwt.encode(
-        {**claims, "exp": expires_at, "nonce": secrets.token_hex(16)},
-        settings.JWT_SECRET_KEY,
-        algorithm=settings.JWT_ALGORITHM,
-    )
-    return {
-        "share_url": f"{str(request.base_url).rstrip('/')}/{path}/{token}",
-        "expires_at": expires_at,
-    }
-
-
-@router.post("/applications/{application_id}/client-link")
-async def generate_mobile_client_link(
-    request: Request,
-    application_id: UUID,
-    conn=Depends(db_conn),
-    current_user=Depends(get_current_user),
-):
-    raise HTTPException(
-        status_code=status.HTTP_410_GONE,
-        detail="Client signing and link generation is deactivated."
-    )
-
-
-@router.post("/applications/{application_id}/guarantor-link/{slot}")
-async def generate_mobile_guarantor_link(
-    request: Request,
-    application_id: UUID,
-    slot: int = Path(..., ge=1, le=2),
-    conn=Depends(db_conn),
-    current_user=Depends(get_current_user),
-):
-    raise HTTPException(
-        status_code=status.HTTP_410_GONE,
-        detail="Client signing and link generation is deactivated."
-    )
-
-
 @router.get("/applications/{application_id}/offer")
 async def get_mobile_offer_readiness(
     application_id: UUID,
@@ -3012,35 +2970,6 @@ async def get_mobile_role_dashboard(
     return {"role": current_role, "metrics": _mobile_dashboard_metrics(data), "data": data}
 
 
-@router.post("/generate-share-link")
-async def generate_share_link_mobile(
-    request: Request,
-    current_user=Depends(get_current_user),
-):
-    """Mobile endpoint to generate a client shareable link."""
-    _ensure_roles(current_user, {"account_officer"})
-    from jose import jwt
-    from app.config import settings
-    import secrets
-    from datetime import UTC, datetime, timedelta
-
-    issued_at = datetime.now(UTC)
-    expire = issued_at + timedelta(days=7)
-    to_encode = {
-        "sub": str(current_user.id),
-        "org_id": str(current_user.org_id),
-        "exp": expire,
-        "iat": issued_at,
-        "type": "client_intake",
-        "random_salt": secrets.token_hex(8)
-    }
-    token = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
-    
-    base_url = str(request.base_url).rstrip("/")
-    share_url = f"{base_url}/share-intake/{token}"
-    return {"share_url": share_url, "token": token}
-
-
 # ---------------------------------------------------------------------------
 # Admin: User Management
 # ---------------------------------------------------------------------------
@@ -3049,7 +2978,7 @@ class MobileCreateUserRequest(BaseModel):
     full_name: str
     email: str
     role: str
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=12, max_length=128)
 
 
 @router.get("/users")
@@ -3108,7 +3037,7 @@ async def invite_mobile_user(
 
     try:
         user, token = await UserService(UserRepository(conn)).invite_user(current_user, invitation)
-        base_url = settings.APP_BASE_URL.rstrip("/") or str(request.base_url).rstrip("/")
+        base_url = settings.public_base_url
         delivered = EmailService().send_invitation(
             recipient=user.email,
             full_name=user.full_name,

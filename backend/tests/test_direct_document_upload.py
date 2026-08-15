@@ -58,6 +58,4 @@ def test_all_direct_upload_routes_are_registered():
         "/api/v1/mobile/applications/{application_id}/documents/finalize",
         "/api/v1/applications/{application_id}/documents/upload-authorizations",
         "/api/v1/applications/{application_id}/documents/finalize",
-        "/client-form/apply/documents/upload-authorizations",
-        "/client-form/apply/documents/finalize",
     } <= paths

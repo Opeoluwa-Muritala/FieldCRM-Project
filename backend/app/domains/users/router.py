@@ -51,7 +51,7 @@ async def register_organisation(
 async def register_user(
     user_in: UserCreate,
     service: UserService = Depends(get_user_service),
-    current_admin: UserRow = Depends(RoleChecker(["System Admin", "Branch Manager"]))
+    current_admin: UserRow = Depends(RoleChecker(["System Admin"]))
 ):
     user = await service.register_user(current_admin, user_in)
     return UserResponse(
@@ -73,7 +73,7 @@ async def invite_user(
     current_admin: UserRow = Depends(RoleChecker(["System Admin"])),
 ):
     user, token = await service.invite_user(current_admin, invitation)
-    base_url = settings.APP_BASE_URL.rstrip("/") or str(request.base_url).rstrip("/")
+    base_url = settings.public_base_url
     delivered = EmailService().send_invitation(
         recipient=user.email,
         full_name=user.full_name,

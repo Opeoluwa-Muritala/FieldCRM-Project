@@ -28,8 +28,6 @@ def test_release2_mobile_json_contracts_are_registered():
         ("POST", "/applications/{application_id}/credit-bureau-pull"),
         ("GET", "/applications/{application_id}/credit-checklist"),
         ("PATCH", "/applications/{application_id}/credit-checklist"),
-        ("POST", "/applications/{application_id}/client-link"),
-        ("POST", "/applications/{application_id}/guarantor-link/{slot}"),
         ("GET", "/applications/{application_id}/offer"),
         ("POST", "/applications/{application_id}/offer"),
         ("GET", "/applications/{application_id}/disbursement"),

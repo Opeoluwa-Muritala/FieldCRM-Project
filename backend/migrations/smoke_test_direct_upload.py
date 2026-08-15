@@ -58,7 +58,7 @@ def main() -> int:
         with db.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT u.id, u.org_id, a.id
+                SELECT u.id, u.org_id, a.id, u.password_hash
                 FROM users u
                 JOIN loan_applications a ON a.org_id=u.org_id
                 WHERE u.active=TRUE AND u.role='system_admin'
@@ -69,8 +69,11 @@ def main() -> int:
             selected = cursor.fetchone()
         if not selected:
             raise RuntimeError("No active system administrator/application pair is available.")
-        user_id, org_id, application_id = selected
-        token = create_access_token(user_id, role="system_admin", org_id=org_id, session_type="mobile")
+        user_id, org_id, application_id, password_hash = selected
+        token = create_access_token(
+            user_id, role="system_admin", org_id=org_id,
+            password_hash=password_hash, session_type="mobile",
+        )
         headers = {"Authorization": f"Bearer {token}"}
         prefix = f"/api/v1/mobile/applications/{application_id}/documents"
 

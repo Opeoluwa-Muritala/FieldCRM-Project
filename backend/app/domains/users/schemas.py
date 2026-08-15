@@ -13,7 +13,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     org_id: str
-    password: str = Field(..., min_length=8, description="Strong user password")
+    password: str = Field(..., min_length=12, max_length=128, description="Strong user password")
 
 
 class UserInvitationCreate(UserBase):

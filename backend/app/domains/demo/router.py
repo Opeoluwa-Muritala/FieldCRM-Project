@@ -195,16 +195,16 @@ async def unlock_presenter(request: Request, access_secret: str = Form(...)):
 async def switch_demo_role(
     request: Request,
     user_id: UUID = Form(...),
-    csrf_token: str = Form(...),
+    demo_csrf_token: str = Form(...),
     conn=Depends(db_conn),
 ):
     org_id = _require_enabled()
     _require_same_origin(request)
     payload = _presenter_payload(request)
-    if not payload or not secrets.compare_digest(csrf_token, str(payload.get("csrf") or "")):
+    if not payload or not secrets.compare_digest(demo_csrf_token, str(payload.get("csrf") or "")):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Demo presenter session is invalid")
     user = await conn.fetchrow(
-        """SELECT id, org_id, role FROM users
+        """SELECT id, org_id, role, password_hash FROM users
            WHERE id=$1 AND org_id=$2 AND active=TRUE AND deleted_at IS NULL""",
         user_id, org_id,
     )
@@ -233,6 +233,7 @@ async def switch_demo_role(
         }.get(application["stage"], destination)
     token = create_access_token(
         user["id"], role=user["role"], org_id=user["org_id"],
+        password_hash=user["password_hash"],
         expires_delta=timedelta(minutes=settings.DEMO_SESSION_MINUTES), session_type="demo",
     )
     response = RedirectResponse(destination, status_code=status.HTTP_303_SEE_OTHER)
@@ -244,7 +245,7 @@ async def switch_demo_role(
     return response
 
 
-@router.get("/lock")
+@router.post("/lock")
 async def lock_presenter():
     response = RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
     response.delete_cookie("demo_presenter", path="/demo")

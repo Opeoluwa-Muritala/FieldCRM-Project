@@ -44,10 +44,12 @@
             {% endblock %}
         </nav>
         <div class="sidebar-user">
-            <a href="/logout" class="sidebar-utility-link" title="Logout" aria-label="Logout">
+            <form method="post" action="/logout">
+            <button type="submit" class="sidebar-utility-link" title="Logout" aria-label="Logout">
                 <svg class="app-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><use href="/static/img/icons.svg#icon-logout-o"></use></svg>
                 <span>Logout</span>
-            </a>
+            </button>
+            </form>
         </div>
     </aside>
 

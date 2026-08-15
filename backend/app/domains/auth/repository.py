@@ -1,11 +1,16 @@
 from app.core.base_repository import BaseRepository
 from app.domains.users.schemas import UserRow
 from datetime import datetime
+import hashlib
 from uuid import UUID
 
 
 class AuthRepository(BaseRepository):
     domain = "auth"
+
+    @staticmethod
+    def _reset_token_hash(token: str) -> str:
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
     async def get_user_by_email(self, email: str) -> UserRow | None:
         email_clean = email.strip().lower()
@@ -32,25 +37,49 @@ class AuthRepository(BaseRepository):
     async def create_reset_token(self, user_id: str, token: str, expires_at) -> None:
         await self.conn.execute(
             "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)",
-            user_id, token, expires_at
+            user_id, self._reset_token_hash(token), expires_at
         )
 
     async def get_valid_reset_token(self, token: str):
         return await self.conn.fetchrow(
-            "SELECT user_id FROM password_reset_tokens WHERE token = $1 AND expires_at > NOW() AND used_at IS NULL",
-            token
+            """SELECT user_id FROM password_reset_tokens
+               WHERE token = ANY($1::text[]) AND expires_at > NOW() AND used_at IS NULL
+               ORDER BY created_at DESC LIMIT 1""",
+            [self._reset_token_hash(token), token],
         )
 
-    async def mark_token_used(self, token: str) -> None:
-        await self.conn.execute(
-            "UPDATE password_reset_tokens SET used_at = NOW() WHERE token = $1",
-            token
+    async def consume_valid_reset_token(self, token: str):
+        return await self.conn.fetchrow(
+            """UPDATE password_reset_tokens
+               SET used_at = NOW()
+               WHERE id = (
+                   SELECT id FROM password_reset_tokens
+                   WHERE token = ANY($1::text[])
+                     AND expires_at > NOW() AND used_at IS NULL
+                   ORDER BY created_at DESC
+                   LIMIT 1
+                   FOR UPDATE
+               )
+               RETURNING user_id""",
+            [self._reset_token_hash(token), token],
         )
 
     async def update_password(self, user_id: str, hashed_password: str) -> None:
         await self.conn.execute(
             "UPDATE users SET password_hash = $1, active = TRUE WHERE id = $2",
             hashed_password, user_id
+        )
+
+    async def revoke_all_sessions_for_user(self, user_id) -> None:
+        await self.conn.execute(
+            "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL",
+            user_id,
+        )
+        await self.conn.execute(
+            """UPDATE auth_sessions
+               SET revoked_at = COALESCE(revoked_at, NOW()), revoked_reason = 'credential_changed'
+               WHERE user_id = $1 AND revoked_at IS NULL""",
+            user_id,
         )
 
     async def create_auth_session(self, *, user_id, org_id, family_id, token_hash: str, expires_at: datetime):
@@ -141,4 +170,3 @@ class AuthRepository(BaseRepository):
             user_id
         )
         return [dict(r) for r in rows]
-

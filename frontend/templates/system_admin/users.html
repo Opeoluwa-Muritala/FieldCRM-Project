@@ -103,9 +103,7 @@ document.getElementById('create-branch-form').addEventListener('submit', async (
 const roleOptions = [['account_officer','Relationship Officer'],['branch_manager','Team Lead'],['branch_supervisor','Supervisor'],['credit_analyst','Credit Analyst'],['crm','CRM Officer'],['head_crm','Head CRM'],['auditor','Audit'],['ed','Executive Director'],['md','Managing Director'],['legal','Legal'],['system_admin','System Admin']];
 const branchOptions = [
     ['', 'Global / No Branch'],
-    {% for branch in branches %}
-    ['{{ branch.id }}', '{{ branch.name }} ({{ branch.code }})'],
-    {% endfor %}
+    ...{{ branch_options | tojson }},
 ];
 
 document.querySelectorAll('[data-edit-role]').forEach((button) => button.addEventListener('click', () => { 
@@ -117,7 +115,7 @@ document.querySelectorAll('[data-edit-role]').forEach((button) => button.addEven
     roleSelect.className = 'form-input user-role-select'; 
     roleSelect.dataset.roleSelect = ''; 
     roleSelect.setAttribute('aria-label', 'New role'); 
-    roleSelect.innerHTML = roleOptions.map(([value, text]) => `<option value="${value}" ${value === roleLabel.dataset.role ? 'selected' : ''}>${text}</option>`).join(''); 
+    roleSelect.replaceChildren(...roleOptions.map(([value, text]) => new Option(text, value, value === roleLabel.dataset.role, value === roleLabel.dataset.role)));
     roleLabel.replaceWith(roleSelect); 
     
     // Replace Branch label with dropdown
@@ -126,7 +124,8 @@ document.querySelectorAll('[data-edit-role]').forEach((button) => button.addEven
     branchSelect.className = 'form-input user-branch-select';
     branchSelect.dataset.branchSelect = '';
     branchSelect.setAttribute('aria-label', 'New branch');
-    branchSelect.innerHTML = branchOptions.map(([value, text]) => `<option value="${value}" ${value === (branchLabel.dataset.branchId || '') ? 'selected' : ''}>${text}</option>`).join('');
+    const selectedBranch = branchLabel.dataset.branchId || '';
+    branchSelect.replaceChildren(...branchOptions.map(([value, text]) => new Option(text, value, value === selectedBranch, value === selectedBranch)));
     branchLabel.replaceWith(branchSelect);
     
     button.hidden = true; 
