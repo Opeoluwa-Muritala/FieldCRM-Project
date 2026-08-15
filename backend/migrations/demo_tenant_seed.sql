@@ -308,6 +308,17 @@ ON CONFLICT (id) DO UPDATE SET
  description=EXCLUDED.description,channel=EXCLUDED.channel,source_type='demo_seed',
  verification_status='verified',verified_by=EXCLUDED.verified_by,verified_at=NOW(),updated_at=NOW();
 
+-- Preserve any earlier backfill rows for audit, but exclude them from the
+-- calculation so the curated demo evidence is never double-counted.
+UPDATE cashflow_entries SET verification_status='excluded',updated_at=NOW()
+WHERE application_id='de000000-0000-4000-8000-000000000301'
+  AND id NOT IN (
+    'de000000-0000-4000-8000-000000000711','de000000-0000-4000-8000-000000000712',
+    'de000000-0000-4000-8000-000000000713','de000000-0000-4000-8000-000000000714',
+    'de000000-0000-4000-8000-000000000715','de000000-0000-4000-8000-000000000716'
+  )
+  AND source_type IN ('manual','legacy_pnl_seed','legacy_salary_seed');
+
 INSERT INTO credit_obligations (
  id,application_id,lender_name,source_type,outstanding_balance,periodic_payment,
  payment_frequency,remaining_tenor_months,status,verification_status,source_reference,captured_by
