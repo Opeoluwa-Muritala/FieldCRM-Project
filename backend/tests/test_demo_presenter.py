@@ -38,6 +38,11 @@ def test_demo_stage_role_follows_live_workflow():
     assert demo.STAGE_ROLE["disbursement_ready"] == "crm"
 
 
+def test_every_demo_role_has_a_guided_landing_screen():
+    assert set(demo.ROLE_ORDER) == set(demo.ROLE_LANDING)
+    assert set(demo.ROLE_ORDER) == set(demo.ROLE_SCREENS)
+
+
 def test_seed_is_not_an_automatic_production_migration():
     from migrations import run_migration
 

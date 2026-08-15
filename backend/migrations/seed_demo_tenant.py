@@ -52,11 +52,21 @@ async def main() -> None:
             """SELECT
               (SELECT count(*) FROM branches WHERE org_id=$1) AS branches,
               (SELECT count(*) FROM users WHERE org_id=$1 AND active=TRUE AND deleted_at IS NULL) AS users,
-              (SELECT count(*) FROM loan_applications WHERE org_id=$1 AND deleted_at IS NULL) AS applications""",
+              (SELECT count(*) FROM loan_applications WHERE org_id=$1 AND deleted_at IS NULL) AS applications,
+              (SELECT count(*) FROM documents WHERE org_id=$1 AND deleted_at IS NULL) AS documents,
+              (SELECT count(*) FROM verification_checks WHERE loan_application_id='de000000-0000-4000-8000-000000000301') AS identity_checks,
+              (SELECT count(*) FROM checklist_items WHERE loan_application_id='de000000-0000-4000-8000-000000000301') AS checklist_items,
+              (SELECT count(*) FROM pledged_items WHERE loan_id='de000000-0000-4000-8000-000000000301') AS pledged_items,
+              (SELECT count(*) FROM notifications WHERE org_id=$1 AND type='demo') AS role_guides""",
             DEMO_ORG_ID,
         )
         print(f"demo_org_id={DEMO_ORG_ID}")
         print(f"branches={counts['branches']} users={counts['users']} applications={counts['applications']}")
+        print(
+            f"documents={counts['documents']} identity_checks={counts['identity_checks']} "
+            f"checklist_items={counts['checklist_items']} pledged_items={counts['pledged_items']} "
+            f"role_guides={counts['role_guides']}"
+        )
     finally:
         await conn.close()
 
