@@ -38,6 +38,7 @@
                     <strong>{{ role_labels.get(demo_user.role, demo_user.role|replace('_',' ')|title) }}</strong>
                     <span>{{ demo_user.full_name }}</span>
                     <small>{{ demo_user.branch_name or 'Organisation-wide' }}</small>
+                    <small>{{ role_screens.get(demo_user.role, 'Role dashboard and permitted screens') }}</small>
                     <button type="submit">Switch to this role</button>
                 </form>
                 {% endfor %}

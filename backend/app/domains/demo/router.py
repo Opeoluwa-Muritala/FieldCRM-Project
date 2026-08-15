@@ -39,6 +39,32 @@ ROLE_LABELS = {
     "auditor": "Auditor",
     "system_admin": "System Admin",
 }
+ROLE_SCREENS = {
+    "account_officer": "Dashboard, completed intake, documents and visitation",
+    "branch_manager": "Team Lead queue, evidence checklist and concurrence",
+    "branch_supervisor": "Supervisory queue and branch recommendation",
+    "credit_analyst": "Affordability, OCR, bureau, AML and credit decision",
+    "crm": "Compliance review, offer letter and disbursement",
+    "head_crm": "CRM oversight and executive recommendation",
+    "ed": "Executive decision pack and MD escalation",
+    "md": "MD advice, final decision and board referral",
+    "legal": "Collateral valuation and pledged-item workspace",
+    "auditor": "Immutable activity, change authors and compliance flags",
+    "system_admin": "Users, roles, branches and system activity",
+}
+ROLE_LANDING = {
+    "account_officer": "/dashboard",
+    "branch_manager": "/awaiting-me",
+    "branch_supervisor": "/supervisory-review-queue",
+    "credit_analyst": "/my-reviews",
+    "crm": "/crm-review-queue",
+    "head_crm": "/crm-review-queue",
+    "ed": "/ed-queue",
+    "md": "/md-queue",
+    "legal": "/legal-queue",
+    "auditor": "/audit-trail",
+    "system_admin": "/users",
+}
 STAGE_ROLE = {
     "intake": "account_officer",
     "branch_manager_review": "branch_manager",
@@ -135,6 +161,7 @@ async def presenter(request: Request, conn=Depends(db_conn)):
         "application": application,
         "next_role": STAGE_ROLE.get(application.get("stage")) if application else None,
         "role_labels": ROLE_LABELS,
+        "role_screens": ROLE_SCREENS,
     })
 
 
@@ -183,11 +210,32 @@ async def switch_demo_role(
     )
     if not user or user["role"] not in ROLE_ORDER:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo role account not found")
+    await _install_demo_read_identity(conn, org_id)
+    application = await conn.fetchrow(
+        """SELECT id, stage FROM loan_applications
+           WHERE org_id=$1 AND deleted_at IS NULL ORDER BY created_at LIMIT 1""",
+        org_id,
+    )
+    destination = ROLE_LANDING[user["role"]]
+    if application and STAGE_ROLE.get(application["stage"]) == user["role"]:
+        app_id = application["id"]
+        destination = {
+            "intake": f"/applications/{app_id}/step/1",
+            "branch_manager_review": f"/applications/{app_id}/approve",
+            "branch_supervisor_review": f"/applications/{app_id}/approve",
+            "credit_analyst_review": f"/applications/{app_id}/credit-review",
+            "crm_review": f"/applications/{app_id}/crm-review",
+            "head_crm_review": f"/applications/{app_id}/crm-review",
+            "ed_approval": f"/applications/{app_id}/ed-approve",
+            "md_approval": f"/applications/{app_id}/md-approve",
+            "disbursement_ready": f"/applications/{app_id}/disburse",
+            "disbursed": "/audit-trail",
+        }.get(application["stage"], destination)
     token = create_access_token(
         user["id"], role=user["role"], org_id=user["org_id"],
         expires_delta=timedelta(minutes=settings.DEMO_SESSION_MINUTES), session_type="demo",
     )
-    response = RedirectResponse("/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    response = RedirectResponse(destination, status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(
         "session", token, httponly=True, secure=_secure_cookie(request), samesite="lax",
         max_age=settings.DEMO_SESSION_MINUTES * 60, path="/",
