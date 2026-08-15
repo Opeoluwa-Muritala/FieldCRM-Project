@@ -118,6 +118,7 @@ async def main() -> None:
               (SELECT count(*) FROM business_pnl WHERE application_id='de000000-0000-4000-8000-000000000301') AS pnl_rows,
               (SELECT count(*) FROM borrower_financial_profiles WHERE application_id='de000000-0000-4000-8000-000000000301') AS financial_profiles,
               (SELECT count(*) FROM cashflow_entries WHERE application_id='de000000-0000-4000-8000-000000000301') AS cashflows,
+              (SELECT count(*) FROM cashflow_entries WHERE application_id='de000000-0000-4000-8000-000000000301' AND verification_status NOT IN ('rejected','excluded','stale')) AS included_cashflows,
               (SELECT count(*) FROM credit_obligations WHERE application_id='de000000-0000-4000-8000-000000000301') AS obligations,
               (SELECT count(*) FROM collateral_items WHERE application_id='de000000-0000-4000-8000-000000000301') AS collateral_items,
               (SELECT count(*) FROM guarantors WHERE loan_id='de000000-0000-4000-8000-000000000301') AS guarantors,
@@ -161,12 +162,18 @@ async def main() -> None:
         }
         if incomplete:
             raise RuntimeError(f"Demo seed validation failed; incomplete datasets: {incomplete}")
+        if counts["included_cashflows"] != 6:
+            raise RuntimeError(
+                "Demo seed validation failed; feasibility analysis must contain "
+                f"exactly 6 included cashflows, found {counts['included_cashflows']}"
+            )
         print(f"demo_org_id={DEMO_ORG_ID}")
         print(f"branches={counts['branches']} users={counts['users']} applications={counts['applications']}")
         print(
             f"documents={counts['documents']} identity_checks={counts['identity_checks']} "
             f"checklist_items={counts['checklist_items']} pledged_items={counts['pledged_items']} "
             f"role_guides={counts['role_guides']} cashflows={counts['cashflows']} "
+            f"included_cashflows={counts['included_cashflows']} "
             f"par_loans={counts['par_loans']} schedules={counts['repayment_schedule']} "
             f"payments={counts['repayment_records']}"
         )

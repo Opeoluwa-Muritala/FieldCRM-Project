@@ -148,6 +148,7 @@ def test_demo_seed_contains_verified_feasibility_evidence():
     assert "distribution_contract" in seed
     assert "quarterly rent normalised" in seed.lower()
     assert "verification_status='verified'" in seed
+    assert "verification_status='excluded'" in seed
 
 
 def test_demo_seed_contains_each_par_bucket_with_balances():
