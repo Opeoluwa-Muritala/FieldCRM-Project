@@ -25,7 +25,9 @@ function initDataHrefNavigation() {
         if (logout) {
             event.preventDefault();
             fetch("/logout", { method: "POST", credentials: "same-origin" })
-                .finally(() => { window.location.href = "/login"; });
+                .finally(() => {
+                    window.location.href = document.body.dataset.demoEnabled === "true" ? "/demo" : "/login";
+                });
             return;
         }
         const target = event.target.closest("[data-href]");

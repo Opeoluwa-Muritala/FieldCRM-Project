@@ -20,7 +20,7 @@
     <script defer src="/static/js/csrf.js?v=20260815"></script>
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body data-demo-enabled="{{ 'true' if demo_enabled else 'false' }}">
     {% set db_role = current_user.role if current_user else "loan_officer" %}
     {% set role_labels = {
         "loan_officer": "Relationship Officer",

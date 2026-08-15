@@ -570,19 +570,27 @@ logger = logging.getLogger("FieldCRMMain")
 from fastapi.responses import JSONResponse
 import urllib.parse
 
+
+def browser_login_url(next_url: str | None = None) -> str:
+    """Keep demo deployments inside the synthetic presenter experience."""
+    if settings.demo_mode:
+        return "/demo"
+    if next_url:
+        return f"/login?next={urllib.parse.quote(next_url)}"
+    return "/login"
+
 @app.exception_handler(StarletteHTTPException)
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    # Authentication failures still lead to login. All other browser failures
-    # render an HTML screen; API clients retain the JSON error contract.
+    # Authentication failures lead to the correct staff or demo entry point.
+    # All other browser failures render HTML; APIs retain the JSON contract.
     is_api = request.url.path.startswith("/api/")
     if exc.status_code == status.HTTP_401_UNAUTHORIZED and not is_api:
         next_url = str(request.url.path)
         if request.url.query:
             next_url += f"?{request.url.query}"
-        encoded_next = urllib.parse.quote(next_url)
         return RedirectResponse(
-            url=f"/login?next={encoded_next}",
+            url=browser_login_url(next_url),
             status_code=status.HTTP_303_SEE_OTHER
         )
     if not is_api:
@@ -624,7 +632,7 @@ async def unexpected_exception_handler(request: Request, exc: Exception):
 def raise_login_redirect():
     raise HTTPException(
         status_code=status.HTTP_303_SEE_OTHER,
-        headers={"Location": "/login"}
+        headers={"Location": browser_login_url()}
     )
 
 # Public product pages
@@ -681,6 +689,8 @@ async def sitemap_xml(request: Request):
 
 @app.get("/login")
 async def render_login(request: Request):
+    if settings.demo_mode:
+        return RedirectResponse(url="/demo", status_code=status.HTTP_303_SEE_OTHER)
     token = request.cookies.get("session") or request.cookies.get("__Host-session")
     if token:
         try:
@@ -707,6 +717,8 @@ async def login_web(
     conn=Depends(db_conn),
 ):
     """Authenticate user by email and password, set session cookie."""
+    if settings.demo_mode:
+        return RedirectResponse(url="/demo", status_code=status.HTTP_303_SEE_OTHER)
     from app.domains.auth.repository import AuthRepository
     from app.domains.auth.service import AuthService
 
@@ -767,9 +779,9 @@ async def logout_web(request: Request, next: str = Form(None), conn=Depends(db_c
     await AuthService(AuthRepository(conn)).revoke_web_session(
         request.cookies.get("refresh_token")
     )
-    redirect_url = "/login"
+    redirect_url = browser_login_url()
     validated_next = safe_relative_redirect(next)
-    if validated_next:
+    if validated_next and not settings.demo_mode:
         redirect_url += f"?next={urllib.parse.quote(validated_next)}"
 
     redirect = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
@@ -828,7 +840,8 @@ async def process_reset_password(
     ok = await AuthService(AuthRepository(conn)).reset_password(token, new_password)
     if not ok:
         return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": "Invalid or expired reset link.", "success": False, "invitation": invitation})
-    return RedirectResponse(url="/login?reset=1", status_code=status.HTTP_303_SEE_OTHER)
+    reset_destination = "/demo" if settings.demo_mode else "/login?reset=1"
+    return RedirectResponse(url=reset_destination, status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/api/v1/health")
 async def health_check():

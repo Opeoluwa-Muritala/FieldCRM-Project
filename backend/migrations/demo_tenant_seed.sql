@@ -115,6 +115,23 @@ UPDATE stage_data SET data_json = data_json || $demo_intake$
 $demo_intake$::jsonb, saved_at=NOW()
 WHERE id='de000000-0000-4000-8000-000000000401';
 
+-- Complete staff-entered guarantor forms. Restricted identifiers are added
+-- by seed_demo_tenant.py so plaintext BVNs, accounts and cheques never appear
+-- in this SQL seed.
+INSERT INTO stage_data (id,loan_id,stage,data_json,saved_by,saved_at) VALUES
+(
+ 'de000000-0000-4000-8000-000000000402','de000000-0000-4000-8000-000000000301','guarantor_1',
+ '{"name":"Grace Mensah (Synthetic)","relationship":"Business associate","phone":"08000000001","dob":"1985-04-12","origin_lga":"Ikeja, Lagos","home_address":"22 Sample Avenue, Lagos","existing_loans":"No existing loans; one disclosed cooperative guarantee with no arrears.","marital_status":"Married","dependants":"2","spouse_info":"Daniel Mensah (Synthetic), 22 Sample Avenue, Lagos","employment_type":"Self-employed","employer_name":"Grace Demo Distribution Services","monthly_salary":"650000","employer_address":"31 Illustration Trade Centre, Lagos","business_sector":"FMCG distribution","business_turnover":"2400000","passport_photo_verified":true,"id_document_verified":true,"declaration_accept":"1","max_guarantee":"3750000","bank_name":"Demo Commercial Bank"}'::jsonb,
+ 'de000000-0000-4000-8000-000000000201',NOW()
+),
+(
+ 'de000000-0000-4000-8000-000000000403','de000000-0000-4000-8000-000000000301','guarantor_2',
+ '{"name":"Musa Ibrahim (Synthetic)","relationship":"Supplier","phone":"08000000002","dob":"1982-09-23","origin_lga":"Surulere, Lagos","home_address":"8 Example Close, Lagos","existing_loans":"Vehicle facility with a synthetic outstanding balance of NGN 480,000; repayment is current.","marital_status":"Married","dependants":"3","spouse_info":"Amina Ibrahim (Synthetic), 8 Example Close, Lagos","employment_type":"Employed","employer_name":"Illustration Wholesale Company Limited","monthly_salary":"720000","employer_address":"6 Sample Industrial Estate, Lagos","business_sector":"Wholesale supply","business_turnover":"1850000","passport_photo_verified":true,"id_document_verified":true,"declaration_accept":"1","max_guarantee":"3750000","bank_name":"Demo Merchant Bank"}'::jsonb,
+ 'de000000-0000-4000-8000-000000000201',NOW()
+)
+ON CONFLICT (id) DO UPDATE SET
+ data_json=EXCLUDED.data_json,saved_by=EXCLUDED.saved_by,saved_at=NOW();
+
 INSERT INTO business_locations (id,application_id,address_line,city,state,function,created_by) VALUES
 ('de000000-0000-4000-8000-000000000701','de000000-0000-4000-8000-000000000301','14 Demo Market Road','Lagos Island','Lagos','retail_outlet','de000000-0000-4000-8000-000000000201'),
 ('de000000-0000-4000-8000-000000000702','de000000-0000-4000-8000-000000000301','5 Example Warehouse Lane','Ikeja','Lagos','warehouse','de000000-0000-4000-8000-000000000201')

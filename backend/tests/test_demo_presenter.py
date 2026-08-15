@@ -1,8 +1,12 @@
+from pathlib import Path
 from uuid import UUID
 
 import pytest
+from fastapi import HTTPException, status
+from starlette.requests import Request
 
 from app.domains.demo import router as demo
+from app import main
 
 
 class RecordingConnection:
@@ -43,6 +47,50 @@ def test_every_demo_role_has_a_guided_landing_screen():
     assert set(demo.ROLE_ORDER) == set(demo.ROLE_SCREENS)
 
 
+def test_demo_mode_never_uses_the_staff_login(monkeypatch):
+    monkeypatch.setattr(main.settings, "DEMO_ENABLED", True)
+    monkeypatch.setattr(main.settings, "VERCEL_ENV", "preview")
+
+    assert main.browser_login_url() == "/demo"
+    assert main.browser_login_url("/users") == "/demo"
+
+
+def demo_request(path: str) -> Request:
+    return Request({
+        "type": "http",
+        "method": "GET",
+        "path": path,
+        "root_path": "",
+        "scheme": "https",
+        "query_string": b"",
+        "headers": [(b"host", b"demo.example")],
+        "client": ("127.0.0.1", 1234),
+        "server": ("demo.example", 443),
+    })
+
+
+@pytest.mark.asyncio
+async def test_demo_login_route_and_expired_session_return_to_presenter(monkeypatch):
+    monkeypatch.setattr(main.settings, "DEMO_ENABLED", True)
+    monkeypatch.setattr(main.settings, "VERCEL_ENV", "preview")
+
+    login_response = await main.render_login(demo_request("/login"))
+    expired_response = await main.http_exception_handler(
+        demo_request("/users"),
+        HTTPException(status_code=status.HTTP_401_UNAUTHORIZED),
+    )
+
+    assert login_response.headers["location"] == "/demo"
+    assert expired_response.headers["location"] == "/demo"
+
+
+@pytest.mark.asyncio
+async def test_ending_presenter_session_returns_to_demo():
+    response = await demo.lock_presenter()
+
+    assert response.headers["location"] == "/demo"
+
+
 def test_seed_is_not_an_automatic_production_migration():
     from migrations import run_migration
 
@@ -50,8 +98,6 @@ def test_seed_is_not_an_automatic_production_migration():
 
 
 def test_demo_seed_contains_a_complete_single_intake():
-    from pathlib import Path
-
     seed = Path("backend/migrations/demo_tenant_seed.sql").read_text(encoding="utf-8")
     for field in (
         '"full_name"', '"spouse_name"', '"guarantor_1_name"',
@@ -62,3 +108,24 @@ def test_demo_seed_contains_a_complete_single_intake():
         assert field in seed
     assert '"guarantor_signature"' not in seed
     assert '"witness_signature"' not in seed
+
+
+def test_demo_seed_contains_two_complete_internal_guarantor_forms():
+    seed = Path("backend/migrations/demo_tenant_seed.sql").read_text(encoding="utf-8")
+
+    assert "'guarantor_1'" in seed
+    assert "'guarantor_2'" in seed
+    for field in (
+        '"name"', '"relationship"', '"phone"', '"dob"', '"origin_lga"',
+        '"home_address"', '"existing_loans"', '"marital_status"', '"dependants"',
+        '"spouse_info"', '"employment_type"', '"employer_name"', '"monthly_salary"',
+        '"employer_address"', '"business_sector"', '"business_turnover"',
+        '"passport_photo_verified"', '"id_document_verified"',
+        '"declaration_accept"', '"max_guarantee"', '"bank_name"',
+    ):
+        assert seed.count(field) >= 2
+
+    # Restricted values are injected only through the encryption-aware seeder.
+    assert '"bvn"' not in seed
+    assert '"account_number"' not in seed
+    assert '"cheque_number"' not in seed

@@ -40,6 +40,56 @@ async def main() -> None:
                 json.dumps(intake_data),
                 "de000000-0000-4000-8000-000000000401",
             )
+            guarantor_secrets = (
+                (
+                    "de000000-0000-4000-8000-000000000402",
+                    "de000000-0000-4000-8000-000000000501",
+                    "00000000001",
+                    "0000000001",
+                    "DEMO-CHQ-001",
+                ),
+                (
+                    "de000000-0000-4000-8000-000000000403",
+                    "de000000-0000-4000-8000-000000000502",
+                    "00000000002",
+                    "0000000002",
+                    "DEMO-CHQ-002",
+                ),
+            )
+            for stage_id, guarantor_id, bvn, account_number, cheque_number in guarantor_secrets:
+                guarantor_data = await conn.fetchval(
+                    "SELECT data_json FROM stage_data WHERE id=$1",
+                    stage_id,
+                )
+                if isinstance(guarantor_data, str):
+                    guarantor_data = json.loads(guarantor_data)
+                guarantor_data = dict(guarantor_data or {})
+                guarantor_data["bvn"] = encrypt_sensitive(bvn, context="guarantor_stage:bvn")
+                guarantor_data["account_number"] = encrypt_sensitive(
+                    account_number, context="guarantor_stage:account_number"
+                )
+                guarantor_data["cheque_number"] = encrypt_sensitive(
+                    cheque_number, context="guarantor_stage:cheque_number"
+                )
+                await conn.execute(
+                    "UPDATE stage_data SET data_json=$1::jsonb,saved_at=NOW() WHERE id=$2",
+                    json.dumps(guarantor_data),
+                    stage_id,
+                )
+                await conn.execute(
+                    """UPDATE guarantors SET
+                         bvn=$1,bvn_lookup_hash=$2,bank_name=$3,account_number=$4,
+                         account_lookup_hash=$5,cheque_number=$6,form_stage='verified'
+                       WHERE id=$7 AND org_id=$8""",
+                    encrypt_sensitive(bvn, context="guarantor:bvn"),
+                    blind_index(bvn, context="guarantor:bvn"),
+                    guarantor_data["bank_name"],
+                    encrypt_sensitive(account_number, context="guarantor:account_number"),
+                    blind_index(account_number, context="guarantor:account_number"),
+                    encrypt_sensitive(cheque_number, context="guarantor:cheque_number"),
+                    guarantor_id,
+                    DEMO_ORG_ID,
+                )
             await conn.execute(
                 """UPDATE loan_applications SET bvn=$1,bvn_lookup_hash=$2,updated_at=NOW()
                    WHERE id=$3 AND org_id=$4""",
