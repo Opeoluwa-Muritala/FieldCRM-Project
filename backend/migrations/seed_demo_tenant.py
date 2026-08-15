@@ -104,18 +104,71 @@ async def main() -> None:
               (SELECT count(*) FROM users WHERE org_id=$1 AND active=TRUE AND deleted_at IS NULL) AS users,
               (SELECT count(*) FROM loan_applications WHERE org_id=$1 AND deleted_at IS NULL) AS applications,
               (SELECT count(*) FROM documents WHERE org_id=$1 AND deleted_at IS NULL) AS documents,
+              (SELECT count(*) FROM business_locations WHERE application_id='de000000-0000-4000-8000-000000000301') AS business_locations,
+              (SELECT count(*) FROM ocr_results WHERE loan_id='de000000-0000-4000-8000-000000000301') AS ocr_results,
+              (SELECT count(*) FROM visitation_reports WHERE loan_id='de000000-0000-4000-8000-000000000301') AS visitation_reports,
               (SELECT count(*) FROM verification_checks WHERE loan_application_id='de000000-0000-4000-8000-000000000301') AS identity_checks,
+              (SELECT count(*) FROM bureau_submissions WHERE loan_application_id='de000000-0000-4000-8000-000000000301') AS bureau_submissions,
+              (SELECT count(*) FROM sanctions_checks WHERE loan_application_id='de000000-0000-4000-8000-000000000301') AS sanctions_checks,
               (SELECT count(*) FROM checklist_items WHERE loan_application_id='de000000-0000-4000-8000-000000000301') AS checklist_items,
               (SELECT count(*) FROM pledged_items WHERE loan_id='de000000-0000-4000-8000-000000000301') AS pledged_items,
-              (SELECT count(*) FROM notifications WHERE org_id=$1 AND type='demo') AS role_guides""",
+              (SELECT count(*) FROM loan_recommendations WHERE application_id='de000000-0000-4000-8000-000000000301') AS recommendations,
+              (SELECT count(*) FROM offer_letters WHERE loan_application_id='de000000-0000-4000-8000-000000000301') AS offer_letters,
+              (SELECT count(*) FROM notifications WHERE org_id=$1 AND type='demo') AS role_guides,
+              (SELECT count(*) FROM business_pnl WHERE application_id='de000000-0000-4000-8000-000000000301') AS pnl_rows,
+              (SELECT count(*) FROM borrower_financial_profiles WHERE application_id='de000000-0000-4000-8000-000000000301') AS financial_profiles,
+              (SELECT count(*) FROM cashflow_entries WHERE application_id='de000000-0000-4000-8000-000000000301') AS cashflows,
+              (SELECT count(*) FROM credit_obligations WHERE application_id='de000000-0000-4000-8000-000000000301') AS obligations,
+              (SELECT count(*) FROM collateral_items WHERE application_id='de000000-0000-4000-8000-000000000301') AS collateral_items,
+              (SELECT count(*) FROM guarantors WHERE loan_id='de000000-0000-4000-8000-000000000301') AS guarantors,
+              (SELECT count(*) FROM workflow_events WHERE loan_id='de000000-0000-4000-8000-000000000301') AS workflow_events,
+              (SELECT count(*) FROM loan_applications WHERE org_id=$1 AND ref_no LIKE 'DEMO-PAR-%' AND stage='disbursed' AND deleted_at IS NULL) AS par_loans,
+              (SELECT count(*) FROM repayment_schedule WHERE org_id=$1 AND loan_id IN (SELECT id FROM loan_applications WHERE org_id=$1 AND ref_no LIKE 'DEMO-PAR-%')) AS repayment_schedule,
+              (SELECT count(*) FROM repayment_records WHERE org_id=$1 AND loan_id IN (SELECT id FROM loan_applications WHERE org_id=$1 AND ref_no LIKE 'DEMO-PAR-%')) AS repayment_records""",
             DEMO_ORG_ID,
         )
+        required_minimums = {
+            "branches": 3,
+            "users": 11,
+            "applications": 6,
+            "documents": 1,
+            "business_locations": 1,
+            "ocr_results": 1,
+            "visitation_reports": 1,
+            "identity_checks": 1,
+            "bureau_submissions": 1,
+            "sanctions_checks": 1,
+            "checklist_items": 1,
+            "pledged_items": 1,
+            "recommendations": 1,
+            "offer_letters": 1,
+            "role_guides": 11,
+            "pnl_rows": 1,
+            "financial_profiles": 1,
+            "cashflows": 6,
+            "obligations": 1,
+            "collateral_items": 2,
+            "guarantors": 2,
+            "workflow_events": 1,
+            "par_loans": 5,
+            "repayment_schedule": 5,
+            "repayment_records": 5,
+        }
+        incomplete = {
+            name: {"actual": counts[name], "minimum": minimum}
+            for name, minimum in required_minimums.items()
+            if counts[name] < minimum
+        }
+        if incomplete:
+            raise RuntimeError(f"Demo seed validation failed; incomplete datasets: {incomplete}")
         print(f"demo_org_id={DEMO_ORG_ID}")
         print(f"branches={counts['branches']} users={counts['users']} applications={counts['applications']}")
         print(
             f"documents={counts['documents']} identity_checks={counts['identity_checks']} "
             f"checklist_items={counts['checklist_items']} pledged_items={counts['pledged_items']} "
-            f"role_guides={counts['role_guides']}"
+            f"role_guides={counts['role_guides']} cashflows={counts['cashflows']} "
+            f"par_loans={counts['par_loans']} schedules={counts['repayment_schedule']} "
+            f"payments={counts['repayment_records']}"
         )
     finally:
         await conn.close()
