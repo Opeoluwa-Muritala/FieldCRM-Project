@@ -4,11 +4,16 @@ from uuid import uuid4
 import pytest
 
 from app.domains.users.service import UserService
+from app.core.exceptions import DomainException
 
 
 class Repository:
     def __init__(self, user):
         self.user = user
+        self.conn = self
+
+    async def fetchval(self, query, *args):
+        return True
 
     async def get_by_id(self, user_id):
         return self.user if user_id == self.user.id else None
@@ -31,6 +36,25 @@ def identities():
     admin = SimpleNamespace(id=uuid4(), org_id=org_id, role="system_admin")
     user = SimpleNamespace(id=uuid4(), org_id=org_id, role="account_officer", branch_id=None, active=True)
     return admin, user
+
+
+@pytest.mark.asyncio
+async def test_branch_manager_cannot_create_a_privileged_user():
+    org_id = uuid4()
+    manager = SimpleNamespace(id=uuid4(), org_id=org_id, role="branch_manager")
+    requested_user = SimpleNamespace(
+        org_id=str(org_id),
+        full_name="Escalated User",
+        email="escalated@example.com",
+        role="system_admin",
+        password="correct horse battery staple",
+        branch_id=None,
+    )
+
+    with pytest.raises(DomainException) as exc_info:
+        await UserService(Repository(None)).register_user(manager, requested_user)
+
+    assert exc_info.value.status_code == 403
 
 
 @pytest.mark.asyncio

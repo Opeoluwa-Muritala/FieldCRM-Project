@@ -4,6 +4,7 @@ import secrets
 import uuid
 from time import perf_counter
 from starlette.datastructures import MutableHeaders
+from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from urllib.parse import urlsplit
@@ -23,9 +24,106 @@ class CrossSiteRequestMiddleware:
     """
     _UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
 
-    def __init__(self, app: ASGIApp, allowed_origins: list[str]):
+    _CSRF_COOKIE = "csrf_token"
+    _MAX_FORM_BYTES = 8 * 1024 * 1024
+    _PRE_AUTH_BROWSER_PATHS = {
+        "/login",
+        "/forgot-password",
+        "/reset-password",
+        "/api/v1/auth/login",
+    }
+
+    def __init__(self, app: ASGIApp, allowed_origins: list[str], cookie_secure: bool = False):
         self.app = app
         self.allowed_origins = {origin.rstrip("/").lower() for origin in allowed_origins}
+        self.cookie_secure = cookie_secure
+
+    @staticmethod
+    def _cookies(scope: Scope) -> dict[str, str]:
+        from http.cookies import SimpleCookie
+
+        parsed = SimpleCookie()
+        try:
+            parsed.load(_get_header(scope, b"cookie"))
+        except Exception:
+            return {}
+        return {name: morsel.value for name, morsel in parsed.items()}
+
+    @staticmethod
+    async def _buffer_body(receive: Receive, maximum: int) -> bytes | None:
+        body = bytearray()
+        while True:
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                return None
+            if message["type"] != "http.request":
+                continue
+            body.extend(message.get("body", b""))
+            if len(body) > maximum:
+                return None
+            if not message.get("more_body", False):
+                return bytes(body)
+
+    @staticmethod
+    def _replay_body(body: bytes) -> Receive:
+        sent = False
+
+        async def receive() -> Message:
+            nonlocal sent
+            if sent:
+                return {"type": "http.request", "body": b"", "more_body": False}
+            sent = True
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        return receive
+
+    async def _form_csrf_token(self, scope: Scope, receive: Receive) -> tuple[str, Receive] | None:
+        body = await self._buffer_body(receive, self._MAX_FORM_BYTES)
+        if body is None:
+            return None
+        replay = self._replay_body(body)
+        request = Request(scope, receive=self._replay_body(body))
+        try:
+            form = await request.form(
+                max_files=100,
+                max_fields=1000,
+                max_part_size=self._MAX_FORM_BYTES,
+            )
+            token = str(form.get("csrf_token") or "")
+        except Exception:
+            token = ""
+        finally:
+            await request.close()
+        return token, replay
+
+    async def _send_with_csrf_cookie(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        *,
+        token: str,
+    ) -> None:
+        async def send_with_cookie(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                cookie_response = Response()
+                cookie_response.set_cookie(
+                    key=self._CSRF_COOKIE,
+                    value=token,
+                    httponly=False,
+                    secure=self.cookie_secure or scope.get("scheme") == "https",
+                    samesite="strict",
+                    max_age=2 * 24 * 60 * 60,
+                    path="/",
+                )
+                cookie_header = next(
+                    value for name, value in cookie_response.raw_headers if name == b"set-cookie"
+                )
+                headers.append("set-cookie", cookie_header.decode("latin-1"))
+            await send(message)
+
+        await self.app(scope, receive, send_with_cookie)
 
     @staticmethod
     def _request_origin(scope: Scope) -> str:
@@ -35,21 +133,36 @@ class CrossSiteRequestMiddleware:
         was not duplicated in CORS_ORIGINS. Cross-site callers cannot make their
         Origin match the victim Host while retaining the victim's cookies.
         """
-        forwarded_proto = _get_header(scope, b"x-forwarded-proto").split(",", 1)[0].strip().lower()
-        scheme = forwarded_proto or str(scope.get("scheme") or "http").lower()
-        forwarded_host = _get_header(scope, b"x-forwarded-host").split(",", 1)[0].strip().lower()
-        host = forwarded_host or _get_header(scope, b"host").strip().lower()
+        # The ASGI server is responsible for accepting proxy headers only from
+        # the trusted edge. Host validation happens independently in
+        # TrustedHostMiddleware, so client-supplied forwarded-host values never
+        # become an accepted CSRF origin here.
+        scheme = str(scope.get("scheme") or "http").lower()
+        host = _get_header(scope, b"host").strip().lower()
         return f"{scheme}://{host}" if host else ""
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope.get("type") != "http" or scope.get("method") not in self._UNSAFE:
+        if scope.get("type") != "http":
             await self.app(scope, receive, send)
             return
-        cookie_header = _get_header(scope, b"cookie")
+        cookies = self._cookies(scope)
+        csrf_cookie = cookies.get(self._CSRF_COOKIE, "")
+        if scope.get("method") not in self._UNSAFE:
+            if csrf_cookie:
+                await self.app(scope, receive, send)
+            else:
+                await self._send_with_csrf_cookie(
+                    scope, receive, send, token=secrets.token_urlsafe(32)
+                )
+            return
+
         uses_auth_cookie = any(
-            marker in f";{cookie_header}" for marker in (";session=", ";__Host-session=", ";refresh_token=")
+            name in cookies for name in ("session", "__Host-session", "refresh_token")
         )
-        if not uses_auth_cookie:
+        browser_pre_auth = scope.get("path") in self._PRE_AUTH_BROWSER_PATHS and bool(
+            _get_header(scope, b"origin") or _get_header(scope, b"referer")
+        )
+        if not uses_auth_cookie and not browser_pre_auth:
             await self.app(scope, receive, send)
             return
 
@@ -69,7 +182,29 @@ class CrossSiteRequestMiddleware:
             response = Response("CSRF origin validation failed", status_code=403)
             await response(scope, receive, send)
             return
-        await self.app(scope, receive, send)
+
+        supplied_token = _get_header(scope, b"x-csrf-token")
+        downstream_receive = receive
+        content_type = _get_header(scope, b"content-type").lower()
+        if not supplied_token and content_type.startswith(("application/x-www-form-urlencoded", "multipart/form-data")):
+            parsed = await self._form_csrf_token(scope, receive)
+            if parsed is None:
+                response = Response("Request body is too large", status_code=413)
+                await response(scope, receive, send)
+                return
+            supplied_token, downstream_receive = parsed
+        if not csrf_cookie or not supplied_token or not secrets.compare_digest(csrf_cookie, supplied_token):
+            response = Response("CSRF token validation failed", status_code=403)
+            await response(scope, downstream_receive, send)
+            return
+
+        rotate_token = secrets.token_urlsafe(32) if scope.get("path") in {"/login", "/logout"} else ""
+        if rotate_token:
+            await self._send_with_csrf_cookie(
+                scope, downstream_receive, send, token=rotate_token
+            )
+        else:
+            await self.app(scope, downstream_receive, send)
 
 
 def queue_response_cookie(scope: Scope, **cookie_options) -> None:

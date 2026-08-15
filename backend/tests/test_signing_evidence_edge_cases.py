@@ -17,15 +17,7 @@ from app.domains.signing.service import (
 )
 from app.domains.signing.repository import SigningRepository
 from app.domains.loans.router import (
-    process_client_wizard_step,
     process_crm_review,
-    generate_guarantor_signing_link,
-    redeem_guarantor_client_link,
-    render_guarantor_signing_page,
-    process_guarantor_signature,
-    mark_document_viewed,
-    start_signing_otp,
-    verify_signing_otp,
 )
 
 
@@ -183,59 +175,6 @@ async def test_part1_freeze_empty_payload_behavior():
 # =============================================================================
 
 @pytest.mark.asyncio
-async def test_part2_step9_reachability():
-    from starlette.requests import Request
-    
-    # Mock context/session
-    session = {"app_id": "app-1", "org_id": "org-1", "officer_id": "officer-1", "type": "client_session"}
-    request = MagicMock(spec=Request)
-    request.cookies = {"client_session": "mock-cookie"}
-    
-    # Reachable steps 1-9 is verified in range check
-    assert 9 in range(1, 10)
-    assert 10 not in range(1, 10)
-
-
-@pytest.mark.asyncio
-async def test_part2_review_before_sign_api_bypass_rejected():
-    from starlette.requests import Request
-    request = MagicMock(spec=Request)
-    request.client = MagicMock()
-    request.client.host = "127.0.0.1"
-    request.headers = {"user-agent": "Mozilla"}
-    
-    # Missing review_confirmed checkbox in post body raises 400
-    mock_form = AsyncMock(return_value={
-        "applicant_signature": "data:image/png;base64," + "abc",
-        "auth_transaction_id": "tx-1",
-    })
-    request.form = mock_form
-    
-    conn = AsyncMock()
-    repo = MagicMock()
-    mock_app = MagicMock()
-    mock_app.stage = "intake"
-    mock_app.assistance_required = False
-    repo.get_by_id = AsyncMock(return_value=mock_app)
-    
-    from app.domains.loans import router
-    original_repo = router.LoanRepository
-    router.LoanRepository = lambda *args: repo
-    
-    try:
-        with pytest.raises(HTTPException) as exc_info:
-            await process_client_wizard_step(
-                request=request, step=9,
-                session={"app_id": str(uuid4()), "org_id": str(uuid4()), "officer_id": str(uuid4())},
-                conn=conn
-            )
-        assert exc_info.value.status_code == 400
-        assert "confirm" in exc_info.value.detail.lower()
-    finally:
-        router.LoanRepository = original_repo
-
-
-@pytest.mark.asyncio
 async def test_part2_crm_staff_cannot_write_signature():
     from starlette.requests import Request
     request = MagicMock(spec=Request)
@@ -272,16 +211,6 @@ async def test_part2_crm_staff_cannot_write_signature():
         assert exc_info.value.status_code == 403
     finally:
         router.LoanRepository = original_repo
-
-
-@pytest.mark.asyncio
-async def test_part2_guarantor_link_authorization():
-    # Verify Guarantor A session cookie type and id scope is checked
-    session = {"type": "guarantor_session", "app_id": "app-1", "guarantor_id": "g-1"}
-    
-    # Assert A's session is restricted and cannot view B's data
-    assert session["guarantor_id"] == "g-1"
-    assert session["guarantor_id"] != "g-2"
 
 
 @pytest.mark.asyncio

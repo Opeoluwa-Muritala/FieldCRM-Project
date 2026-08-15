@@ -10,7 +10,7 @@ import logging
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlsplit
 from fastapi import FastAPI, Depends, Form, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exception_handlers import request_validation_exception_handler
@@ -18,6 +18,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from contextlib import asynccontextmanager
 from app.config import settings
@@ -135,6 +136,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-CSRF-Token"],
 )
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=settings.trusted_hosts,
+    www_redirect=False,
+)
 
 # Custom Middlewares
 app.add_middleware(
@@ -143,7 +149,11 @@ app.add_middleware(
     csp_nonce_enforced=settings.CSP_NONCE_ENFORCED,
 )
 app.add_middleware(RequestIDMiddleware)
-app.add_middleware(CrossSiteRequestMiddleware, allowed_origins=settings.cors_origins)
+app.add_middleware(
+    CrossSiteRequestMiddleware,
+    allowed_origins=settings.cors_origins,
+    cookie_secure=settings.COOKIE_SECURE,
+)
 app.add_middleware(PendingResponseCookiesMiddleware)
 app.add_middleware(ResponseCacheInvalidationMiddleware)
 app.add_middleware(
@@ -167,6 +177,22 @@ templates.env.globals.update(
     demo_enabled=settings.demo_mode,
     demo_org_id=settings.DEMO_ORG_ID,
 )
+
+
+def safe_relative_redirect(value: str | None) -> str | None:
+    """Return a same-site path after rejecting parser-confusion bypasses."""
+    candidate = (value or "").strip()
+    if not candidate or any(ord(character) < 32 for character in candidate):
+        return None
+    decoded = candidate
+    for _ in range(2):
+        decoded = unquote(decoded)
+    if "\\" in decoded or not decoded.startswith("/") or decoded.startswith("//"):
+        return None
+    parsed = urlsplit(decoded)
+    if parsed.scheme or parsed.netloc:
+        return None
+    return candidate
 
 class ProtectedStaticFiles(StaticFiles):
     """Never expose customer uploads through the unauthenticated static mount."""
@@ -236,6 +262,7 @@ async def download_document(
                     # Format as e.g. "Oboh Cletus - utility_bill.pdf"
                     filename = f"{applicant_name} - {orig_name}"
 
+    filename = sanitize_preview_filename(filename)
     local_path = resolve_local_document_path(document.get("stored_path"))
     if not document.get("cloud_public_id") and local_path:
         return FileResponse(
@@ -249,7 +276,6 @@ async def download_document(
         raise HTTPException(status_code=404, detail="Document not found")
 
     import httpx
-    import urllib.parse
     from fastapi.responses import StreamingResponse
 
     cloud_url = signed_download_url(document["cloud_public_id"], document["mime_type"])
@@ -262,12 +288,11 @@ async def download_document(
                 async for chunk in r.aiter_bytes():
                     yield chunk
 
-    encoded_filename = urllib.parse.quote(filename)
     return StreamingResponse(
         file_streamer(),
         media_type=document.get("mime_type"),
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"; filename*=UTF-8\'\'{encoded_filename}',
+            "Content-Disposition": download_content_disposition(filename),
             "Cache-Control": "private, no-store",
             "X-Content-Type-Options": "nosniff",
         }
@@ -414,6 +439,10 @@ def preview_content_disposition(value: str | None) -> str:
     ascii_filename = _FILENAME_ASCII_UNSAFE.sub("_", ascii_filename).strip(" .") or "document"
     encoded_filename = quote(filename, safe="!#$&+-.^_`|~")
     return f"inline; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
+
+
+def download_content_disposition(value: str | None) -> str:
+    return preview_content_disposition(value).replace("inline;", "attachment;", 1)
 
 
 def preview_response_headers(filename: str | None, response: httpx.Response) -> dict[str, str]:
@@ -705,8 +734,9 @@ async def login_web(
     
     # Safe redirect validation: prevent open redirect to external domains
     redirect_url = "/dashboard"
-    if next and next.strip() and next.startswith("/") and not next.startswith("//"):
-        redirect_url = next.strip()
+    validated_next = safe_relative_redirect(next)
+    if validated_next:
+        redirect_url = validated_next
 
     redirect = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
     redirect.set_cookie(
@@ -729,11 +759,18 @@ async def login_web(
     )
     return redirect
 
-@app.get("/logout")
-async def logout_web(next: str = None):
+@app.post("/logout")
+async def logout_web(request: Request, next: str = Form(None), conn=Depends(db_conn)):
+    from app.domains.auth.repository import AuthRepository
+    from app.domains.auth.service import AuthService
+
+    await AuthService(AuthRepository(conn)).revoke_web_session(
+        request.cookies.get("refresh_token")
+    )
     redirect_url = "/login"
-    if next and next.strip() and next.startswith("/") and not next.startswith("//"):
-        redirect_url += f"?next={urllib.parse.quote(next.strip())}"
+    validated_next = safe_relative_redirect(next)
+    if validated_next:
+        redirect_url += f"?next={urllib.parse.quote(validated_next)}"
 
     redirect = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
     redirect.delete_cookie(key="session", path="/")
@@ -776,8 +813,18 @@ async def process_reset_password(
     await enforce_reset_limits(request, token)
     from app.domains.auth.repository import AuthRepository
     from app.domains.auth.service import AuthService
+    from app.core.security import validate_password_strength
     if new_password != confirm_password:
         return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": "Passwords do not match.", "success": False, "invitation": invitation})
+    try:
+        validate_password_strength(new_password)
+    except ValueError as exc:
+        return templates.TemplateResponse(
+            request,
+            "shared/reset_password.html",
+            {"token": token, "error": str(exc), "success": False, "invitation": invitation},
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
     ok = await AuthService(AuthRepository(conn)).reset_password(token, new_password)
     if not ok:
         return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": "Invalid or expired reset link.", "success": False, "invitation": invitation})

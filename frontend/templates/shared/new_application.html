@@ -145,35 +145,6 @@
             </button>
         </form>
 
-        <!-- Generate Share Link Card -->
-        {% if false %}
-        <div class="csp-s-4687a0157d60">
-            <div class="csp-s-fb5ec070f2bf">
-                <h3 class="csp-s-eaacf0d435d4">
-                    <span>🔗</span> Share Client Intake Link
-                </h3>
-                <p class="csp-s-705b4a7f7fd6">
-                    Generate a secure, single-use link for your client to complete the loan intake form themselves.
-                </p>
-                <button type="button" class="btn-primary-filled csp-s-50de81d2b0b8" id="generateLinkBtn">
-                    Generate Sharing Link
-                </button>
-            </div>
-            
-            <div id="shareLinkContainer" class="csp-s-2a65e3066f59">
-                <label class="field-label csp-s-94b6caffd552">Client Intake URL</label>
-                <div class="csp-s-a9c77021d675">
-                    <input type="text" id="shareLinkInput" readonly class="field-input csp-s-435cd2e98737">
-                    <button type="button" class="btn-primary-filled csp-s-619cdd377910" id="copyLinkBtn">
-                        Copy
-                    </button>
-                </div>
-                <div id="copyFeedback" class="csp-s-53afb5298111">
-                    ✓ Copied to clipboard!
-                </div>
-            </div>
-        </div>
-        {% endif %}
     </div>
 </div>
 
@@ -281,43 +252,6 @@
         document.getElementById('beginAppBtn').disabled = !(custTypeChecked && loanTypeChecked && existingReady);
     }
 
-    async function generateClientLink() {
-        const btn = document.getElementById('generateLinkBtn');
-        btn.disabled = true;
-        btn.textContent = 'Generating...';
-        try {
-            const response = await fetch('/loans/generate-share-link', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
-            if (!response.ok) throw new Error('Failed to generate link');
-            const data = await response.json();
-            
-            document.getElementById('shareLinkInput').value = data.share_url;
-            document.getElementById('shareLinkContainer').style.display = 'block';
-            btn.textContent = 'Regenerate Link';
-        } catch (err) {
-            window.showFieldMessage('Error generating link: ' + err.message);
-            btn.textContent = 'Generate Sharing Link';
-        } finally {
-            btn.disabled = false;
-        }
-    }
-
-    function copyShareLink() {
-        const input = document.getElementById('shareLinkInput');
-        input.select();
-        input.setSelectionRange(0, 99999);
-        navigator.clipboard.writeText(input.value);
-        
-        const feedback = document.getElementById('copyFeedback');
-        feedback.style.display = 'block';
-        setTimeout(() => {
-            feedback.style.display = 'none';
-        }, 2000);
-    }
     document.querySelectorAll('[data-customer-type]').forEach((card) => {
         card.addEventListener('click', () => selectCustType(card.dataset.customerType));
     });
@@ -349,7 +283,5 @@
         const target = event.target.closest('[data-customer-id]'); if (target) selectCustomer(target.dataset.customerId);
     });
     document.getElementById('clearCustomerBtn')?.addEventListener('click', clearSelectedCustomer);
-    document.getElementById('generateLinkBtn')?.addEventListener('click', generateClientLink);
-    document.getElementById('copyLinkBtn')?.addEventListener('click', copyShareLink);
 </script>
 {% endblock %}

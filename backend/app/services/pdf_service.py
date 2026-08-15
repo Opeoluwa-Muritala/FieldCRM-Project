@@ -5,6 +5,7 @@ import io
 import os
 import re
 import zipfile
+from urllib.parse import urlsplit
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -20,12 +21,25 @@ if os.name == "nt":
     if Path(_dll_directory).is_dir():
         os.environ["WEASYPRINT_DLL_DIRECTORIES"] = _dll_directory
 
+
+def _restricted_pdf_url_fetcher(url: str, *args, **kwargs):
+    """Allow inline resources only; generated document data is untrusted."""
+    if urlsplit(url).scheme.lower() != "data":
+        raise ValueError("External resources are disabled for generated PDFs")
+    from weasyprint import default_url_fetcher
+    return default_url_fetcher(url, *args, **kwargs)
+
 def _to_pdf(html: str) -> bytes:
     """Render the supplied HTML and its CSS into real PDF bytes."""
     try:
         from weasyprint import HTML
         project_root = Path(__file__).resolve().parents[3]
-        return HTML(string=html, base_url=str(project_root)).write_pdf()
+
+        return HTML(
+            string=html,
+            base_url=str(project_root),
+            url_fetcher=_restricted_pdf_url_fetcher,
+        ).write_pdf()
     except Exception:
         # WeasyPrint depends on native Pango/Cairo libraries that are not
         # available in every serverless runtime (notably Vercel). Keep document

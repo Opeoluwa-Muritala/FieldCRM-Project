@@ -31,7 +31,8 @@ async def test_normal_rotation():
         "id": user_id,
         "org_id": org_id,
         "role": "account_officer",
-        "active": True
+        "active": True,
+        "password_hash": "test-password-hash",
     }
     
     # Configure mock repository responses
@@ -219,6 +220,7 @@ async def test_concurrent_refresh_reuses_access_renewal_without_family_revocatio
         "org_id": uuid4(),
         "role": "account_officer",
         "active": True,
+        "password_hash": "test-password-hash",
     })
     transaction = MagicMock()
     transaction.__aenter__ = AsyncMock()

@@ -1,3 +1,5 @@
+import hmac
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from time import perf_counter
@@ -5,7 +7,7 @@ from app.core.database import DatabaseIdentity, database_identity, get_connectio
 from app.core.loan_authorization import canonical_role
 from app.core.middleware import queue_response_cookie
 from app.core.performance import record_counter, record_duration
-from app.core.security import decode_access_token
+from app.core.security import credential_fingerprint, decode_access_token
 from app.core.cache import cache_auth_user, get_cached_auth_user
 from app.domains.users.repository import UserRepository
 from app.domains.users.schemas import UserRow
@@ -20,6 +22,11 @@ async def get_current_user_from_token(token: str, conn=None) -> UserRow:
             detail="Not authenticated",
         )
     payload = decode_access_token(token)
+    if payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type",
+        )
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(
@@ -33,6 +40,11 @@ async def get_current_user_from_token(token: str, conn=None) -> UserRow:
         parsed_user_id = None
 
     cached = await get_cached_auth_user(user_id) if parsed_user_id else None
+    # Profiles written before credential-bound caching are deliberately
+    # discarded instead of accepting a token that cannot be verified.
+    cached_fingerprint = str((cached or {}).get("credential_fingerprint") or "")
+    if cached and not cached_fingerprint:
+        cached = None
     record_counter("auth_cache_hit" if cached else "auth_cache_miss")
     user = UserRow(**cached) if cached else None
     if user is None and parsed_user_id:
@@ -49,6 +61,15 @@ async def get_current_user_from_token(token: str, conn=None) -> UserRow:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",
+        )
+    supplied_fingerprint = str(payload.get("credential") or "")
+    expected_fingerprint = cached_fingerprint or credential_fingerprint(user.password_hash)
+    if not supplied_fingerprint or not hmac.compare_digest(
+        supplied_fingerprint, expected_fingerprint
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session credentials are no longer valid",
         )
     return user
 

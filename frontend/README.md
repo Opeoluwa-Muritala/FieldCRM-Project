@@ -6,7 +6,7 @@ This directory is the server-rendered web user interface for FieldCRM. It contai
 
 - Responsive, authenticated browser UI for loan origination, review, approval, disbursement, servicing, and administration.
 - Desktop and mobile shells with role-specific sidebars and tab bars.
-- Shared templates for login, password recovery, settings, notifications, search, borrowers, applications, workflow actions, documents, client intake, and reports.
+- Shared templates for login, password recovery, settings, notifications, search, borrowers, staff-operated application intake, workflow actions, documents, and reports.
 - Role-specific dashboards, queues, application/detail views, shared CSS, browser-side dashboard behavior, and bank brand assets.
 
 The backend selects templates from the current user's role and authorizes every route/action. Browser code presents data and submits forms; it does not decide permissions or advance workflow state.
@@ -23,7 +23,6 @@ The backend selects templates from the current user's role and authorizes every 
 | Committee/executive | Committee queue/review/MCC summary; executive, ED, and MD dashboards, queues, and decision pages. |
 | Auditor/legal | Auditor dashboard, application detail, audit trail, compliance flags; legal queue and valuation. |
 | System admin | Dashboard, application detail, users, system activity, interest presets. |
-| External client intake | Share-link start, multi-step application and guarantor forms, upload, success, and error pages. |
 
 ## Layout
 
@@ -32,7 +31,7 @@ frontend/
 ├── templates/
 │   ├── base/              desktop, mobile, and shared shells
 │   ├── components/        reusable navigation and application flags
-│   ├── shared/            cross-role and client-intake pages
+│   ├── shared/            cross-role and internal intake pages
 │   └── <role>/            role-specific screens and dashboards
 └── static/
     ├── css/               login, dashboard, borrower, and role-theme styles

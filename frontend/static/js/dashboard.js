@@ -21,6 +21,13 @@ let activeFormMode = "manual";
 
 function initDataHrefNavigation() {
     document.addEventListener("click", (event) => {
+        const logout = event.target.closest("[data-logout]");
+        if (logout) {
+            event.preventDefault();
+            fetch("/logout", { method: "POST", credentials: "same-origin" })
+                .finally(() => { window.location.href = "/login"; });
+            return;
+        }
         const target = event.target.closest("[data-href]");
         if (!target || event.defaultPrevented || event.button !== 0) return;
         const interactive = event.target.closest("a, button, input, select, textarea, label");
