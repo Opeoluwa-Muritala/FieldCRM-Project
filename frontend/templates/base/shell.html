@@ -22,7 +22,7 @@
 </head>
 {# Role is applied as data-attribute for CSS theming — accent colors shift per role #}
 {% set user_role = user.role|lower|replace(' ', '_') if user else 'loan_officer' %}
-<body data-role="{{ user_role }}">
+<body data-role="{{ user_role }}" data-demo-enabled="{{ 'true' if demo_enabled else 'false' }}">
     {% if demo_enabled and user and user.org_id|string == demo_org_id %}
     <div class="demo-environment-banner" role="status">
         DEMO — SYNTHETIC DATA
@@ -117,7 +117,7 @@
                         body,
                     });
                 } finally {
-                    window.location.href = `/login?next=${encodeURIComponent(nextUrl)}`;
+                    window.location.href = {{ ('/demo' if demo_enabled else '/login')|tojson }};
                 }
             }
 

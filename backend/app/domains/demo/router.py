@@ -247,7 +247,7 @@ async def switch_demo_role(
 
 @router.post("/lock")
 async def lock_presenter():
-    response = RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
+    response = RedirectResponse("/demo", status_code=status.HTTP_303_SEE_OTHER)
     response.delete_cookie("demo_presenter", path="/demo")
     response.delete_cookie("session", path="/")
     response.delete_cookie("refresh_token", path="/")
