@@ -936,6 +936,13 @@ async def render_wizard_step(
     if not snapshot:
         raise HTTPException(status_code=404, detail="Loan Application not found")
     app, data, latest, signature_events = snapshot
+    # The snapshot query returns intake JSON directly, so decrypt the same
+    # restricted fields as LoanService.get_wizard_data before rendering.
+    from app.core.field_encryption import decrypt_sensitive
+    data = dict(data)
+    for field in ("bvn", "nin", "account_number", "bank_account_number", "spouse_bvn"):
+        if field in data:
+            data[field] = decrypt_sensitive(data[field], context=f"intake:{field}")
     _verify_loan_scope(app, current_user)
     if step == 4:
         pnl = await conn.fetchrow(

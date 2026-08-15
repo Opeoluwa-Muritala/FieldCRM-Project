@@ -42,3 +42,18 @@ def test_seed_is_not_an_automatic_production_migration():
     from migrations import run_migration
 
     assert "demo_tenant_seed.sql" not in run_migration.MIGRATION_FILES
+
+
+def test_demo_seed_contains_a_complete_single_intake():
+    from pathlib import Path
+
+    seed = Path("backend/migrations/demo_tenant_seed.sql").read_text(encoding="utf-8")
+    for field in (
+        '"full_name"', '"spouse_name"', '"guarantor_1_name"',
+        '"monthly_sales"', '"cashflow_amount"', '"facility_bank"',
+        '"loan_purpose"', '"collateral_type"', '"account_name"',
+        '"pledge_item_name"',
+    ):
+        assert field in seed
+    assert '"guarantor_signature"' not in seed
+    assert '"witness_signature"' not in seed
