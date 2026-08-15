@@ -259,15 +259,18 @@ ON CONFLICT (application_id) DO UPDATE SET revenue=EXCLUDED.revenue,expenses=EXC
 INSERT INTO borrower_financial_profiles (
  application_id,essential_household_expenses,verified_other_income,dependants,
  inventory_value,receivables_value,payables_value,maintenance_capex,
- source_type,verification_status,captured_by
+ source_type,verification_status,captured_by,verified_by,verified_at
 ) VALUES (
  'de000000-0000-4000-8000-000000000301',210000,90000,3,9800000,1450000,620000,75000,
- 'demo_seed','declared','de000000-0000-4000-8000-000000000201'
+ 'demo_seed','verified','de000000-0000-4000-8000-000000000201',
+ 'de000000-0000-4000-8000-000000000204',NOW()
 ) ON CONFLICT (application_id) DO UPDATE SET
  essential_household_expenses=EXCLUDED.essential_household_expenses,
  verified_other_income=EXCLUDED.verified_other_income,dependants=EXCLUDED.dependants,
  inventory_value=EXCLUDED.inventory_value,receivables_value=EXCLUDED.receivables_value,
- payables_value=EXCLUDED.payables_value,maintenance_capex=EXCLUDED.maintenance_capex,updated_at=NOW();
+ payables_value=EXCLUDED.payables_value,maintenance_capex=EXCLUDED.maintenance_capex,
+ source_type='demo_seed',verification_status='verified',
+ verified_by='de000000-0000-4000-8000-000000000204',verified_at=NOW(),updated_at=NOW();
 
 INSERT INTO cashflow_entries (
  id,application_id,flow_direction,classification,category,amount,frequency,period_months,
@@ -275,8 +278,35 @@ INSERT INTO cashflow_entries (
 ) VALUES
 ('de000000-0000-4000-8000-000000000711','de000000-0000-4000-8000-000000000301','inflow','operating','sales_revenue',1850000,'monthly',1,'Retail and wholesale sales','bank_transfer','manual','demo:cashflow:1',TRUE,'declared','de000000-0000-4000-8000-000000000201'),
 ('de000000-0000-4000-8000-000000000712','de000000-0000-4000-8000-000000000301','outflow','operating','inventory_purchase',820000,'monthly',1,'Inventory replenishment','bank_transfer','manual','demo:cashflow:2',TRUE,'declared','de000000-0000-4000-8000-000000000201'),
-('de000000-0000-4000-8000-000000000713','de000000-0000-4000-8000-000000000301','outflow','personal','household_withdrawal',210000,'monthly',1,'Household commitments','cash','manual','demo:cashflow:3',TRUE,'declared','de000000-0000-4000-8000-000000000201')
-ON CONFLICT (id) DO NOTHING;
+('de000000-0000-4000-8000-000000000713','de000000-0000-4000-8000-000000000301','outflow','personal','personal_transport',60000,'monthly',1,'Owner transport and personal commitments','cash','manual','demo:cashflow:3',TRUE,'declared','de000000-0000-4000-8000-000000000201')
+ON CONFLICT (id) DO UPDATE SET
+ amount=EXCLUDED.amount,frequency=EXCLUDED.frequency,period_months=EXCLUDED.period_months,
+ description=EXCLUDED.description,channel=EXCLUDED.channel,source_type='demo_seed',
+ verification_status='verified',verified_by='de000000-0000-4000-8000-000000000204',verified_at=NOW(),updated_at=NOW();
+
+-- A varied, fully verified transaction set makes every feasibility metric
+-- demonstrable without relying on fabricated production or customer records.
+UPDATE cashflow_entries SET
+ source_type='demo_seed',verification_status='verified',
+ verified_by='de000000-0000-4000-8000-000000000204',verified_at=NOW(),updated_at=NOW()
+WHERE id IN (
+ 'de000000-0000-4000-8000-000000000711',
+ 'de000000-0000-4000-8000-000000000712',
+ 'de000000-0000-4000-8000-000000000713'
+);
+
+INSERT INTO cashflow_entries (
+ id,application_id,flow_direction,classification,category,amount,frequency,period_months,
+ description,channel,source_type,source_reference,is_recurring,verification_status,
+ captured_by,verified_by,verified_at
+) VALUES
+('de000000-0000-4000-8000-000000000714','de000000-0000-4000-8000-000000000301','inflow','operating','distribution_contract',350000,'monthly',1,'Recurring synthetic distribution contract','bank_transfer','demo_seed','demo:cashflow:4',TRUE,'verified','de000000-0000-4000-8000-000000000201','de000000-0000-4000-8000-000000000204',NOW()),
+('de000000-0000-4000-8000-000000000715','de000000-0000-4000-8000-000000000301','outflow','operating','shop_rent',360000,'quarterly',1,'Quarterly rent normalised to a monthly equivalent','bank_transfer','demo_seed','demo:cashflow:5',TRUE,'verified','de000000-0000-4000-8000-000000000201','de000000-0000-4000-8000-000000000204',NOW()),
+('de000000-0000-4000-8000-000000000716','de000000-0000-4000-8000-000000000301','outflow','operating','utilities',55000,'monthly',1,'Electricity, connectivity and market levies','direct_debit','demo_seed','demo:cashflow:6',TRUE,'verified','de000000-0000-4000-8000-000000000201','de000000-0000-4000-8000-000000000204',NOW())
+ON CONFLICT (id) DO UPDATE SET
+ amount=EXCLUDED.amount,frequency=EXCLUDED.frequency,period_months=EXCLUDED.period_months,
+ description=EXCLUDED.description,channel=EXCLUDED.channel,source_type='demo_seed',
+ verification_status='verified',verified_by=EXCLUDED.verified_by,verified_at=NOW(),updated_at=NOW();
 
 INSERT INTO credit_obligations (
  id,application_id,lender_name,source_type,outstanding_balance,periodic_payment,
@@ -287,12 +317,61 @@ INSERT INTO credit_obligations (
  'de000000-0000-4000-8000-000000000201'
 ) ON CONFLICT (id) DO NOTHING;
 
+UPDATE credit_obligations SET
+ source_type='demo_seed',verification_status='verified',
+ verified_by='de000000-0000-4000-8000-000000000204',verified_at=NOW(),updated_at=NOW()
+WHERE id='de000000-0000-4000-8000-000000000721';
+
 INSERT INTO collateral_items (
  id,application_id,collateral_type,narration,loan_based_price,face_value,
  force_sale_value,retention_rate,valuation_date,valuation_source,manual_review_required,created_by
 ) VALUES
 ('de000000-0000-4000-8000-000000000731','de000000-0000-4000-8000-000000000301','property','Synthetic commercial property used for the demonstration',12000000,8400000,8400000,0.7000,CURRENT_DATE,'demo_seed',TRUE,'de000000-0000-4000-8000-000000000201'),
 ('de000000-0000-4000-8000-000000000732','de000000-0000-4000-8000-000000000301','inventory','Verified synthetic durable inventory',5000000,2500000,2500000,0.5000,CURRENT_DATE,'demo_seed',TRUE,'de000000-0000-4000-8000-000000000201')
+ON CONFLICT (id) DO NOTHING;
+
+-- Synthetic servicing portfolio for the PAR dashboard. The five accounts
+-- deliberately span current, PAR-1, PAR-30 and PAR-90, with no sensitive BVN
+-- or real-world identifiers. Outstanding balances are schedule totals less
+-- the matching repayment records below.
+INSERT INTO loan_applications (
+ id,org_id,ref_no,customer_type,loan_type,stage,applicant_name,phone,amount,
+ tenor_months,purpose,repayment_mode,created_by,current_owner_id,branch_manager_id,
+ branch_id,approved_by,approved_at,disbursed_at,disbursed_amount,disbursement_ref,
+ disbursement_method,interest_rate,repayment_frequency,schedule_method,sector,
+ classification,days_past_due,classification_updated_at,created_at,updated_at
+) VALUES
+('de000000-0000-4000-8000-000000000901','de000000-0000-4000-8000-000000000001','DEMO-PAR-001','existing','msef','disbursed','Kemi Stores (Synthetic)',NULL,750000,12,'Synthetic retail inventory facility','direct_debit','de000000-0000-4000-8000-000000000201','de000000-0000-4000-8000-000000000205','de000000-0000-4000-8000-000000000202','de000000-0000-4000-8000-000000000101','de000000-0000-4000-8000-000000000207',NOW()-INTERVAL '70 days',NOW()-INTERVAL '60 days',750000,'DEMO-DISB-001','bank_transfer',18,'monthly','flat_rate','Retail & Wholesale','current',0,NOW(),NOW(),NOW()),
+('de000000-0000-4000-8000-000000000902','de000000-0000-4000-8000-000000000001','DEMO-PAR-002','new','msef','disbursed','Ibrahim Agro Supply (Synthetic)',NULL,1000000,12,'Synthetic agricultural working capital','direct_debit','de000000-0000-4000-8000-000000000201','de000000-0000-4000-8000-000000000205','de000000-0000-4000-8000-000000000202','de000000-0000-4000-8000-000000000101','de000000-0000-4000-8000-000000000207',NOW()-INTERVAL '100 days',NOW()-INTERVAL '90 days',1000000,'DEMO-DISB-002','bank_transfer',20,'monthly','flat_rate','Food & Agriculture','olem',14,NOW(),NOW(),NOW()),
+('de000000-0000-4000-8000-000000000903','de000000-0000-4000-8000-000000000001','DEMO-PAR-003','existing','msef','disbursed','Nneka Light Manufacturing (Synthetic)',NULL,1500000,18,'Synthetic production equipment facility','direct_debit','de000000-0000-4000-8000-000000000201','de000000-0000-4000-8000-000000000205','de000000-0000-4000-8000-000000000202','de000000-0000-4000-8000-000000000101','de000000-0000-4000-8000-000000000207',NOW()-INTERVAL '140 days',NOW()-INTERVAL '130 days',1500000,'DEMO-DISB-003','bank_transfer',18,'monthly','flat_rate','Manufacturing','substandard',45,NOW(),NOW(),NOW()),
+('de000000-0000-4000-8000-000000000904','de000000-0000-4000-8000-000000000001','DEMO-PAR-004','new','msef','disbursed','Bola Professional Services (Synthetic)',NULL,700000,12,'Synthetic service expansion facility','direct_debit','de000000-0000-4000-8000-000000000201','de000000-0000-4000-8000-000000000205','de000000-0000-4000-8000-000000000202','de000000-0000-4000-8000-000000000101','de000000-0000-4000-8000-000000000207',NOW()-INTERVAL '200 days',NOW()-INTERVAL '190 days',700000,'DEMO-DISB-004','bank_transfer',18,'monthly','flat_rate','Professional Services','doubtful',100,NOW(),NOW(),NOW()),
+('de000000-0000-4000-8000-000000000905','de000000-0000-4000-8000-000000000001','DEMO-PAR-005','existing','msef','disbursed','Chidi Logistics (Synthetic)',NULL,1200000,18,'Synthetic logistics asset facility','direct_debit','de000000-0000-4000-8000-000000000201','de000000-0000-4000-8000-000000000205','de000000-0000-4000-8000-000000000202','de000000-0000-4000-8000-000000000101','de000000-0000-4000-8000-000000000207',NOW()-INTERVAL '300 days',NOW()-INTERVAL '290 days',1200000,'DEMO-DISB-005','bank_transfer',20,'monthly','flat_rate','Transport & Logistics','lost',200,NOW(),NOW(),NOW())
+ON CONFLICT (org_id,ref_no) DO UPDATE SET
+ stage='disbursed',disbursed_amount=EXCLUDED.disbursed_amount,interest_rate=EXCLUDED.interest_rate,
+ repayment_frequency=EXCLUDED.repayment_frequency,schedule_method=EXCLUDED.schedule_method,
+ sector=EXCLUDED.sector,classification=EXCLUDED.classification,
+ days_past_due=EXCLUDED.days_past_due,classification_updated_at=NOW(),updated_at=NOW();
+
+INSERT INTO repayment_schedule (
+ id,loan_id,org_id,installment_no,due_date,principal_due,interest_due,total_due
+) VALUES
+('de000000-0000-4000-8000-000000000911','de000000-0000-4000-8000-000000000901','de000000-0000-4000-8000-000000000001',1,CURRENT_DATE+15,750000,350000,1100000),
+('de000000-0000-4000-8000-000000000912','de000000-0000-4000-8000-000000000902','de000000-0000-4000-8000-000000000001',1,CURRENT_DATE-14,1000000,500000,1500000),
+('de000000-0000-4000-8000-000000000913','de000000-0000-4000-8000-000000000903','de000000-0000-4000-8000-000000000001',1,CURRENT_DATE-45,1500000,700000,2200000),
+('de000000-0000-4000-8000-000000000914','de000000-0000-4000-8000-000000000904','de000000-0000-4000-8000-000000000001',1,CURRENT_DATE-100,700000,300000,1000000),
+('de000000-0000-4000-8000-000000000915','de000000-0000-4000-8000-000000000905','de000000-0000-4000-8000-000000000001',1,CURRENT_DATE-200,1200000,300000,1500000)
+ON CONFLICT (loan_id,installment_no) DO UPDATE SET
+ due_date=EXCLUDED.due_date,principal_due=EXCLUDED.principal_due,
+ interest_due=EXCLUDED.interest_due,total_due=EXCLUDED.total_due;
+
+INSERT INTO repayment_records (
+ id,loan_id,org_id,payment_date,amount_paid,channel,bank_ref,recorded_by
+) VALUES
+('de000000-0000-4000-8000-000000000921','de000000-0000-4000-8000-000000000901','de000000-0000-4000-8000-000000000001',CURRENT_DATE-10,300000,'bank_transfer','DEMO-PAY-001','de000000-0000-4000-8000-000000000205'),
+('de000000-0000-4000-8000-000000000922','de000000-0000-4000-8000-000000000902','de000000-0000-4000-8000-000000000001',CURRENT_DATE-30,300000,'bank_transfer','DEMO-PAY-002','de000000-0000-4000-8000-000000000205'),
+('de000000-0000-4000-8000-000000000923','de000000-0000-4000-8000-000000000903','de000000-0000-4000-8000-000000000001',CURRENT_DATE-60,400000,'bank_transfer','DEMO-PAY-003','de000000-0000-4000-8000-000000000205'),
+('de000000-0000-4000-8000-000000000924','de000000-0000-4000-8000-000000000904','de000000-0000-4000-8000-000000000001',CURRENT_DATE-120,250000,'bank_transfer','DEMO-PAY-004','de000000-0000-4000-8000-000000000205'),
+('de000000-0000-4000-8000-000000000925','de000000-0000-4000-8000-000000000905','de000000-0000-4000-8000-000000000001',CURRENT_DATE-220,100000,'bank_transfer','DEMO-PAY-005','de000000-0000-4000-8000-000000000205')
 ON CONFLICT (id) DO NOTHING;
 
 -- Guarantors provide details only; no guarantor or witness signatures exist.

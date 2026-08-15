@@ -1,4 +1,5 @@
 from pathlib import Path
+from decimal import Decimal
 from uuid import UUID
 
 import pytest
@@ -6,7 +7,11 @@ from fastapi import HTTPException, status
 from starlette.requests import Request
 
 from app.domains.demo import router as demo
+from app.domains.feasibility.calculator import calculate_feasibility
 from app import main
+
+
+DEMO_SEED_PATH = Path(__file__).resolve().parents[1] / "migrations" / "demo_tenant_seed.sql"
 
 
 class RecordingConnection:
@@ -98,7 +103,7 @@ def test_seed_is_not_an_automatic_production_migration():
 
 
 def test_demo_seed_contains_a_complete_single_intake():
-    seed = Path("backend/migrations/demo_tenant_seed.sql").read_text(encoding="utf-8")
+    seed = DEMO_SEED_PATH.read_text(encoding="utf-8")
     for field in (
         '"full_name"', '"spouse_name"', '"guarantor_1_name"',
         '"monthly_sales"', '"cashflow_amount"', '"facility_bank"',
@@ -111,7 +116,7 @@ def test_demo_seed_contains_a_complete_single_intake():
 
 
 def test_demo_seed_contains_two_complete_internal_guarantor_forms():
-    seed = Path("backend/migrations/demo_tenant_seed.sql").read_text(encoding="utf-8")
+    seed = DEMO_SEED_PATH.read_text(encoding="utf-8")
 
     assert "'guarantor_1'" in seed
     assert "'guarantor_2'" in seed
@@ -129,3 +134,72 @@ def test_demo_seed_contains_two_complete_internal_guarantor_forms():
     assert '"bvn"' not in seed
     assert '"account_number"' not in seed
     assert '"cheque_number"' not in seed
+
+
+def test_demo_seed_contains_verified_feasibility_evidence():
+    seed = DEMO_SEED_PATH.read_text(encoding="utf-8")
+
+    for reference in (
+        "demo:cashflow:1", "demo:cashflow:2", "demo:cashflow:3",
+        "demo:cashflow:4", "demo:cashflow:5", "demo:cashflow:6",
+        "demo:facility:1",
+    ):
+        assert reference in seed
+    assert "distribution_contract" in seed
+    assert "quarterly rent normalised" in seed.lower()
+    assert "verification_status='verified'" in seed
+
+
+def test_demo_seed_contains_each_par_bucket_with_balances():
+    seed = DEMO_SEED_PATH.read_text(encoding="utf-8")
+
+    for ref_no in (
+        "DEMO-PAR-001", "DEMO-PAR-002", "DEMO-PAR-003",
+        "DEMO-PAR-004", "DEMO-PAR-005",
+    ):
+        assert ref_no in seed
+    for classification, days_past_due in (
+        ("current", 0), ("olem", 14), ("substandard", 45),
+        ("doubtful", 100), ("lost", 200),
+    ):
+        assert f"'{classification}',{days_past_due}" in seed
+    assert "INSERT INTO repayment_schedule" in seed
+    assert "INSERT INTO repayment_records" in seed
+
+
+def test_demo_feasibility_sample_produces_explainable_metrics():
+    cashflows = [
+        {"flow_direction": "inflow", "classification": "operating", "amount": 1_850_000, "frequency": "monthly", "verification_status": "verified"},
+        {"flow_direction": "inflow", "classification": "operating", "amount": 350_000, "frequency": "monthly", "verification_status": "verified"},
+        {"flow_direction": "outflow", "classification": "operating", "amount": 820_000, "frequency": "monthly", "verification_status": "verified"},
+        {"flow_direction": "outflow", "classification": "operating", "amount": 360_000, "frequency": "quarterly", "verification_status": "verified"},
+        {"flow_direction": "outflow", "classification": "operating", "amount": 55_000, "frequency": "monthly", "verification_status": "verified"},
+        {"flow_direction": "outflow", "classification": "personal", "amount": 60_000, "frequency": "monthly", "verification_status": "verified"},
+    ]
+    profile = {
+        "essential_household_expenses": 210_000,
+        "verified_other_income": 90_000,
+        "inventory_value": 9_800_000,
+        "receivables_value": 1_450_000,
+        "payables_value": 620_000,
+        "maintenance_capex": 75_000,
+    }
+    obligations = [{
+        "periodic_payment": 85_000,
+        "payment_frequency": "monthly",
+        "verification_status": "verified",
+    }]
+
+    result = calculate_feasibility(
+        cashflows, profile, obligations,
+        proposed_payment=462_500,
+        proposed_payment_frequency="monthly",
+    )
+
+    assert result["monthly_operating_inflows"] == Decimal("2200000.00")
+    assert result["monthly_operating_outflows"] == Decimal("995000.00")
+    assert result["monthly_cash_available"] == Decimal("950000.00")
+    assert result["monthly_total_debt_service"] == Decimal("547500.00")
+    assert result["dscr"] == Decimal("1.7352")
+    assert result["monthly_residual_cash"] == Decimal("402500.00")
+    assert result["data_quality_status"] == "verified"
