@@ -831,15 +831,54 @@ async def process_new_application(
 def _verify_loan_scope(app, current_user):
     require_view(current_user, app)
 
+
+def _overview_sections(wizard_data: dict) -> list[dict]:
+    """Build a curated overview without exposing identifiers or signatures."""
+    definitions = (
+        ("Customer", (
+            ("customer_type", "Customer type"), ("date_of_birth", "Date of birth"),
+            ("gender", "Gender"), ("marital_status", "Marital status"),
+            ("phone", "Phone"), ("phone_number", "Phone"),
+            ("residential_address", "Residential address"), ("address", "Residential address"),
+        )),
+        ("Employment & business", (
+            ("employment_status", "Employment status"), ("employer_name", "Employer"),
+            ("job_title", "Job title"), ("business_name", "Business name"),
+            ("business_type", "Business type"), ("years_in_business", "Years in business"),
+        )),
+        ("Financial profile", (
+            ("monthly_income", "Monthly income"), ("monthly_expenses", "Monthly expenses"),
+            ("loan_purpose", "Loan purpose"), ("purpose", "Loan purpose"),
+            ("repayment_frequency", "Repayment frequency"), ("repayment_mode", "Repayment mode"),
+        )),
+    )
+    sections = []
+    for title, fields in definitions:
+        seen_labels = set()
+        items = []
+        for key, label in fields:
+            value = wizard_data.get(key)
+            if label in seen_labels or value is None or value == "" or isinstance(value, (dict, list, tuple, set)):
+                continue
+            seen_labels.add(label)
+            items.append({"label": label, "value": value})
+        if items:
+            sections.append({"title": title, "items": items})
+    return sections
+
+
 async def _get_dossier_context(request: Request, application_id: str, conn, current_user, active_tab="applications"):
+    try:
+        app_uuid = UUID(application_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=404, detail="Loan Application not found")
     repo = LoanRepository(conn)
-    app = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    app = await repo.get_by_id(app_uuid, current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
     _verify_loan_scope(app, current_user)
     
-    app_uuid = UUID(application_id)
     detail_cache_key, cached_detail = await get_cached_scoped_data(
         "web-dossier-v1",
         [
@@ -955,8 +994,11 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
         "shop_photos": "Shop / Business Premises Photos",
     }
     product_docs_req = await conn.fetch(
-        "SELECT doc_type, is_mandatory FROM product_document_requirements WHERE product_code = $1",
-        app.loan_type
+        """SELECT doc_type, is_mandatory
+           FROM product_document_requirements
+           WHERE product_code = $1 AND org_id = $2 AND is_mandatory = TRUE""",
+        app.loan_type,
+        current_user.org_id,
     )
     if product_docs_req:
         required_docs_list = [
@@ -994,6 +1036,7 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
         tenure=app.tenure or 12,
         product_type=app.product_type or "MSEF",
         wizard_data=wizard_data,
+        overview_sections=_overview_sections(wizard_data),
         documents=documents,
         visitation_data=visitation_data,
         summary=readiness_summary,
