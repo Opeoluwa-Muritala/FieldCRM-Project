@@ -19,6 +19,8 @@ def test_swagger_ui_bootstrap_scripts_use_request_nonce():
     )
     body = response.body.decode("utf-8")
 
-    assert 'src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"' in body
+    assert 'src="/static/js/swagger-ui-bundle.js"' in body
+    assert 'href="/static/css/swagger-ui.css"' in body
+    assert "cdn.jsdelivr.net" not in body
     assert body.count('nonce="test-nonce"') == 2
     assert "url: '/openapi.json'" in body
