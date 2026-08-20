@@ -34,7 +34,7 @@ from app.core.middleware import (
 )
 from app.core.template_utils import csp_nonce_context
 from app.core.templates import create_templates
-from app.core.api_docs import swagger_ui_response
+from app.core.api_docs import redoc_response, swagger_ui_response
 from app.core.dependencies import authenticated_db_conn, get_current_user, RoleChecker
 from app.core.loan_authorization import require_view
 from app.core.audit import AuditService
@@ -143,6 +143,14 @@ if not settings.is_production:
             request,
             openapi_url=app.openapi_url or "/openapi.json",
             title=f"{settings.PROJECT_NAME} - Swagger UI",
+        )
+
+    @app.get("/api/redoc", include_in_schema=False)
+    async def redoc_docs(request: Request):
+        return redoc_response(
+            request,
+            openapi_url=app.openapi_url or "/openapi.json",
+            title=f"{settings.PROJECT_NAME} - ReDoc",
         )
 
 # CORS Policy
