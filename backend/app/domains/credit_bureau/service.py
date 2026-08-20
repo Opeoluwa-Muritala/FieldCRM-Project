@@ -16,7 +16,7 @@ class CreditRegistryProvider:
     async def get_session_code(self) -> str:
         """Acquires a session code from CreditRegistry /api/Login."""
         if not settings.CREDIT_REGISTRY_USERNAME or not settings.CREDIT_REGISTRY_PASSWORD:
-            return "mock_session_code_12345"
+            return "mock_session_code_12345" if settings.demo_mode else ""
 
         url = f"{self.base_url}/api/Login"
         payload = {
@@ -28,7 +28,7 @@ class CreditRegistryProvider:
                 response = await client.post(url, json=payload)
                 if response.status_code == 200:
                     data = response.json()
-                    return data.get("SessionCode") or data.get("Token") or "mock_session_code_response"
+                    return data.get("SessionCode") or data.get("Token") or ""
                 else:
                     logger.error(f"CreditRegistry Login failed: {response.status_code} - {response.text}")
                     return ""
@@ -38,8 +38,10 @@ class CreditRegistryProvider:
 
     async def find_customer(self, session_code: str, bvn: str, phone: str = None, name: str = None) -> str:
         """Finds RegistryID for customer via /api/FindSummary."""
-        if not settings.CREDIT_REGISTRY_USERNAME or session_code.startswith("mock_"):
-            return "mock_registry_id_999888"
+        if session_code.startswith("mock_"):
+            return "mock_registry_id_999888" if settings.demo_mode else ""
+        if not settings.CREDIT_REGISTRY_USERNAME or not settings.CREDIT_REGISTRY_PASSWORD:
+            return ""
 
         url = f"{self.base_url}/api/FindSummary"
         headers = {"Authorization": f"Bearer {session_code}"}
@@ -53,7 +55,7 @@ class CreditRegistryProvider:
                 response = await client.post(url, json=payload, headers=headers)
                 if response.status_code == 200:
                     data = response.json()
-                    return data.get("RegistryID") or data.get("customer", {}).get("RegistryID") or "mock_registry_id_from_api"
+                    return data.get("RegistryID") or data.get("customer", {}).get("RegistryID") or ""
                 else:
                     logger.error(f"Find customer failed: {response.status_code} - {response.text}")
                     return ""
@@ -63,7 +65,7 @@ class CreditRegistryProvider:
 
     async def get_report(self, loan_application_id: str, registry_id: str, session_code: str) -> dict:
         """Retrieves credit report via /api/GetReport200 and persists to DB."""
-        if not settings.CREDIT_REGISTRY_USERNAME or session_code.startswith("mock_"):
+        if settings.demo_mode and session_code.startswith("mock_"):
             raw_report = {
                 "status": "success",
                 "registry_id": registry_id,
@@ -80,6 +82,12 @@ class CreditRegistryProvider:
             }
             await self.service._save_submission(loan_application_id, registry_id, "success", "AutoCred_v8_Summary", raw_report, self.name)
             return raw_report
+        if (
+            not settings.CREDIT_REGISTRY_USERNAME
+            or not settings.CREDIT_REGISTRY_PASSWORD
+            or session_code.startswith("mock_")
+        ):
+            return {"status": "not_configured", "data": {}}
 
         url = f"{self.base_url}/api/GetReport200"
         headers = {"Authorization": f"Bearer {session_code}"}
@@ -103,7 +111,7 @@ class CreditRegistryProvider:
 
     async def submit_account(self, loan_application_id: str, session_code: str, loan_data: dict) -> dict:
         """Pushes disbursement details outward via /api/AddUpdateAccount."""
-        if not settings.CREDIT_REGISTRY_USERNAME or session_code.startswith("mock_"):
+        if settings.demo_mode and session_code.startswith("mock_"):
             raw_response = {
                 "success": True,
                 "message": "Disbursed loan reported to CreditRegistry successfully (mock mode).",
@@ -111,6 +119,12 @@ class CreditRegistryProvider:
             }
             await self.service._save_submission(loan_application_id, "mock_registry_id_999888", "disbursed_reported", "add_update_account", raw_response, self.name)
             return raw_response
+        if (
+            not settings.CREDIT_REGISTRY_USERNAME
+            or not settings.CREDIT_REGISTRY_PASSWORD
+            or session_code.startswith("mock_")
+        ):
+            return {"success": False, "status": "not_configured"}
 
         person_url = f"{self.base_url}/api/AddUpdatePerson"
         account_url = f"{self.base_url}/api/AddUpdateAccount"
@@ -155,7 +169,7 @@ class CrcProvider:
     async def get_session_code(self) -> str:
         """Acquires a session code/token from CRC."""
         if not settings.CRC_API_KEY:
-            return "mock_session_code_crc_123"
+            return "mock_session_code_crc_123" if settings.demo_mode else ""
 
         url = f"{self.base_url}/api/v1/token"
         try:
@@ -163,7 +177,7 @@ class CrcProvider:
                 response = await client.post(url, json={"api_key": settings.CRC_API_KEY})
                 if response.status_code == 200:
                     data = response.json()
-                    return data.get("token") or "mock_crc_token"
+                    return data.get("token") or ""
                 else:
                     logger.error(f"CRC Token fetch failed: {response.status_code} - {response.text}")
                     return ""
@@ -173,8 +187,10 @@ class CrcProvider:
 
     async def find_customer(self, session_code: str, bvn: str, phone: str = None, name: str = None) -> str:
         """Finds CRC ID for customer."""
-        if not settings.CRC_API_KEY or session_code.startswith("mock_"):
-            return "mock_crc_id_777666"
+        if session_code.startswith("mock_"):
+            return "mock_crc_id_777666" if settings.demo_mode else ""
+        if not settings.CRC_API_KEY:
+            return ""
 
         url = f"{self.base_url}/api/v1/search"
         headers = {"Authorization": f"Bearer {session_code}"}
@@ -184,7 +200,7 @@ class CrcProvider:
                 response = await client.post(url, json=payload, headers=headers)
                 if response.status_code == 200:
                     data = response.json()
-                    return data.get("crc_id") or "mock_crc_id_from_api"
+                    return data.get("crc_id") or ""
                 else:
                     logger.error(f"CRC Find customer failed: {response.status_code}")
                     return ""
@@ -194,7 +210,7 @@ class CrcProvider:
 
     async def get_report(self, loan_application_id: str, registry_id: str, session_code: str) -> dict:
         """Retrieves credit report from CRC and persists to DB."""
-        if not settings.CRC_API_KEY or session_code.startswith("mock_"):
+        if settings.demo_mode and session_code.startswith("mock_"):
             raw_report = {
                 "status": "success",
                 "registry_id": registry_id,
@@ -211,6 +227,8 @@ class CrcProvider:
             }
             await self.service._save_submission(loan_application_id, registry_id, "success", "CRC_Credit_Report_Summary", raw_report, self.name)
             return raw_report
+        if not settings.CRC_API_KEY or session_code.startswith("mock_"):
+            return {"status": "not_configured", "data": {}}
 
         url = f"{self.base_url}/api/v1/report"
         headers = {"Authorization": f"Bearer {session_code}"}
@@ -234,7 +252,7 @@ class CrcProvider:
 
     async def submit_account(self, loan_application_id: str, session_code: str, loan_data: dict) -> dict:
         """Pushes disbursement details outward to CRC."""
-        if not settings.CRC_API_KEY or session_code.startswith("mock_"):
+        if settings.demo_mode and session_code.startswith("mock_"):
             raw_response = {
                 "success": True,
                 "message": "Disbursed loan reported to CRC successfully (mock mode).",
@@ -242,6 +260,8 @@ class CrcProvider:
             }
             await self.service._save_submission(loan_application_id, "mock_crc_id_777666", "disbursed_reported", "crc_add_update_account", raw_response, self.name)
             return raw_response
+        if not settings.CRC_API_KEY or session_code.startswith("mock_"):
+            return {"success": False, "status": "not_configured"}
 
         url = f"{self.base_url}/api/v1/account/submit"
         headers = {"Authorization": f"Bearer {session_code}"}

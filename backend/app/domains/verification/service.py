@@ -9,8 +9,9 @@ async def verify_bvn(bvn: str, loan_application_id=None, conn=None) -> dict:
     Calls Qore BVN Basic: GET /v1/ng/identities/bvn-basic/{bvnNumber}
     Normalized result: is_valid, first_name, last_name, other_names, dob, phone, raw_response, status.
     """
-    # Seed mock cases first:
-    if bvn == "22216142222":
+    # Deterministic identities are demo fixtures only. They must never be
+    # treated as verified records in a normal development or production run.
+    if settings.demo_mode and bvn == "22216142222":
         # EXACT_MATCH case
         raw = {
             "RequestStatus": True,
@@ -38,7 +39,7 @@ async def verify_bvn(bvn: str, loan_application_id=None, conn=None) -> dict:
         await _save_verification_check(loan_application_id, "bvn", "qoreid", "success", True, raw, conn)
         return res
 
-    elif bvn == "22216142223":
+    elif settings.demo_mode and bvn == "22216142223":
         # Mismatch case
         raw = {
             "RequestStatus": True,
