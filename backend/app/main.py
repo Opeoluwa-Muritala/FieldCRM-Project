@@ -34,6 +34,7 @@ from app.core.middleware import (
 )
 from app.core.template_utils import csp_nonce_context
 from app.core.templates import create_templates
+from app.core.api_docs import swagger_ui_response
 from app.core.dependencies import authenticated_db_conn, get_current_user, RoleChecker
 from app.core.loan_authorization import require_view
 from app.core.audit import AuditService
@@ -129,11 +130,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    docs_url=None if settings.is_production else "/api/docs",
-    redoc_url=None if settings.is_production else "/api/redoc",
+    docs_url=None,
+    redoc_url=None,
     openapi_url=None if settings.is_production else "/openapi.json",
     lifespan=lifespan
 )
+
+if not settings.is_production:
+    @app.get("/api/docs", include_in_schema=False)
+    async def swagger_docs(request: Request):
+        return swagger_ui_response(
+            request,
+            openapi_url=app.openapi_url or "/openapi.json",
+            title=f"{settings.PROJECT_NAME} - Swagger UI",
+        )
 
 # CORS Policy
 app.add_middleware(

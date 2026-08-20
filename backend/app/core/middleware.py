@@ -297,15 +297,18 @@ class SecurityHeadersMiddleware:
         async def send_with_security_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
                 headers = MutableHeaders(scope=message)
+                is_api_docs = scope.get("path", "") == "/api/docs"
+                docs_script_source = " https://cdn.jsdelivr.net" if is_api_docs else ""
+                docs_style_source = " https://cdn.jsdelivr.net" if is_api_docs else ""
                 is_document_preview = scope.get("path", "").startswith("/api/v1/documents/") and scope.get("path", "").endswith("/preview")
                 headers["X-Frame-Options"] = "SAMEORIGIN" if is_document_preview else "DENY"
                 frame_ancestors = "'self'" if is_document_preview else "'none'"
                 headers["Content-Security-Policy"] = (
                     "default-src 'self'; base-uri 'self'; object-src 'none'; "
                     f"frame-ancestors {frame_ancestors}; form-action 'self'; "
-                    f"script-src 'self' 'nonce-{csp_nonce}'{script_unsafe_inline} https://cdnjs.cloudflare.com; "
+                    f"script-src 'self' 'nonce-{csp_nonce}'{script_unsafe_inline} https://cdnjs.cloudflare.com{docs_script_source}; "
                     "worker-src 'self' https://cdnjs.cloudflare.com; "
-                    f"style-src 'self' 'nonce-{csp_nonce}' https://fonts.googleapis.com; "
+                    f"style-src 'self' 'nonce-{csp_nonce}' https://fonts.googleapis.com https://cdnjs.cloudflare.com{docs_style_source}; "
                     "font-src 'self' https://fonts.gstatic.com; "
                     "img-src 'self' data: https://res.cloudinary.com; "
                     "connect-src 'self' https://api.cloudinary.com;"
