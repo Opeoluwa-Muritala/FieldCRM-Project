@@ -1,155 +1,32 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Configuration Control Centre | FieldCRM</title>
-    <link rel="stylesheet" href="/static/css/dashboard.css">
-    <link rel="stylesheet" href="/static/css/configuration-hub.css?v=20260820">
-    <script defer src="/static/js/csrf.js?v=20260815"></script>
-    <script defer src="/static/js/configuration-hub.js?v=20260820"></script>
-</head>
-<body class="config-body">
-<a class="skip-link" href="#configuration-content">Skip to configuration content</a>
-<div class="config-shell">
-    <aside class="config-sidebar">
-        <div class="config-brand">
-            <span class="config-brand-mark" aria-hidden="true">FC</span>
-            <div><strong>FieldCRM</strong><span>Control Centre</span></div>
-        </div>
+{% extends "configuration/base.html" %}
+{% set config_page = "overview" %}
+{% block heading %}Configuration Control Centre{% endblock %}
+{% block description %}Create, review, and publish institution-wide configuration without changing the legacy System Admin workspace.{% endblock %}
+{% block content %}
+<section class="config-hero" aria-labelledby="effective-heading">
+    <div class="config-hero-copy"><p class="config-kicker">Effective configuration</p><h2 id="effective-heading">{{ 'Config v' ~ current.version_number if current else 'Secure defaults' }}</h2><p>{% if current %}Published settings currently used by new applications.{% else %}No version has been published. Existing behaviour remains unchanged.{% endif %}</p></div>
+    <ol class="lifecycle" aria-label="Configuration publishing workflow"><li class="is-current"><span>1</span><strong>Draft</strong></li><li><span>2</span><strong>Validate</strong></li><li><span>3</span><strong>Approve</strong><small>High risk</small></li><li><span>4</span><strong>Publish</strong></li></ol>
+</section>
 
-        <div class="environment-card">
-            <span class="environment-dot" aria-hidden="true"></span>
-            <div><strong>Local workspace</strong><span>Unavailable in production</span></div>
-        </div>
+<section class="config-metrics" aria-label="Configuration summary">
+    <article class="config-metric"><span>Effective version</span><strong>{{ 'v' ~ current.version_number if current else 'Defaults' }}</strong><small>{{ current.published_at|date_format if current and current.published_at else 'No published version' }}</small></article>
+    <article class="config-metric"><span>Enabled features</span><strong>{{ enabled_feature_count }} / {{ effective_features|length }}</strong><small>Effective state</small></article>
+    <article class="config-metric"><span>Working draft</span><strong>{{ 'v' ~ active_draft.version_number if active_draft else 'None' }}</strong><small>{{ 'Ready to edit' if active_draft else 'Create one to stage changes' }}</small></article>
+    <article class="config-metric"><span>Awaiting approval</span><strong>{{ pending_approval_count }}</strong><small>Second-admin reviews</small></article>
+</section>
 
-        <nav class="config-nav" aria-label="Available configuration tools">
-            <p class="config-nav-label">Available tools</p>
-            <a href="#configuration-content" class="config-nav-link is-active" aria-current="page"><span>Overview</span></a>
-            <a href="/configuration/products" class="config-nav-link"><span>Loan products</span><small>Configure</small></a>
-            <a href="#features" class="config-nav-link"><span>Feature controls</span><small>{{ effective_features|length }}</small></a>
-            <a href="#version-history" class="config-nav-link"><span>Version history</span><small>{{ versions|length }}</small></a>
-        </nav>
+{% if active_draft %}
+<section class="draft-banner" aria-label="Active draft"><div><span class="status-chip status-chip-draft">Draft</span><h2>Config v{{ active_draft.version_number }} is open</h2><p>{{ active_draft.reason }}</p></div><a class="config-button config-button-secondary" href="/configuration/features">Configure draft</a></section>
+{% else %}
+<section class="config-panel create-draft-panel" aria-labelledby="create-draft-heading"><div class="panel-heading"><div><p class="config-kicker">Start safely</p><h2 id="create-draft-heading">Create a working draft</h2><p>Copies the effective configuration. Nothing changes for users until this version is published.</p></div></div><form class="create-draft-form" method="post" action="/configuration/drafts"><label><span>Reason for this version</span><input class="config-input" name="reason" minlength="10" maxlength="500" placeholder="Example: Enable collections pilot for Lagos branches" required></label><label><span>Effective date and time <small>Optional</small></span><input class="config-input" type="datetime-local" name="effective_at"></label><button class="config-button config-button-primary" type="submit">Create draft</button></form></section>
+{% endif %}
 
-        <div class="config-sidebar-footer">
-            <div class="config-user">
-                <span class="config-avatar" aria-hidden="true">{{ (current_user.full_name or current_user.email)[0]|upper }}</span>
-                <div><strong>{{ current_user.full_name or 'Configuration Admin' }}</strong><span>{{ current_user.email }}</span></div>
-            </div>
-            <a class="config-exit" href="/logout">Exit Control Centre</a>
-        </div>
-    </aside>
-
-    <main class="config-main" id="configuration-content">
-        <header class="config-page-header">
-            <div>
-                <p class="config-kicker">Private administration workspace</p>
-                <h1>Configuration Control Centre</h1>
-                <p>Manage institution-wide behaviour without changing the legacy System Admin experience.</p>
-            </div>
-            <div class="header-status">
-                <span class="status-chip status-chip-secure">MFA verified</span>
-                <span class="status-chip">Localhost only</span>
-            </div>
-        </header>
-
-        <section class="config-hero" aria-labelledby="effective-heading">
-            <div class="config-hero-copy">
-                <p class="config-kicker">Effective configuration</p>
-                <h2 id="effective-heading">{{ 'Config v' ~ current.version_number if current else 'Secure defaults' }}</h2>
-                <p>{% if current %}Published settings currently used by new applications.{% else %}No version has been published. Existing behaviour remains unchanged.{% endif %}</p>
-            </div>
-            <ol class="lifecycle" aria-label="Configuration publishing workflow">
-                <li class="is-current"><span>1</span><strong>Draft</strong></li>
-                <li><span>2</span><strong>Validate</strong></li>
-                <li><span>3</span><strong>Approve</strong><small>High risk</small></li>
-                <li><span>4</span><strong>Publish</strong></li>
-            </ol>
-        </section>
-
-        <section class="config-metrics" aria-label="Configuration summary">
-            <article class="config-metric"><span>Effective version</span><strong>{{ 'v' ~ current.version_number if current else 'Defaults' }}</strong><small>{{ current.published_at|date_format if current and current.published_at else 'No published version' }}</small></article>
-            <article class="config-metric"><span>Enabled features</span><strong>{{ enabled_feature_count }} / {{ effective_features|length }}</strong><small>Effective state</small></article>
-            <article class="config-metric"><span>Working draft</span><strong>{{ 'v' ~ active_draft.version_number if active_draft else 'None' }}</strong><small>{{ 'Ready to edit' if active_draft else 'Create one to stage changes' }}</small></article>
-            <article class="config-metric"><span>Awaiting approval</span><strong>{{ pending_approval_count }}</strong><small>Second-admin reviews</small></article>
-        </section>
-
-        {% if active_draft %}
-        <section class="draft-banner" aria-label="Active draft">
-            <div><span class="status-chip status-chip-draft">Draft</span><h2>Config v{{ active_draft.version_number }} is open</h2><p>{{ active_draft.reason }}</p></div>
-            <form method="post" action="/configuration/versions/{{ active_draft.id }}/validate">
-                <button class="config-button config-button-primary" type="submit">Validate draft</button>
-            </form>
-        </section>
-        {% else %}
-        <section class="config-panel create-draft-panel" aria-labelledby="create-draft-heading">
-            <div class="panel-heading"><div><p class="config-kicker">Start safely</p><h2 id="create-draft-heading">Create a working draft</h2><p>Copies the effective configuration. Nothing changes for users until this version is published.</p></div></div>
-            <form class="create-draft-form" method="post" action="/configuration/drafts">
-                <label><span>Reason for this version</span><input class="config-input" name="reason" minlength="10" maxlength="500" placeholder="Example: Enable collections pilot for Lagos branches" required></label>
-                <label><span>Effective date and time <small>Optional</small></span><input class="config-input" type="datetime-local" name="effective_at"></label>
-                <button class="config-button config-button-primary" type="submit">Create draft</button>
-            </form>
-        </section>
-        {% endif %}
-
-        <section class="config-panel" id="features" aria-labelledby="features-heading">
-            <div class="panel-heading panel-heading-split">
-                <div><p class="config-kicker">Institution-wide controls</p><h2 id="features-heading">Features</h2><p>Effective states are shown below. Changes are staged in the open draft and require validation.</p></div>
-                <label class="feature-search"><span class="sr-only">Search features</span><input class="config-input" type="search" placeholder="Search features" data-feature-search autocomplete="off"></label>
-            </div>
-
-            <div class="feature-groups">
-                {% for group in feature_groups %}
-                <section class="feature-group" data-feature-group>
-                    <div class="feature-group-heading"><div><h3>{{ group.name }}</h3><p>{{ group.description }}</p></div><span>{{ group.features|length }} controls</span></div>
-                    <div class="feature-list">
-                        {% for key, label, description in group.features %}
-                        {% set enabled = effective_features.get(key, false) %}
-                        <article class="feature-row" data-feature-card data-search-text="{{ label|lower }} {{ description|lower }}">
-                            <div class="feature-copy"><h4>{{ label }}</h4><p>{{ description }}</p></div>
-                            <div class="feature-control">
-                                <span class="state-pill {{ 'is-on' if enabled else 'is-off' }}"><span aria-hidden="true"></span>{{ 'On' if enabled else 'Off' }}</span>
-                                {% if active_draft %}
-                                <details class="feature-edit">
-                                    <summary>Change</summary>
-                                    <form method="post" action="/configuration/versions/{{ active_draft.id }}/settings">
-                                        <input type="hidden" name="setting_path" value="features.{{ key }}">
-                                        <input type="hidden" name="value" value="{{ 'false' if enabled else 'true' }}">
-                                        <p>Stage <strong>{{ 'Off' if enabled else 'On' }}</strong> for Config v{{ active_draft.version_number }}. This is a high-risk change.</p>
-                                        <label><span>Reason</span><textarea class="config-input" name="reason" minlength="10" maxlength="500" rows="3" required></textarea></label>
-                                        <button class="config-button config-button-secondary" type="submit">Stage change</button>
-                                    </form>
-                                </details>
-                                {% endif %}
-                            </div>
-                        </article>
-                        {% endfor %}
-                    </div>
-                </section>
-                {% endfor %}
-            </div>
-            <p class="empty-search" data-empty-search hidden>No features match your search.</p>
-        </section>
-
-        <section class="config-panel" id="version-history" aria-labelledby="versions-heading">
-            <div class="panel-heading"><div><p class="config-kicker">Audit-ready lifecycle</p><h2 id="versions-heading">Version history</h2><p>Review staged, approved, and published configuration versions.</p></div></div>
-            <div class="version-list">
-                {% for version in versions %}
-                <article class="version-card">
-                    <div class="version-marker" aria-hidden="true"></div>
-                    <div class="version-content">
-                        <div class="version-title"><div><h3>Config v{{ version.version_number }}</h3><p>{{ version.reason }}</p></div><span class="status-chip status-chip-{{ version.status|replace('_', '-') }}">{{ version.status|replace('_', ' ')|title }}</span></div>
-                        <dl class="version-meta"><div><dt>Effective</dt><dd>{{ version.effective_at|date_format }}</dd></div><div><dt>Risk</dt><dd>{{ 'High risk' if version.high_risk else 'Standard' }}</dd></div><div><dt>Approval</dt><dd>{{ 'Required' if version.requires_second_approval else 'Not required' }}</dd></div></dl>
-                        <div class="version-actions">
-                            {% if version.status == 'pending_approval' %}<form method="post" action="/configuration/versions/{{ version.id }}/approve"><button class="config-button config-button-primary" type="submit">Second-approve</button></form>{% endif %}
-                            {% if version.status == 'validated' %}<form method="post" action="/configuration/versions/{{ version.id }}/publish"><button class="config-button config-button-primary" type="submit">Publish version</button></form>{% endif %}
-                        </div>
-                    </div>
-                </article>
-                {% else %}<div class="empty-state"><strong>No configuration versions yet</strong><p>Create a draft to begin managing institution-wide settings.</p></div>{% endfor %}
-            </div>
-        </section>
-    </main>
-</div>
-</body>
-</html>
+<section class="config-panel" aria-labelledby="configuration-pages-heading">
+    <div class="panel-heading"><div><p class="config-kicker">Working pages</p><h2 id="configuration-pages-heading">Choose what to configure</h2><p>Each page performs a specific configuration task and writes only to the active draft.</p></div></div>
+    <div class="configuration-page-cards">
+        <a href="/configuration/products"><span>Product configuration</span><strong>Define product rules</strong><small>Amounts, tenor, workflow, collateral, guarantors, and CBS applicability.</small></a>
+        <a href="/configuration/features"><span>Feature controls</span><strong>Turn modules ON or OFF</strong><small>Controls staff navigation and rejects direct access when a module is disabled.</small></a>
+        <a href="/configuration/versions"><span>Version history</span><strong>Validate, approve, publish</strong><small>Complete the controlled lifecycle and review prior versions.</small></a>
+    </div>
+</section>
+{% endblock %}

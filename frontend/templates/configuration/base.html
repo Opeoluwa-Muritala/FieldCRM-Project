@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Configuration Control Centre{% endblock %} | FieldCRM</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/configuration-hub.css?v=20260820">
+    <script defer src="/static/js/csrf.js?v=20260815"></script>
+    {% block scripts %}{% endblock %}
+</head>
+<body class="config-body">
+<a class="skip-link" href="#configuration-content">Skip to configuration content</a>
+<div class="config-shell">
+    <aside class="config-sidebar">
+        <div class="config-brand"><span class="config-brand-mark" aria-hidden="true">FC</span><div><strong>FieldCRM</strong><span>Control Centre</span></div></div>
+        <div class="environment-card"><span class="environment-dot" aria-hidden="true"></span><div><strong>Local workspace</strong><span>Unavailable in production</span></div></div>
+        <nav class="config-nav" aria-label="Configuration pages">
+            <p class="config-nav-label">Configuration</p>
+            <a href="/configuration" class="config-nav-link{% if config_page == 'overview' %} is-active{% endif %}"{% if config_page == 'overview' %} aria-current="page"{% endif %}><span>Overview</span></a>
+            <a href="/configuration/products" class="config-nav-link{% if config_page == 'products' %} is-active{% endif %}"{% if config_page == 'products' %} aria-current="page"{% endif %}><span>Product configuration</span></a>
+            <a href="/configuration/forms" class="config-nav-link{% if config_page == 'forms' %} is-active{% endif %}"{% if config_page == 'forms' %} aria-current="page"{% endif %}><span>Form fields</span></a>
+            <a href="/configuration/documents" class="config-nav-link{% if config_page == 'documents' %} is-active{% endif %}"{% if config_page == 'documents' %} aria-current="page"{% endif %}><span>Document checklists</span></a>
+            <a href="/configuration/features" class="config-nav-link{% if config_page == 'features' %} is-active{% endif %}"{% if config_page == 'features' %} aria-current="page"{% endif %}><span>Feature controls</span></a>
+            <a href="/configuration/versions" class="config-nav-link{% if config_page == 'versions' %} is-active{% endif %}"{% if config_page == 'versions' %} aria-current="page"{% endif %}><span>Version history</span></a>
+        </nav>
+        <div class="config-sidebar-footer">
+            <div class="config-user"><span class="config-avatar" aria-hidden="true">{{ (current_user.full_name or current_user.email)[0]|upper }}</span><div><strong>{{ current_user.full_name or 'Configuration Admin' }}</strong><span>{{ current_user.email }}</span></div></div>
+            <a class="config-exit" href="/logout">Exit Control Centre</a>
+        </div>
+    </aside>
+    <main class="config-main" id="configuration-content">
+        <header class="config-page-header">
+            <div><p class="config-kicker">{% block kicker %}Private administration workspace{% endblock %}</p><h1>{% block heading %}Configuration Control Centre{% endblock %}</h1><p>{% block description %}Manage institution-wide behaviour without changing System Admin.{% endblock %}</p></div>
+            <div class="header-status"><span class="status-chip status-chip-secure">MFA verified</span><span class="status-chip">Localhost only</span></div>
+        </header>
+        {% block content %}{% endblock %}
+    </main>
+</div>
+</body>
+</html>

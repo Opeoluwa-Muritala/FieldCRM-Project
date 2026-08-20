@@ -4,11 +4,11 @@
     <div class="sidebar-nav-group-title">Compliance</div>
     <div class="sidebar-nav-links">
         <a href="/dashboard" class="sidebar-nav-link {% if active_page == 'dashboard' %}active{% endif %}"><span>Dashboard</span></a>
-        <a href="/compliance-flags" class="sidebar-nav-link {% if active_page == 'flags' %}active{% endif %}">
+        {% if (feature_flags|default({})).get('audit_intervention', true) %}<a href="/compliance-flags" class="sidebar-nav-link {% if active_page == 'flags' %}active{% endif %}">
             <span>Compliance Flags</span>
             {% if metrics and metrics.critical_ocr_gaps %}<span class="sidebar-badge sidebar-badge-warning">{{ metrics.critical_ocr_gaps }}</span>{% endif %}
         </a>
-        <a href="/audit-trail" class="sidebar-nav-link {% if active_page == 'audit' %}active{% endif %}"><span>Audit Trail</span></a>
+        <a href="/audit-trail" class="sidebar-nav-link {% if active_page == 'audit' %}active{% endif %}"><span>Audit Trail</span></a>{% endif %}
         <a href="/borrowers" class="sidebar-nav-link {% if active_page == 'borrowers' %}active{% endif %}"><span>Current Loans</span></a>
     </div>
 </div>

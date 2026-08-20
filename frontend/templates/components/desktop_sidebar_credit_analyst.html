@@ -3,8 +3,9 @@
   <div class="sidebar-nav-group-title">Credit Analysis</div>
   <div class="sidebar-nav-links">
     <a href="/dashboard" class="sidebar-nav-link {% if active_page == 'dashboard' %}active{% endif %}"><span>Dashboard</span></a>
-    <a href="/my-reviews" class="sidebar-nav-link {% if active_page == 'reviews' %}active{% endif %}"><span>Underwriting Queue</span></a>
-    <a href="/document-work-queue" class="sidebar-nav-link {% if active_page == 'document_work' %}active{% endif %}"><span>Document Exceptions</span></a>
+    {% if (feature_flags|default({})).get('credit_reviews', true) %}<a href="/my-reviews" class="sidebar-nav-link {% if active_page == 'reviews' %}active{% endif %}"><span>Underwriting Queue</span></a>{% endif %}
+    {% if (feature_flags|default({})).get('document_work_queue', true) %}<a href="/document-work-queue" class="sidebar-nav-link {% if active_page == 'document_work' %}active{% endif %}"><span>Document Exceptions</span></a>{% endif %}
+    {% if (feature_flags|default({})).get('exceptions_centre', true) %}<a href="/exceptions" class="sidebar-nav-link {% if active_page == 'exceptions' %}active{% endif %}"><span>Exceptions Centre</span></a>{% endif %}
     <a href="/borrowers" class="sidebar-nav-link {% if active_page == 'borrowers' %}active{% endif %}"><span>Current Loans</span></a>
   </div>
 </div>

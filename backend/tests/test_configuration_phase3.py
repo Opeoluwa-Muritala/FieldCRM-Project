@@ -14,6 +14,7 @@ from app.core.exceptions import DomainException
 from app.domains.configuration.access import require_restricted_configuration_access
 from app.domains.configuration.catalog import FEATURE_DEFAULTS, FEATURE_GROUPS, SECTIONS, default_payload
 from app.domains.configuration.mfa import qr_code_data_url, token_is_valid, totp, verification_token, verify_totp
+from app.domains.configuration.gates import required_feature_for_path
 from app.domains.configuration.schemas import DraftPatch
 from app.domains.configuration.service import ConfigurationService
 
@@ -62,16 +63,28 @@ def test_configuration_ui_catalog_only_contains_working_feature_controls():
     assert len(catalog_keys) == len(set(catalog_keys))
     assert set(catalog_keys) == set(FEATURE_DEFAULTS)
 
+    template_root = Path(__file__).resolve().parents[2] / "frontend/templates/configuration"
     template = (
-        Path(__file__).resolve().parents[2]
-        / "frontend/templates/configuration/hub.html"
+        template_root / "base.html"
     ).read_text(encoding="utf-8")
-    assert "Available tools" in template
-    assert "Loan products" in template
+    assert "Configuration pages" in template
+    assert "Product configuration" in template
+    assert 'href="/configuration/features"' in template
+    assert 'href="/configuration/versions"' in template
     assert "Feature controls" in template
     assert "Version history" in template
     assert "Planned" not in template
     assert "Advanced setting editor" not in template
+
+
+def test_disabled_feature_routes_have_server_side_gate_mappings():
+    assert required_feature_for_path("/my-work") == "my_work"
+    assert required_feature_for_path("/applications/abc/ocr-review") == "ocr"
+    assert required_feature_for_path("/applications/abc/guarantors/1/step/2") == "guarantors"
+    assert required_feature_for_path("/applications/abc/collateral") == "collateral"
+    assert required_feature_for_path("/reports/par") == "par"
+    assert required_feature_for_path("/mcc") == "committee_review"
+    assert required_feature_for_path("/configuration/features") is None
 
 
 @pytest.mark.asyncio

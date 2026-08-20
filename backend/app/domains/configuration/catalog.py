@@ -1,6 +1,6 @@
 FEATURE_DEFAULTS = {
     "external_applicant_portal": False,
-    "ocr": False,
+    "ocr": True,
     "visits": True,
     "gps": True,
     "guarantors": True,
@@ -10,10 +10,10 @@ FEATURE_DEFAULTS = {
     "cbs_integration": False,
     "manual_repayment": True,
     "repayment_schedule": True,
-    "par": False,
+    "par": True,
     "collections": False,
-    "committee_review": False,
-    "legal_review": False,
+    "committee_review": True,
+    "legal_review": True,
     "ed_review": True,
     "md_review": True,
     "audit_intervention": True,
@@ -21,9 +21,25 @@ FEATURE_DEFAULTS = {
     "email": False,
     "push_notifications": False,
     "offline_mode": False,
+    "my_work": True,
+    "pipeline": True,
+    "document_work_queue": True,
+    "credit_reviews": True,
+    "exceptions_centre": True,
 }
 
 FEATURE_GROUPS = (
+    {
+        "name": "Operational workspace",
+        "description": "Show or remove optional day-to-day workspaces from staff navigation.",
+        "features": (
+            ("my_work", "My Work", "Show assigned work and task queues for operational users."),
+            ("pipeline", "Pipeline", "Show the branch application pipeline workspace."),
+            ("document_work_queue", "Document work queue", "Show missing, rejected, OCR, and verification document exceptions."),
+            ("credit_reviews", "Credit reviews", "Show underwriting and credit-review workspaces."),
+            ("exceptions_centre", "Exceptions Centre", "Show the central operational exceptions workspace."),
+        ),
+    },
     {
         "name": "Origination & field capture",
         "description": "Control how staff collect application evidence and field information.",
