@@ -152,6 +152,22 @@ class LoanServicingService:
     def __init__(self, conn):
         self.conn = conn
 
+    async def _cbs_is_authoritative(self, loan_id: uuid.UUID, org_id: uuid.UUID) -> bool:
+        # Avoid touching Phase 1 tables/columns while the deployment flag is off.
+        from app.config import settings
+        if not settings.CBS_INTEGRATION_ENABLED:
+            return False
+        value = await self.conn.fetchval(
+            """
+            SELECT lp.cbs_enabled
+            FROM loan_applications la
+            JOIN loan_products lp ON lp.code=la.loan_type
+            WHERE la.id=$1 AND la.org_id=$2 AND la.deleted_at IS NULL
+            """,
+            loan_id, org_id,
+        )
+        return bool(value)
+
     async def create_schedule(
         self,
         *,
@@ -164,7 +180,9 @@ class LoanServicingService:
         method: str,
         disbursement_date: date,
     ) -> list[dict]:
-        """Generate and persist the repayment schedule for a loan."""
+        """Generate and persist the repayment schedule for a local/manual loan."""
+        if await self._cbs_is_authoritative(loan_id, org_id):
+            raise ValueError("Repayment schedules are read-only because Core Banking is authoritative")
         rows = generate_schedule(
             principal=principal,
             annual_rate=annual_rate,
@@ -204,6 +222,8 @@ class LoanServicingService:
         bank_ref: str | None,
         recorded_by: uuid.UUID,
     ) -> dict:
+        if await self._cbs_is_authoritative(loan_id, org_id):
+            raise ValueError("Repayments are read-only because Core Banking is authoritative")
         row = await self.conn.fetchrow(
             load_sql("loans", "insert_repayment_record"),
             loan_id, org_id, payment_date, amount_paid, channel, bank_ref, recorded_by,

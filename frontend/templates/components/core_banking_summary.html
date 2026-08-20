@@ -1,0 +1,29 @@
+{% if cbs_authoritative %}
+<section class="page-card cbs-summary">
+  <div class="page-card-header">
+    <div>
+      <span class="status-badge verified">Source: Core Banking</span>
+      <h3 class="page-card-title">Core Banking financial position</h3>
+      <p class="page-card-subtitle">
+        {% if cbs_data and cbs_data.source_updated_at %}Last updated {{ cbs_data.source_updated_at.strftime('%d %b %Y %H:%M') if cbs_data.source_updated_at.strftime is defined else cbs_data.source_updated_at }}{% else %}Not synchronized yet{% endif %}
+      </p>
+    </div>
+    <form method="post" action="/applications/{{ app_id }}/cbs/refresh">
+      <button type="submit" class="btn btn-secondary">Refresh from CBS</button>
+    </form>
+  </div>
+  {% if cbs_stale %}
+  <div class="alert alert-warning" role="status">Core Banking data is stale. Refresh before making a financial decision.</div>
+  {% endif %}
+  {% if cbs_data %}
+  <div class="overview-fields">
+    <div class="overview-field"><span>Outstanding balance</span><strong>&#8358;{{ "{:,.2f}".format(cbs_data.outstanding_balance) }} — CBS</strong></div>
+    <div class="overview-field"><span>Arrears</span><strong>&#8358;{{ "{:,.2f}".format(cbs_data.arrears_amount) }} — CBS</strong></div>
+    <div class="overview-field"><span>Days past due</span><strong>{{ cbs_data.days_past_due }} — CBS</strong></div>
+    <div class="overview-field"><span>Loan status</span><strong>{{ cbs_data.loan_status|replace('_',' ')|title }} — CBS</strong></div>
+  </div>
+  {% else %}
+  <p class="page-card-subtitle">No CBS snapshot is available. Refresh to import the mapped loan.</p>
+  {% endif %}
+</section>
+{% endif %}

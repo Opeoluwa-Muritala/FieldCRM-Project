@@ -13,6 +13,8 @@
 {% block content %}
 {% set hidden_fields = ['photo_url', 'spouse_signature', 'borrower_pledge_signature', 'pledge_witness_signature', 'profile_snapshot_source', 'profile_snapshot_created_at'] %}
 <div class="overview-grid">
+  {% include "components/core_banking_summary.html" %}
+  {% include "components/application_readiness.html" %}
   <main class="page-card">
     <div class="page-card-header">
       <span class="status-badge verified">Read only</span>

@@ -10,6 +10,7 @@
 
 <div class="page-card csp-s-3c4a3d440074">
   <h3 class="csp-s-7564ec607ed8">Record Collection</h3>
+  {% if cbs_authoritative %}<p><span class="status-badge verified">Source: Core Banking</span> Repayments are read-only in FieldCRM for this product.</p>{% endif %}
   {% if can_record_payment %}
   <form method="post" action="/applications/{{ app_id }}/payments">
     <div class="csp-s-2c1b38fbac0c">

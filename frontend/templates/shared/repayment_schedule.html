@@ -6,6 +6,10 @@
 {% block content %}
 <div class="page-card csp-s-3c4a3d440074">
   <h2 class="page-card-title">{{ app.applicant_name }} — {{ app.ref_no }}</h2>
+  {% if cbs_authoritative %}
+  <p><span class="status-badge verified">Source: Core Banking</span> Financial values are read-only.{% if cbs_data and cbs_data.source_updated_at %} Last updated {{ cbs_data.source_updated_at }}.{% endif %}</p>
+  {% if cbs_stale %}<div class="alert alert-warning">Core Banking data is stale. Refresh it before relying on these figures.</div>{% endif %}
+  {% endif %}
   <div class="csp-s-0e63b0d79e95">
     <div><span class="csp-s-500708668cdd">Total Due</span><br><strong>&#x20A6;{{ "{:,.2f}".format(total_due) }}</strong></div>
     <div><span class="csp-s-500708668cdd">Total Paid</span><br><strong class="csp-s-c571d44c8112">&#x20A6;{{ "{:,.2f}".format(total_paid) }}</strong></div>
@@ -13,7 +17,7 @@
     <div><span class="csp-s-500708668cdd">Classification</span><br><span class="status-badge {% if app.classification == 'current' %}approved{% else %}needs-review{% endif %}">{{ (app.classification or 'current')|upper }}</span></div>
     {% if app.days_past_due %}<div><span class="csp-s-500708668cdd">Days Past Due</span><br><strong class="csp-s-d23e3c89c60a">{{ app.days_past_due }}</strong></div>{% endif %}
   </div>
-  {% if user_role in ('crm', 'system_admin') %}
+  {% if user_role in ('crm', 'system_admin') and not cbs_authoritative %}
   <div class="csp-s-76977cc9f242">
     <a href="/applications/{{ app_id }}/payments" class="btn btn-primary csp-s-cb49ee527736">Record Payment</a>
     <a href="/applications/{{ app_id }}/disburse" class="btn btn-secondary csp-s-f2441b6651b5">Disbursement Details</a>
