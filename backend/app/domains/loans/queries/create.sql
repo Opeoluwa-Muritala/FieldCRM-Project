@@ -14,9 +14,13 @@ INSERT INTO loan_applications (
     current_owner_id,
     stage,
     branch_id,
-    client_request_id
+    client_request_id,
+    originated_config_version_id
 )
-VALUES ($1, $2, $3, $4, $5, $6, $6, 'intake', $7, $8)
+VALUES ($1, $2, $3, $4, $5, $6, $6, 'intake', $7, $8,
+  (SELECT id FROM configuration_versions
+   WHERE org_id=$1 AND status='published' AND effective_at <= NOW()
+   ORDER BY effective_at DESC, version_number DESC LIMIT 1))
 RETURNING
     id, org_id, ref_no, customer_type, loan_type, stage, applicant_name,
     bvn, phone, amount, tenor_months, purpose, repayment_mode, created_by,
