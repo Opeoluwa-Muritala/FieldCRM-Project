@@ -25,7 +25,7 @@
             <p class="page-card-subtitle">Select customer type and loan category to begin.</p>
         </div>
 
-        <form id="newAppForm" action="/applications/new" method="POST">
+        <form id="newAppForm" action="/applications/new" method="POST" enctype="multipart/form-data">
             <!-- Customer Type selection -->
             <div class="csp-s-e8a8a9c051f6">
                 <label class="field-label csp-s-a56b14ff62f4">Customer Type</label>
@@ -41,7 +41,26 @@
                         <span class="csp-s-f779da42d59e">Retrieve existing accounts and history</span>
                     </div>
                 </div>
+                {% if customer_identity_enabled %}<p class="page-card-subtitle"><a href="/customers/new">Create a checked Customer 360 profile first</a> to run duplicate detection before starting a new application.</p>{% endif %}
             </div>
+
+            {% if configurable_products_enabled and dynamic_fields %}
+            <section id="configuredProductFields" class="page-card" hidden>
+                <h3>Product-specific information</h3>
+                {% for field in dynamic_fields %}
+                <div class="configured-field" data-product-code="{{ field.product_code }}" data-requirement="{{ field.requirement }}" data-condition='{{ field.visibility_condition|tojson|forceescape }}' hidden>
+                    <label class="field-label" for="dynamic_{{ field.id }}">{{ field.label }}</label>
+                    {% if field.field_type == 'dropdown' %}<select class="field-input" id="dynamic_{{ field.id }}" name="dynamic__{{ field.field_key }}">{% for option in field.options %}<option value="{{ option }}">{{ option }}</option>{% endfor %}</select>
+                    {% elif field.field_type == 'yes_no' %}<select class="field-input" id="dynamic_{{ field.id }}" name="dynamic__{{ field.field_key }}"><option value="">Select</option><option value="yes">Yes</option><option value="no">No</option></select>
+                    {% elif field.field_type == 'checkbox' %}<input id="dynamic_{{ field.id }}" name="dynamic__{{ field.field_key }}" type="checkbox" value="true">
+                    {% elif field.field_type in ('photo','file','signature') %}<input class="field-input" id="dynamic_{{ field.id }}" name="dynamic__{{ field.field_key }}" type="file" {% if field.field_type == 'photo' %}accept="image/jpeg,image/png" capture="environment"{% endif %}>
+                    {% elif field.field_type == 'gps' %}<input class="field-input" id="dynamic_{{ field.id }}" name="dynamic__{{ field.field_key }}" type="text" pattern="^-?[0-9]{1,2}(\.[0-9]+)?,-?[0-9]{1,3}(\.[0-9]+)?$" placeholder="latitude,longitude">
+                    {% else %}<input class="field-input" id="dynamic_{{ field.id }}" name="dynamic__{{ field.field_key }}" type="{{ 'number' if field.field_type in ('number','currency') else field.field_type }}" {% if field.validation_rules.get('min') is not none %}min="{{ field.validation_rules.min }}"{% endif %} {% if field.validation_rules.get('max') is not none %}max="{{ field.validation_rules.max }}"{% endif %} {% if field.validation_rules.get('pattern') %}pattern="{{ field.validation_rules.pattern }}"{% endif %}>{% endif %}
+                    {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                </div>
+                {% endfor %}
+            </section>
+            {% endif %}
 
             <!-- Existing Customer Search Slot (Hidden initially) -->
             <div id="existingSearchSlot" class="csp-s-e5403ebfd1fb">
@@ -188,7 +207,32 @@
                 document.getElementById('otherLoanDesc')?.removeAttribute('required');
             }
         }
+        updateConfiguredFields(type);
         validateForm();
+    }
+
+    function updateConfiguredFields(productCode) {
+        const section = document.getElementById('configuredProductFields');
+        if (!section) return;
+        let visibleCount = 0;
+        document.querySelectorAll('.configured-field').forEach((wrapper) => {
+            let conditionMet = true;
+            try {
+                const condition = JSON.parse(wrapper.dataset.condition || '{}');
+                if (condition.field) {
+                    const dependency = document.querySelector(`[name="dynamic__${CSS.escape(condition.field)}"]`);
+                    conditionMet = !!dependency && dependency.value === String(condition.equals ?? '');
+                }
+            } catch (_) { conditionMet = false; }
+            const active = wrapper.dataset.productCode === productCode && wrapper.dataset.requirement !== 'hidden' && conditionMet;
+            wrapper.hidden = !active;
+            wrapper.querySelectorAll('input,select,textarea').forEach((control) => {
+                control.disabled = !active;
+                control.required = active && wrapper.dataset.requirement === 'required';
+            });
+            if (active) visibleCount += 1;
+        });
+        section.hidden = visibleCount === 0;
     }
 
     let searchTimer;
@@ -199,7 +243,7 @@
         feedback.textContent = 'Searching customers...'; feedback.style.display = 'block';
         document.getElementById('customerResults').replaceChildren();
         try {
-            const response = await fetch(`/api/v1/mobile/borrowers/search?q=${encodeURIComponent(query)}&limit=20`);
+            const response = await fetch(`{% if customer_identity_enabled %}/api/v1/customers/search{% else %}/api/v1/mobile/borrowers/search{% endif %}?q=${encodeURIComponent(query)}&limit=20`);
             if (response.status === 401) throw new Error('Your session has expired. Sign in again.');
             if (response.status === 403) throw new Error('You are not authorized to search customers.');
             if (!response.ok) throw new Error('Customer search failed. Try again.');
@@ -209,7 +253,7 @@
             data.items.forEach((customer) => {
                 const button = document.createElement('button');
                 button.type = 'button'; button.className = 'toggle-option-card'; button.dataset.customerId = customer.id;
-                button.textContent = `${customer.legal_name} · ${customer.customer_reference || 'No reference'} · ${customer.masked_phone || 'No phone'}`;
+                button.textContent = `{% if customer_identity_enabled %}Existing customer found → Use Existing Customer: {% endif %}${customer.legal_name} · ${customer.customer_reference || 'No reference'} · ${customer.masked_phone || 'No phone'}`;
                 fragment.appendChild(button);
             });
             document.getElementById('customerResults').appendChild(fragment);
@@ -220,7 +264,7 @@
         const feedback = document.getElementById('searchFeedback');
         feedback.textContent = 'Loading current customer profile...';
         try {
-            const response = await fetch(`/api/v1/mobile/borrowers/${encodeURIComponent(id)}/application-profile`);
+            const response = await fetch(`{% if customer_identity_enabled %}/api/v1/customers/${encodeURIComponent(id)}/application-profile{% else %}/api/v1/mobile/borrowers/${encodeURIComponent(id)}/application-profile{% endif %}`);
             if (!response.ok) throw new Error('Could not load the current customer profile.');
             const data = await response.json();
             document.getElementById('borrowerId').value = data.borrower.id;
@@ -277,6 +321,10 @@
         if (!(custTypeChecked && loanTypeChecked && existingReady)) {
             e.preventDefault();
         }
+    });
+    document.getElementById('configuredProductFields')?.addEventListener('input', () => {
+        const selected = document.querySelector('[data-loan-type] input[type="radio"]:checked');
+        if (selected) updateConfiguredFields(selected.value);
     });
     document.getElementById('customerSearchBtn')?.addEventListener('click', searchCustomers);
     document.getElementById('customerResults')?.addEventListener('click', (event) => {

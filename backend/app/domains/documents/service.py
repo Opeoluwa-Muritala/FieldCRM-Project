@@ -1,5 +1,6 @@
 import asyncio
 import io
+import json
 import logging
 import mimetypes
 import re
@@ -174,10 +175,21 @@ class DocumentService:
             user_role=user_role,
             doc_type=doc_type,
         )
+        quality = None
+        if settings.CONFIGURABLE_PRODUCTS_ENABLED:
+            from app.domains.products.quality import assess_image_quality
+            quality = assess_image_quality(content, mime_type)
+            await self.repo.conn.execute(
+                """INSERT INTO document_quality_assessments
+                   (org_id,document_id,blur_score,lighting_score,crop_score,glare_score,readability_score,status,issues)
+                   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)""",
+                org_id, document["id"], quality["blur_score"], quality["lighting_score"], quality["crop_score"],
+                quality["glare_score"], quality["readability_score"], quality["status"], json.dumps(quality["issues"]),
+            )
         # Insert a pending row into ocr_jobs instead of running asyncio.create_task
         await self.repo.conn.execute(
-            "INSERT INTO ocr_jobs (id, document_id, status) VALUES ($1, $2, 'pending')",
-            uuid4(), document["id"]
+            "INSERT INTO ocr_jobs (id, document_id, status) VALUES ($1, $2, $3)",
+            uuid4(), document["id"], "pending" if not quality or quality["status"] == "passed" else "quality_review"
         )
         return document
 
