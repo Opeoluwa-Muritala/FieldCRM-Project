@@ -153,6 +153,21 @@ class Settings(BaseSettings):
     AML_YOUVERIFY_TOKEN: str | None = os.getenv("AML_YOUVERIFY_TOKEN", None)
     AML_BASE_URL: str | None = os.getenv("AML_BASE_URL", None)
 
+    # Core Banking remains opt-in at both the deployment and product levels.
+    # The mock provider is intentionally limited to non-production use.
+    CBS_INTEGRATION_ENABLED: bool = os.getenv("CBS_INTEGRATION_ENABLED", "false").lower() in ("true", "1", "yes")
+    CBS_PROVIDER: str = os.getenv("CBS_PROVIDER", "mock").strip().lower()
+    CBS_STALE_AFTER_MINUTES: int = int(os.getenv("CBS_STALE_AFTER_MINUTES", "240"))
+    CBS_WEBHOOK_SECRET: str = os.getenv("CBS_WEBHOOK_SECRET", "")
+    CBS_JOB_SECRET: str = os.getenv("CBS_JOB_SECRET", "")
+    CUSTOMER_IDENTITY_ENABLED: bool = os.getenv("CUSTOMER_IDENTITY_ENABLED", "false").lower() in ("true", "1", "yes")
+    CONFIGURATION_HUB_ENABLED: bool = os.getenv("CONFIGURATION_HUB_ENABLED", "false").lower() in ("true", "1", "yes")
+    CONFIGURABLE_PRODUCTS_ENABLED: bool = os.getenv("CONFIGURABLE_PRODUCTS_ENABLED", "false").lower() in ("true", "1", "yes")
+    CONFIGURABLE_WORKFLOW_ENABLED: bool = os.getenv("CONFIGURABLE_WORKFLOW_ENABLED", "false").lower() in ("true", "1", "yes")
+    OPERATIONS_UI_ENABLED: bool = os.getenv("OPERATIONS_UI_ENABLED", "false").lower() in ("true", "1", "yes")
+    CONFIGURATION_ADMIN_HOSTS: str = os.getenv("CONFIGURATION_ADMIN_HOSTS", "")
+    CONFIGURATION_ADMIN_NETWORKS: str = os.getenv("CONFIGURATION_ADMIN_NETWORKS", "")
+
     @property
     def VERIFICATION_ENABLED(self) -> bool:
         return bool(self.QORE_API_KEY) and not self.demo_mode
@@ -277,6 +292,24 @@ class Settings(BaseSettings):
                 raise ValueError("DEMO_ACCESS_SECRET must contain at least 32 characters.")
             if not 10 <= self.DEMO_SESSION_MINUTES <= 240:
                 raise ValueError("DEMO_SESSION_MINUTES must be between 10 and 240.")
+        if not 5 <= self.CBS_STALE_AFTER_MINUTES <= 10080:
+            raise ValueError("CBS_STALE_AFTER_MINUTES must be between 5 minutes and 7 days.")
+        if self.CBS_INTEGRATION_ENABLED:
+            if self.CBS_PROVIDER not in {"mock"}:
+                raise ValueError("CBS_PROVIDER is not registered by this release.")
+            if self.is_production and self.CBS_PROVIDER == "mock":
+                raise ValueError("The mock CBS provider cannot be enabled in production.")
+            if self.CBS_WEBHOOK_SECRET and len(self.CBS_WEBHOOK_SECRET) < 32:
+                raise ValueError("CBS_WEBHOOK_SECRET must contain at least 32 characters when configured.")
+            if self.CBS_JOB_SECRET and len(self.CBS_JOB_SECRET) < 32:
+                raise ValueError("CBS_JOB_SECRET must contain at least 32 characters when configured.")
+        if self.CUSTOMER_IDENTITY_ENABLED and (not self.FIELD_ENCRYPTION_KEY or not self.FIELD_LOOKUP_KEY):
+            raise ValueError("Customer identity requires FIELD_ENCRYPTION_KEY and FIELD_LOOKUP_KEY.")
+        if self.CONFIGURATION_HUB_ENABLED:
+            if not self.FIELD_ENCRYPTION_KEY:
+                raise ValueError("The Configuration Hub requires FIELD_ENCRYPTION_KEY for MFA secrets.")
+            if self.is_production and not (self.CONFIGURATION_ADMIN_HOSTS.strip() or self.CONFIGURATION_ADMIN_NETWORKS.strip()):
+                raise ValueError("Production Configuration Hub access requires a private host or network allowlist.")
         return self
 
 settings = Settings()

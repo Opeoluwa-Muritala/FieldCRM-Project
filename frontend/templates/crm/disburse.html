@@ -8,6 +8,7 @@
 {% endblock %}
 
 {% block content %}
+{% if cbs_authoritative %}<div class="page-card"><p><span class="status-badge verified">Source: Core Banking</span> Disbursement information is read-only in FieldCRM for this product. Use Refresh from CBS on the application overview.</p></div>{% endif %}
 <div class="disbursement-page">
 <div class="page-card csp-s-3c4a3d440074">
   <h2 class="page-card-title">{{ app.applicant_name }} — {{ app.ref_no }}</h2>
