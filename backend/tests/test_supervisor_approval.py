@@ -21,6 +21,9 @@ class Connection:
 
 
 def test_supervisor_advances_own_branch_file_to_credit_analyst(monkeypatch):
+    # This fixture verifies the retained legacy workflow path. Configurable
+    # permission enforcement has its own database-backed Phase 5 tests.
+    monkeypatch.setattr(router.settings, "CONFIGURABLE_WORKFLOW_ENABLED", False)
     application_id = uuid4()
     org_id = uuid4()
     branch_id = uuid4()
@@ -98,4 +101,3 @@ def test_supervisor_queue_links_to_approval_screen():
         root / "frontend" / "templates" / "branch_supervisor" / "review_queue.html"
     ).read_text(encoding="utf-8")
     assert 'href="/applications/{{ item.id }}/approve"' in template
-

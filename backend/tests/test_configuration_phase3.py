@@ -13,7 +13,7 @@ from app.core.config import Settings
 from app.core.exceptions import DomainException
 from app.domains.configuration.access import require_restricted_configuration_access
 from app.domains.configuration.catalog import FEATURE_DEFAULTS, SECTIONS, default_payload
-from app.domains.configuration.mfa import token_is_valid, totp, verification_token, verify_totp
+from app.domains.configuration.mfa import qr_code_data_url, token_is_valid, totp, verification_token, verify_totp
 from app.domains.configuration.schemas import DraftPatch
 from app.domains.configuration.service import ConfigurationService
 
@@ -96,6 +96,18 @@ def test_totp_and_short_lived_verification_token(monkeypatch):
     user_id = uuid4()
     assert token_is_valid(verification_token(user_id), user_id)
     assert not token_is_valid(verification_token(user_id), uuid4())
+
+
+def test_mfa_enrollment_qr_is_generated_locally_as_png():
+    data_url = qr_code_data_url(
+        "otpauth://totp/FieldCRM%20Configuration:admin%40fieldcrm.com"
+        "?secret=JBSWY3DPEHPK3PXP&issuer=FieldCRM%20Configuration"
+    )
+    encoded = data_url.removeprefix("data:image/png;base64,")
+    import base64
+    assert base64.b64decode(encoded).startswith(b"\x89PNG\r\n\x1a\n")
+    with pytest.raises(ValueError, match="Invalid authenticator"):
+        qr_code_data_url("https://example.com/secret")
 
 
 def _configuration_request(*, host="localhost", client="127.0.0.1"):
