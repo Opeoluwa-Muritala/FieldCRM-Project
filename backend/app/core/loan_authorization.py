@@ -19,6 +19,7 @@ ROLE_ALIASES = {
     "relationship_officer": "account_officer",
     "team_lead": "branch_manager",
     "supervisor": "branch_supervisor",
+    "executive": "ed",
 }
 
 
