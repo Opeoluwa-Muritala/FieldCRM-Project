@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from html import unescape
+from html import escape, unescape
 
 if os.name == "nt":
     # WeasyPrint's Windows runtime is provided by MSYS2/Pango. Respect an
@@ -547,8 +547,30 @@ def _naira(amount) -> str:
         return "—"
 
 
+def _escape_pdf_value(value):
+    """Recursively encode untrusted values before interpolating PDF HTML."""
+    if isinstance(value, str):
+        return escape(value, quote=True)
+    if isinstance(value, dict):
+        return {key: _escape_pdf_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_escape_pdf_value(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_escape_pdf_value(item) for item in value)
+    return value
+
+
+def _safe_archive_name(value: str, index: int) -> str:
+    """Keep generated ZIP entries flat so extraction cannot traverse paths."""
+    name = Path(str(value).replace("\x00", "")).name.strip()
+    return name or f"document-{index}.bin"
+
+
 def generate_disbursement_instruction_sheet(loan: dict, org: dict, users: dict) -> bytes:
     """Pre-filled DIS PDF for core banking operator."""
+    loan = _escape_pdf_value(loan)
+    org = _escape_pdf_value(org)
+    users = _escape_pdf_value(users)
     executive = users.get("executive", {})
     officer = users.get("officer", {})
     html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
@@ -588,6 +610,9 @@ def generate_disbursement_instruction_sheet(loan: dict, org: dict, users: dict) 
 
 def generate_disbursement_memo(loan: dict, org: dict, users: dict) -> bytes:
     """Formal disbursement record PDF generated after CRM confirms disbursement."""
+    loan = _escape_pdf_value(loan)
+    org = _escape_pdf_value(org)
+    users = _escape_pdf_value(users)
     executive = users.get("executive", {})
     crm = users.get("crm", {})
     officer = users.get("officer", {})
@@ -626,6 +651,11 @@ def generate_disbursement_memo(loan: dict, org: dict, users: dict) -> bytes:
 
 def generate_credit_printout(loan: dict, org: dict, schedule: list, payments: list, collateral: list) -> bytes:
     """CBN §1.7 credit printout PDF."""
+    loan = _escape_pdf_value(loan)
+    org = _escape_pdf_value(org)
+    schedule = _escape_pdf_value(schedule)
+    payments = _escape_pdf_value(payments)
+    collateral = _escape_pdf_value(collateral)
     total_due = sum(r.get("total_due", 0) for r in schedule)
     total_paid = sum(p.get("amount_paid", 0) for p in payments)
     outstanding = total_due - total_paid
@@ -680,8 +710,8 @@ def generate_audit_package(loan: dict, document_paths: list[tuple[str, bytes]], 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("disbursement_memo.pdf", memo_bytes)
-        for name, data in document_paths:
-            zf.writestr(name, data)
+        for index, (name, data) in enumerate(document_paths, 1):
+            zf.writestr(_safe_archive_name(name, index), data)
     return buf.getvalue()
 
 
@@ -701,7 +731,13 @@ def generate_offer_letter_pdf(
         html = template.render(context)
         return _to_pdf(html)
 
-    clause_paragraphs = "".join(f"<p style='margin: 12px 0;'>&bull; {c}</p>" for c in (clauses or []))
+    loan = _escape_pdf_value(loan or {})
+    org = _escape_pdf_value(org or {})
+    safe_rate = _escape_pdf_value(rate)
+    clause_paragraphs = "".join(
+        f"<p style='margin: 12px 0;'>&bull; {_escape_pdf_value(clause)}</p>"
+        for clause in (clauses or [])
+    )
     html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>Offer Letter</title>
 <style>
@@ -714,16 +750,16 @@ def generate_offer_letter_pdf(
   .clauses-section {{ margin-top: 24px; border-top: 2px solid #000; padding-top: 12px; }}
 </style></head><body>
 <div class="header">
-  <h1>{(org or {}).get('name', 'Mainstreet Microfinance Bank')}</h1>
+  <h1>{org.get('name', 'Mainstreet Microfinance Bank')}</h1>
   <h2>Letter of Offer for Credit Facility</h2>
-  <p>Reference: <strong>{(loan or {}).get('ref_no', '—')}</strong> &nbsp;|&nbsp; Date: <strong>{datetime.now().strftime('%d %B %Y')}</strong></p>
+  <p>Reference: <strong>{loan.get('ref_no', '—')}</strong> &nbsp;|&nbsp; Date: <strong>{datetime.now().strftime('%d %B %Y')}</strong></p>
 </div>
-<div class="row"><span class="label">Borrower Name:</span> {(loan or {}).get('applicant_name', '—')}</div>
-<div class="row"><span class="label">Facility Limit:</span> {_naira((loan or {}).get('amount'))}</div>
-<div class="row"><span class="label">Interest Rate Snapshot:</span> {rate}% p.a.</div>
-<div class="row"><span class="label">Tenor:</span> {(loan or {}).get('tenor_months', '—')} months</div>
-<div class="row"><span class="label">Facility Type:</span> {(loan or {}).get('loan_type', '—')}</div>
-<div class="row"><span class="label">Repayment Frequency:</span> {(loan or {}).get('repayment_frequency', 'Monthly')}</div>
+<div class="row"><span class="label">Borrower Name:</span> {loan.get('applicant_name', '—')}</div>
+<div class="row"><span class="label">Facility Limit:</span> {_naira(loan.get('amount'))}</div>
+<div class="row"><span class="label">Interest Rate Snapshot:</span> {safe_rate}% p.a.</div>
+<div class="row"><span class="label">Tenor:</span> {loan.get('tenor_months', '—')} months</div>
+<div class="row"><span class="label">Facility Type:</span> {loan.get('loan_type', '—')}</div>
+<div class="row"><span class="label">Repayment Frequency:</span> {loan.get('repayment_frequency', 'Monthly')}</div>
 
 <div class="clauses-section">
   <h3>Terms &amp; Special Conditions</h3>
@@ -753,10 +789,13 @@ def generate_application_form_pdf(
     witness_event: dict | None = None,
     evidential_text: str | None = None
 ) -> bytes:
+    loan = _escape_pdf_value(loan)
+    org = _escape_pdf_value(org)
+    wizard_data = _escape_pdf_value(wizard_data)
     # Build signature HTML
     sig_html = ""
     if signature_event and signature_event.get("signature_image_ref"):
-        sig_ref = signature_event["signature_image_ref"]
+        sig_ref = escape(str(signature_event["signature_image_ref"]), quote=True)
         sig_html = f'<img src="{sig_ref}" style="max-height:80px; display:block;" alt="Signature">'
     else:
         sig_html = '<div style="height:80px; border-bottom:1px solid #000;"></div>'
@@ -764,13 +803,13 @@ def generate_application_form_pdf(
     # Build witness signature HTML if assisted
     witness_html = ""
     if witness_event and witness_event.get("signature_image_ref"):
-        wit_ref = witness_event["signature_image_ref"]
+        wit_ref = escape(str(witness_event["signature_image_ref"]), quote=True)
         witness_html = f"""
         <div style="margin-top: 20px; width: 250px;">
           <img src="{wit_ref}" style="max-height:80px; display:block;" alt="Witness Signature">
           <p><strong>Witness Attestation</strong></p>
-          <p style="font-size:10px; color:#555;">{witness_event.get('reader_witness_attestation_text', '')}</p>
-          <p>Witness: {witness_event.get('signer_identity_ref', '')}</p>
+          <p style="font-size:10px; color:#555;">{escape(str(witness_event.get('reader_witness_attestation_text', '')))}</p>
+          <p>Witness: {escape(str(witness_event.get('signer_identity_ref', '')))}</p>
         </div>
         """
 
@@ -779,7 +818,7 @@ def generate_application_form_pdf(
     if evidential_text:
         evidence_block = f"""
         <div style="margin-top:40px; padding:15px; border:1px solid #333; background-color:#f9f9f9; font-size:10px; line-height:1.4;">
-          {evidential_text}
+          {escape(str(evidential_text))}
         </div>
         """
 
@@ -855,10 +894,13 @@ def generate_guarantor_pledge_pdf(
     witness_event: dict | None = None,
     evidential_text: str | None = None
 ) -> bytes:
+    loan = _escape_pdf_value(loan)
+    org = _escape_pdf_value(org)
+    guarantor_data = _escape_pdf_value(guarantor_data)
     # Build signature HTML
     sig_html = ""
     if signature_event and signature_event.get("signature_image_ref"):
-        sig_ref = signature_event["signature_image_ref"]
+        sig_ref = escape(str(signature_event["signature_image_ref"]), quote=True)
         sig_html = f'<img src="{sig_ref}" style="max-height:80px; display:block;" alt="Signature">'
     else:
         sig_html = '<div style="height:80px; border-bottom:1px solid #000;"></div>'
@@ -866,13 +908,13 @@ def generate_guarantor_pledge_pdf(
     # Build witness signature HTML if assisted
     witness_html = ""
     if witness_event and witness_event.get("signature_image_ref"):
-        wit_ref = witness_event["signature_image_ref"]
+        wit_ref = escape(str(witness_event["signature_image_ref"]), quote=True)
         witness_html = f"""
         <div style="margin-top: 20px; width: 250px;">
           <img src="{wit_ref}" style="max-height:80px; display:block;" alt="Witness Signature">
           <p><strong>Witness Attestation</strong></p>
-          <p style="font-size:10px; color:#555;">{witness_event.get('reader_witness_attestation_text', '')}</p>
-          <p>Witness: {witness_event.get('signer_identity_ref', '')}</p>
+          <p style="font-size:10px; color:#555;">{escape(str(witness_event.get('reader_witness_attestation_text', '')))}</p>
+          <p>Witness: {escape(str(witness_event.get('signer_identity_ref', '')))}</p>
         </div>
         """
 
@@ -881,7 +923,7 @@ def generate_guarantor_pledge_pdf(
     if evidential_text:
         evidence_block = f"""
         <div style="margin-top:40px; padding:15px; border:1px solid #333; background-color:#f9f9f9; font-size:10px; line-height:1.4;">
-          {evidential_text}
+          {escape(str(evidential_text))}
         </div>
         """
 
