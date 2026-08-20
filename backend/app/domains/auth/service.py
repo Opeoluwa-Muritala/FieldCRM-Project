@@ -103,37 +103,12 @@ class AuthService:
             
             # Replay attack / Reuse detection
             if session["used_at"] is not None or session["revoked_at"] is not None:
-                # Multiple browser requests can arrive with the same expired
-                # access token. The first consumes the refresh token; allow a
-                # very short same-device grace window for the others to obtain
-                # a fresh access token without revoking the family. They do
-                # not receive another refresh token, so rotation is preserved.
-                same_device = (
-                    session["used_at"] is not None
-                    and bool(user_agent)
-                    and bool(ip_address)
-                    and session.get("user_agent") == user_agent
-                    and str(session.get("ip_address")) == str(ip_address)
-                    and session["used_at"] >= datetime.now(timezone.utc) - timedelta(seconds=10)
-                )
-                if same_device:
-                    user = await self.repo.get_user_by_id(str(session["user_id"]))
-                    if user and user["active"]:
-                        return {
-                            "access_token": create_access_token(
-                                user["id"], role=user["role"], org_id=user["org_id"],
-                                password_hash=user["password_hash"], session_type=client_type
-                            ),
-                            "refresh_token": None,
-                            "expires_at": session["expires_at"],
-                        }
                 await self.repo.revoke_refresh_token_family(session["family_id"])
                 import logging
                 logger = logging.getLogger("SecurityAudit")
                 logger.error(
-                    f"Security Compromise: Refresh token reuse attempt detected! "
-                    f"User ID: {session['user_id']}, Family ID: {session['family_id']}, "
-                    f"IP: {ip_address}, UA: {user_agent}"
+                    "Refresh token reuse detected; the complete token family was revoked",
+                    extra={"security_event": "refresh_token_reuse"},
                 )
                 raise DomainException("Refresh token reuse detected.", 401)
 

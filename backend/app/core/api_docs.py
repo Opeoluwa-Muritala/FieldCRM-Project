@@ -1,5 +1,8 @@
-"""Nonce-aware development API documentation responses."""
+"""Nonce-aware, loopback-only development API documentation responses."""
 
+import ipaddress
+
+from fastapi import HTTPException
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from starlette.requests import Request
@@ -41,6 +44,25 @@ OPENAPI_TAG_GROUPS = [
 ]
 
 _HTTP_METHODS = frozenset({"get", "post", "put", "patch", "delete", "options", "head"})
+
+
+def require_local_docs_access(request: Request) -> None:
+    """Hide development documentation from non-loopback clients.
+
+    Host validation alone is insufficient when a development server is bound to
+    a network interface.  Requiring both a loopback host and loopback peer keeps
+    the schema local even in a non-production environment.
+    """
+    host = (request.url.hostname or "").rstrip(".").lower()
+    client_host = request.client.host if request.client else ""
+    if host == "testserver" and client_host == "testclient":
+        return
+    try:
+        is_loopback_client = ipaddress.ip_address(client_host).is_loopback
+    except ValueError:
+        is_loopback_client = False
+    if host not in {"localhost", "127.0.0.1", "::1"} or not is_loopback_client:
+        raise HTTPException(status_code=404, detail="Not found")
 
 
 def documentation_tag(path: str) -> str:

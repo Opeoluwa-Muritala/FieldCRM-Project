@@ -1,8 +1,61 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>Configuration MFA — FieldCRM</title><link rel="stylesheet" href="/static/css/dashboard.css"><script defer src="/static/js/csrf.js?v=20260815"></script></head>
-<body><main class="page-card csp-s-7ee0b907510b"><p class="eyebrow">Restricted control plane</p><h1>Configuration Admin MFA</h1>
-<p>This larger institution-configuration hub is separate from System Admin. Add the key to an authenticator, then enter a current six-digit code.</p>
-<figure><img src="{{ qr_code_data_url }}" width="280" height="280" alt="Scan this QR code with your authenticator app"><figcaption>Scan with Google Authenticator, Microsoft Authenticator, Authy, 1Password, or another TOTP app.</figcaption></figure>
-<p><strong>Manual key:</strong> <code>{{ secret }}</code></p><details><summary>Authenticator URI</summary><code>{{ otpauth }}</code></details>
-<form method="post" action="/configuration/mfa"><label>Authentication code<input class="form-input" name="code" inputmode="numeric" pattern="[0-9]{6}" required autocomplete="one-time-code"></label>
-<button class="btn btn-primary" type="submit">Verify and continue</button></form></main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Configuration MFA — FieldCRM</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/configuration-hub.css">
+    <script defer src="/static/js/csrf.js?v=20260815"></script>
+</head>
+<body class="mfa-page">
+<main class="mfa-shell">
+    <header class="mfa-brand">
+        <span class="mfa-brand-mark" aria-hidden="true">FC</span>
+        <span><strong>FieldCRM</strong><small>Configuration Control Centre</small></span>
+        <span class="mfa-local-badge">Local access only</span>
+    </header>
+
+    <section class="mfa-card" aria-labelledby="mfa-title">
+        <div class="mfa-copy">
+            <p class="eyebrow">Restricted control plane</p>
+            {% if secret %}
+            <h1 id="mfa-title">Secure your configuration access</h1>
+            <p class="mfa-lead">Connect an authenticator before changing institution-wide products, forms, workflows, or permissions.</p>
+            <ol class="mfa-steps">
+                <li><span>1</span><div><strong>Open an authenticator app</strong><small>Google Authenticator, Microsoft Authenticator, Authy, 1Password, or any standards-based TOTP app works.</small></div></li>
+                <li><span>2</span><div><strong>Scan the QR code</strong><small>Use the manual setup key only if your app cannot scan.</small></div></li>
+                <li><span>3</span><div><strong>Enter the current code</strong><small>The six-digit code changes every 30 seconds.</small></div></li>
+            </ol>
+            {% else %}
+            <div class="mfa-status-icon" aria-hidden="true">✓</div>
+            <h1 id="mfa-title">Confirm it’s you</h1>
+            <p class="mfa-lead">Authenticator protection is active for <strong>{{ current_user.email }}</strong>. Enter the current six-digit code to continue.</p>
+            <div class="mfa-secure-note"><strong>Your setup key remains private.</strong><span>FieldCRM does not display an enrolled authenticator seed again.</span></div>
+            {% endif %}
+
+            <form class="mfa-form" method="post" action="/configuration/mfa">
+                <label for="mfa-code">Authentication code</label>
+                <input id="mfa-code" class="mfa-code-input" name="code" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="000000" required autocomplete="one-time-code" autofocus>
+                <button class="config-button config-button-primary" type="submit">Verify and continue</button>
+            </form>
+            <p class="mfa-help">Codes are verified locally by FieldCRM. No authenticator provider account is required.</p>
+        </div>
+
+        {% if secret %}
+        <aside class="mfa-enrollment" aria-label="Authenticator enrollment">
+            <div class="mfa-qr-frame">
+                <img src="{{ qr_code_data_url }}" width="280" height="280" alt="Authenticator enrollment QR code">
+            </div>
+            <p><strong>Scan to connect</strong><span>Account: {{ current_user.email }}</span></p>
+            <details class="mfa-manual">
+                <summary>Can’t scan? Use a setup key</summary>
+                <code>{{ secret }}</code>
+                <p>Treat this key like a password. It will be hidden after verification.</p>
+            </details>
+        </aside>
+        {% endif %}
+    </section>
+</main>
+</body>
+</html>

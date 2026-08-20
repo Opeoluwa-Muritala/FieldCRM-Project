@@ -305,9 +305,9 @@ class SecurityHeadersMiddleware:
                 headers["Content-Security-Policy"] = (
                     "default-src 'self'; base-uri 'self'; object-src 'none'; "
                     f"frame-ancestors {frame_ancestors}; form-action 'self'; "
-                    f"script-src 'self' 'nonce-{csp_nonce}'{script_unsafe_inline} https://cdnjs.cloudflare.com; "
-                    "worker-src 'self' https://cdnjs.cloudflare.com; "
-                    f"style-src 'self' {style_authorization} https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
+                    f"script-src 'self' 'nonce-{csp_nonce}'{script_unsafe_inline}; "
+                    "worker-src 'self'; "
+                    f"style-src 'self' {style_authorization} https://fonts.googleapis.com; "
                     "font-src 'self' https://fonts.gstatic.com; "
                     "img-src 'self' data: https://res.cloudinary.com; "
                     "connect-src 'self' https://api.cloudinary.com;"

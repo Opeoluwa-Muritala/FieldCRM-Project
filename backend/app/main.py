@@ -15,7 +15,7 @@ from fastapi import FastAPI, Depends, Form, HTTPException, Query, Request, Respo
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -34,7 +34,12 @@ from app.core.middleware import (
 )
 from app.core.template_utils import csp_nonce_context
 from app.core.templates import create_templates
-from app.core.api_docs import install_organised_openapi, redoc_response, swagger_ui_response
+from app.core.api_docs import (
+    install_organised_openapi,
+    redoc_response,
+    require_local_docs_access,
+    swagger_ui_response,
+)
 from app.core.dependencies import authenticated_db_conn, get_current_user, RoleChecker
 from app.core.loan_authorization import require_view
 from app.core.audit import AuditService
@@ -132,25 +137,32 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     docs_url=None,
     redoc_url=None,
-    openapi_url=None if settings.is_production else "/openapi.json",
+    openapi_url=None,
     lifespan=lifespan
 )
 install_organised_openapi(app)
 
 if not settings.is_production:
+    @app.get("/openapi.json", include_in_schema=False)
+    async def local_openapi(request: Request):
+        require_local_docs_access(request)
+        return JSONResponse(app.openapi(), headers={"Cache-Control": "no-store"})
+
     @app.get("/api/docs", include_in_schema=False)
     async def swagger_docs(request: Request):
+        require_local_docs_access(request)
         return swagger_ui_response(
             request,
-            openapi_url=app.openapi_url or "/openapi.json",
+            openapi_url="/openapi.json",
             title=f"{settings.PROJECT_NAME} - Swagger UI",
         )
 
     @app.get("/api/redoc", include_in_schema=False)
     async def redoc_docs(request: Request):
+        require_local_docs_access(request)
         return redoc_response(
             request,
-            openapi_url=app.openapi_url or "/openapi.json",
+            openapi_url="/openapi.json",
             title=f"{settings.PROJECT_NAME} - ReDoc",
         )
 
@@ -600,7 +612,6 @@ app.include_router(collateral_router)
 
 logger = logging.getLogger("FieldCRMMain")
 
-from fastapi.responses import JSONResponse
 import urllib.parse
 
 
@@ -832,6 +843,7 @@ async def logout_web(request: Request, next: str = Form(None), conn=Depends(db_c
     redirect.delete_cookie(key="session", path="/")
     redirect.delete_cookie(key="refresh_token", path="/")
     redirect.delete_cookie(key="__Host-session", path="/")
+    redirect.delete_cookie(key="configuration_mfa", path="/configuration")
     return redirect
 
 @app.get("/forgot-password")
