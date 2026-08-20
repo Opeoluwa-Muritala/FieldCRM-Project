@@ -219,7 +219,34 @@ def test_configuration_hub_is_rejected_in_production(monkeypatch):
             CACHE_REDIS_URL="rediss://redis.example/0",
             FIELD_ENCRYPTION_KEY=key,
             FIELD_LOOKUP_KEY=key,
+            RLS_ENFORCED=True,
             CONFIGURATION_HUB_ENABLED=True,
+        )
+
+
+def test_production_requires_non_owner_rls_runtime_role():
+    key = "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
+    common = {
+        "APP_ENV": "production",
+        "JWT_SECRET_KEY": "a-fixed-production-secret-that-is-long-enough",
+        "CORS_ORIGINS": "https://fieldcrm.example",
+        "TRUSTED_HOSTS": "fieldcrm.example",
+        "APP_BASE_URL": "https://fieldcrm.example",
+        "RATE_LIMIT_REDIS_URL": "rediss://redis.example/0",
+        "FIELD_ENCRYPTION_KEY": key,
+        "FIELD_LOOKUP_KEY": key,
+    }
+    with pytest.raises(ValueError, match="RLS_ENFORCED=true"):
+        Settings(
+            **common,
+            DATABASE_URL="postgresql://neondb_owner:secret@example-pooler.neon.tech/neondb",
+            RLS_ENFORCED=False,
+        )
+    with pytest.raises(ValueError, match="non-owner runtime database user"):
+        Settings(
+            **common,
+            DATABASE_URL="postgresql://neondb_owner:secret@example-pooler.neon.tech/neondb",
+            RLS_ENFORCED=True,
         )
 
 
