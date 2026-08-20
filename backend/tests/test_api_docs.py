@@ -1,6 +1,9 @@
 from starlette.requests import Request
 
-from app.core.api_docs import redoc_response, swagger_ui_response
+from collections import Counter
+
+from app.core.api_docs import OPENAPI_TAG_GROUPS, OPENAPI_TAGS, redoc_response, swagger_ui_response
+from app.main import app
 
 
 def test_swagger_ui_bootstrap_scripts_use_request_nonce():
@@ -42,3 +45,30 @@ def test_redoc_uses_local_bundle_and_request_nonce():
     assert "cdn.jsdelivr.net" not in body
     assert "fonts.googleapis.com" not in body
     assert 'spec-url="/openapi.json"' in body
+
+
+def test_openapi_is_api_only_fully_grouped_and_easy_to_scan():
+    app.openapi_schema = None
+    schema = app.openapi()
+    assert schema["paths"]
+    assert all(path.startswith("/api/v1/") for path in schema["paths"])
+
+    tag_counts = Counter()
+    declared_tags = {tag["name"] for tag in OPENAPI_TAGS}
+    for path_item in schema["paths"].values():
+        for method, operation in path_item.items():
+            if method.lower() not in {"get", "post", "put", "patch", "delete", "options", "head"}:
+                continue
+            assert len(operation.get("tags", [])) == 1
+            assert operation["tags"][0] in declared_tags
+            tag_counts[operation["tags"][0]] += 1
+
+    assert "Untagged" not in tag_counts
+    assert "Mobile API" not in tag_counts
+    assert max(tag_counts.values()) <= 18
+
+    grouped_tags = [tag for group in OPENAPI_TAG_GROUPS for tag in group["tags"]]
+    assert len(grouped_tags) == len(set(grouped_tags))
+    assert set(grouped_tags) == declared_tags
+    assert max(len(group["tags"]) for group in OPENAPI_TAG_GROUPS) <= 4
+    assert schema["x-tagGroups"] == OPENAPI_TAG_GROUPS

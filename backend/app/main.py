@@ -34,7 +34,7 @@ from app.core.middleware import (
 )
 from app.core.template_utils import csp_nonce_context
 from app.core.templates import create_templates
-from app.core.api_docs import redoc_response, swagger_ui_response
+from app.core.api_docs import install_organised_openapi, redoc_response, swagger_ui_response
 from app.core.dependencies import authenticated_db_conn, get_current_user, RoleChecker
 from app.core.loan_authorization import require_view
 from app.core.audit import AuditService
@@ -135,6 +135,7 @@ app = FastAPI(
     openapi_url=None if settings.is_production else "/openapi.json",
     lifespan=lifespan
 )
+install_organised_openapi(app)
 
 if not settings.is_production:
     @app.get("/api/docs", include_in_schema=False)
