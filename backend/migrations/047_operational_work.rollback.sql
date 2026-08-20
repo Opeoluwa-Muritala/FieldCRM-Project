@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS note_mentions; DROP TABLE IF EXISTS application_notes; DROP TABLE IF EXISTS policy_waivers; DROP TABLE IF EXISTS disbursement_conditions; DROP TABLE IF EXISTS sla_pauses; DROP TABLE IF EXISTS sla_stage_events; DROP TABLE IF EXISTS operational_exceptions; DROP TABLE IF EXISTS work_tasks;
