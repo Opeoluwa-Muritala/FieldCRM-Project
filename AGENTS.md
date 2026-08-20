@@ -25,7 +25,7 @@ This document covers the FastAPI/Jinja2 web application and shared backend. Andr
 ## Users & Access
 
 - [implemented] The smaller System Admin area manages users, invitations, basic roles/branches, deactivation, password resets, session revocation, and system activity.
-- [flagged off by default] Phase 3 provides the separate, larger Configuration Admin Hub (`CONFIGURATION_HUB_ENABLED=false`) with a dedicated role, private host/network controls, encrypted TOTP, and institution-wide authority. System Admin cannot grant or alter Configuration Admin access.
+- [flagged off by default] Phase 3 provides the separate, larger Configuration Admin Hub (`CONFIGURATION_HUB_ENABLED=false`) as a localhost-only, non-production control plane with a dedicated role, encrypted TOTP, and institution-wide authority. System Admin cannot grant or alter Configuration Admin access.
 - [flagged off by default] Phase 5 (`CONFIGURABLE_WORKFLOW_ENABLED=false`) adds permission bundles, maker-checker action separation, expiring delegation, and audited transactional portfolio reassignment while preserving legacy route compatibility.
 - [flagged off by default] Phase 2 Customer Identity (`CUSTOMER_IDENTITY_ENABLED=false`) adds staff-only Customer 360 access with officer/branch/object scoping; System Admin cannot view customer PII.
 
@@ -87,7 +87,7 @@ This document covers the FastAPI/Jinja2 web application and shared backend. Andr
 
 - [implemented] CSRF defense, CSP/security headers, tenant object authorization and optional PostgreSQL RLS, parameterized SQL, encrypted sensitive fields, refresh rotation/reuse detection, session revocation, secure document access, rate limiting, and production configuration checks.
 - [implemented] Phase 1 CBS endpoints use object authorization; new tables have tenant RLS; webhooks use HMAC, a five-minute replay window, payload limits, and event idempotency; batch sync uses a separate strong secret.
-- [implemented] Phase 3 Configuration Admin access uses a dedicated role, trusted private host/network allowlists, encrypted TOTP secrets, short-lived HttpOnly step-up sessions, CSRF protection, and different-person approval for high-risk versions.
+- [implemented] Phase 3 Configuration Admin access is rejected in production and requires localhost, a dedicated role, encrypted TOTP secrets, short-lived HttpOnly step-up sessions, CSRF protection, and different-person approval for high-risk versions.
 - [implemented] Phase 5 permission and maker-checker tests cover policy conditions, authority thresholds, compatibility and prohibited action combinations.
 - [planned — phase 8] Account lockout, privileged MFA coverage, credential vaulting, device/session controls, and commercial-deployment hardening.
 
