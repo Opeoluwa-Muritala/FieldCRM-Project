@@ -20,6 +20,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
+from starlette.requests import Request
 
 from app.config import settings
 from app.core.performance import record_duration, record_query
@@ -353,6 +354,62 @@ async def get_transaction():
             yield conn
 
 
-async def db_conn():
-    async with get_connection() as conn:
-        yield conn
+async def db_conn(request: Request):
+    """Yield a connection with RLS identity whenever the request is authenticated.
+
+    A small number of public/authentication routes intentionally use this
+    compatibility dependency without credentials. Legacy protected routes also
+    use it, so a valid bearer/cookie session must install the same identity as
+    ``authenticated_db_conn`` before any repository query executes.
+    """
+    authorization = request.headers.get("authorization", "")
+    scheme, _, header_token = authorization.partition(" ")
+    token = header_token.strip() if scheme.lower() == "bearer" else ""
+    token = token or request.cookies.get("session") or request.cookies.get("__Host-session")
+    identity = None
+    if token or request.cookies.get("refresh_token"):
+        from app.core.dependencies import get_current_user
+        from app.core.loan_authorization import canonical_role
+
+        current_user = await get_current_user(request, token=token)
+        request_id = request.headers.get("x-request-id") or getattr(request.state, "request_id", None)
+        identity = DatabaseIdentity(
+            org_id=str(current_user.org_id),
+            user_id=str(current_user.id),
+            role=canonical_role(current_user.role),
+            branch_id=str(current_user.branch_id) if getattr(current_user, "branch_id", None) else None,
+            request_id=str(request_id) if request_id else None,
+        )
+
+    if identity is None:
+        async with get_connection() as conn:
+            yield conn
+        return
+    with database_identity(identity):
+        async with get_connection() as conn:
+            yield conn
+
+
+async def verify_runtime_database_role(conn) -> None:
+    """Fail closed when an RLS deployment connects as an owner/bypass role."""
+    if _is_sqlite or not settings.RLS_ENFORCED:
+        return
+    role = await conn.fetchrow(
+        """
+        SELECT current_user AS role_name, r.rolsuper, r.rolbypassrls,
+               pg_get_userbyid(c.relowner) = current_user AS owns_loan_table
+        FROM pg_roles r
+        JOIN pg_class c ON c.oid = 'public.loan_applications'::regclass
+        WHERE r.rolname = current_user
+        """
+    )
+    if (
+        not role
+        or role["role_name"] != settings.DATABASE_EXPECTED_RUNTIME_USER
+        or role["rolsuper"]
+        or role["rolbypassrls"]
+        or role["owns_loan_table"]
+    ):
+        raise RuntimeError(
+            "Unsafe database runtime role: use the non-owner, NOSUPERUSER, NOBYPASSRLS fieldcrm_app role"
+        )

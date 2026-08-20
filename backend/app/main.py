@@ -23,7 +23,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from contextlib import asynccontextmanager
 from app.config import settings
 from app.core import security
-from app.core.database import db_conn, init_engine, dispose_engine, get_connection
+from app.core.database import db_conn, init_engine, dispose_engine, get_connection, verify_runtime_database_role
 from app.core.exceptions import DomainException, domain_exception_handler
 from app.core.middleware import (
     PendingResponseCookiesMiddleware,
@@ -87,6 +87,7 @@ async def lifespan(app: FastAPI):
     await warm_mobile_static_cache()
     try:
         async with get_connection() as conn:
+            await verify_runtime_database_role(conn)
             if "postgresql" in settings.DATABASE_URL:
                 row = await conn.fetchrow(
                     "SELECT 1 FROM information_schema.columns WHERE table_name = 'loan_applications' AND column_name = 'share_token'"

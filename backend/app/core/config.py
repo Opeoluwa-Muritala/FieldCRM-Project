@@ -259,7 +259,9 @@ class Settings(BaseSettings):
                 raise ValueError("FIELD_ENCRYPTION_KEY and FIELD_LOOKUP_KEY are required in production.")
             if not self.public_base_url.startswith("https://"):
                 raise ValueError("APP_BASE_URL or the primary CORS origin must use HTTPS in production.")
-            if self.RLS_ENFORCED and parsed_database.username != self.DATABASE_EXPECTED_RUNTIME_USER:
+            if not self.RLS_ENFORCED:
+                raise ValueError("RLS_ENFORCED=true is required in production.")
+            if parsed_database.username != self.DATABASE_EXPECTED_RUNTIME_USER:
                 raise ValueError("RLS_ENFORCED requires the configured non-owner runtime database user.")
         for setting_name, encoded_key in (
             ("FIELD_ENCRYPTION_KEY", self.FIELD_ENCRYPTION_KEY),
