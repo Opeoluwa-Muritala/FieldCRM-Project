@@ -1,46 +1,70 @@
+"""Manual authenticated dashboard smoke runner.
+
+This is intentionally not a pytest test. Supply credentials explicitly rather
+than weakening password verification or embedding staff identities in source.
+"""
+from __future__ import annotations
+
+import json
 import os
 import sys
-import psycopg2
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, "backend")
-from app.main import app as fastapi_app
-from app.core.security import get_password_hash
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND_ROOT))
 
-# Let's override password verification for the test to ensure we can log in with any user!
-# We can mock verify_password to always return True for this test script!
-import app.core.security
-app.core.security.verify_password = lambda plain, hashed: True
+from app.main import app as fastapi_app  # noqa: E402
 
-client = TestClient(fastapi_app)
 
-USERS_TO_TEST = [
-    ("mezeobidi@mainstreetmfb.com", "account_officer", "/dashboard"),
-    ("danielbakare550@gmail.com", "auditor", "/dashboard"),
-    ("sadewale@mainstreetmfb.com", "branch_manager", "/dashboard"),
-    ("juchenna@mainstreetmfb.com", "branch_supervisor", "/dashboard"),
-    ("m.o.j.muritalaopeoluwajoel@gmail.com", "credit_analyst", "/dashboard"),
-    ("ooyewole@mainstreetmfb.com", "crm", "/crm-dashboard"),
-    ("unnenna@mainstreetmfb.com", "ed", "/ed-dashboard"),
-    ("sukaogo@mainstreetmfb.com", "md", "/md-dashboard"),
-    ("muritalaopeoluwa10@gmail.com", "system_admin", "/dashboard")
-]
+def _smoke_users() -> list[dict[str, str]]:
+    raw = os.getenv("FIELDCRM_SMOKE_USERS", "")
+    if not raw:
+        raise RuntimeError(
+            "FIELDCRM_SMOKE_USERS must be a JSON array of email, role, and path objects"
+        )
+    users = json.loads(raw)
+    if not isinstance(users, list) or not users:
+        raise ValueError("FIELDCRM_SMOKE_USERS must contain at least one user")
+    for user in users:
+        if not isinstance(user, dict) or not all(
+            isinstance(user.get(key), str) and user[key].strip()
+            for key in ("email", "role", "path")
+        ):
+            raise ValueError("Each smoke user requires non-empty email, role, and path strings")
+        if not user["path"].startswith("/") or user["path"].startswith("//"):
+            raise ValueError("Dashboard smoke paths must be local absolute paths")
+    return users
 
-def test_dashboards():
-    for email, role, path in USERS_TO_TEST:
-        login_res = client.post("/api/v1/auth/login", data={"username": email, "password": "any"})
-        if login_res.status_code != 200:
-            print(f"Failed to login {email}: {login_res.status_code}")
-            continue
-        
-        token = login_res.json().get("access_token")
-        client.headers.update({"Authorization": f"Bearer {token}"})
-        
-        # Test full page
-        res = client.get(path, headers={"X-Progressive-Load": "true"})
-        print(f"Role {role:20} Path {path:15} Progressive Status: {res.status_code} Content Length: {len(res.text)}")
-        if res.status_code != 200:
-            print(res.text[:500])
+
+def run_dashboard_smoke() -> None:
+    password = os.getenv("FIELDCRM_SMOKE_PASSWORD", "")
+    if not password:
+        raise RuntimeError("FIELDCRM_SMOKE_PASSWORD is required")
+
+    with TestClient(fastapi_app) as client:
+        for user in _smoke_users():
+            login = client.post(
+                "/api/v1/auth/login",
+                data={"username": user["email"], "password": password},
+            )
+            if login.status_code != 200:
+                print(f"Login failed for role {user['role']}: HTTP {login.status_code}")
+                continue
+            token = login.json().get("access_token", "")
+            response = client.get(
+                user["path"],
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "X-Progressive-Load": "true",
+                },
+            )
+            print(
+                f"Role {user['role']:20} Path {user['path']:20} "
+                f"HTTP {response.status_code} Bytes {len(response.content)}"
+            )
+
 
 if __name__ == "__main__":
-    test_dashboards()
+    run_dashboard_smoke()

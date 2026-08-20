@@ -1,4 +1,5 @@
 import asyncio
+import json
 import sys
 import os
 import httpx
@@ -9,12 +10,25 @@ sys.path.insert(0, os.path.dirname(__file__))
 from app.core.database import init_pool, close_pool, get_connection
 from app.config import settings
 
-ROLES = {
-    "system_admin": ("emeka@mmfb.com", "password123"),
-    "branch_manager": ("samuel@mmfb.com", "password123"),
-    "loan_officer": ("chidi@mmfb.com", "password123"),
-    "auditor": ("amaka@mmfb.com", "password123"),
-}
+def configured_roles():
+    raw = os.getenv("FIELDCRM_RENDER_SMOKE_USERS", "")
+    if not raw:
+        raise RuntimeError(
+            "FIELDCRM_RENDER_SMOKE_USERS must be a JSON object mapping roles to email/password objects"
+        )
+    values = json.loads(raw)
+    if not isinstance(values, dict) or not values:
+        raise ValueError("FIELDCRM_RENDER_SMOKE_USERS must contain at least one role")
+    roles = {}
+    for role, credentials in values.items():
+        if not isinstance(credentials, dict):
+            raise ValueError("Each render smoke role must map to an email/password object")
+        email = credentials.get("email")
+        password = credentials.get("password")
+        if not isinstance(email, str) or not email or not isinstance(password, str) or not password:
+            raise ValueError("Each render smoke role requires non-empty email and password strings")
+        roles[str(role)] = (email, password)
+    return roles
 
 UA_DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 UA_MOBILE = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1"
@@ -34,7 +48,7 @@ async def get_test_data():
         await close_pool()
     return loan_id
 
-async def test_role_views(loan_id):
+async def run_role_views(loan_id):
     base_url = "http://127.0.0.1:8000"
     errors = []
 
@@ -43,7 +57,7 @@ async def test_role_views(loan_id):
     print("==================================================")
 
     await init_pool()
-    for role, (email, password) in ROLES.items():
+    for role, (email, password) in configured_roles().items():
         print(f"\n--- Testing Role: {role} ({email}) ---")
 
         # Create httpx client with cookies enabled
@@ -136,4 +150,4 @@ async def test_role_views(loan_id):
 if __name__ == "__main__":
     loan_id = asyncio.run(get_test_data())
     print(f"Found active loan application ID for testing: {loan_id}")
-    asyncio.run(test_role_views(loan_id))
+    asyncio.run(run_role_views(loan_id))
