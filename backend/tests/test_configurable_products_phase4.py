@@ -72,6 +72,15 @@ def test_generic_renderer_supports_every_required_field_type():
     assert "dynamic_uploads" in (Path(__file__).resolve().parents[1] / "app/domains/loans/router.py").read_text(encoding="utf-8")
 
 
+def test_configuration_admin_gets_a_structured_product_form_not_raw_json():
+    template = (Path(__file__).resolve().parents[2] / "frontend/templates/configuration/products.html").read_text(encoding="utf-8")
+    for field in ("code", "name", "min_amount", "max_amount", "min_tenor_months",
+                  "max_tenor_months", "repayment_frequency", "workflow_stages"):
+        assert f'name="{field}"' in template
+    assert 'name="definition_json"' not in template
+    assert "Planned" not in template
+
+
 def test_conditional_visibility_and_server_required_validation():
     service = ProductService(Repo())
     field = {"field_key": "cac_number", "label": "CAC number", "requirement": "required",

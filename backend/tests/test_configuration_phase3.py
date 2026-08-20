@@ -12,7 +12,7 @@ from app.config import settings
 from app.core.config import Settings
 from app.core.exceptions import DomainException
 from app.domains.configuration.access import require_restricted_configuration_access
-from app.domains.configuration.catalog import FEATURE_DEFAULTS, SECTIONS, default_payload
+from app.domains.configuration.catalog import FEATURE_DEFAULTS, FEATURE_GROUPS, SECTIONS, default_payload
 from app.domains.configuration.mfa import qr_code_data_url, token_is_valid, totp, verification_token, verify_totp
 from app.domains.configuration.schemas import DraftPatch
 from app.domains.configuration.service import ConfigurationService
@@ -55,6 +55,23 @@ def test_hub_is_separate_and_defaults_external_surfaces_off():
     assert FEATURE_DEFAULTS["external_applicant_portal"] is False
     assert FEATURE_DEFAULTS["cbs_integration"] is False
     assert FEATURE_DEFAULTS["offline_mode"] is False
+
+
+def test_configuration_ui_catalog_only_contains_working_feature_controls():
+    catalog_keys = [key for group in FEATURE_GROUPS for key, _label, _description in group["features"]]
+    assert len(catalog_keys) == len(set(catalog_keys))
+    assert set(catalog_keys) == set(FEATURE_DEFAULTS)
+
+    template = (
+        Path(__file__).resolve().parents[2]
+        / "frontend/templates/configuration/hub.html"
+    ).read_text(encoding="utf-8")
+    assert "Available tools" in template
+    assert "Loan products" in template
+    assert "Feature controls" in template
+    assert "Version history" in template
+    assert "Planned" not in template
+    assert "Advanced setting editor" not in template
 
 
 @pytest.mark.asyncio
