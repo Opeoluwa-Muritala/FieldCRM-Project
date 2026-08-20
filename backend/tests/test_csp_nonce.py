@@ -89,6 +89,18 @@ def test_rollout_mode_keeps_existing_inline_scripts_functional():
     assert "'nonce-" in script_src
 
 
+def test_swagger_cdn_is_allowed_only_on_the_local_docs_path():
+    app = Starlette(routes=[Route("/api/docs", nonce_value), Route("/", nonce_value)])
+    app.add_middleware(SecurityHeadersMiddleware, csp_nonce_enforced=True)
+
+    with TestClient(app) as client:
+        docs_response = client.get("/api/docs")
+        normal_response = client.get("/")
+
+    assert "https://cdn.jsdelivr.net" in docs_response.headers["content-security-policy"]
+    assert "https://cdn.jsdelivr.net" not in normal_response.headers["content-security-policy"]
+
+
 def test_strict_csp_nonce_matches_standalone_and_shell_template_scripts():
     app = Starlette(
         routes=[
