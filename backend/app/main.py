@@ -58,6 +58,13 @@ from app.domains.loans.collateral import router as collateral_router
 from app.domains.ocr.router import router as ocr_router
 from app.api.v1.mobile import router as mobile_api_router, warm_mobile_static_cache
 from app.domains.demo.router import router as demo_router
+from app.domains.core_banking.router import router as core_banking_router
+from app.domains.customers.router import router as customers_router
+from app.domains.configuration.router import router as configuration_router
+from app.domains.configuration.context import ConfigurationContextMiddleware
+from app.domains.products.router import router as products_router
+from app.domains.workflow.router import router as workflow_router
+from app.domains.tasks.router import router as tasks_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -149,6 +156,7 @@ app.add_middleware(
     csp_nonce_enforced=settings.CSP_NONCE_ENFORCED,
 )
 app.add_middleware(RequestIDMiddleware)
+app.add_middleware(ConfigurationContextMiddleware)
 app.add_middleware(
     CrossSiteRequestMiddleware,
     allowed_origins=settings.cors_origins,
@@ -560,6 +568,12 @@ app.include_router(branches_router, tags=["Branches"])
 app.include_router(mobile_api_router, prefix=f"{settings.API_V1_STR}/mobile", tags=["Mobile API"])
 app.include_router(ocr_router)
 app.include_router(demo_router)
+app.include_router(core_banking_router)
+app.include_router(customers_router)
+app.include_router(configuration_router)
+app.include_router(products_router)
+app.include_router(workflow_router)
+app.include_router(tasks_router)
 
 # Mount Loan pages at root
 app.include_router(loans_router)

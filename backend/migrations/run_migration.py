@@ -37,6 +37,12 @@ MIGRATION_FILES = [
     "039_collateral_valuation_policies.sql",
     "040_collateral_policy_trigger.sql",
     "041_recalculate_existing_collateral.sql",
+    "042_core_banking.sql",
+    "043_customer_identity.sql",
+    "044_configuration_hub.sql",
+    "045_configurable_products_forms.sql",
+    "046_configurable_workflow_permissions.sql",
+    "047_operational_work.sql",
 ]
 
 
@@ -164,11 +170,6 @@ def run_migrations() -> None:
         cursor.execute("SELECT count(*) FROM users")
         user_count = cursor.fetchone()[0]
         logger.info("Users seeded: %d", user_count)
-
-        # List users
-        cursor.execute("SELECT full_name, email, role FROM users ORDER BY role")
-        for row in cursor.fetchall():
-            logger.info("  User: %s | %s | %s", row[0], row[1], row[2])
 
     except Exception as e:
         logger.error("Migration failed: %s", e)

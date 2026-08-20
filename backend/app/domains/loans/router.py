@@ -50,10 +50,53 @@ from app.domains.notifications.service import NotificationService
 from app.domains.signing.repository import SigningRepository
 from app.domains.signing.service import SigningService
 from app.domains.feasibility.repository import FeasibilityRepository
+from app.domains.core_banking.repository import CoreBankingRepository
 
 from app.config import settings
 
 router = APIRouter()
+
+
+async def _effective_products(conn, org_id):
+    if settings.CONFIGURABLE_PRODUCTS_ENABLED:
+        from app.domains.products.repository import ProductRepository
+        return await ProductRepository(conn).effective(org_id)
+    return await conn.fetch("SELECT * FROM loan_products WHERE active = TRUE ORDER BY name")
+
+
+async def _require_feature(conn, org_id, feature):
+    if settings.CONFIGURATION_HUB_ENABLED:
+        from app.domains.configuration.repository import ConfigurationRepository
+        from app.domains.configuration.service import ConfigurationService
+        if not await ConfigurationService(ConfigurationRepository(conn)).feature_enabled(org_id, feature):
+            raise HTTPException(status_code=404, detail="Not found")
+
+
+async def _cbs_context(conn, app) -> tuple[bool, dict | None, bool]:
+    """Return authoritative flag, view data, and staleness without touching CBS tables while off."""
+    if not settings.CBS_INTEGRATION_ENABLED:
+        return False, None, False
+    if settings.CONFIGURATION_HUB_ENABLED:
+        from app.domains.configuration.repository import ConfigurationRepository
+        from app.domains.configuration.service import ConfigurationService
+        enabled = await ConfigurationService(ConfigurationRepository(conn)).feature_enabled(app.org_id, "cbs_integration")
+        if not enabled:
+            return False, None, False
+    mapping = await CoreBankingRepository(conn).get_mapping(app.id, app.org_id)
+    authoritative = bool(mapping and mapping.get("cbs_enabled"))
+    if not authoritative:
+        return False, None, False
+    view = await CoreBankingRepository(conn).get_view(app.id, app.org_id)
+    last_sync = view.get("cbs_last_successful_sync_at") if view else None
+    if isinstance(last_sync, str):
+        try:
+            last_sync = datetime.fromisoformat(last_sync.replace("Z", "+00:00"))
+        except ValueError:
+            last_sync = None
+    if last_sync and last_sync.tzinfo is None:
+        last_sync = last_sync.replace(tzinfo=timezone.utc)
+    stale = not last_sync or datetime.now(timezone.utc) - last_sync > timedelta(minutes=settings.CBS_STALE_AFTER_MINUTES)
+    return True, view, stale
 
 # Resolve templates folder relatively
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -339,6 +382,34 @@ async def render_ocr_review_queue(
     return templates.TemplateResponse(request, "loan_officer/ocr_review_queue.html", ctx)
 
 @router.get("/awaiting-me")
+@router.get("/document-work-queue")
+async def render_document_work_queue(request: Request, conn=Depends(db_conn),
+                                     current_user=Depends(RoleChecker(["Account Officer", "Credit Analyst"]))):
+    """Exception-only queue; normal documents remain contextual to applications."""
+    role = canonical_role(current_user.role)
+    officer_filter = "AND la.created_by=$2" if role == "account_officer" else ""
+    params = (current_user.org_id, current_user.id) if officer_filter else (current_user.org_id,)
+    rows = await conn.fetch(f"""SELECT * FROM (
+      SELECT la.id application_id,la.ref_no,la.applicant_name,pdr.doc_type issue_key,
+             'Missing required document' issue_type,NULL::timestamptz occurred_at
+      FROM loan_applications la JOIN product_document_requirements pdr ON pdr.product_code=la.loan_type AND pdr.is_mandatory=TRUE
+      LEFT JOIN documents d ON d.loan_id=la.id AND d.doc_type=pdr.doc_type AND d.deleted_at IS NULL
+      WHERE la.org_id=$1 AND la.deleted_at IS NULL AND d.id IS NULL {officer_filter}
+      UNION ALL
+      SELECT la.id,la.ref_no,la.applicant_name,d.doc_type,
+             CASE WHEN dqa.status='rejected' THEN 'Document quality rejected' ELSE 'Document quality needs review' END,dqa.assessed_at
+      FROM document_quality_assessments dqa JOIN documents d ON d.id=dqa.document_id
+      JOIN loan_applications la ON la.id=d.loan_id WHERE dqa.org_id=$1 AND dqa.status<>'passed' {officer_filter}
+      UNION ALL
+      SELECT la.id,la.ref_no,la.applicant_name,d.doc_type,'OCR/upload processing failed',oj.updated_at
+      FROM ocr_jobs oj JOIN documents d ON d.id=oj.document_id JOIN loan_applications la ON la.id=d.loan_id
+      WHERE la.org_id=$1 AND oj.status IN ('failed','quality_review') {officer_filter}
+    ) issues ORDER BY occurred_at DESC NULLS FIRST LIMIT 300""", *params)
+    ctx = build_template_context(request, current_user, issues=[dict(row) for row in rows], active_page="document_work")
+    return templates.TemplateResponse(request, "shared/document_work_queue.html", ctx)
+
+
+@router.get("/awaiting-me")
 async def render_awaiting_me(
     request: Request,
     conn = Depends(db_conn),
@@ -611,7 +682,7 @@ async def render_applications_list(
         to_date=to_date,
         branch_id=branch_id,
     )
-    products = await conn.fetch("SELECT * FROM loan_products WHERE active = TRUE ORDER BY name")
+    products = await _effective_products(conn, current_user.org_id)
     ctx = build_template_context(
         request,
         current_user,
@@ -625,6 +696,7 @@ async def render_applications_list(
         active_tab="applications",
         active_page="applications",
         products=[dict(p) for p in products],
+        customer_identity_enabled=settings.CUSTOMER_IDENTITY_ENABLED,
     )
     return templates.TemplateResponse(request, "shared/applications.html", ctx)
 
@@ -635,13 +707,20 @@ async def render_new_application(
     current_user = Depends(RoleChecker(["Account Officer"]))
 ):
     """Renders Page 3 customer selection page."""
-    products = await conn.fetch("SELECT * FROM loan_products WHERE active = TRUE ORDER BY name")
+    products = await _effective_products(conn, current_user.org_id)
+    dynamic_fields = []
+    if settings.CONFIGURABLE_PRODUCTS_ENABLED:
+        dynamic_fields = await conn.fetch("""SELECT pff.* FROM product_form_fields pff JOIN configuration_versions cv ON cv.id=pff.configuration_version_id
+          WHERE pff.org_id=$1 AND cv.status='published' AND cv.effective_at<=NOW() ORDER BY pff.product_code,pff.display_order""", current_user.org_id)
     ctx = build_template_context(
         request,
         current_user,
         active_tab="new_application",
         active_page="new_application",
         products=[dict(p) for p in products],
+        customer_identity_enabled=settings.CUSTOMER_IDENTITY_ENABLED,
+        configurable_products_enabled=settings.CONFIGURABLE_PRODUCTS_ENABLED,
+        dynamic_fields=[dict(field) for field in dynamic_fields],
     )
     return templates.TemplateResponse(request, "shared/new_application.html", ctx)
 
@@ -657,6 +736,7 @@ async def process_new_application(
 ):
     """Initializes a new borrower and loan application in draft stage."""
     selected = None
+    selected_id = None
     profile = None
     if customer_type == "existing":
         if not borrower_id:
@@ -665,10 +745,48 @@ async def process_new_application(
             selected_id = UUID(borrower_id)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail="Invalid borrower_id") from exc
-        from app.api.v1.mobile import _customer_record
-        selected, profile = await _customer_record(conn, selected_id, current_user.org_id)
+        if settings.CUSTOMER_IDENTITY_ENABLED:
+            from app.domains.customers.repository import CustomerRepository
+            from app.domains.customers.service import CustomerService, can_view_customer
+            customer_repo = CustomerRepository(conn)
+            selected = await customer_repo.get(selected_id, current_user.org_id)
+            if not selected:
+                raise HTTPException(status_code=404, detail="Customer not found")
+            if not can_view_customer(current_user, selected):
+                raise HTTPException(status_code=403, detail="Customer access denied")
+            customer_profile = await CustomerService(customer_repo).get_profile(selected_id, current_user.org_id)
+            profile = {
+                "applicant_name": customer_profile["legal_name"], "phone": customer_profile.get("phone"),
+                "bvn": customer_profile.get("bvn"), "nin": customer_profile.get("nin"),
+                "dob": customer_profile.get("date_of_birth"), "home_address": customer_profile.get("residential_address"),
+                "business_name": customer_profile.get("business_name"), "customer_reference": customer_profile["customer_number"],
+                "account_number": customer_profile["accounts"][0]["account_number"] if customer_profile.get("accounts") else None,
+            }
+        else:
+            from app.api.v1.mobile import _customer_record
+            selected, profile = await _customer_record(conn, selected_id, current_user.org_id)
     elif borrower_id:
         raise HTTPException(status_code=422, detail="New customer applications cannot include borrower_id")
+    dynamic_values = {}
+    dynamic_uploads = {}
+    if settings.CONFIGURABLE_PRODUCTS_ENABLED:
+        form = await request.form()
+        for key, value in form.multi_items():
+            if not key.startswith("dynamic__"): continue
+            field_key = key.removeprefix("dynamic__")
+            if hasattr(value, "filename"):
+                if value.filename:
+                    dynamic_uploads[field_key] = value
+                    dynamic_values[field_key] = value.filename
+            else:
+                dynamic_values[field_key] = value
+        from app.domains.products.repository import ProductRepository
+        from app.domains.products.service import ProductService
+        definition = await ProductRepository(conn).definition(loan_type, current_user.org_id)
+        if definition:
+            errors = ProductService(ProductRepository(conn)).validate_values(definition["fields"], dynamic_values)
+            if errors:
+                raise HTTPException(status_code=422, detail=errors)
     app = await service.create_loan(
         org_id=current_user.org_id,
         customer_type=customer_type,
@@ -679,13 +797,33 @@ async def process_new_application(
     if profile:
         snapshot = dict(profile)
         snapshot.update({
-            "borrower_id": str(selected.id),
+            "borrower_id": str(selected_id),
             "profile_snapshot_source": "customer_profile",
             "profile_snapshot_created_at": datetime.now(timezone.utc).isoformat(),
         })
         await LoanService(LoanRepository(conn), AuditService(conn)).save_wizard_step(
             app.id, 1, snapshot, current_user.id, current_user.org_id
         )
+        if settings.CUSTOMER_IDENTITY_ENABLED:
+            from app.domains.customers.repository import CustomerRepository
+            await CustomerRepository(conn).link_application(
+                customer_id=selected_id, application_id=app.id,
+                org_id=current_user.org_id, actor_id=current_user.id,
+            )
+    if dynamic_values:
+        fields = await conn.fetch("SELECT id,field_key FROM product_form_fields WHERE product_code=$1 AND org_id=$2", app.loan_type, current_user.org_id)
+        for field in fields:
+            if field["field_key"] in dynamic_values:
+                await conn.execute("""INSERT INTO application_dynamic_values(org_id,application_id,field_id,value_json,captured_by)
+                  VALUES($1,$2,$3,to_jsonb($4::text),$5) ON CONFLICT(application_id,field_id)
+                  DO UPDATE SET value_json=EXCLUDED.value_json,captured_by=EXCLUDED.captured_by,captured_at=NOW()""",
+                  current_user.org_id, app.id, field["id"], str(dynamic_values[field["field_key"]]), current_user.id)
+    if dynamic_uploads:
+        document_service = DocumentService(DocumentRepository(conn), AuditService(conn))
+        for field_key, upload in dynamic_uploads.items():
+            await document_service.save_upload(loan_id=app.id, org_id=current_user.org_id,
+                                               doc_type=field_key, file=upload, uploaded_by=current_user.id,
+                                               user_role=current_user.role)
     return RedirectResponse(url=f"/applications/{app.id}/step/1", status_code=status.HTTP_303_SEE_OTHER)
 
 def _verify_loan_scope(app, current_user):
@@ -838,6 +976,11 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
     cr_configured = bool(settings.CREDIT_REGISTRY_USERNAME and settings.CREDIT_REGISTRY_PASSWORD)
     bureau_multiple_configured = crc_configured and cr_configured
     active_bureau_provider = "CRC" if crc_configured else "CreditRegistry"
+    cbs_authoritative, cbs_data, cbs_stale = await _cbs_context(conn, app)
+    dynamic_readiness = None
+    if settings.CONFIGURABLE_PRODUCTS_ENABLED:
+        from app.domains.products.readiness import DynamicReadinessService
+        dynamic_readiness = await DynamicReadinessService(conn).calculate(app_uuid, current_user.org_id)
 
     ctx = build_template_context(
         request,
@@ -857,6 +1000,7 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
         latest_activity=activity_events[0] if activity_events else None,
         flags=flags,
         required_documents=required_docs_list,
+        dynamic_readiness=dynamic_readiness,
         ver_check=dict(ver_check) if ver_check else None,
         bureau_sub=dict(bureau_sub) if bureau_sub else None,
         bureau_multiple_configured=bureau_multiple_configured,
@@ -866,6 +1010,10 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
         VERIFICATION_ENABLED=settings.VERIFICATION_ENABLED,
         BUREAU_REPORTING_ENABLED=settings.BUREAU_REPORTING_ENABLED,
         AML_SCREENING_ENABLED=settings.AML_SCREENING_ENABLED,
+        cbs_authoritative=cbs_authoritative,
+        cbs_data=cbs_data,
+        cbs_stale=cbs_stale,
+        cbs_stale_after_minutes=settings.CBS_STALE_AFTER_MINUTES,
         active_tab=active_tab,
         active_page=active_tab,
         capabilities=capabilities_for(current_user, app).to_dict(),
@@ -1336,6 +1484,9 @@ async def process_wizard_step(
         return RedirectResponse(url=f"/applications/{application_id}/step/{next_step}", status_code=status.HTTP_303_SEE_OTHER)
     if app.stage != "intake":
         raise HTTPException(status_code=409, detail="Only an intake application can be submitted to the Team Lead")
+    if settings.CONFIGURABLE_PRODUCTS_ENABLED:
+        from app.domains.products.readiness import DynamicReadinessService
+        await DynamicReadinessService(conn).require_ready(app_uuid, current_user.org_id)
     await repo.assign_default_branch_manager(app_uuid, current_user.org_id)
     updated = await repo.advance_stage(app_uuid, current_user.org_id, "branch_manager_review")
     if not updated:
@@ -1384,6 +1535,10 @@ async def submit_signed_intake_to_branch_manager(
             status_code=409,
             detail="Only an intake application can be submitted to the branch manager",
         )
+
+    if settings.CONFIGURABLE_PRODUCTS_ENABLED:
+        from app.domains.products.readiness import DynamicReadinessService
+        await DynamicReadinessService(conn).require_ready(app_id, current_user.org_id)
 
     await repo.assign_default_branch_manager(app_id, current_user.org_id)
     updated = await repo.advance_stage(
@@ -1945,6 +2100,11 @@ async def process_credit_review(
     recommendation_notes = recommendation_notes.strip()
     if not recommendation_notes:
         raise HTTPException(status_code=400, detail="Provide underwriting recommendation notes")
+    if settings.CONFIGURABLE_WORKFLOW_ENABLED:
+        from app.domains.workflow.engine import WorkflowEngine
+        engine = WorkflowEngine(conn)
+        await engine.require_permission(current_user, "credit:review")
+        await engine.record_action(current_user.org_id, UUID(application_id), current_user.id, "recommend")
 
     if amount is not None:
         await conn.execute("UPDATE loan_applications SET amount = $1 WHERE id = $2", Decimal(str(amount)), UUID(application_id))
@@ -2040,6 +2200,11 @@ async def process_approval_readiness(
         and app_before.branch_id != current_user.branch_id
     ):
         raise HTTPException(status_code=403, detail="This application belongs to another branch")
+    if settings.CONFIGURABLE_WORKFLOW_ENABLED:
+        from app.domains.workflow.engine import WorkflowEngine
+        engine = WorkflowEngine(conn)
+        await engine.require_permission(current_user, "loan:approve")
+        await engine.record_action(current_user.org_id, UUID(application_id), current_user.id, "approve")
 
     form_data = await request.form()
     new_amount = form_data.get("amount")
@@ -2363,7 +2528,15 @@ async def render_search(
         applications = [app for app in apps if app.created_by == current_user.id]
     else:
         applications = apps
-    ctx = build_template_context(request, current_user, query=q, applications=applications, active_page="search")
+    customers = []
+    if q and settings.CUSTOMER_IDENTITY_ENABLED and role_name != "system_admin":
+        from app.domains.customers.repository import CustomerRepository
+        from app.domains.customers.service import CustomerService
+        customers = await CustomerService(CustomerRepository(conn)).search(
+            org_id=current_user.org_id, query=q, role=canonical_role(current_user.role),
+            user_id=current_user.id, branch_id=current_user.branch_id, limit=50,
+        )
+    ctx = build_template_context(request, current_user, query=q, applications=applications, customers=customers, active_page="search")
     return templates.TemplateResponse(request, "shared/search_results.html", ctx)
 
 @router.get("/audit")
@@ -2666,10 +2839,17 @@ async def process_ed_approve(
     current_user=Depends(RoleChecker(["ed"])),
 ):
     repo = LoanRepository(conn)
+    current_application = await repo.get_by_id(UUID(application_id), current_user.org_id)
+    if not current_application or current_application.stage != "ed_approval":
+        raise HTTPException(status_code=409, detail="Application not in ed_approval stage")
     if amount is not None:
         await conn.execute("UPDATE loan_applications SET amount = $1 WHERE id = $2", Decimal(str(amount)), UUID(application_id))
 
     if action == "approve":
+        if settings.CONFIGURABLE_WORKFLOW_ENABLED:
+            from app.domains.workflow.engine import WorkflowEngine
+            engine=WorkflowEngine(conn);await engine.require_permission(current_user,"loan:approve")
+            await engine.record_action(current_user.org_id,UUID(application_id),current_user.id,"approve")
         app = await repo.ed_approve(UUID(application_id), current_user.org_id, current_user.id)
         if not app:
             raise HTTPException(status_code=400, detail="Application not in ed_approval stage")
@@ -2687,7 +2867,11 @@ async def process_ed_approve(
         application = await repo.get_by_id(UUID(application_id), current_user.org_id)
         if not application or application.stage != "ed_approval":
             raise HTTPException(status_code=400, detail="Application not in ED approval stage")
-        if (application.amount or 0) > 10_000_000:
+        md_required = (application.amount or 0) > 10_000_000
+        if settings.CONFIGURABLE_WORKFLOW_ENABLED:
+            from app.domains.workflow.engine import WorkflowEngine
+            md_required = "md_approval" in await WorkflowEngine(conn).required_approval_stages_for_application(application,current_user.org_id)
+        if md_required:
             raise HTTPException(status_code=400, detail="MD input can only be requested for loans of ₦10,000,000 or less")
         app = await repo.ed_escalate_to_md(UUID(application_id), current_user.org_id, current_user.id)
         if not app:
@@ -2776,7 +2960,12 @@ async def process_md_approve(
     if not application:
         raise HTTPException(status_code=404, detail="Loan Application not found")
     if action == "approve":
-        if (application.amount or 0) <= 10_000_000 and application.ed_escalated_to_md:
+        md_required = (application.amount or 0) > 10_000_000
+        if settings.CONFIGURABLE_WORKFLOW_ENABLED:
+            from app.domains.workflow.engine import WorkflowEngine
+            engine=WorkflowEngine(conn);md_required = "md_approval" in await engine.required_approval_stages_for_application(application,current_user.org_id)
+            await engine.require_permission(current_user,"loan:approve");await engine.record_action(current_user.org_id,UUID(application_id),current_user.id,"approve")
+        if not md_required and application.ed_escalated_to_md:
             raise HTTPException(status_code=400, detail="MD input must return to ED for final approval")
         app = await repo.md_approve(UUID(application_id), current_user.org_id, current_user.id, md_notes)
         if not app:
@@ -2876,11 +3065,13 @@ async def render_disburse(
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
     documents = await get_document_service(conn).repo.get_by_loan(UUID(application_id), current_user.org_id)
+    cbs_authoritative, _, _ = await _cbs_context(conn, app)
     ctx = build_template_context(
         request, current_user,
         app=app, app_id=application_id,
         documents=documents,
-        can_record_disbursement=(current_user.role == "crm" and app.stage == "disbursement_ready"),
+        can_record_disbursement=(current_user.role == "crm" and app.stage == "disbursement_ready" and not cbs_authoritative),
+        cbs_authoritative=cbs_authoritative,
         can_return_previous=False,
         active_tab="crm_queue", active_page="crm_queue",
     )
@@ -2906,6 +3097,15 @@ async def process_disburse(
 
     repo = LoanRepository(conn)
     loan_uuid = UUID(application_id)
+    existing_app = await repo.get_by_id(loan_uuid, current_user.org_id)
+    if not existing_app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    cbs_authoritative, _, _ = await _cbs_context(conn, existing_app)
+    if cbs_authoritative:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Disbursement information is read-only because Core Banking is authoritative for this product",
+        )
 
     offer_letter = await conn.fetchrow(
         """
@@ -3164,6 +3364,7 @@ async def process_valuation_submission(
 
 @router.get("/mcc")
 async def render_mcc_index(request: Request, conn=Depends(db_conn), current_user=Depends(get_current_user)):
+    await _require_feature(conn,current_user.org_id,"committee_review")
     role = current_user.role.lower().replace(" ", "_")
     if role in {"client", "system_admin"}:
         raise HTTPException(status_code=403, detail="MCC access is not available for this role")
@@ -3178,6 +3379,7 @@ async def render_mcc_index(request: Request, conn=Depends(db_conn), current_user
 
 @router.get("/applications/{application_id}/mcc")
 async def render_mcc_summary(request: Request, application_id: str, conn=Depends(db_conn), current_user=Depends(get_current_user)):
+    await _require_feature(conn,current_user.org_id,"committee_review")
     role = current_user.role.lower().replace(" ", "_")
     if role in {"client", "system_admin"}:
         raise HTTPException(status_code=403, detail="MCC access is not available for this role")
@@ -3232,6 +3434,7 @@ async def render_mcc_summary(request: Request, application_id: str, conn=Depends
 
 @router.post("/applications/{application_id}/mcc-vote")
 async def submit_mcc_vote(application_id: str, recommended_amount: float = Form(...), notes: str = Form(""), conn=Depends(db_conn), current_user=Depends(get_current_user)):
+    await _require_feature(conn,current_user.org_id,"committee_review")
     role = current_user.role.lower().replace(" ", "_")
     if role in {"client", "system_admin"}:
         raise HTTPException(status_code=403, detail="MCC access is not available for this role")
@@ -3250,6 +3453,7 @@ async def submit_mcc_vote(application_id: str, recommended_amount: float = Form(
 
 @router.post("/applications/{application_id}/mcc-finalize")
 async def finalize_mcc_amount(application_id: str, final_amount: float = Form(...), conn=Depends(db_conn), current_user=Depends(get_current_user)):
+    await _require_feature(conn,current_user.org_id,"committee_review")
     if current_user.role.lower().replace(" ", "_") not in {"crm", "head_crm"}:
         raise HTTPException(status_code=403, detail="Only CRM can set the final MCC amount")
     app_uuid = UUID(application_id)
@@ -3743,17 +3947,38 @@ async def render_repayment_schedule(
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
-    svc = LoanServicingService(conn)
-    schedule = await svc.get_schedule(UUID(application_id), current_user.org_id)
-    payments = await svc.get_payments(UUID(application_id), current_user.org_id)
-    total_paid = sum(p["amount_paid"] for p in payments)
-    total_due = sum(r["total_due"] for r in schedule)
+    cbs_authoritative, cbs_data, cbs_stale = await _cbs_context(conn, app)
+    if cbs_authoritative and cbs_data:
+        schedule = cbs_data["schedule"]
+        payments = [
+            {
+                "payment_date": row.get("value_date") or row.get("transaction_at"),
+                "amount_paid": row["amount"],
+                "channel": "core_banking",
+                "bank_ref": row["external_transaction_id"],
+            }
+            for row in cbs_data["transactions"]
+            if row.get("transaction_type") == "repayment"
+        ]
+        total_paid = sum(p["amount_paid"] for p in payments)
+        total_due = sum(r["total_due"] for r in schedule)
+        outstanding = cbs_data["outstanding_balance"]
+    else:
+        svc = LoanServicingService(conn)
+        schedule = await svc.get_schedule(UUID(application_id), current_user.org_id)
+        payments = await svc.get_payments(UUID(application_id), current_user.org_id)
+        total_paid = sum(p["amount_paid"] for p in payments)
+        total_due = sum(r["total_due"] for r in schedule)
+        outstanding = total_due - total_paid
     ctx = build_template_context(
         request, current_user,
         app=app, app_id=application_id,
         schedule=schedule, payments=payments,
         total_paid=total_paid, total_due=total_due,
-        outstanding=total_due - total_paid,
+        outstanding=outstanding,
+        cbs_authoritative=cbs_authoritative,
+        cbs_data=cbs_data,
+        cbs_stale=cbs_stale,
         active_page="applications",
     )
     return templates.TemplateResponse(request, "shared/repayment_schedule.html", ctx)
@@ -3775,12 +4000,14 @@ async def render_record_payment(
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
+    cbs_authoritative, _, _ = await _cbs_context(conn, app)
     svc = LoanServicingService(conn)
     payments = await svc.get_payments(UUID(application_id), current_user.org_id)
     ctx = build_template_context(
         request, current_user,
         app=app, app_id=application_id, payments=payments,
-        can_record_payment=current_user.role == "crm",
+        can_record_payment=current_user.role == "crm" and not cbs_authoritative,
+        cbs_authoritative=cbs_authoritative,
         active_page="applications",
     )
     return templates.TemplateResponse(request, "crm/record_payment.html", ctx)
@@ -3798,6 +4025,18 @@ async def process_record_payment(
 ):
     from datetime import datetime as dt
     from app.services.loan_servicing_service import LoanServicingService
+    app = await LoanRepository(conn).get_by_id(UUID(application_id), current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    cbs_authoritative, _, _ = await _cbs_context(conn, app)
+    if cbs_authoritative:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Repayments are read-only because Core Banking is authoritative for this product",
+        )
+    if settings.CONFIGURABLE_WORKFLOW_ENABLED:
+        from app.domains.workflow.engine import WorkflowEngine
+        await WorkflowEngine(conn).record_action(current_user.org_id, loan_uuid, current_user.id, "disburse")
     try:
         pdate = dt.strptime(payment_date, "%Y-%m-%d").date()
     except ValueError:

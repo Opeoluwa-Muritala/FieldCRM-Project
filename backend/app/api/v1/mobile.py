@@ -38,6 +38,7 @@ from app.domains.branches.repository import BranchRepository
 from app.domains.users.repository import UserRepository
 from app.domains.users.service import UserService
 from app.domains.users.schemas import UserInvitationCreate
+from app.domains.core_banking.repository import CoreBankingRepository
 from app.services.dashboard_service import DashboardService
 from app.services.email_service import EmailService
 from app.core.rate_limit import enforce_reset_limits
@@ -882,7 +883,8 @@ async def create_mobile_application(
             "profile_snapshot_created_at": datetime.now(timezone.utc).isoformat(),
         })
         await _loan_service(conn).save_wizard_step(
-            app.id, 1, snapshot, current_user.id, current_user.org_id
+            app.id, 1, snapshot, current_user.id, current_user.org_id,
+            capture_source="manual_android",
         )
         app = await LoanRepository(conn).get_by_id(app.id, current_user.org_id) or app
     return {
@@ -945,6 +947,7 @@ async def save_mobile_intake_step(
         (payload or SaveStepRequest()).data,
         current_user.id,
         current_user.org_id,
+        capture_source="manual_android",
     )
     updated = await _loan_service(conn).get_wizard_data(application_id)
     next_step = step + 1 if step < 8 else None
@@ -1456,7 +1459,7 @@ async def return_mobile_application(
 @router.get("/config")
 async def get_mobile_config(conn=Depends(db_conn), current_user=Depends(get_current_user)):
     cache_key = f"fieldcrm:cache:mobile-config:v1:org:{current_user.org_id}"
-    cached = await get_json(cache_key)
+    cached = None if settings.CONFIGURATION_HUB_ENABLED else await get_json(cache_key)
     if cached is not None:
         return cached
     row = await conn.fetchrow("SELECT name FROM organisations WHERE id = $1", current_user.org_id)
@@ -1495,7 +1498,21 @@ async def get_mobile_config(conn=Depends(db_conn), current_user=Depends(get_curr
             ],
         },
     }
-    await set_json(cache_key, config, ttl_seconds=10 * 60, only_if_absent=True)
+    if settings.CONFIGURATION_HUB_ENABLED:
+        from app.domains.configuration.repository import ConfigurationRepository
+        from app.domains.configuration.service import ConfigurationService
+        payload, version = await ConfigurationService(ConfigurationRepository(conn)).effective(current_user.org_id)
+        branding = payload.get("branding", {})
+        config.update({
+            "org_name": branding.get("institution_name") or config["org_name"],
+            "support_phone": branding.get("support_phone") or config["support_phone"],
+            "support_email": branding.get("support_email") or config["support_email"],
+            "features": payload.get("features", {}),
+            "branding": branding,
+            "config_version": version["version_number"] if version else 0,
+        })
+    else:
+        await set_json(cache_key, config, ttl_seconds=10 * 60, only_if_absent=True)
     return config
 
 
@@ -1900,6 +1917,7 @@ async def save_mobile_ocr_corrections(
         step=0,
         form_data={"ocr_corrections": req.corrections, "correction_source": "mobile"},
         user_id=current_user.id,
+        capture_source="ocr",
     )
     return {"message": "OCR corrections saved."}
 
@@ -2075,11 +2093,19 @@ async def submit_mobile_ed_approve(
     app = await _get_application_or_404(conn, application_id, current_user)
     repo = LoanRepository(conn)
     if payload.action == "approve":
+        if settings.CONFIGURABLE_WORKFLOW_ENABLED:
+            from app.domains.workflow.engine import WorkflowEngine
+            engine=WorkflowEngine(conn);await engine.require_permission(current_user,"loan:approve")
+            await engine.record_action(current_user.org_id,application_id,current_user.id,"approve")
         updated = await repo.ed_approve(application_id, current_user.org_id, current_user.id)
         next_stage = "disbursement_ready"
         action_label = "ED Final Approval — Disbursement Instruction"
     else:
-        if (app.amount or 0) > 10_000_000:
+        md_required=(app.amount or 0)>10_000_000
+        if settings.CONFIGURABLE_WORKFLOW_ENABLED:
+            from app.domains.workflow.engine import WorkflowEngine
+            md_required="md_approval" in await WorkflowEngine(conn).required_approval_stages_for_application(app,current_user.org_id)
+        if md_required:
             raise HTTPException(status_code=409, detail="MD input can only be requested for loans of ₦10,000,000 or less")
         updated = await repo.ed_escalate_to_md(application_id, current_user.org_id, current_user.id)
         next_stage = "md_approval"
@@ -2481,11 +2507,18 @@ async def get_mobile_disbursement(
         """,
         application_id, current_user.org_id,
     )
+    cbs_authoritative = False
+    if settings.CBS_INTEGRATION_ENABLED:
+        mapping = await CoreBankingRepository(conn).get_mapping(application_id, current_user.org_id)
+        cbs_authoritative = bool(mapping and mapping.get("cbs_enabled"))
     return {
         "application": _mobile_application(app, current_user),
         "can_record": _role(current_user) == "crm"
-                      and app.stage == "disbursement_ready" and bool(offer_exists),
+                      and app.stage == "disbursement_ready" and bool(offer_exists)
+                      and not cbs_authoritative,
         "offer_generated": bool(offer_exists),
+        "source": "Core Banking" if cbs_authoritative else "FieldCRM",
+        "read_only": cbs_authoritative,
     }
 
 
@@ -2498,6 +2531,13 @@ async def record_mobile_disbursement(
 ):
     await _get_application_or_404(conn, application_id, current_user)
     _ensure_roles(current_user, {"crm"})
+    if settings.CBS_INTEGRATION_ENABLED:
+        mapping = await CoreBankingRepository(conn).get_mapping(application_id, current_user.org_id)
+        if mapping and mapping.get("cbs_enabled"):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Disbursement information is read-only because Core Banking is authoritative for this product",
+            )
     offer_exists = await conn.fetchval(
         """
         SELECT EXISTS(
@@ -2555,11 +2595,30 @@ async def get_mobile_repayment_schedule(
     conn=Depends(db_conn),
     current_user=Depends(get_current_user),
 ):
-    await _get_application_or_404(conn, application_id, current_user)
+    app = await _get_application_or_404(conn, application_id, current_user)
     from app.services.loan_servicing_service import LoanServicingService
-    svc = LoanServicingService(conn)
-    schedule = await svc.get_schedule(loan_id=application_id, org_id=current_user.org_id)
-    payments = await svc.get_payments(loan_id=application_id, org_id=current_user.org_id)
+    cbs_authoritative = False
+    cbs_view = None
+    if settings.CBS_INTEGRATION_ENABLED:
+        mapping = await CoreBankingRepository(conn).get_mapping(application_id, current_user.org_id)
+        cbs_authoritative = bool(mapping and mapping.get("cbs_enabled"))
+        if cbs_authoritative:
+            cbs_view = await CoreBankingRepository(conn).get_view(application_id, current_user.org_id)
+    if cbs_authoritative and cbs_view:
+        schedule = cbs_view["schedule"]
+        payments = [
+            {
+                "payment_date": row.get("value_date") or row.get("transaction_at"),
+                "amount_paid": row["amount"],
+                "channel": "core_banking",
+                "bank_ref": row["external_transaction_id"],
+            }
+            for row in cbs_view["transactions"] if row.get("transaction_type") == "repayment"
+        ]
+    else:
+        svc = LoanServicingService(conn)
+        schedule = await svc.get_schedule(loan_id=application_id, org_id=current_user.org_id)
+        payments = await svc.get_payments(loan_id=application_id, org_id=current_user.org_id)
     total_due = sum(float(r.get("total_due", 0)) for r in schedule)
     total_paid = sum(float(p.get("amount_paid", 0)) for p in payments)
     return {
@@ -2567,7 +2626,10 @@ async def get_mobile_repayment_schedule(
         "payments": payments,
         "total_due": total_due,
         "total_paid": total_paid,
-        "outstanding": max(0.0, total_due - total_paid),
+        "outstanding": float(cbs_view["outstanding_balance"]) if cbs_authoritative and cbs_view else max(0.0, total_due - total_paid),
+        "source": "Core Banking" if cbs_authoritative else "FieldCRM",
+        "source_updated_at": cbs_view.get("source_updated_at") if cbs_view else None,
+        "read_only": cbs_authoritative,
     }
 
 
@@ -2587,6 +2649,13 @@ async def record_mobile_payment(
 ):
     _ensure_roles(current_user, {"crm"})
     await _get_application_or_404(conn, application_id, current_user)
+    if settings.CBS_INTEGRATION_ENABLED:
+        mapping = await CoreBankingRepository(conn).get_mapping(application_id, current_user.org_id)
+        if mapping and mapping.get("cbs_enabled"):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Repayments are read-only because Core Banking is authoritative for this product",
+            )
     from app.services.loan_servicing_service import LoanServicingService
     from datetime import date
     payment_date = date.today()

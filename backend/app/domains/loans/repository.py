@@ -7,7 +7,7 @@ from app.domains.loans.schemas import LoanRow, LoanListItem, StageCount, Readine
 class LoanRepository(BaseRepository):
     domain = "loans"
 
-    async def resolve_product_code(self, input_val: str) -> str:
+    async def resolve_product_code(self, input_val: str, org_id: UUID | None = None) -> str:
         if not input_val:
             from app.core.exceptions import DomainException
             raise DomainException("Invalid loan product code", 422)
@@ -16,10 +16,16 @@ class LoanRepository(BaseRepository):
         # underscores for the direct lookup; only aliases use display-style
         # whitespace normalization.
         canonical_code = input_val.strip().lower()
-        row = await self.conn.fetchrow(
-            "SELECT code FROM loan_products WHERE LOWER(code) = $1 AND active = TRUE",
-            canonical_code
-        )
+        if org_id:
+            row = await self.conn.fetchrow(
+                """SELECT lp.code FROM loan_products lp LEFT JOIN configuration_versions cv ON cv.id=lp.configuration_version_id
+                   WHERE LOWER(lp.code)=$1 AND ((lp.org_id IS NULL AND lp.active=TRUE) OR
+                   (lp.org_id=$2 AND cv.status='published' AND cv.effective_at<=NOW()))""", canonical_code, org_id)
+        else:
+            row = await self.conn.fetchrow(
+                "SELECT code FROM loan_products WHERE LOWER(code) = $1 AND active = TRUE",
+                canonical_code,
+            )
         if row:
             return row["code"]
 
