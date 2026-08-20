@@ -1,0 +1,16 @@
+DROP TABLE IF EXISTS document_quality_assessments;
+DROP TABLE IF EXISTS application_dynamic_values;
+ALTER TABLE product_document_requirements DROP COLUMN IF EXISTS display_name;
+ALTER TABLE product_document_requirements DROP COLUMN IF EXISTS configuration_version_id;
+ALTER TABLE product_document_requirements DROP COLUMN IF EXISTS org_id;
+DROP TABLE IF EXISTS product_form_fields;
+DROP TABLE IF EXISTS product_section_requirements;
+ALTER TABLE loan_products DROP COLUMN IF EXISTS sla_hours;
+ALTER TABLE loan_products DROP COLUMN IF EXISTS credit_checks;
+ALTER TABLE loan_products DROP COLUMN IF EXISTS visit_requirements;
+ALTER TABLE loan_products DROP COLUMN IF EXISTS approval_limits;
+ALTER TABLE loan_products DROP COLUMN IF EXISTS collateral_rules;
+ALTER TABLE loan_products DROP COLUMN IF EXISTS guarantor_count;
+ALTER TABLE loan_products DROP COLUMN IF EXISTS interest_parameters;
+ALTER TABLE loan_products DROP COLUMN IF EXISTS configuration_version_id;
+ALTER TABLE loan_products DROP COLUMN IF EXISTS org_id;
