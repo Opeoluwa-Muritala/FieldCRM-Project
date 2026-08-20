@@ -73,6 +73,8 @@ def test_configuration_ui_catalog_only_contains_working_feature_controls():
     assert 'href="/configuration/versions"' in template
     assert "Feature controls" in template
     assert "Version history" in template
+    assert 'method="post" action="/logout"' in template
+    assert 'href="/logout"' not in template
     assert "Planned" not in template
     assert "Advanced setting editor" not in template
 

@@ -26,7 +26,9 @@
         </nav>
         <div class="config-sidebar-footer">
             <div class="config-user"><span class="config-avatar" aria-hidden="true">{{ (current_user.full_name or current_user.email)[0]|upper }}</span><div><strong>{{ current_user.full_name or 'Configuration Admin' }}</strong><span>{{ current_user.email }}</span></div></div>
-            <a class="config-exit" href="/logout">Exit Control Centre</a>
+            <form method="post" action="/logout">
+                <button class="config-exit" type="submit">Sign out</button>
+            </form>
         </div>
     </aside>
     <main class="config-main" id="configuration-content">

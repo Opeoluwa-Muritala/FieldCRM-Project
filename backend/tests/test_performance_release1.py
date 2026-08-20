@@ -127,6 +127,7 @@ def test_dedicated_dashboard_roles_redirect_before_loading_data(monkeypatch):
 
     monkeypatch.setattr(DashboardService, "get_dashboard_data", fail_dashboard_data)
     expected = {
+        "configuration_admin": "/configuration",
         "crm": "/crm-dashboard",
         "head_crm": "/crm-dashboard",
         "ed": "/ed-dashboard",

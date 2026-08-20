@@ -63,7 +63,8 @@ class AuthService:
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "expires_at": absolute_expiry
+            "expires_at": absolute_expiry,
+            "role": user.role,
         }
 
     async def authenticate_mobile(self, email: str, password: str, user_agent: str | None = None, ip_address: str | None = None) -> dict:

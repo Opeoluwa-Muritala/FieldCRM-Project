@@ -603,6 +603,14 @@ def browser_login_url(next_url: str | None = None) -> str:
         return f"/login?next={urllib.parse.quote(next_url)}"
     return "/login"
 
+
+def browser_home_url(role: str | None) -> str:
+    """Return the authenticated landing page for a server-trusted role."""
+    normalized = (role or "").strip().lower().replace(" ", "_")
+    if normalized == "configuration_admin":
+        return "/configuration"
+    return "/dashboard"
+
 @app.exception_handler(StarletteHTTPException)
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -719,11 +727,14 @@ async def render_login(request: Request):
     if token:
         try:
             from app.core.dependencies import get_current_user_from_token
-            await get_current_user_from_token(token)
+            current_user = await get_current_user_from_token(token)
             # Avoid re-sending an already authenticated user to a route that
             # may be forbidden for their role. The POST login flow still
             # honours a validated `next` value after fresh authentication.
-            return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+            return RedirectResponse(
+                url=browser_home_url(getattr(current_user, "role", None)),
+                status_code=status.HTTP_303_SEE_OTHER,
+            )
         except Exception:
             # Token invalid, allow login page to render
             pass
@@ -769,7 +780,7 @@ async def login_web(
     is_secure = settings.COOKIE_SECURE or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
     
     # Safe redirect validation: prevent open redirect to external domains
-    redirect_url = "/dashboard"
+    redirect_url = browser_home_url(session_data.get("role"))
     validated_next = safe_relative_redirect(next)
     if validated_next:
         redirect_url = validated_next
