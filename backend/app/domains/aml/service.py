@@ -10,8 +10,8 @@ async def screen_entity(full_name: str, loan_application_id=None, subject_type="
     Screens a full name against Youverify PEP and Sanction Screening API.
     Normalizes result to match_status: clear / pep_hit / sanctions_hit / review_required / not_configured.
     """
-    # Check seed names first
-    if "Jane Doe" in full_name:
+    # Seed screening responses exist only for the isolated demo experience.
+    if settings.demo_mode and "Jane Doe" in full_name:
         # Clear case
         raw = {
             "success": True,
@@ -32,7 +32,7 @@ async def screen_entity(full_name: str, loan_application_id=None, subject_type="
         await _save_sanctions_check(loan_application_id, subject_type, full_name, "clear", raw["data"]["categoryCount"], raw, conn)
         return res
 
-    elif "Adeyemi" in full_name or "Bola Adeyemi" in full_name:
+    elif settings.demo_mode and ("Adeyemi" in full_name or "Bola Adeyemi" in full_name):
         # PEP/review_required case
         raw = {
             "success": True,

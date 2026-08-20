@@ -1974,18 +1974,6 @@ async def render_credit_review(
         
     borrower_name = app.applicant_name if app else "Borrower"
 
-    # Automatically run Youverify AML screening if no check row exists yet
-    aml_exists = await conn.fetchval(
-        "SELECT count(*) FROM sanctions_checks WHERE loan_application_id = $1;",
-        UUID(application_id)
-    )
-    if aml_exists == 0:
-        try:
-            from app.domains.aml.service import screen_entity
-            await screen_entity(borrower_name, loan_application_id=app.id, conn=conn)
-        except Exception as e:
-            logging.error(f"Failed to run Youverify AML screening: {e}")
-
     # Fetch verification/bureau/AML checks
     ver_check = await conn.fetchrow(
         "SELECT status, is_valid, checked_at FROM verification_checks WHERE loan_application_id = $1 ORDER BY checked_at DESC LIMIT 1;",
@@ -3220,9 +3208,17 @@ async def process_disburse(
         bureau_service = CreditBureauService(conn)
         session_code = await bureau_service.get_session_code()
         if session_code:
+            registry_id = await bureau_service.find_customer(
+                session_code=session_code,
+                bvn=app.bvn,
+                phone=app.phone,
+                name=app.applicant_name,
+            )
+            if not registry_id:
+                raise RuntimeError("Credit bureau customer mapping is unavailable")
             loan_payload = {
                 "person": {
-                    "RegistryID": "mock_registry_id_999888",
+                    "RegistryID": registry_id,
                     "BVN": app.bvn,
                     "FirstName": app.applicant_name.split()[0] if app.applicant_name else "",
                     "LastName": app.applicant_name.split()[-1] if len(app.applicant_name.split()) > 1 else "",
@@ -3241,9 +3237,9 @@ async def process_disburse(
                 session_code=session_code,
                 loan_data=loan_payload
             )
-    except Exception as e:
+    except Exception:
         import logging
-        logging.getLogger("Disburse").error(f"Failed to submit account to CreditRegistry: {e}")
+        logging.getLogger("Disburse").exception("Failed to submit the disbursed account to the configured credit bureau")
 
     return RedirectResponse(
         url=f"/applications/{application_id}/repayment-schedule",
