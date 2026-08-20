@@ -2,6 +2,7 @@
 <title>Configuration MFA — FieldCRM</title><link rel="stylesheet" href="/static/css/dashboard.css"><script defer src="/static/js/csrf.js?v=20260815"></script></head>
 <body><main class="page-card csp-s-7ee0b907510b"><p class="eyebrow">Restricted control plane</p><h1>Configuration Admin MFA</h1>
 <p>This larger institution-configuration hub is separate from System Admin. Add the key to an authenticator, then enter a current six-digit code.</p>
+<figure><img src="{{ qr_code_data_url }}" width="280" height="280" alt="Scan this QR code with your authenticator app"><figcaption>Scan with Google Authenticator, Microsoft Authenticator, Authy, 1Password, or another TOTP app.</figcaption></figure>
 <p><strong>Manual key:</strong> <code>{{ secret }}</code></p><details><summary>Authenticator URI</summary><code>{{ otpauth }}</code></details>
 <form method="post" action="/configuration/mfa"><label>Authentication code<input class="form-input" name="code" inputmode="numeric" pattern="[0-9]{6}" required autocomplete="one-time-code"></label>
 <button class="btn btn-primary" type="submit">Verify and continue</button></form></main></body></html>

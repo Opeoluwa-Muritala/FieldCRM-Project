@@ -131,6 +131,8 @@ python-jose==3.5.0
     # via -r backend/requirements.txt
 python-multipart==0.0.32
     # via -r backend/requirements.txt
+qrcode==8.2
+    # via -r backend/requirements.txt
 redis==5.0.0
     # via -r backend/requirements.txt
 reportlab==4.4.5

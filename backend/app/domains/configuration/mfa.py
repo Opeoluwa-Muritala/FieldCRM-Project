@@ -1,4 +1,5 @@
 import base64
+from io import BytesIO
 import hashlib
 import hmac
 import secrets
@@ -7,12 +8,33 @@ import time
 from datetime import UTC, datetime, timedelta
 
 from jose import jwt
+import qrcode
+from qrcode.constants import ERROR_CORRECT_M
 
 from app.config import settings
 
 
 def new_secret() -> str:
     return base64.b32encode(secrets.token_bytes(20)).decode("ascii").rstrip("=")
+
+
+def qr_code_data_url(enrollment_uri: str) -> str:
+    """Encode an MFA enrollment URI locally without disclosing it to a QR service."""
+    if not enrollment_uri.startswith("otpauth://totp/") or len(enrollment_uri) > 1024:
+        raise ValueError("Invalid authenticator enrollment URI")
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=ERROR_CORRECT_M,
+        box_size=7,
+        border=4,
+    )
+    qr.add_data(enrollment_uri)
+    qr.make(fit=True)
+    image = qr.make_image(fill_color="black", back_color="white")
+    output = BytesIO()
+    image.save(output, format="PNG")
+    encoded = base64.b64encode(output.getvalue()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
 
 
 def totp(secret: str, at: int | None = None) -> str:

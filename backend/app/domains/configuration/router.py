@@ -12,7 +12,7 @@ from app.core.field_encryption import decrypt_sensitive, encrypt_sensitive
 from app.core.templates import create_templates
 from app.domains.configuration.access import require_restricted_configuration_access
 from app.domains.configuration.catalog import FEATURE_DEFAULTS, SECTIONS
-from app.domains.configuration.mfa import new_secret, token_is_valid, verification_token, verify_totp
+from app.domains.configuration.mfa import new_secret, qr_code_data_url, token_is_valid, verification_token, verify_totp
 from app.domains.configuration.repository import ConfigurationRepository
 from app.domains.configuration.schemas import DraftCreate, DraftPatch, MfaCode
 from app.domains.configuration.service import ConfigurationService
@@ -47,9 +47,11 @@ async def mfa_setup(request: Request, current_user=Depends(get_current_user), co
                             encrypt_sensitive(secret, context=f"configuration:mfa:{current_user.id}"), False)
     issuer = quote("FieldCRM Configuration")
     account = quote(current_user.email)
+    enrollment_uri = f"otpauth://totp/{issuer}:{account}?secret={secret}&issuer={issuer}"
     return templates.TemplateResponse(request, "configuration/mfa.html", {
         "current_user": current_user, "secret": secret,
-        "otpauth": f"otpauth://totp/{issuer}:{account}?secret={secret}&issuer={issuer}",
+        "otpauth": enrollment_uri,
+        "qr_code_data_url": qr_code_data_url(enrollment_uri),
         "enabled": bool(state["config_mfa_enabled"]),
     }, headers={"Cache-Control": "no-store"})
 
