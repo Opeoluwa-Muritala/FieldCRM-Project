@@ -72,6 +72,8 @@ class UserService:
         except ValueError as exc:
             raise DomainException(str(exc), 400) from exc
         db_role = canonical_role(user_in.role)
+        if db_role == "configuration_admin":
+            raise DomainException("Configuration Admins must be provisioned through the restricted control process.", 403)
         if db_role not in self.ALLOWED_ROLES:
             raise DomainException("Select a valid role.", 400)
         await self._validate_branch(current_admin.org_id, user_in.branch_id)
@@ -92,6 +94,8 @@ class UserService:
             raise DomainException("A user with this email already exists.", 400)
 
         role = canonical_role(invite_in.role)
+        if role == "configuration_admin":
+            raise DomainException("Configuration Admins must be provisioned through the restricted control process.", 403)
         if role not in self.ALLOWED_ROLES:
             raise DomainException("Select a valid role.", 400)
         await self._validate_branch(current_admin.org_id, invite_in.branch_id)
@@ -120,6 +124,8 @@ class UserService:
             raise DomainException("You cannot change your own role.", 400)
 
         normalized_role = canonical_role(role)
+        if normalized_role == "configuration_admin" or canonical_role(user.role) == "configuration_admin":
+            raise DomainException("System Admin cannot grant or change Configuration Admin access.", 403)
         if normalized_role not in self.ALLOWED_ROLES:
             raise DomainException("Select a valid role.", 400)
 

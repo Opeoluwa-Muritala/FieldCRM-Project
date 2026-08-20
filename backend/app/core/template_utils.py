@@ -39,9 +39,17 @@ _ROLE_TEMPLATE_ALIASES = {
 }
 
 
-def csp_nonce_context(request) -> dict[str, str]:
+def csp_nonce_context(request) -> dict[str, object]:
     """Expose the request-scoped CSP nonce to every Jinja template."""
-    return {"csp_nonce": getattr(request.state, "csp_nonce", "")}
+    branding = getattr(request.state, "branding", {}) or {}
+    return {
+        "csp_nonce": getattr(request.state, "csp_nonce", ""),
+        "brand_logo_black": branding.get("logo_url") or "https://res.cloudinary.com/ddezxlqjr/image/upload/v1784551475/MMFB_Logo_Black_lnma0l.png",
+        "brand_logo_white": branding.get("login_logo_url") or branding.get("logo_url") or "https://res.cloudinary.com/ddezxlqjr/image/upload/v1784551475/MMFB_logo_White_gzthxm.png",
+        "institution_name": branding.get("institution_name") or "Mainstreet Microfinance Bank",
+        "brand_accent": branding.get("brand_accent") or "#2E0052",
+        "feature_flags": getattr(request.state, "feature_flags", {}) or {},
+    }
 
 
 def detect_device_type(request) -> str:

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}FieldCRM — Mainstreet Microfinance Bank{% endblock %}</title>
-    <meta name="theme-color" content="#2E0052">
+    <meta name="theme-color" content="{{ brand_accent }}">
     <link rel="icon" href="/static/icons/favicon.svg?v=20260813" type="image/svg+xml">
     <link rel="icon" href="/static/icons/favicon-32.png?v=20260813" sizes="32x32" type="image/png">
     <link rel="shortcut icon" href="/static/icons/favicon.ico?v=20260813">
@@ -19,6 +19,7 @@
     <script defer src="/static/js/csp-styles.js?v=20260729"></script>
     <script defer src="/static/js/csrf.js?v=20260815"></script>
     {% block extra_css %}{% endblock %}
+    <style nonce="{{ csp_nonce }}">:root{--brand-accent:{{ brand_accent }}}</style>
 </head>
 <body data-demo-enabled="{{ 'true' if demo_enabled else 'false' }}">
     {% set db_role = current_user.role if current_user else "loan_officer" %}
@@ -28,6 +29,7 @@
         "branch_supervisor": "Supervisor",
         "auditor": "Auditor",
         "system_admin": "System Admin",
+        "configuration_admin": "Configuration Admin",
         "crm": "CRM Officer",
         "md": "Managing Director",
         "ed": "Executive Director",
@@ -38,7 +40,7 @@
         <!-- Sidebar Navigation -->
         <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
             <div class="sidebar-logo">
-                <a href="/dashboard" class="brand-home-link" aria-label="Go to dashboard"><img class="logo-composite" src="{{ brand_logo_white }}" alt="Mainstreet Microfinance Bank Logo" loading="lazy"></a>
+                <a href="/dashboard" class="brand-home-link" aria-label="Go to dashboard"><img class="logo-composite" src="{{ brand_logo_white }}" alt="{{ institution_name }} Logo" loading="lazy"></a>
             </div>
             
             <nav class="sidebar-nav">

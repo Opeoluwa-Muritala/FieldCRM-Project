@@ -93,6 +93,7 @@ class UserRow(BaseModel):
             "credit_analyst": "Credit Analyst",
             "auditor": "Auditor",
             "system_admin": "System Admin",
+            "configuration_admin": "Configuration Admin",
             "crm": "CRM Officer",
             "head_crm": "Head CRM",
             "md": "Managing Director",
