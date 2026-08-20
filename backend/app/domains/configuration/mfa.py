@@ -1,4 +1,5 @@
 import base64
+from collections import defaultdict, deque
 from io import BytesIO
 import hashlib
 import hmac
@@ -7,11 +8,48 @@ import struct
 import time
 from datetime import UTC, datetime, timedelta
 
+from fastapi import HTTPException
 from jose import jwt
 import qrcode
 from qrcode.constants import ERROR_CORRECT_M
 
 from app.config import settings
+
+
+_MFA_ATTEMPT_WINDOW_SECONDS = 60
+_MFA_MAX_FAILURES = 5
+_failed_attempts: dict[str, deque[float]] = defaultdict(deque)
+
+
+def _recent_failures(user_id) -> deque[float]:
+    key = str(user_id)
+    failures = _failed_attempts[key]
+    cutoff = time.monotonic() - _MFA_ATTEMPT_WINDOW_SECONDS
+    while failures and failures[0] <= cutoff:
+        failures.popleft()
+    if not failures:
+        _failed_attempts.pop(key, None)
+        return deque()
+    return failures
+
+
+def enforce_mfa_attempt_limit(user_id) -> None:
+    if len(_recent_failures(user_id)) >= _MFA_MAX_FAILURES:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many authentication attempts. Try again in one minute.",
+            headers={"Retry-After": str(_MFA_ATTEMPT_WINDOW_SECONDS)},
+        )
+
+
+def record_mfa_failure(user_id) -> None:
+    failures = _failed_attempts[str(user_id)]
+    failures.append(time.monotonic())
+    enforce_mfa_attempt_limit(user_id)
+
+
+def clear_mfa_failures(user_id) -> None:
+    _failed_attempts.pop(str(user_id), None)
 
 
 def new_secret() -> str:

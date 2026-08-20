@@ -2,8 +2,35 @@ from starlette.requests import Request
 
 from collections import Counter
 
-from app.core.api_docs import OPENAPI_TAG_GROUPS, OPENAPI_TAGS, redoc_response, swagger_ui_response
+import pytest
+from fastapi import HTTPException
+
+from app.core.api_docs import (
+    OPENAPI_TAG_GROUPS,
+    OPENAPI_TAGS,
+    redoc_response,
+    require_local_docs_access,
+    swagger_ui_response,
+)
 from app.main import app
+
+
+def _docs_request(host: str, client: str) -> Request:
+    return Request({
+        "type": "http", "method": "GET", "path": "/api/docs", "scheme": "http",
+        "server": (host, 8000), "client": (client, 5000),
+        "headers": [(b"host", host.encode("ascii"))],
+    })
+
+
+def test_documentation_requires_loopback_host_and_peer():
+    require_local_docs_access(_docs_request("localhost", "127.0.0.1"))
+    with pytest.raises(HTTPException) as exc:
+        require_local_docs_access(_docs_request("localhost", "192.0.2.10"))
+    assert exc.value.status_code == 404
+    with pytest.raises(HTTPException) as exc:
+        require_local_docs_access(_docs_request("dev.example", "127.0.0.1"))
+    assert exc.value.status_code == 404
 
 
 def test_swagger_ui_bootstrap_scripts_use_request_nonce():

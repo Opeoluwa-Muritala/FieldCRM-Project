@@ -201,13 +201,14 @@ async def test_inactive_user_token_rejection():
 
 
 @pytest.mark.asyncio
-async def test_concurrent_refresh_reuses_access_renewal_without_family_revocation():
+async def test_concurrent_refresh_is_treated_as_reuse_and_revokes_family():
     repo = MagicMock()
     service = AuthService(repo)
     user_id = uuid4()
     expires_at = datetime.now(timezone.utc) + timedelta(days=2)
     session = {
         "user_id": user_id,
+        "family_id": uuid4(),
         "expires_at": expires_at,
         "used_at": datetime.now(timezone.utc) - timedelta(seconds=1),
         "revoked_at": None,
@@ -227,11 +228,11 @@ async def test_concurrent_refresh_reuses_access_renewal_without_family_revocatio
     transaction.__aexit__ = AsyncMock(return_value=False)
     repo.conn.transaction = MagicMock(return_value=transaction)
 
-    result = await service.rotate_refresh_token(
-        "stable-refresh-token", user_agent="browser", ip_address="127.0.0.1"
-    )
+    repo.revoke_refresh_token_family = AsyncMock()
+    with pytest.raises(DomainException, match="reuse detected"):
+        await service.rotate_refresh_token(
+            "stable-refresh-token", user_agent="browser", ip_address="127.0.0.1"
+        )
 
-    assert result["access_token"]
-    assert result["expires_at"] == expires_at
-    assert result["refresh_token"] is None
-    repo.revoke_refresh_token_family.assert_not_called()
+    repo.revoke_refresh_token_family.assert_awaited_once_with(session["family_id"])
+    repo.get_user_by_id.assert_not_awaited()

@@ -13,7 +13,15 @@ from app.core.config import Settings
 from app.core.exceptions import DomainException
 from app.domains.configuration.access import require_restricted_configuration_access
 from app.domains.configuration.catalog import FEATURE_DEFAULTS, FEATURE_GROUPS, SECTIONS, default_payload
-from app.domains.configuration.mfa import qr_code_data_url, token_is_valid, totp, verification_token, verify_totp
+from app.domains.configuration.mfa import (
+    clear_mfa_failures,
+    qr_code_data_url,
+    record_mfa_failure,
+    token_is_valid,
+    totp,
+    verification_token,
+    verify_totp,
+)
 from app.domains.configuration.gates import required_feature_for_path
 from app.domains.configuration.schemas import DraftPatch
 from app.domains.configuration.service import ConfigurationService
@@ -140,6 +148,28 @@ def test_mfa_enrollment_qr_is_generated_locally_as_png():
     assert base64.b64decode(encoded).startswith(b"\x89PNG\r\n\x1a\n")
     with pytest.raises(ValueError, match="Invalid authenticator"):
         qr_code_data_url("https://example.com/secret")
+
+
+def test_mfa_failures_are_rate_limited_and_can_be_cleared():
+    user_id = uuid4()
+    try:
+        for _ in range(4):
+            record_mfa_failure(user_id)
+        with pytest.raises(HTTPException) as exc:
+            record_mfa_failure(user_id)
+        assert exc.value.status_code == 429
+        assert exc.value.headers["Retry-After"] == "60"
+    finally:
+        clear_mfa_failures(user_id)
+
+
+def test_enrolled_mfa_ui_does_not_render_a_setup_key_unconditionally():
+    template = (
+        Path(__file__).resolve().parents[2] / "frontend/templates/configuration/mfa.html"
+    ).read_text(encoding="utf-8")
+    assert "{% if secret %}" in template
+    assert "does not display an enrolled authenticator seed again" in template
+    assert "{{ otpauth }}" not in template
 
 
 def _configuration_request(*, host="localhost", client="127.0.0.1"):

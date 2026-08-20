@@ -76,7 +76,7 @@ def test_strict_mode_removes_unsafe_inline_from_scripts_and_styles():
     assert "'unsafe-inline'" not in script_src
     assert "'unsafe-inline'" not in style_src
     assert f"'nonce-{extract_nonce(csp)}'" in style_src
-    assert "https://cdnjs.cloudflare.com" in script_src
+    assert "https://cdnjs.cloudflare.com" not in csp
     assert "https://fonts.googleapis.com" in style_src
 
 

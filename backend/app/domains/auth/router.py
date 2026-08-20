@@ -179,6 +179,7 @@ async def logout(
     response.delete_cookie(key="refresh_token", path="/")
     response.delete_cookie(key="session", path="/")
     response.delete_cookie(key="__Host-session", path="/")
+    response.delete_cookie(key="configuration_mfa", path="/configuration")
     return {"status": "logged_out"}
 
 from app.core.dependencies import RoleChecker

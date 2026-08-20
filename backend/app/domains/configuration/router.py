@@ -12,7 +12,16 @@ from app.core.field_encryption import decrypt_sensitive, encrypt_sensitive
 from app.core.templates import create_templates
 from app.domains.configuration.access import require_restricted_configuration_access
 from app.domains.configuration.catalog import FEATURE_DEFAULTS, FEATURE_GROUPS
-from app.domains.configuration.mfa import new_secret, qr_code_data_url, token_is_valid, verification_token, verify_totp
+from app.domains.configuration.mfa import (
+    clear_mfa_failures,
+    enforce_mfa_attempt_limit,
+    new_secret,
+    qr_code_data_url,
+    record_mfa_failure,
+    token_is_valid,
+    verification_token,
+    verify_totp,
+)
 from app.domains.configuration.repository import ConfigurationRepository
 from app.domains.configuration.schemas import DraftCreate, DraftPatch, MfaCode
 from app.domains.configuration.service import ConfigurationService
@@ -71,18 +80,29 @@ async def mfa_setup(request: Request, current_user=Depends(get_current_user), co
     if not state:
         raise HTTPException(status_code=404, detail="User not found")
     encrypted = state["config_mfa_secret_encrypted"]
-    secret = decrypt_sensitive(encrypted, context=f"configuration:mfa:{current_user.id}") if encrypted else new_secret()
+    enabled = bool(state["config_mfa_enabled"])
+    secret = None
     if not encrypted:
+        secret = new_secret()
         await repo.save_mfa(current_user.id, current_user.org_id,
                             encrypt_sensitive(secret, context=f"configuration:mfa:{current_user.id}"), False)
-    issuer = quote("FieldCRM Configuration")
-    account = quote(current_user.email)
-    enrollment_uri = f"otpauth://totp/{issuer}:{account}?secret={secret}&issuer={issuer}"
+    elif not enabled:
+        # Enrollment was started but not completed. The seed remains available
+        # only until the first successful verification.
+        secret = decrypt_sensitive(encrypted, context=f"configuration:mfa:{current_user.id}")
+
+    enrollment_uri = None
+    qr_data_url = None
+    if secret:
+        issuer = quote("FieldCRM Configuration")
+        account = quote(current_user.email)
+        enrollment_uri = f"otpauth://totp/{issuer}:{account}?secret={secret}&issuer={issuer}"
+        qr_data_url = qr_code_data_url(enrollment_uri)
     return templates.TemplateResponse(request, "configuration/mfa.html", {
         "current_user": current_user, "secret": secret,
         "otpauth": enrollment_uri,
-        "qr_code_data_url": qr_code_data_url(enrollment_uri),
-        "enabled": bool(state["config_mfa_enabled"]),
+        "qr_code_data_url": qr_data_url,
+        "enabled": enabled,
     }, headers={"Cache-Control": "no-store"})
 
 
@@ -90,6 +110,7 @@ async def mfa_setup(request: Request, current_user=Depends(get_current_user), co
 async def mfa_verify(request: Request, response: Response, code: str = Form(...),
                      current_user=Depends(get_current_user), conn=Depends(authenticated_db_conn)):
     require_restricted_configuration_access(request, current_user, require_mfa=False)
+    enforce_mfa_attempt_limit(current_user.id)
     validated = MfaCode(code=code)
     repo = ConfigurationRepository(conn)
     state = await repo.mfa_state(current_user.id, current_user.org_id)
@@ -97,7 +118,9 @@ async def mfa_verify(request: Request, response: Response, code: str = Form(...)
         raise HTTPException(status_code=409, detail="Enroll MFA first")
     secret = decrypt_sensitive(state["config_mfa_secret_encrypted"], context=f"configuration:mfa:{current_user.id}")
     if not verify_totp(secret, validated.code):
+        record_mfa_failure(current_user.id)
         raise HTTPException(status_code=400, detail="Invalid authentication code")
+    clear_mfa_failures(current_user.id)
     await repo.save_mfa(current_user.id, current_user.org_id, state["config_mfa_secret_encrypted"], True)
     redirect = RedirectResponse("/configuration", status_code=303)
     redirect.set_cookie("configuration_mfa", verification_token(current_user.id), httponly=True,
