@@ -1,0 +1,44 @@
+{% extends "configuration/base.html" %}
+{% set config_page = "features" %}
+{% block title %}Feature Controls{% endblock %}
+{% block scripts %}<script defer src="/static/js/configuration-hub.js?v=20260820"></script>{% endblock %}
+{% block kicker %}Application capabilities{% endblock %}
+{% block heading %}Feature controls{% endblock %}
+{% block description %}Control optional staff workspaces and workflow capabilities. Published OFF states hide navigation and reject direct route access.{% endblock %}
+{% block content %}
+{% if active_draft %}<section class="draft-banner"><div><span class="status-chip status-chip-draft">Editing draft</span><h2>Config v{{ active_draft.version_number }}</h2><p>Choose ON or OFF for each capability, then validate the version.</p></div><a class="config-button config-button-primary" href="/configuration/versions">Review version</a></section>{% else %}<section class="empty-action"><div><span class="empty-action-icon" aria-hidden="true">1</span><div><h2>Create a configuration draft first</h2><p>Effective settings cannot be edited directly.</p></div></div><a class="config-button config-button-primary" href="/configuration">Create draft</a></section>{% endif %}
+
+<section class="config-panel" aria-labelledby="features-heading">
+    <div class="panel-heading panel-heading-split"><div><p class="config-kicker">Published and staged state</p><h2 id="features-heading">Available capabilities</h2><p>Effective is what staff use now. Draft is what will apply after validation, approval when required, and publication.</p></div><label class="feature-search"><span class="sr-only">Search features</span><input class="config-input" type="search" placeholder="Search features" data-feature-search autocomplete="off"></label></div>
+    <div class="feature-groups">
+        {% for group in feature_groups %}
+        <section class="feature-group" data-feature-group>
+            <div class="feature-group-heading"><div><h3>{{ group.name }}</h3><p>{{ group.description }}</p></div><span>{{ group.features|length }} controls</span></div>
+            <div class="feature-list">
+                {% for key, label, description in group.features %}
+                {% set effective_on = effective_features.get(key, false) %}{% set draft_on = draft_features.get(key, effective_on) %}
+                <article class="feature-row" data-feature-card data-search-text="{{ label|lower }} {{ description|lower }}">
+                    <div class="feature-copy"><h4>{{ label }}</h4><p>{{ description }}</p><div class="feature-state-summary"><span>Effective <b>{{ 'ON' if effective_on else 'OFF' }}</b></span>{% if active_draft %}<span>Draft <b>{{ 'ON' if draft_on else 'OFF' }}</b></span>{% endif %}</div></div>
+                    <div class="feature-control">
+                        {% if active_draft %}
+                        <details class="feature-edit">
+                            <summary class="state-pill {{ 'is-on' if draft_on else 'is-off' }}"><span aria-hidden="true"></span>{{ 'ON' if draft_on else 'OFF' }} <small>Change</small></summary>
+                            <form method="post" action="/configuration/versions/{{ active_draft.id }}/settings">
+                                <input type="hidden" name="setting_path" value="features.{{ key }}"><input type="hidden" name="return_to" value="/configuration/features">
+                                <p>Select the staged state for <strong>{{ label }}</strong>. Feature changes require validation and may require a second administrator.</p>
+                                <div class="feature-choice"><label><input type="radio" name="value" value="true" {% if draft_on %}checked{% endif %} required><span>ON</span></label><label><input type="radio" name="value" value="false" {% if not draft_on %}checked{% endif %} required><span>OFF</span></label></div>
+                                <label><span>Reason</span><textarea class="config-input" name="reason" minlength="10" maxlength="500" rows="3" required></textarea></label>
+                                <button class="config-button config-button-secondary" type="submit">Save to draft</button>
+                            </form>
+                        </details>
+                        {% else %}<span class="state-pill {{ 'is-on' if effective_on else 'is-off' }}"><span aria-hidden="true"></span>{{ 'ON' if effective_on else 'OFF' }}</span>{% endif %}
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+    </div>
+    <p class="empty-search" data-empty-search hidden>No features match your search.</p>
+</section>
+{% endblock %}

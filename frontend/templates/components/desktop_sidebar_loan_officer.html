@@ -10,12 +10,13 @@
         <a href="/dashboard" class="sidebar-nav-link {% if active_page == 'dashboard' %}active{% endif %}">
             <span>Dashboard</span>
         </a>
+        {% if (feature_flags|default({})).get('my_work', true) %}<a href="/my-work" class="sidebar-nav-link {% if active_page == 'my_work' %}active{% endif %}"><span>My Work</span></a>
         <a href="/my-queue" class="sidebar-nav-link {% if active_page == 'queue' %}active{% endif %}">
             <span>My Queue</span>
             {% if metrics and metrics.my_applications %}
             <span class="sidebar-badge">{{ metrics.my_applications }}</span>
             {% endif %}
-        </a>
+        </a>{% endif %}
         <a href="/applications/new" class="sidebar-nav-link {% if active_page == 'new_application' %}active{% endif %}">
             <span>New Application</span>
         </a>
@@ -35,7 +36,7 @@
 </div>
 
 {# FIELD group #}
-<div class="sidebar-nav-group">
+{% if (feature_flags|default({})).get('visits', true) %}<div class="sidebar-nav-group">
     <div class="sidebar-nav-group-title">Field</div>
     <div class="sidebar-nav-links">
         <a href="/visits" class="sidebar-nav-link {% if active_page == 'visits' %}active{% endif %}">
@@ -48,14 +49,14 @@
             <span>My Visitation Reports</span>
         </a>
     </div>
-</div>
+</div>{% endif %}
 
 {# DOCUMENTS group #}
-<div class="sidebar-nav-group">
+{% if (feature_flags|default({})).get('document_work_queue', true) %}<div class="sidebar-nav-group">
     <div class="sidebar-nav-group-title">Documents</div>
     <div class="sidebar-nav-links">
         <a href="/document-work-queue" class="sidebar-nav-link {% if active_page == 'document_work' %}active{% endif %}">
             <span>Documents Needing Action</span>
         </a>
     </div>
-</div>
+</div>{% endif %}

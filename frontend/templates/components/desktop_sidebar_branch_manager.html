@@ -8,16 +8,17 @@
             <span>Awaiting Me</span>
             {% if metrics and metrics.awaiting_concurrence %}<span class="sidebar-badge">{{ metrics.awaiting_concurrence }}</span>{% endif %}
         </a>
-        <a href="/pending-signoffs" class="sidebar-nav-link {% if active_page == 'signoffs' %}active{% endif %}">
+        {% if (feature_flags|default({})).get('visits', true) %}<a href="/pending-signoffs" class="sidebar-nav-link {% if active_page == 'signoffs' %}active{% endif %}">
             <span>Visit Signoffs</span>
             {% if metrics and metrics.pending_signoffs %}<span class="sidebar-badge sidebar-badge-warning">{{ metrics.pending_signoffs }}</span>{% endif %}
-        </a>
+        </a>{% endif %}
+        {% if (feature_flags|default({})).get('exceptions_centre', true) %}<a href="/exceptions" class="sidebar-nav-link {% if active_page == 'exceptions' %}active{% endif %}"><span>Exceptions Centre</span></a>{% endif %}
     </div>
 </div>
 <div class="sidebar-nav-group">
     <div class="sidebar-nav-group-title">Branch</div>
     <div class="sidebar-nav-links">
-        <a href="/pipeline" class="sidebar-nav-link {% if active_page == 'pipeline' %}active{% endif %}"><span>Pipeline</span></a>
+        {% if (feature_flags|default({})).get('pipeline', true) %}<a href="/pipeline" class="sidebar-nav-link {% if active_page == 'pipeline' %}active{% endif %}"><span>Pipeline</span></a>{% endif %}
         <a href="/borrowers" class="sidebar-nav-link {% if active_page == 'borrowers' %}active{% endif %}"><span>Current Loans</span></a>
     </div>
 </div>

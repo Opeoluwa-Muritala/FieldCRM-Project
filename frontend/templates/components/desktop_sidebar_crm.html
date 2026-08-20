@@ -5,6 +5,6 @@
     <a href="/crm-dashboard" class="sidebar-nav-link {% if active_page == 'dashboard' %}active{% endif %}"><span>Dashboard</span></a>
     <a href="/crm-review-queue" class="sidebar-nav-link {% if active_page == 'crm_queue' %}active{% endif %}"><span>Dossier Review Queue</span></a>
     <a href="/borrowers" class="sidebar-nav-link {% if active_page == 'borrowers' %}active{% endif %}"><span>Current Loans</span></a>
-    <a href="/reports/par" class="sidebar-nav-link {% if active_page == 'par' %}active{% endif %}"><span>Portfolio at Risk</span></a>
+    {% if (feature_flags|default({})).get('par', true) %}<a href="/reports/par" class="sidebar-nav-link {% if active_page == 'par' %}active{% endif %}"><span>Portfolio at Risk</span></a>{% endif %}
   </div>
 </div>

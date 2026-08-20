@@ -1,0 +1,16 @@
+{% extends "configuration/base.html" %}
+{% set config_page = "versions" %}
+{% block title %}Version History{% endblock %}
+{% block kicker %}Controlled publishing{% endblock %}
+{% block heading %}Version history{% endblock %}
+{% block description %}Validate dependencies, obtain an independent approval for high-risk changes, and publish effective-dated versions.{% endblock %}
+{% block content %}
+<section class="config-panel" aria-labelledby="versions-heading">
+    <div class="panel-heading"><div><p class="config-kicker">Audit-ready lifecycle</p><h2 id="versions-heading">Configuration versions</h2><p>Only actions valid for a version's current state are available.</p></div></div>
+    <div class="version-list">
+        {% for version in versions %}
+        <article class="version-card"><div class="version-marker" aria-hidden="true"></div><div class="version-content"><div class="version-title"><div><h3>Config v{{ version.version_number }}</h3><p>{{ version.reason }}</p></div><span class="status-chip status-chip-{{ version.status|replace('_', '-') }}">{{ version.status|replace('_', ' ')|title }}</span></div><dl class="version-meta"><div><dt>Effective</dt><dd>{{ version.effective_at|date_format }}</dd></div><div><dt>Risk</dt><dd>{{ 'High risk' if version.high_risk else 'Standard' }}</dd></div><div><dt>Approval</dt><dd>{{ 'Required' if version.requires_second_approval else 'Not required' }}</dd></div></dl><div class="version-actions">{% if version.status == 'draft' %}<form method="post" action="/configuration/versions/{{ version.id }}/validate"><button class="config-button config-button-primary" type="submit">Validate draft</button></form><a class="config-button config-button-secondary" href="/configuration/features">Edit features</a>{% endif %}{% if version.status == 'pending_approval' %}<form method="post" action="/configuration/versions/{{ version.id }}/approve"><button class="config-button config-button-primary" type="submit">Second-approve</button></form>{% endif %}{% if version.status == 'validated' %}<form method="post" action="/configuration/versions/{{ version.id }}/publish"><button class="config-button config-button-primary" type="submit">Publish version</button></form>{% endif %}</div></div></article>
+        {% else %}<div class="empty-state"><strong>No configuration versions yet</strong><p>Create a draft from the Overview page.</p></div>{% endfor %}
+    </div>
+</section>
+{% endblock %}

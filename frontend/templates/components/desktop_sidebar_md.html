@@ -4,11 +4,11 @@
     <div class="sidebar-nav-group-title">Managing Director</div>
     <div class="sidebar-nav-links">
         <a href="/dashboard" class="sidebar-nav-link {% if active_page == 'dashboard' %}active{% endif %}"><span>Dashboard</span></a>
-        <a href="/md-queue" class="sidebar-nav-link {% if active_page == 'md_queue' %}active{% endif %}">
+        {% if (feature_flags|default({})).get('md_review', true) %}<a href="/md-queue" class="sidebar-nav-link {% if active_page == 'md_queue' %}active{% endif %}">
             <span>Approval Queue</span>
             {% if metrics and metrics.md_queue %}<span class="sidebar-badge">{{ metrics.md_queue }}</span>{% endif %}
-        </a>
-        <a href="/reports/par" class="sidebar-nav-link {% if active_page == 'par' %}active{% endif %}"><span>PAR Report</span></a>
+        </a>{% endif %}
+        {% if (feature_flags|default({})).get('par', true) %}<a href="/reports/par" class="sidebar-nav-link {% if active_page == 'par' %}active{% endif %}"><span>PAR Report</span></a>{% endif %}
         <a href="/borrowers" class="sidebar-nav-link {% if active_page == 'borrowers' %}active{% endif %}"><span>Borrowers</span></a>
     </div>
 </div>
