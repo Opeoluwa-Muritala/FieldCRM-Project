@@ -11,7 +11,7 @@ from app.core.database import init_pool, close_pool, get_connection
 from app.config import settings
 from app.domains.credit_bureau.service import CreditBureauService, CreditRegistryProvider, CrcProvider
 
-async def test_bureau_provider_routing():
+async def run_bureau_provider_routing():
     print("Testing Bureau Provider Routing...")
     
     # 1. Test when CRC_API_KEY is None (default CreditRegistry)
@@ -28,8 +28,10 @@ async def test_bureau_provider_routing():
         
     print("[OK] Bureau Provider Routing works perfectly.")
 
-async def test_mock_responses():
+async def run_mock_responses():
     print("\nTesting Provider Mock Responses...")
+    if not settings.demo_mode:
+        raise RuntimeError("Mock bureau smoke checks may run only with demo mode enabled")
     
     # Init pool to query database later
     await init_pool()
@@ -94,8 +96,8 @@ async def test_mock_responses():
 
 async def main():
     try:
-        await test_bureau_provider_routing()
-        await test_mock_responses()
+        await run_bureau_provider_routing()
+        await run_mock_responses()
         print("\nAll Credit Bureau provider tests passed successfully!")
     except Exception as e:
         import traceback
