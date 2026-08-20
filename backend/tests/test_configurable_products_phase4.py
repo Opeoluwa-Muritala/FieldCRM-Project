@@ -81,6 +81,19 @@ def test_configuration_admin_gets_a_structured_product_form_not_raw_json():
     assert "Planned" not in template
 
 
+def test_product_form_and_document_configuration_pages_are_editable():
+    root = Path(__file__).resolve().parents[2] / "frontend/templates/configuration"
+    forms = (root / "forms.html").read_text(encoding="utf-8")
+    documents = (root / "documents.html").read_text(encoding="utf-8")
+    product_edit = (root / "product_edit.html").read_text(encoding="utf-8")
+    assert 'action="/configuration/forms"' in forms
+    assert "/configuration/forms/{{ field.id }}" in forms
+    assert "validation_key" in forms and "visibility_condition" in forms
+    assert 'action="/configuration/documents"' in documents
+    assert "/configuration/documents/{{ document.id }}" in documents
+    assert "/configuration/products/{{ product.code }}/edit" in product_edit
+
+
 def test_conditional_visibility_and_server_required_validation():
     service = ProductService(Repo())
     field = {"field_key": "cac_number", "label": "CAC number", "requirement": "required",

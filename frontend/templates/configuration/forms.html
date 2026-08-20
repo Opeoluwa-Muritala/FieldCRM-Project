@@ -1,0 +1,40 @@
+{% extends "configuration/base.html" %}
+{% set config_page = "forms" %}
+{% block title %}Form Fields{% endblock %}
+{% block kicker %}Dynamic application forms{% endblock %}
+{% block heading %}Form fields{% endblock %}
+{% block description %}Add and edit product-specific fields without changing application code. Definitions stay in the selected draft until publication.{% endblock %}
+{% block content %}
+{% set sections = ['personal_details','employment','business','financials','guarantors','collateral','documents','visits','credit_assessment'] %}
+{% set field_types = ['text','number','currency','date','dropdown','checkbox','yes_no','photo','file','signature','gps'] %}
+{% if draft_products %}
+<section class="config-panel"><div class="panel-heading"><div><p class="config-kicker">Add to draft product</p><h2>Create a form field</h2><p>Dropdown fields require comma-separated options. Conditional fields appear only when the referenced field equals the configured value.</p></div></div>
+<form class="product-form" method="post" action="/configuration/forms"><div class="product-form-grid">
+<label><span>Draft product</span><select class="config-input" name="product_code" required>{% for product in draft_products %}<option value="{{ product.code }}">{{ product.name }} (Config v{{ product.version_number }})</option>{% endfor %}</select></label>
+<label><span>Section</span><select class="config-input" name="section_key" required>{% for section in sections %}<option value="{{ section }}">{{ section|replace('_',' ')|title }}</option>{% endfor %}</select></label>
+<label><span>Field key</span><input class="config-input" name="field_key" pattern="[a-z][a-z0-9_]+" minlength="2" maxlength="80" placeholder="business_age" required></label>
+<label><span>Label</span><input class="config-input" name="label" minlength="2" maxlength="120" placeholder="Business age" required></label>
+<label><span>Field type</span><select class="config-input" name="field_type" required>{% for kind in field_types %}<option value="{{ kind }}">{{ kind|replace('_',' ')|title }}</option>{% endfor %}</select></label>
+<label><span>Requirement</span><select class="config-input" name="requirement"><option value="required">Required</option><option value="optional" selected>Optional</option><option value="hidden">Hidden</option></select></label>
+<label><span>Validation</span><select class="config-input" name="validation_key">{% for key in validation_rules %}<option value="{{ key }}">{{ key|replace('_',' ')|title }}</option>{% endfor %}</select></label>
+<label><span>Display order</span><input class="config-input" type="number" name="display_order" min="0" max="10000" value="0"></label>
+<label class="product-field-wide"><span>Dropdown options <small>Comma separated</small></span><input class="config-input" name="options_text" maxlength="1000" placeholder="Retail, Services, Manufacturing"></label>
+<label><span>Show when field <small>Optional</small></span><input class="config-input" name="condition_field" pattern="[a-z][a-z0-9_]*" maxlength="80" placeholder="business_registered"></label>
+<label><span>Equals <small>Optional</small></span><input class="config-input" name="condition_equals" maxlength="100" placeholder="yes"></label>
+<label class="product-field-wide"><span>Help text <small>Optional</small></span><textarea class="config-input" name="help_text" maxlength="300" rows="2"></textarea></label>
+</div><div class="form-submit-bar"><div><strong>Draft-only change</strong><span>The live application form is unchanged until publication.</span></div><button class="config-button config-button-primary" type="submit">Add form field</button></div></form></section>
+{% else %}<section class="empty-action"><div><span class="empty-action-icon">1</span><div><h2>Add or create a draft product first</h2><p>Form fields belong to a product definition inside a working draft.</p></div></div><a class="config-button config-button-primary" href="/configuration/products">Product configuration</a></section>{% endif %}
+
+<section class="config-panel"><div class="panel-heading"><div><p class="config-kicker">Editable definitions</p><h2>Draft form fields</h2><p>Open a field to change its label, behavior, validation, or display order.</p></div></div><div class="definition-list">
+{% for field in fields %}<details class="definition-card"><summary><span><small>{{ field.product_name }} &middot; {{ field.section_key|replace('_',' ')|title }}</small><strong>{{ field.label }}</strong></span><span class="status-chip status-chip-draft">{{ field.field_type|replace('_',' ') }}</span></summary><form class="product-form compact-definition-form" method="post" action="/configuration/forms/{{ field.id }}"><div class="product-form-grid">
+<label><span>Section</span><select class="config-input" name="section_key">{% for section in sections %}<option value="{{ section }}" {% if field.section_key == section %}selected{% endif %}>{{ section|replace('_',' ')|title }}</option>{% endfor %}</select></label>
+<label><span>Field key</span><input class="config-input" name="field_key" value="{{ field.field_key }}" pattern="[a-z][a-z0-9_]+" required></label><label><span>Label</span><input class="config-input" name="label" value="{{ field.label }}" required></label>
+<label><span>Field type</span><select class="config-input" name="field_type">{% for kind in field_types %}<option value="{{ kind }}" {% if field.field_type == kind %}selected{% endif %}>{{ kind|replace('_',' ')|title }}</option>{% endfor %}</select></label>
+<label><span>Requirement</span><select class="config-input" name="requirement">{% for requirement in ['required','optional','hidden'] %}<option value="{{ requirement }}" {% if field.requirement == requirement %}selected{% endif %}>{{ requirement|title }}</option>{% endfor %}</select></label>
+{% set current_pattern = field.validation_rules.get('pattern','') %}<label><span>Validation</span><select class="config-input" name="validation_key">{% for key, pattern in validation_rules.items() %}<option value="{{ key }}" {% if (pattern or '') == current_pattern %}selected{% endif %}>{{ key|replace('_',' ')|title }}</option>{% endfor %}</select></label>
+<label><span>Display order</span><input class="config-input" type="number" name="display_order" min="0" max="10000" value="{{ field.display_order }}"></label>
+<label class="product-field-wide"><span>Dropdown options</span><input class="config-input" name="options_text" value="{{ field.options|join(', ') }}"></label>
+<label><span>Show when field</span><input class="config-input" name="condition_field" value="{{ field.visibility_condition.get('field','') }}"></label><label><span>Equals</span><input class="config-input" name="condition_equals" value="{{ field.visibility_condition.get('equals','') }}"></label>
+<label class="product-field-wide"><span>Help text</span><textarea class="config-input" name="help_text" maxlength="300" rows="2">{{ field.help_text or '' }}</textarea></label>
+</div><button class="config-button config-button-secondary" type="submit">Save field changes</button></form></details>{% else %}<div class="empty-state"><strong>No draft form fields</strong><p>Add a field using the form above.</p></div>{% endfor %}</div></section>
+{% endblock %}

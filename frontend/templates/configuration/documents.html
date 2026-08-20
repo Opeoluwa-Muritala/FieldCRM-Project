@@ -1,0 +1,39 @@
+{% extends "configuration/base.html" %}
+{% set config_page = "documents" %}
+{% block title %}Document Checklists{% endblock %}
+{% block kicker %}Product readiness requirements{% endblock %}
+{% block heading %}Document checklists{% endblock %}
+{% block description %}Configure the evidence required by each draft product. Mandatory items participate in application readiness after publication.{% endblock %}
+{% block content %}
+{% if draft_products %}
+<section class="config-panel">
+    <div class="panel-heading"><div><p class="config-kicker">Add requirement</p><h2>Add a document to a product</h2><p>Use a stable lowercase document key and a clear label staff will recognize.</p></div></div>
+    <form class="product-form" method="post" action="/configuration/documents">
+        <div class="product-form-grid">
+            <label><span>Draft product</span><select class="config-input" name="product_code" required>{% for product in draft_products %}<option value="{{ product.code }}">{{ product.name }} (Config v{{ product.version_number }})</option>{% endfor %}</select></label>
+            <label><span>Document key</span><input class="config-input" name="doc_type" pattern="[a-z][a-z0-9_]+" minlength="2" maxlength="80" placeholder="bank_statement" required></label>
+            <label><span>Display name</span><input class="config-input" name="display_name" minlength="2" maxlength="120" placeholder="Six-month bank statement" required></label>
+            <label class="check-setting"><input type="checkbox" name="mandatory" value="true" checked><span><strong>Mandatory for submission</strong><small>Readiness remains incomplete until accepted evidence exists.</small></span></label>
+        </div>
+        <div class="form-submit-bar"><div><strong>Draft-only requirement</strong><span>Existing applications retain the configuration captured at origination.</span></div><button class="config-button config-button-primary" type="submit">Add document</button></div>
+    </form>
+</section>
+{% else %}
+<section class="empty-action"><div><span class="empty-action-icon">1</span><div><h2>Add or create a draft product first</h2><p>Document checklists belong to product definitions inside a working draft.</p></div></div><a class="config-button config-button-primary" href="/configuration/products">Product configuration</a></section>
+{% endif %}
+
+<section class="config-panel">
+    <div class="panel-heading"><div><p class="config-kicker">Editable requirements</p><h2>Draft document requirements</h2><p>Open an item to rename it or change whether it blocks submission.</p></div></div>
+    <div class="definition-list">
+    {% for document in documents %}
+        <details class="definition-card"><summary><span><small>{{ document.product_name }}</small><strong>{{ document.display_name or document.doc_type|replace('_',' ')|title }}</strong></span><span class="status-chip {{ 'status-chip-pending-approval' if document.is_mandatory else '' }}">{{ 'Mandatory' if document.is_mandatory else 'Optional' }}</span></summary>
+            <form class="product-form compact-definition-form" method="post" action="/configuration/documents/{{ document.id }}"><div class="product-form-grid">
+                <label><span>Document key</span><input class="config-input" name="doc_type" value="{{ document.doc_type }}" pattern="[a-z][a-z0-9_]+" required></label>
+                <label><span>Display name</span><input class="config-input" name="display_name" value="{{ document.display_name or document.doc_type|replace('_',' ')|title }}" required></label>
+                <label class="check-setting product-field-wide"><input type="checkbox" name="mandatory" value="true" {% if document.is_mandatory %}checked{% endif %}><span><strong>Mandatory for submission</strong><small>Turn off to retain the item without blocking readiness.</small></span></label>
+            </div><button class="config-button config-button-secondary" type="submit">Save requirement</button></form>
+        </details>
+    {% else %}<div class="empty-state"><strong>No draft document requirements</strong><p>Add a requirement using the form above.</p></div>{% endfor %}
+    </div>
+</section>
+{% endblock %}
