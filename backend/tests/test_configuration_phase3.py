@@ -1,0 +1,135 @@
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
+from pathlib import Path
+from types import SimpleNamespace
+from uuid import uuid4
+
+import pytest
+from fastapi import HTTPException
+from starlette.requests import Request
+
+from app.config import settings
+from app.core.exceptions import DomainException
+from app.domains.configuration.access import require_restricted_configuration_access
+from app.domains.configuration.catalog import FEATURE_DEFAULTS, SECTIONS, default_payload
+from app.domains.configuration.mfa import token_is_valid, totp, verification_token, verify_totp
+from app.domains.configuration.schemas import DraftPatch
+from app.domains.configuration.service import ConfigurationService
+
+
+class Transaction:
+    async def __aenter__(self): return self
+    async def __aexit__(self, *args): return False
+
+
+class FakeRepo:
+    def __init__(self, payload=None):
+        self.row = {
+            "id": uuid4(), "status": "draft", "payload": payload or default_payload("MMFB"),
+            "high_risk": False, "requires_second_approval": False, "approved_by": None,
+        }
+        self.products = []
+        self.changes = []
+        self.conn = SimpleNamespace(transaction=lambda: Transaction())
+
+    async def get(self, *args, **kwargs): return self.row
+    async def patch(self, version_id, org_id, payload, high_risk):
+        self.row.update(payload=payload, high_risk=high_risk)
+        return self.row
+    async def log_change(self, **values): self.changes.append(values)
+    async def product_dependencies(self, org_id): return self.products
+    async def validate(self, version_id, org_id, actor_id, needs_approval):
+        self.row.update(status="pending_approval" if needs_approval else "validated",
+                        requires_second_approval=needs_approval)
+        return self.row
+    async def approve(self, version_id, org_id, actor_id):
+        if actor_id == self.row.get("created_by") or actor_id == self.row.get("validated_by"):
+            return None
+        self.row.update(status="validated", approved_by=actor_id)
+        return self.row
+
+
+def test_hub_is_separate_and_defaults_external_surfaces_off():
+    assert "Users & Access" in SECTIONS and "System Health" in SECTIONS
+    assert FEATURE_DEFAULTS["external_applicant_portal"] is False
+    assert FEATURE_DEFAULTS["cbs_integration"] is False
+    assert FEATURE_DEFAULTS["offline_mode"] is False
+
+
+@pytest.mark.asyncio
+async def test_feature_change_is_high_risk_versioned_and_dependency_checked():
+    repo = FakeRepo()
+    service = ConfigurationService(repo)
+    await service.patch(repo.row["id"], uuid4(), uuid4(), DraftPatch(
+        setting_path="features.guarantors", value=False,
+        reason="Institution policy disables guarantor capture.",
+    ))
+    assert repo.row["payload"]["features"]["guarantors"] is False
+    assert repo.row["high_risk"] is True
+    assert repo.changes[0]["old"] is True
+    repo.products = [{"code": "SME", "guarantor_required": True, "collateral_required": False, "cbs_enabled": False}]
+    with pytest.raises(DomainException, match="requires guarantors"):
+        await service.validate(repo.row["id"], uuid4(), uuid4())
+
+
+@pytest.mark.asyncio
+async def test_high_risk_configuration_requires_different_approver():
+    creator = uuid4()
+    repo = FakeRepo()
+    repo.row.update(high_risk=True, created_by=creator, validated_by=creator)
+    service = ConfigurationService(repo)
+    await service.validate(repo.row["id"], uuid4(), creator)
+    assert repo.row["status"] == "pending_approval"
+    with pytest.raises(DomainException, match="different Configuration Admin"):
+        await service.approve(repo.row["id"], uuid4(), creator)
+    approver = uuid4()
+    await service.approve(repo.row["id"], uuid4(), approver)
+    assert repo.row["approved_by"] == approver
+
+
+def test_totp_and_short_lived_verification_token(monkeypatch):
+    secret = "JBSWY3DPEHPK3PXP"
+    code = totp(secret, 1_777_000_000)
+    monkeypatch.setattr("app.domains.configuration.mfa.time.time", lambda: 1_777_000_000)
+    assert verify_totp(secret, code)
+    user_id = uuid4()
+    assert token_is_valid(verification_token(user_id), user_id)
+    assert not token_is_valid(verification_token(user_id), uuid4())
+
+
+def test_private_access_gate_is_role_and_network_restricted(monkeypatch):
+    monkeypatch.setattr(settings, "CONFIGURATION_HUB_ENABLED", True)
+    monkeypatch.setattr(settings, "CONFIGURATION_ADMIN_HOSTS", "config.internal.example")
+    monkeypatch.setattr(settings, "CONFIGURATION_ADMIN_NETWORKS", "10.20.0.0/16")
+    request = Request({"type": "http", "method": "GET", "path": "/configuration",
+                       "scheme": "https", "server": ("config.internal.example", 443),
+                       "headers": [(b"host", b"config.internal.example")], "client": ("203.0.113.9", 5000)})
+    wrong_role = SimpleNamespace(role="system_admin", id=uuid4())
+    with pytest.raises(HTTPException) as exc:
+        require_restricted_configuration_access(request, wrong_role, require_mfa=False)
+    assert exc.value.status_code == 403
+    config_admin = SimpleNamespace(role="configuration_admin", id=uuid4())
+    require_restricted_configuration_access(request, config_admin, require_mfa=False)
+
+
+def test_phase3_migration_is_reversible_immutable_and_effective_dated():
+    migrations = Path(__file__).resolve().parents[1] / "migrations"
+    up = (migrations / "044_configuration_hub.sql").read_text(encoding="utf-8")
+    down = (migrations / "044_configuration_hub.rollback.sql").read_text(encoding="utf-8")
+    create_sql = (Path(__file__).resolve().parents[1] / "app/domains/loans/queries/create.sql").read_text(encoding="utf-8")
+    assert "configuration_admin" in up
+    assert "configuration_change_log_immutable" in up
+    repository = (Path(__file__).resolve().parents[1] / "app/domains/configuration/repository.py").read_text(encoding="utf-8")
+    assert "Second approval for high-risk configuration" in repository
+    assert "configuration_versions_published_immutable" in up
+    assert "originated_config_version_id" in create_sql and "effective_at <= NOW()" in create_sql
+    assert "DROP TABLE IF EXISTS configuration_versions" in down
+
+
+def test_mobile_contract_is_additive_and_system_admin_cannot_grant_config_admin():
+    root = Path(__file__).resolve().parents[1] / "app"
+    mobile = (root / "api/v1/mobile.py").read_text(encoding="utf-8")
+    users = (root / "domains/users/service.py").read_text(encoding="utf-8")
+    assert '"features": payload.get("features", {})' in mobile
+    assert '"config_version": version["version_number"]' in mobile
+    assert "System Admin cannot grant or change Configuration Admin access" in users
