@@ -10,8 +10,8 @@
             <span>My Reviews</span>
             {% if metrics and metrics.reviews_due %}<span class="sidebar-badge">{{ metrics.reviews_due }}</span>{% endif %}
         </a>
-        <a href="/ocr-exceptions" class="sidebar-nav-link {% if active_page == 'exceptions' %}active{% endif %}">
-            <span>OCR Exceptions</span>
+        <a href="/document-work-queue" class="sidebar-nav-link {% if active_page == 'document_work' %}active{% endif %}">
+            <span>Document Exceptions</span>
             {% if metrics and metrics.ocr_exceptions %}<span class="sidebar-badge sidebar-badge-warning">{{ metrics.ocr_exceptions }}</span>{% endif %}
         </a>
         <a href="/borrowers" class="sidebar-nav-link {% if active_page == 'borrowers' %}active{% endif %}"><span>Current Loans</span></a>

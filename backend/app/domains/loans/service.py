@@ -7,6 +7,7 @@ from app.core.audit import AuditService
 from app.core.exceptions import DomainException
 from app.domains.loans.schemas import LoanRow
 from app.core.database import get_transaction
+from app.config import settings
 
 CUSTOMER_TYPE_MAP = {
     "new": "new",
@@ -82,7 +83,7 @@ class LoanService:
             tx_repo = LoanRepository(conn)
             tx_audit = AuditService(conn)
             
-            loan_type = await tx_repo.resolve_product_code(loan_type)
+            loan_type = await tx_repo.resolve_product_code(loan_type, org_id)
             
             created_app = await tx_repo.create(
                 org_id=org_id,
@@ -93,6 +94,11 @@ class LoanService:
                 created_by=user_id,
                 client_request_id=client_request_id,
             )
+            if settings.CONFIGURABLE_WORKFLOW_ENABLED:
+                from app.domains.workflow.engine import WorkflowEngine
+                engine = WorkflowEngine(conn)
+                await engine.record_action(org_id, created_app.id, user_id, "originate")
+                await engine.snapshot(created_app.id, org_id)
             
             # Log audit
             await tx_audit.log(
@@ -114,7 +120,10 @@ class LoanService:
                 data[field] = decrypt_sensitive(data[field], context=f"intake:{field}")
         return data
 
-    async def save_wizard_step(self, app_id: UUID, step: int, form_data: dict, user_id: UUID, org_id: UUID) -> None:
+    async def save_wizard_step(
+        self, app_id: UUID, step: int, form_data: dict, user_id: UUID, org_id: UUID,
+        capture_source: str = "manual_web",
+    ) -> None:
         async with get_transaction() as conn:
             tx_repo = LoanRepository(conn)
             tx_audit = AuditService(conn)
@@ -290,3 +299,20 @@ class LoanService:
                     source=source,
                     notes=f"Updated {len(changed_fields)} field(s) in intake step {step}",
                 )
+                # Provenance is an additive sidecar and never changes an officer-entered value.
+                # It activates with Phase 1 so default-off deployments retain identical writes.
+                from app.config import settings
+                if settings.CBS_INTEGRATION_ENABLED:
+                    from app.domains.core_banking.repository import CoreBankingRepository
+                    if capture_source not in {"manual_web", "manual_android", "ocr"}:
+                        raise DomainException("Invalid field capture source", 422)
+                    metadata_repo = CoreBankingRepository(conn)
+                    for field in changed_fields:
+                        await metadata_repo.upsert_field_metadata(
+                            org_id=org_id,
+                            entity_type="loan_application",
+                            entity_id=app_id,
+                            field_name=field,
+                            source=capture_source,
+                            captured_by=user_id,
+                        )
