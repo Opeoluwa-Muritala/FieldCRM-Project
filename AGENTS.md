@@ -32,6 +32,7 @@ This document covers the FastAPI/Jinja2 web application and shared backend. Andr
 ## Products
 
 - [implemented] Product catalog, limits, tenor, repayment frequency, basic guarantor/collateral requirements, document requirements, and product stage lists.
+- [implemented] Configuration Admin has a dedicated product page where working-draft products can be added, opened, and edited without exposing published versions to in-place mutation.
 - [flagged off by default] `loan_products.cbs_enabled` opts an individual product into CBS authority only when the deployment CBS flag is also enabled.
 - [flagged off by default] Phase 4 (`CONFIGURABLE_PRODUCTS_ENABLED=false`) provides draft-bound admin product definitions for rules, sections, checks, documents, SLA, workflow, approval limits, CBS applicability, and effective publication.
 
@@ -39,6 +40,7 @@ This document covers the FastAPI/Jinja2 web application and shared backend. Andr
 
 - [implemented] Existing code-defined web origination, business, employment, financial, guarantor, collateral, document, GPS/visit, recommendation, review-comment, and exception-reason flows remain supported.
 - [implemented] Phase 4 persists required/optional/hidden sections and dynamic text, number, currency, date, dropdown, checkbox, yes/no, photo, file, signature, and GPS fields with conditional visibility, validation, help text, a generic web renderer, and shared versioned API definitions.
+- [implemented] Configuration Admin has separate draft-bound form-field and document-checklist editors; validation patterns are selected from a server allowlist and tenant/version ownership is derived server-side.
 - [implemented] Phase 2 customer creation validates identity fields server-side and stops before save on probable duplicates unless a typed override reason is supplied.
 
 ## Workflow
@@ -62,7 +64,7 @@ This document covers the FastAPI/Jinja2 web application and shared backend. Andr
 
 - [flagged off by default] External Applicant Portal/customer self-service is unavailable to normal deployments.
 - [flagged off by default] CBS integration is controlled by `CBS_INTEGRATION_ENABLED=false` plus a per-product flag.
-- [flagged off by default] Phase 3 versions switches for external portal, OCR, visits, GPS, guarantors, collateral, bureau modes, CBS, manual repayments/schedules, PAR, collections, committee/legal/ED/MD/audit stages, messaging, push, and offline mode. Effective flags feed backend dependency enforcement, web context, and stable mobile configuration APIs; CBS is enforced in both its backend routes and web presentation.
+- [implemented] Phase 3 versions switches for the operational workspace, external portal, OCR, visits, GPS, guarantors, collateral, bureau modes, CBS, manual repayments/schedules, PAR, collections, committee/legal/ED/MD/audit stages, messaging, push, and offline mode. Published flags control both navigation and server routes, including mobile/API actions; existing operational modules retain enabled compatibility defaults while new external-portal and CBS capabilities remain off.
 
 ## Integrations
 
