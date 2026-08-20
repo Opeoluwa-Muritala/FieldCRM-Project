@@ -21,6 +21,16 @@
     </form>
 
     {% if query %}
+    {% if customers %}
+    <h3>Customers ({{ customers|length }})</h3>
+    <div class="queue-cards">
+      {% for customer in customers %}<a class="queue-card" href="/customers/{{ customer.id }}">
+        <div class="queue-card-name">{{ customer.legal_name }}</div>
+        <div class="queue-card-meta">{{ customer.customer_reference }}{% if customer.business_name %} · {{ customer.business_name }}{% endif %}</div>
+        <div class="queue-card-meta">{{ customer.masked_phone }}{% if customer.external_customer_id %} · CBS {{ customer.external_customer_id }}{% endif %}</div>
+      </a>{% endfor %}
+    </div>
+    {% endif %}
     <h3 class="csp-s-8a3504ac885a">Applications ({{ applications|length }})</h3>
     <div class="queue-cards csp-s-293242ee3e22">
         {% for app in applications %}

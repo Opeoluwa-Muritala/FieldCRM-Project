@@ -1,0 +1,29 @@
+{% extends shell %}
+{% block title %}New Customer | FieldCRM{% endblock %}
+{% block page_title %}Create Customer Profile{% endblock %}
+{% block breadcrumb %}Customers &rarr; New{% endblock %}
+{% block content %}
+<section class="page-card">
+  <div class="page-card-header"><div><h2 class="page-card-title">Identity and duplicate check</h2><p class="page-card-subtitle">No customer is saved until probable matches are reviewed.</p></div></div>
+  {% if error %}<div class="alert alert-warning" role="alert">{{ error }}</div>{% endif %}
+  {% if duplicates %}<div class="page-card"><h3>Probable existing customers</h3><ul>{% for match in duplicates %}<li><a href="/customers/{{ match.customer_id }}">{{ match.legal_name }} ({{ match.customer_number }})</a> — {{ match.matched_rules|join(', ')|replace('_',' ') }}</li>{% endfor %}</ul></div>{% endif %}
+  <form method="post" action="/customers/new">
+    <div class="form-grid">
+      <div><label class="field-label">Full legal name *</label><input class="field-input" name="legal_name" maxlength="200" required value="{{ values.legal_name or '' }}"></div>
+      <div><label class="field-label">Date of birth</label><input class="field-input" type="date" name="date_of_birth" value="{{ values.date_of_birth or '' }}"></div>
+      <div><label class="field-label">Phone</label><input class="field-input" name="phone" maxlength="30" value="{{ values.phone or '' }}"></div>
+      <div><label class="field-label">Email</label><input class="field-input" type="email" name="email" maxlength="254" value="{{ values.email or '' }}"></div>
+      <div><label class="field-label">BVN</label><input class="field-input" name="bvn" inputmode="numeric" minlength="11" maxlength="11" value="{{ values.bvn or '' }}"></div>
+      <div><label class="field-label">NIN</label><input class="field-input" name="nin" inputmode="numeric" minlength="11" maxlength="11" value="{{ values.nin or '' }}"></div>
+      <div><label class="field-label">Bank account</label><input class="field-input" name="bank_account" inputmode="numeric" minlength="10" maxlength="10" value="{{ values.bank_account or '' }}"></div>
+      <div><label class="field-label">Bank name</label><input class="field-input" name="bank_name" maxlength="120" value="{{ values.bank_name or '' }}"></div>
+      <div><label class="field-label">Business name</label><input class="field-input" name="business_name" maxlength="200" value="{{ values.business_name or '' }}"></div>
+      <div><label class="field-label">CBS customer ID</label><input class="field-input" name="external_customer_id" maxlength="200" value="{{ values.external_customer_id or '' }}"></div>
+      <div><label class="field-label">CBS provider</label><input class="field-input" name="cbs_provider" maxlength="80" value="{{ values.cbs_provider or '' }}"></div>
+      <div class="form-group-full"><label class="field-label">Residential address</label><textarea class="field-textarea" name="residential_address" maxlength="500">{{ values.residential_address or '' }}</textarea></div>
+      {% if duplicates %}<div class="form-group-full"><label class="field-label">Duplicate override reason *</label><textarea class="field-textarea" name="duplicate_override_reason" minlength="10" maxlength="1000" required>{{ values.duplicate_override_reason or '' }}</textarea></div>{% endif %}
+    </div>
+    <button class="btn btn-primary" type="submit">Check and create customer</button>
+  </form>
+</section>
+{% endblock %}
