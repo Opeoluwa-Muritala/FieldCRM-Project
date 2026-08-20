@@ -392,7 +392,7 @@ async def db_conn(request: Request):
 
 async def verify_runtime_database_role(conn) -> None:
     """Fail closed when an RLS deployment connects as an owner/bypass role."""
-    if _is_sqlite or not settings.RLS_ENFORCED:
+    if _is_sqlite or not (settings.is_production or settings.RLS_ENFORCED):
         return
     role = await conn.fetchrow(
         """
