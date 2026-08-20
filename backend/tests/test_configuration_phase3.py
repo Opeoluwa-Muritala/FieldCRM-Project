@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from starlette.requests import Request
 
 from app.config import settings
+from app.core.config import Settings
 from app.core.exceptions import DomainException
 from app.domains.configuration.access import require_restricted_configuration_access
 from app.domains.configuration.catalog import FEATURE_DEFAULTS, SECTIONS, default_payload
@@ -97,19 +98,55 @@ def test_totp_and_short_lived_verification_token(monkeypatch):
     assert not token_is_valid(verification_token(user_id), uuid4())
 
 
-def test_private_access_gate_is_role_and_network_restricted(monkeypatch):
+def _configuration_request(*, host="localhost", client="127.0.0.1"):
+    return Request({"type": "http", "method": "GET", "path": "/configuration",
+                    "scheme": "http", "server": (host, 8000),
+                    "headers": [(b"host", host.encode("ascii"))], "client": (client, 5000)})
+
+
+def test_configuration_access_gate_is_role_and_localhost_restricted(monkeypatch):
     monkeypatch.setattr(settings, "CONFIGURATION_HUB_ENABLED", True)
-    monkeypatch.setattr(settings, "CONFIGURATION_ADMIN_HOSTS", "config.internal.example")
-    monkeypatch.setattr(settings, "CONFIGURATION_ADMIN_NETWORKS", "10.20.0.0/16")
-    request = Request({"type": "http", "method": "GET", "path": "/configuration",
-                       "scheme": "https", "server": ("config.internal.example", 443),
-                       "headers": [(b"host", b"config.internal.example")], "client": ("203.0.113.9", 5000)})
+    monkeypatch.setattr(settings, "APP_ENV", "development")
+    request = _configuration_request()
     wrong_role = SimpleNamespace(role="system_admin", id=uuid4())
     with pytest.raises(HTTPException) as exc:
         require_restricted_configuration_access(request, wrong_role, require_mfa=False)
     assert exc.value.status_code == 403
     config_admin = SimpleNamespace(role="configuration_admin", id=uuid4())
     require_restricted_configuration_access(request, config_admin, require_mfa=False)
+
+    with pytest.raises(HTTPException) as exc:
+        require_restricted_configuration_access(
+            _configuration_request(host="admin.example", client="203.0.113.9"),
+            config_admin,
+            require_mfa=False,
+        )
+    assert exc.value.status_code == 404
+
+
+def test_configuration_hub_is_rejected_in_production(monkeypatch):
+    monkeypatch.setattr(settings, "CONFIGURATION_HUB_ENABLED", True)
+    monkeypatch.setattr(settings, "APP_ENV", "production")
+    config_admin = SimpleNamespace(role="configuration_admin", id=uuid4())
+    with pytest.raises(HTTPException) as exc:
+        require_restricted_configuration_access(_configuration_request(), config_admin, require_mfa=False)
+    assert exc.value.status_code == 404
+
+    key = "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
+    with pytest.raises(ValueError, match="localhost-only"):
+        Settings(
+            APP_ENV="production",
+            DATABASE_URL="postgresql://fieldcrm_app:secret@example-pooler.neon.tech/neondb",
+            JWT_SECRET_KEY="a-fixed-production-secret-that-is-long-enough",
+            CORS_ORIGINS="https://fieldcrm.example",
+            TRUSTED_HOSTS="fieldcrm.example",
+            APP_BASE_URL="https://fieldcrm.example",
+            RATE_LIMIT_REDIS_URL="rediss://redis.example/0",
+            CACHE_REDIS_URL="rediss://redis.example/0",
+            FIELD_ENCRYPTION_KEY=key,
+            FIELD_LOOKUP_KEY=key,
+            CONFIGURATION_HUB_ENABLED=True,
+        )
 
 
 def test_phase3_migration_is_reversible_immutable_and_effective_dated():

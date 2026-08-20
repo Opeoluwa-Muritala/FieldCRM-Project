@@ -78,7 +78,7 @@ It does not yet contain the requested product/configuration sections: Organisati
 
 | Requirement | Status | Evidence / gap |
 |---|---|---|
-| Restricted configuration portal with LAN/VPN/private-host, MFA, config-admin role | EXISTS | Separate `/configuration` control plane is gated by `CONFIGURATION_HUB_ENABLED`, the dedicated `configuration_admin` role, validated private host/network allowlists, and encrypted TOTP with a 15-minute step-up cookie. It is not part of System Admin. |
+| Restricted configuration portal with localhost-only access, MFA, config-admin role | EXISTS | Separate `/configuration` control plane is unavailable in production and gated locally by `CONFIGURATION_HUB_ENABLED`, loopback host/client checks, the dedicated `configuration_admin` role, and encrypted TOTP with a 15-minute step-up cookie. It is not part of System Admin. |
 | Split System Admin and Configuration Admin | EXISTS | System Admin retains users/branches/account controls and is explicitly forbidden from granting/changing Configuration Admin access; configuration-wide controls live in the separate domain and role. |
 | Centrally managed feature switches affecting validation/UI/API | EXISTS | The published version carries every required switch; `/api/v1/config/mobile` and the backward-compatible mobile config expose them. Effective flags enter every Jinja context, dependency validation blocks invalid combinations, and CBS is a concrete backend/web enforcement path. |
 | Internal-only default; external applicant portal OFF | EXISTS | There is no customer application/self-service route. `backend/tests/test_customer_surfaces_removed.py` asserts removal. `shared/public_home.html` is informational rather than an applicant portal. Do not rebuild an external portal. |

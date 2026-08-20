@@ -165,8 +165,6 @@ class Settings(BaseSettings):
     CONFIGURABLE_PRODUCTS_ENABLED: bool = os.getenv("CONFIGURABLE_PRODUCTS_ENABLED", "false").lower() in ("true", "1", "yes")
     CONFIGURABLE_WORKFLOW_ENABLED: bool = os.getenv("CONFIGURABLE_WORKFLOW_ENABLED", "false").lower() in ("true", "1", "yes")
     OPERATIONS_UI_ENABLED: bool = os.getenv("OPERATIONS_UI_ENABLED", "false").lower() in ("true", "1", "yes")
-    CONFIGURATION_ADMIN_HOSTS: str = os.getenv("CONFIGURATION_ADMIN_HOSTS", "")
-    CONFIGURATION_ADMIN_NETWORKS: str = os.getenv("CONFIGURATION_ADMIN_NETWORKS", "")
 
     @property
     def VERIFICATION_ENABLED(self) -> bool:
@@ -306,10 +304,10 @@ class Settings(BaseSettings):
         if self.CUSTOMER_IDENTITY_ENABLED and (not self.FIELD_ENCRYPTION_KEY or not self.FIELD_LOOKUP_KEY):
             raise ValueError("Customer identity requires FIELD_ENCRYPTION_KEY and FIELD_LOOKUP_KEY.")
         if self.CONFIGURATION_HUB_ENABLED:
+            if self.is_production:
+                raise ValueError("The Configuration Hub is localhost-only and cannot be enabled in production.")
             if not self.FIELD_ENCRYPTION_KEY:
                 raise ValueError("The Configuration Hub requires FIELD_ENCRYPTION_KEY for MFA secrets.")
-            if self.is_production and not (self.CONFIGURATION_ADMIN_HOSTS.strip() or self.CONFIGURATION_ADMIN_NETWORKS.strip()):
-                raise ValueError("Production Configuration Hub access requires a private host or network allowlist.")
         return self
 
 settings = Settings()
