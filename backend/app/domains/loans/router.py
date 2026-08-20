@@ -210,6 +210,8 @@ async def render_dashboard(
     }.get(role, role)
 
     # Roles with dedicated dashboard routes
+    if role == "configuration_admin":
+        return RedirectResponse(url="/configuration", status_code=status.HTTP_303_SEE_OTHER)
     if role in ("crm", "head_crm"):
         return RedirectResponse(url="/crm-dashboard", status_code=status.HTTP_303_SEE_OTHER)
     if role == "ed":
