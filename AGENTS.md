@@ -79,6 +79,7 @@ This document covers the FastAPI/Jinja2 web application and shared backend. Andr
 - [planned — phase 6] My Work task engine, role-focused navigation, central exceptions, categorized notes, and notification coverage.
 - [planned — phase 7] CBS-driven collections cases, actions, promise-to-pay records, and DPD queues.
 - [implemented] Phase 2 Customer 360 aggregates current applications/loans, CBS exposure, repayments, visits, documents, guarantors, collateral, credit evidence, communications, and the customer/application activity timeline.
+- [implemented] The Current Loans application overview is a tenant-authorized, read-only dossier with a persistent summary header, feature-aware section links, curated officer-provided fields, readiness, protected document previews, recent activity, and CBS financial context.
 
 ## SLA
 

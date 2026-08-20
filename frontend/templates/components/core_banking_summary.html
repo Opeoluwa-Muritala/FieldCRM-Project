@@ -17,10 +17,10 @@
   {% endif %}
   {% if cbs_data %}
   <div class="overview-fields">
-    <div class="overview-field"><span>Outstanding balance</span><strong>&#8358;{{ "{:,.2f}".format(cbs_data.outstanding_balance) }} — CBS</strong></div>
-    <div class="overview-field"><span>Arrears</span><strong>&#8358;{{ "{:,.2f}".format(cbs_data.arrears_amount) }} — CBS</strong></div>
-    <div class="overview-field"><span>Days past due</span><strong>{{ cbs_data.days_past_due }} — CBS</strong></div>
-    <div class="overview-field"><span>Loan status</span><strong>{{ cbs_data.loan_status|replace('_',' ')|title }} — CBS</strong></div>
+    <div class="overview-field"><span>Outstanding balance</span><strong>&#8358;{{ "{:,.2f}".format(cbs_data.outstanding_balance or 0) }} &mdash; CBS</strong></div>
+    <div class="overview-field"><span>Arrears</span><strong>&#8358;{{ "{:,.2f}".format(cbs_data.arrears_amount or 0) }} &mdash; CBS</strong></div>
+    <div class="overview-field"><span>Days past due</span><strong>{{ cbs_data.days_past_due or 0 }} &mdash; CBS</strong></div>
+    <div class="overview-field"><span>Loan status</span><strong>{{ (cbs_data.loan_status or 'unknown')|replace('_',' ')|title }} &mdash; CBS</strong></div>
   </div>
   {% else %}
   <p class="page-card-subtitle">No CBS snapshot is available. Refresh to import the mapped loan.</p>
