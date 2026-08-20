@@ -1,37 +1,10 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Loan Products | Configuration Control Centre</title>
-    <link rel="stylesheet" href="/static/css/dashboard.css">
-    <link rel="stylesheet" href="/static/css/configuration-hub.css?v=20260820">
-    <script defer src="/static/js/csrf.js?v=20260815"></script>
-</head>
-<body class="config-body">
-<a class="skip-link" href="#product-content">Skip to product configuration</a>
-<div class="config-shell">
-    <aside class="config-sidebar">
-        <div class="config-brand"><span class="config-brand-mark" aria-hidden="true">FC</span><div><strong>FieldCRM</strong><span>Control Centre</span></div></div>
-        <div class="environment-card"><span class="environment-dot" aria-hidden="true"></span><div><strong>Local workspace</strong><span>Unavailable in production</span></div></div>
-        <nav class="config-nav" aria-label="Available configuration tools">
-            <p class="config-nav-label">Available tools</p>
-            <a href="/configuration" class="config-nav-link"><span>Overview</span></a>
-            <a href="/configuration/products" class="config-nav-link is-active" aria-current="page"><span>Loan products</span><small>Configure</small></a>
-            <a href="/configuration#features" class="config-nav-link"><span>Feature controls</span></a>
-            <a href="/configuration#version-history" class="config-nav-link"><span>Version history</span></a>
-        </nav>
-        <div class="config-sidebar-footer">
-            <div class="config-user"><span class="config-avatar" aria-hidden="true">{{ (current_user.full_name or current_user.email)[0]|upper }}</span><div><strong>{{ current_user.full_name or 'Configuration Admin' }}</strong><span>{{ current_user.email }}</span></div></div>
-            <a class="config-exit" href="/logout">Exit Control Centre</a>
-        </div>
-    </aside>
-
-    <main class="config-main" id="product-content">
-        <header class="config-page-header">
-            <div><p class="config-kicker">Product configuration</p><h1>Loan products</h1><p>Define a product in a working draft. It is not available to users until the configuration version is validated and published.</p></div>
-            <div class="header-status"><span class="status-chip status-chip-secure">MFA verified</span><span class="status-chip">Localhost only</span></div>
-        </header>
+{% extends "configuration/base.html" %}
+{% set config_page = "products" %}
+{% block title %}Product Configuration{% endblock %}
+{% block kicker %}Product configuration{% endblock %}
+{% block heading %}Loan products{% endblock %}
+{% block description %}Define product rules in a working draft. Products become available only after that configuration version is validated and published.{% endblock %}
+{% block content %}
 
         {% set drafts = versions|selectattr('status', 'equalto', 'draft')|list %}
         {% if drafts %}
@@ -81,6 +54,8 @@
         <section class="empty-action"><div><span class="empty-action-icon" aria-hidden="true">1</span><div><h2>Create a configuration draft first</h2><p>Products can only be added to a working draft, so effective settings remain unchanged while you work.</p></div></div><a class="config-button config-button-primary" href="/configuration">Go to overview</a></section>
         {% endif %}
 
+        {% if draft_products %}<section class="config-panel" aria-labelledby="draft-products-heading"><div class="panel-heading"><div><p class="config-kicker">Working definitions</p><h2 id="draft-products-heading">Draft products</h2><p>Select a product to edit its rules, form fields, or document checklist.</p></div></div><div class="product-cards">{% for product in draft_products %}<a class="product-card product-card-link" href="/configuration/products/{{ product.code }}/edit"><div class="product-card-header"><div><span>Config v{{ product.version_number }}</span><h3>{{ product.name }}</h3></div><span class="status-chip status-chip-draft">Edit</span></div><dl><div><dt>Amount range</dt><dd>{{ product.min_amount }} &ndash; {{ product.max_amount }}</dd></div><div><dt>Tenor</dt><dd>{{ product.min_tenor_months }} &ndash; {{ product.max_tenor_months }} months</dd></div></dl></a>{% endfor %}</div></section>{% endif %}
+
         <section class="config-panel" aria-labelledby="effective-products-heading">
             <div class="panel-heading"><div><p class="config-kicker">Currently available</p><h2 id="effective-products-heading">Effective products</h2><p>These products come from published configuration and can be selected by staff.</p></div></div>
             <div class="product-cards">
@@ -89,7 +64,4 @@
                 {% else %}<div class="empty-state"><strong>No effective products</strong><p>Add a product to a draft, then validate and publish that configuration version.</p></div>{% endfor %}
             </div>
         </section>
-    </main>
-</div>
-</body>
-</html>
+{% endblock %}
