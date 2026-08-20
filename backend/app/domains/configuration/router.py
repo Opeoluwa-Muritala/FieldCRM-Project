@@ -11,7 +11,7 @@ from app.core.dependencies import authenticated_db_conn, get_current_user
 from app.core.field_encryption import decrypt_sensitive, encrypt_sensitive
 from app.core.templates import create_templates
 from app.domains.configuration.access import require_restricted_configuration_access
-from app.domains.configuration.catalog import FEATURE_DEFAULTS, SECTIONS
+from app.domains.configuration.catalog import FEATURE_DEFAULTS, FEATURE_GROUPS
 from app.domains.configuration.mfa import new_secret, qr_code_data_url, token_is_valid, verification_token, verify_totp
 from app.domains.configuration.repository import ConfigurationRepository
 from app.domains.configuration.schemas import DraftCreate, DraftPatch, MfaCode
@@ -84,9 +84,15 @@ async def hub(request: Request, current_user=Depends(get_current_user), conn=Dep
     repo = ConfigurationRepository(conn)
     service = ConfigurationService(repo)
     payload, current = await service.effective(current_user.org_id)
+    versions = [_row(row) for row in await repo.list(current_user.org_id)]
+    effective_features = {**FEATURE_DEFAULTS, **payload.get("features", {})}
+    active_draft = next((version for version in versions if version["status"] == "draft"), None)
     return templates.TemplateResponse(request, "configuration/hub.html", {
-        "current_user": current_user, "sections": SECTIONS, "feature_defaults": FEATURE_DEFAULTS,
-        "effective": payload, "current": _row(current), "versions": [_row(row) for row in await repo.list(current_user.org_id)],
+        "current_user": current_user, "feature_groups": FEATURE_GROUPS,
+        "effective": payload, "effective_features": effective_features, "current": _row(current),
+        "versions": versions, "active_draft": active_draft,
+        "enabled_feature_count": sum(bool(value) for value in effective_features.values()),
+        "pending_approval_count": sum(version["status"] == "pending_approval" for version in versions),
     }, headers={"Cache-Control": "no-store"})
 
 

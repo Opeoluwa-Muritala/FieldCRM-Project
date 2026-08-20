@@ -1,4 +1,95 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Products — Configuration Hub</title><link rel="stylesheet" href="/static/css/dashboard.css"><script defer src="/static/js/csrf.js?v=20260815"></script></head><body>
-<header class="page-header"><div><p class="eyebrow">Configuration Admin Hub</p><h1>Products, forms and documents</h1><p>Definitions remain isolated in a draft until its version is validated and published.</p></div><a class="btn btn-secondary" href="/configuration">Control Centre</a></header><main class="page-content">
-<section class="page-card"><h2>Add complete product definition</h2><form method="post" action="/configuration/products"><label>Draft version<select class="form-input" name="version_id" required>{% for version in versions if version.status == 'draft' %}<option value="{{ version.id }}">Config v{{ version.version_number }}</option>{% endfor %}</select></label><label>Validated JSON definition<textarea class="form-input" name="definition_json" rows="18" required placeholder='{"code":"sme","name":"SME Loan",...}'></textarea></label><button class="btn btn-primary" type="submit">Add to draft</button></form></section>
-<section class="page-card"><h2>Effective products</h2><table><thead><tr><th>Code</th><th>Name</th><th>Amount</th><th>Tenor</th></tr></thead><tbody>{% for product in products %}<tr><td>{{ product.code }}</td><td>{{ product.name }}</td><td>{{ product.min_amount }}–{{ product.max_amount }}</td><td>{{ product.min_tenor_months }}–{{ product.max_tenor_months }} months</td></tr>{% endfor %}</tbody></table></section></main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Loan Products | Configuration Control Centre</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/configuration-hub.css?v=20260820">
+    <script defer src="/static/js/csrf.js?v=20260815"></script>
+</head>
+<body class="config-body">
+<a class="skip-link" href="#product-content">Skip to product configuration</a>
+<div class="config-shell">
+    <aside class="config-sidebar">
+        <div class="config-brand"><span class="config-brand-mark" aria-hidden="true">FC</span><div><strong>FieldCRM</strong><span>Control Centre</span></div></div>
+        <div class="environment-card"><span class="environment-dot" aria-hidden="true"></span><div><strong>Local workspace</strong><span>Unavailable in production</span></div></div>
+        <nav class="config-nav" aria-label="Available configuration tools">
+            <p class="config-nav-label">Available tools</p>
+            <a href="/configuration" class="config-nav-link"><span>Overview</span></a>
+            <a href="/configuration/products" class="config-nav-link is-active" aria-current="page"><span>Loan products</span><small>Configure</small></a>
+            <a href="/configuration#features" class="config-nav-link"><span>Feature controls</span></a>
+            <a href="/configuration#version-history" class="config-nav-link"><span>Version history</span></a>
+        </nav>
+        <div class="config-sidebar-footer">
+            <div class="config-user"><span class="config-avatar" aria-hidden="true">{{ (current_user.full_name or current_user.email)[0]|upper }}</span><div><strong>{{ current_user.full_name or 'Configuration Admin' }}</strong><span>{{ current_user.email }}</span></div></div>
+            <a class="config-exit" href="/logout">Exit Control Centre</a>
+        </div>
+    </aside>
+
+    <main class="config-main" id="product-content">
+        <header class="config-page-header">
+            <div><p class="config-kicker">Product configuration</p><h1>Loan products</h1><p>Define a product in a working draft. It is not available to users until the configuration version is validated and published.</p></div>
+            <div class="header-status"><span class="status-chip status-chip-secure">MFA verified</span><span class="status-chip">Localhost only</span></div>
+        </header>
+
+        {% set drafts = versions|selectattr('status', 'equalto', 'draft')|list %}
+        {% if drafts %}
+        <section class="config-panel" aria-labelledby="new-product-heading">
+            <div class="panel-heading"><div><p class="config-kicker">Add to a draft</p><h2 id="new-product-heading">Create a loan product</h2><p>Start with the rules used to validate amounts, tenor, routing, and operational requirements.</p></div></div>
+            <form class="product-form" method="post" action="/configuration/products">
+                <fieldset>
+                    <legend>Product identity</legend>
+                    <div class="product-form-grid">
+                        <label><span>Working draft</span><select class="config-input" name="version_id" required>{% for version in drafts %}<option value="{{ version.id }}">Config v{{ version.version_number }}</option>{% endfor %}</select></label>
+                        <label><span>Product code</span><input class="config-input" name="code" pattern="[a-z][a-z0-9_]+" minlength="2" maxlength="50" placeholder="sme_working_capital" required><small>Lowercase letters, numbers, and underscores.</small></label>
+                        <label><span>Product name</span><input class="config-input" name="name" minlength="2" maxlength="120" placeholder="SME Working Capital" required></label>
+                        <label><span>Product family</span><input class="config-input" name="family" minlength="2" maxlength="80" placeholder="Business loans" required></label>
+                        <label><span>Customer segment</span><input class="config-input" name="customer_segment" minlength="2" maxlength="80" placeholder="Small business" required></label>
+                        <label class="product-field-wide"><span>Description <small>Optional</small></span><textarea class="config-input" name="description" maxlength="1000" rows="3" placeholder="When staff should select this product"></textarea></label>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Financial boundaries</legend>
+                    <div class="product-form-grid product-form-grid-four">
+                        <label><span>Minimum amount</span><input class="config-input" type="number" name="min_amount" min="0" step="0.01" required></label>
+                        <label><span>Maximum amount</span><input class="config-input" type="number" name="max_amount" min="0.01" step="0.01" required></label>
+                        <label><span>Minimum tenor (months)</span><input class="config-input" type="number" name="min_tenor_months" min="1" max="360" required></label>
+                        <label><span>Maximum tenor (months)</span><input class="config-input" type="number" name="max_tenor_months" min="1" max="360" required></label>
+                        <label><span>Repayment frequency</span><select class="config-input" name="repayment_frequency" required><option value="">Select frequency</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="biweekly">Every two weeks</option><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="bullet">Bullet</option></select></label>
+                        <label><span>SLA target (hours)</span><input class="config-input" type="number" name="sla_hours" value="48" min="1" max="8760" required></label>
+                        <label><span>Required guarantors</span><input class="config-input" type="number" name="guarantor_count" value="0" min="0" max="20" required></label>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Workflow and operational rules</legend>
+                    <div class="product-form-grid">
+                        <label class="product-field-wide"><span>Workflow stages</span><input class="config-input" name="workflow_stages" maxlength="500" placeholder="account_officer, branch_manager, credit_analyst" required><small>Enter stage keys in order, separated by commas.</small></label>
+                    </div>
+                    <div class="product-checks">
+                        <label><input type="checkbox" name="collateral_required" value="true"><span><strong>Collateral required</strong><small>Applications must satisfy collateral rules before submission.</small></span></label>
+                        <label><input type="checkbox" name="cbs_enabled" value="true"><span><strong>Core Banking applies</strong><small>CBS becomes authoritative for supported financial fields.</small></span></label>
+                    </div>
+                </fieldset>
+
+                <div class="form-submit-bar"><div><strong>Creates a draft product only</strong><span>Validate and publish the selected configuration version to make it effective.</span></div><button class="config-button config-button-primary" type="submit">Add product to draft</button></div>
+            </form>
+        </section>
+        {% else %}
+        <section class="empty-action"><div><span class="empty-action-icon" aria-hidden="true">1</span><div><h2>Create a configuration draft first</h2><p>Products can only be added to a working draft, so effective settings remain unchanged while you work.</p></div></div><a class="config-button config-button-primary" href="/configuration">Go to overview</a></section>
+        {% endif %}
+
+        <section class="config-panel" aria-labelledby="effective-products-heading">
+            <div class="panel-heading"><div><p class="config-kicker">Currently available</p><h2 id="effective-products-heading">Effective products</h2><p>These products come from published configuration and can be selected by staff.</p></div></div>
+            <div class="product-cards">
+                {% for product in products %}
+                <article class="product-card"><div class="product-card-header"><div><span>{{ product.code }}</span><h3>{{ product.name }}</h3></div><span class="status-chip status-chip-published">Effective</span></div><dl><div><dt>Amount range</dt><dd>{{ product.min_amount }} &ndash; {{ product.max_amount }}</dd></div><div><dt>Tenor</dt><dd>{{ product.min_tenor_months }} &ndash; {{ product.max_tenor_months }} months</dd></div><div><dt>Repayment</dt><dd>{{ product.repayment_frequency|replace('_', ' ')|title }}</dd></div><div><dt>CBS</dt><dd>{{ 'Enabled' if product.cbs_enabled else 'Not enabled' }}</dd></div></dl></article>
+                {% else %}<div class="empty-state"><strong>No effective products</strong><p>Add a product to a draft, then validate and publish that configuration version.</p></div>{% endfor %}
+            </div>
+        </section>
+    </main>
+</div>
+</body>
+</html>
