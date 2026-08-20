@@ -4,7 +4,7 @@ import hashlib
 import hmac
 import secrets
 from typing import Any, Union
-from jose import jwt
+import jwt
 from passlib.context import CryptContext
 from app.config import settings
 

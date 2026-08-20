@@ -8,21 +8,21 @@ pydantic[email]==2.13.4
 jinja2==3.1.6
 python-multipart==0.0.32
 passlib[bcrypt]==1.7.4
-python-jose[cryptography]==3.5.0
+PyJWT[crypto]==2.13.0
 cryptography==50.0.0
 alembic==1.13.1
 httpx==0.28.1
 pydantic-settings==2.15.0
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 qrcode==8.2
 # Document OCR
-pdfplumber==0.11.0
+pdfplumber==0.11.10
+pdfminer-six==20260107
 pytesseract==0.3.10
 pdf2image==1.17.0
-Pillow==10.0.0
+Pillow==12.3.0
 # Cloud storage
 cloudinary==1.40.0
 redis[hiredis]==5.0.0
 # PDF generation
-weasyprint==62.0
 reportlab==4.4.5

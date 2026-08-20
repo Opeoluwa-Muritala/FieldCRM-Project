@@ -9,7 +9,7 @@ import time
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException
-from jose import jwt
+import jwt
 import qrcode
 from qrcode.constants import ERROR_CORRECT_M
 

@@ -30,26 +30,8 @@ def _restricted_pdf_url_fetcher(url: str, *args, **kwargs):
     return default_url_fetcher(url, *args, **kwargs)
 
 def _to_pdf(html: str) -> bytes:
-    """Render the supplied HTML and its CSS into real PDF bytes."""
-    try:
-        from weasyprint import HTML
-        project_root = Path(__file__).resolve().parents[3]
-
-        return HTML(
-            string=html,
-            base_url=str(project_root),
-            url_fetcher=_restricted_pdf_url_fetcher,
-        ).write_pdf()
-    except Exception:
-        # WeasyPrint depends on native Pango/Cairo libraries that are not
-        # available in every serverless runtime (notably Vercel). Keep document
-        # generation operational with a small, standards-compliant text PDF.
-        # The full HTML renderer remains the preferred path where available.
-        import logging
-        logging.getLogger(__name__).warning(
-            "WeasyPrint unavailable; using plain-text PDF fallback", exc_info=True
-        )
-        return _reportlab_pdf(html)
+    """Render generated markup with the pure-Python, serverless-safe renderer."""
+    return _reportlab_pdf(html)
 
 
 def _reportlab_pdf(html: str) -> bytes:

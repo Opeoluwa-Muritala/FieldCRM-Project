@@ -8,7 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
-from jose import jwt
+import jwt
 
 from app.config import settings
 from app.core.database import db_conn
