@@ -41,6 +41,7 @@ MIGRATION_FILES = [
     "045_configurable_products_forms.sql",
     "046_configurable_workflow_permissions.sql",
     "047_operational_work.sql",
+    "048_branch_manager_workflow_rls.sql",
 ]
 
 
