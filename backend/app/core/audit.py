@@ -1,6 +1,9 @@
 from app.core.sql import load_sql
 from uuid import UUID
 from app.core.loan_authorization import canonical_role
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _as_uuid(value):
@@ -169,11 +172,21 @@ class AuditService:
         from app.domains.notifications.repository import NotificationRepository
         from app.domains.notifications.service import NotificationService
 
-        await NotificationService(NotificationRepository(self.conn)).create(
-            user_id=recipient_id,
-            org_id=org_id,
-            application_id=application_id,
-            title=title,
-            message=message,
-            notification_type=notification_type,
-        )
+        # Notifications are an auxiliary side effect of the audited workflow
+        # transition.  A policy/configuration problem must not roll back the
+        # transition itself or turn a successful action into a 500 response.
+        # The repository remains tenant-scoped; failures are logged for repair.
+        try:
+            await NotificationService(NotificationRepository(self.conn)).create(
+                user_id=recipient_id,
+                org_id=org_id,
+                application_id=application_id,
+                title=title,
+                message=message,
+                notification_type=notification_type,
+            )
+        except Exception:
+            logger.exception(
+                "Workflow notification creation failed",
+                extra={"application_id": str(application_id), "org_id": str(org_id), "action": action},
+            )

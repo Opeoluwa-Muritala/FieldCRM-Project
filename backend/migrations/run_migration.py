@@ -46,6 +46,7 @@ MIGRATION_FILES = [
     "050_supervisor_scope.sql",
     "051_supervisor_mutation_scope.sql",
     "052_workflow_notification_scope.sql",
+    "053_notification_insert_runtime_scope.sql",
 ]
 
 
