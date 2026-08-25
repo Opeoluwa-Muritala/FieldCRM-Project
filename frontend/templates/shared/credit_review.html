@@ -303,15 +303,15 @@
                     <label class="field-label">Risk Verdict Decision <span class="required">*</span></label>
                     <div class="pill-radio-group">
                         <div class="pill-radio-btn">
-                            <input type="radio" name="recommendation_decision" value="Recommend Approval" id="rec_approve" checked>
+                            <input type="radio" name="recommendation_choice" value="Recommend Approval" id="rec_approve" checked>
                             <label for="rec_approve">Recommend Approval</label>
                         </div>
                         <div class="pill-radio-btn">
-                            <input type="radio" name="recommendation_decision" value="Recommend Rejection" id="rec_reject">
+                            <input type="radio" name="recommendation_choice" value="Recommend Rejection" id="rec_reject">
                             <label for="rec_reject">Recommend Rejection</label>
                         </div>
                         <div class="pill-radio-btn">
-                            <input type="radio" name="recommendation_decision" value="Return for Correction" id="rec_return">
+                            <input type="radio" name="recommendation_choice" value="Return for Correction" id="rec_return">
                             <label for="rec_return">Return for Correction</label>
                         </div>
                     </div>
@@ -327,7 +327,11 @@
         <!-- Sticky Bottom actions bar -->
         <div class="audit-action-panel csp-s-de404aec8115">
             <a href="/applications/{{ app_id }}" class="btn-ghost-link">&larr; Back to Profile</a>
-            <button type="submit" class="btn-primary-filled">Record underwriting recommendation</button>
+            <input type="hidden" name="recommendation_decision" id="recommendationDecision" value="Recommend Approval">
+            <div class="action-button-group">
+                <button type="submit" class="btn-primary-filled" onclick="setRecommendation('Recommend Approval')">Record recommendation &amp; move up</button>
+                <button type="submit" class="btn-secondary" onclick="setRecommendation('Return for Correction')">Return for Correction</button>
+            </div>
         </div>
 
     </form>
@@ -367,8 +371,16 @@
     document.querySelectorAll('[data-review-tab]').forEach((button) => {
         button.addEventListener('click', () => switchReviewTab(button.dataset.reviewTab));
     });
-    document.querySelectorAll('[name="recommendation_decision"]').forEach((radio) => {
-        radio.addEventListener('change', toggleRecommendationNotes);
+    function setRecommendation(value) {
+        document.getElementById('recommendationDecision').value = value;
+        const radio = document.querySelector(`[name="recommendation_choice"][value="${value}"]`);
+        if (radio) radio.checked = true;
+    }
+    document.querySelectorAll('[name="recommendation_choice"]').forEach((radio) => {
+        radio.addEventListener('change', () => {
+            document.getElementById('recommendationDecision').value = radio.value;
+            toggleRecommendationNotes();
+        });
     });
 </script>
 {% endblock %}
