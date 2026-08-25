@@ -97,7 +97,7 @@ visits AS (
     WHERE la.org_id = $1
       AND la.created_by = $2
       AND la.deleted_at IS NULL
-      AND la.stage IN ('intake', 'ocr_review', 'credit_review', 'branch_approval')
+      AND la.stage IN ('intake', 'branch_manager_review', 'branch_supervisor_review', 'credit_analyst_review')
       AND vr.id IS NULL
     ORDER BY la.created_at
     LIMIT 20

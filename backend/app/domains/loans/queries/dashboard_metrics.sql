@@ -22,14 +22,14 @@ SELECT
     COUNT(*) FILTER (
         WHERE $3 = 'branch_manager'
           AND branch_id = (SELECT branch_id FROM users WHERE id = $2)
-          AND stage = 'branch_approval'
+          AND stage = 'branch_manager_review'
     ) AS metric_3,
 
     -- Branch Manager: awaiting credit review (credit_officer role removed)
     COUNT(*) FILTER (
         WHERE $3 = 'branch_manager'
           AND branch_id = (SELECT branch_id FROM users WHERE id = $2)
-          AND stage = 'credit_review'
+          AND stage = 'credit_analyst_review'
     ) AS metric_4,
 
     -- All roles: total active

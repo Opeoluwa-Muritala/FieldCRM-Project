@@ -5,7 +5,7 @@
 SELECT
     COUNT(*) FILTER (
         WHERE credit_officer_id = $2
-          AND stage = 'credit_review'
+          AND stage = 'credit_analyst_review'
     ) AS reviews_due,
     COUNT(*) FILTER (
         WHERE credit_officer_id = $2
@@ -14,7 +14,7 @@ SELECT
     ) AS returned_this_week,
     COUNT(*) FILTER (
         WHERE credit_officer_id = $2
-          AND stage = 'branch_approval'
+          AND stage = 'branch_manager_review'
           AND updated_at::date = CURRENT_DATE
     ) AS reviewed_today,
     (

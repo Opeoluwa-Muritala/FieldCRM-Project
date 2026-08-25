@@ -32,7 +32,7 @@ SELECT
           AND ae.created_at >= NOW() - INTERVAL '24 hours'
     ) AS audit_events_today,
     COUNT(*) FILTER (
-        WHERE stage IN ('branch_approval', 'disbursement_ready')
+        WHERE stage IN ('branch_manager_review', 'branch_supervisor_review', 'credit_analyst_review', 'disbursement_ready')
     ) AS files_at_approval
 FROM loan_applications
 WHERE org_id = $1
