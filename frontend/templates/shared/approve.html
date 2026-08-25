@@ -5,6 +5,8 @@
 {% block page_title %}Approval Readiness Review{% endblock %}
 
 {% block content %}
+{% set reviewer_role = (current_user.role|lower|replace(' ', '_')) if current_user else '' %}
+{% set reviewer_label = {'branch_manager': 'Team Lead', 'team_lead': 'Team Lead', 'branch_supervisor': 'Supervisor'}.get(reviewer_role, reviewer_role|replace('_', ' ')|title) %}
 <div class="app-detail-layout approval-page">
     <aside class="app-detail-sidebar">
         <section class="page-card approval-app-card">
@@ -15,7 +17,7 @@
                 <span>Requested amount</span>
                 <strong>&#8358;{{ '{:,.0f}'.format(app.amount or 0) }}</strong>
             </div>
-            <span class="status-badge needs-review">Team Lead Review</span>
+            <span class="status-badge needs-review">{{ reviewer_label }} Review</span>
         </section>
 
         <section class="page-card">
@@ -44,7 +46,7 @@
     <main class="app-detail-main">
         <section class="page-card approval-intro-card">
             <div class="page-card-header">
-                <span class="approval-eyebrow">Team lead decision desk</span>
+                <span class="approval-eyebrow">{{ reviewer_label }} decision desk</span>
                 <h2 class="page-card-title">Cross-check the submitted application</h2>
                 <p class="page-card-subtitle">Select a form or checklist row to inspect its evidence, then record your concurrence decision.</p>
             </div>
@@ -145,7 +147,7 @@
 
         <section class="page-card approval-decision-card">
             <div class="page-card-header">
-                <h2 class="page-card-title">Manager concurrence</h2>
+                <h2 class="page-card-title">{{ reviewer_label }} concurrence</h2>
                 <p class="page-card-subtitle">Complete both attestations and confirm the recommended amount before forwarding.</p>
             </div>
             <form action="/applications/{{ app_id }}/approve" method="POST" class="approval-decision-form">
@@ -159,7 +161,7 @@
                         <input id="approval-amount" type="number" name="amount" class="field-input" value="{{ app.amount or 0 }}" required>
                     </div>
                     <div class="approval-action-buttons">
-                        <a href="/applications/{{ app_id }}/return?type=officer" class="btn-ghost-link approval-return-button">Return to Relationship Officer</a>
+                        {% if can_return_previous %}<a href="/applications/{{ app_id }}/return" class="btn-ghost-link approval-return-button">Return to {{ return_target_label }}</a>{% endif %}
                         <button type="submit" class="btn-primary-filled" id="approveBtn">Concur &amp; Forward for Review &rarr;</button>
                     </div>
                 </div>
