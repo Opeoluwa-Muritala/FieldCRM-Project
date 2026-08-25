@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Response, Request, HTTPException, status
 from uuid import UUID
 from fastapi.security import OAuth2PasswordRequestForm
-from app.core.database import db_conn
+from app.core.database import get_connection
 from app.domains.auth.repository import AuthRepository
 from app.domains.auth.service import AuthService
 from app.domains.auth.schemas import Token, RefreshRequest, LogoutRequest
@@ -36,7 +36,19 @@ def _set_no_store(response: Response) -> None:
     response.headers["Cache-Control"] = "no-store"
     response.headers["Pragma"] = "no-cache"
 
-def get_auth_service(conn = Depends(db_conn)) -> AuthService:
+async def auth_db_conn():
+    """Connection for token endpoints without transparent-cookie auth.
+
+    Using the compatibility ``db_conn`` here caused ``/refresh`` to rotate a
+    refresh cookie once while resolving this dependency, then a second time
+    in the endpoint itself. Single-use rotation correctly rejected that
+    second request and made refresh appear broken.
+    """
+    async with get_connection() as conn:
+        yield conn
+
+
+def get_auth_service(conn = Depends(auth_db_conn)) -> AuthService:
     repo = AuthRepository(conn)
     return AuthService(repo)
 

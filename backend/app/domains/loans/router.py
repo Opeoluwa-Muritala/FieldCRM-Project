@@ -12,7 +12,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status, Query
 from fastapi.responses import RedirectResponse
 
-from app.core.database import get_connection
+from app.core.database import DatabaseIdentity, database_identity, get_connection
 from app.core.exceptions import DomainException
 from app.domains.loans.repository import LoanRepository
 from app.domains.loans.service import LoanService
@@ -241,7 +241,17 @@ async def render_dashboard(
             role,
         )
         if data is None:
-            data = await DashboardService(None).get_dashboard_data_isolated(current_user)
+            # The isolated loader opens fresh connections; carry the trusted
+            # request identity into those connections so RLS returns the
+            # user's tenant-scoped data instead of an empty result.
+            identity = DatabaseIdentity(
+                org_id=str(current_user.org_id), user_id=str(current_user.id),
+                role=canonical_role(current_user.role),
+                branch_id=str(current_user.branch_id) if getattr(current_user, "branch_id", None) else None,
+                request_id=request.headers.get("x-request-id"),
+            )
+            with database_identity(identity):
+                data = await DashboardService(None).get_dashboard_data_isolated(current_user)
             await cache_dashboard_data(cache_key, data)
 
         if role in ("account_officer", "loan_officer"):
@@ -383,7 +393,6 @@ async def render_ocr_review_queue(
     )
     return templates.TemplateResponse(request, "loan_officer/ocr_review_queue.html", ctx)
 
-@router.get("/awaiting-me")
 @router.get("/document-work-queue")
 async def render_document_work_queue(request: Request, conn=Depends(db_conn),
                                      current_user=Depends(RoleChecker(["Account Officer", "Credit Analyst"]))):

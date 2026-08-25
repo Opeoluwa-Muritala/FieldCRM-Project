@@ -50,3 +50,23 @@ def test_team_lead_tabs_render_non_actionable_branch_data():
     assert "Branch Applications" in pipeline
     assert "Other Branch Files" in awaiting
     assert "Recent Branch Visits" in signoffs
+
+
+def test_dashboard_queries_use_authoritative_workflow_stage_names():
+    root = __import__("pathlib").Path(__file__).resolve().parents[1]
+    query_dir = root / "app" / "domains" / "loans" / "queries"
+    for name in ("dashboard_metrics.sql", "dashboard_credit_officer.sql", "dashboard_auditor.sql", "dashboard_loan_officer_bundle.sql"):
+        sql = (query_dir / name).read_text(encoding="utf-8")
+        assert "branch_approval" not in sql
+        assert "stage = 'credit_review'" not in sql
+    visits = (root / "app" / "domains" / "visitation" / "queries" / "list_visits_due_today.sql").read_text(encoding="utf-8")
+    assert "branch_approval" not in visits
+
+
+def test_dashboard_loader_installs_rls_identity_for_isolated_connections():
+    source = (
+        __import__("pathlib").Path(__file__).resolve().parents[1]
+        / "app" / "domains" / "loans" / "router.py"
+    ).read_text(encoding="utf-8")
+    assert "with database_identity(identity):" in source
+    assert "get_dashboard_data_isolated(current_user)" in source

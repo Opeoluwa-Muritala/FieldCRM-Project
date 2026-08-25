@@ -163,7 +163,9 @@ async def get_cached_dashboard_data(org_id: object, user_id: object, role: str):
         _digest(identifier) + "-" + version
         for (_, identifier), version in zip(scopes, versions)
     )
-    key = f"{_PREFIX}:dashboard:v2:{scope_token}:{role}"
+    # v3 invalidates entries created before dashboard reads consistently
+    # installed the request's RLS identity.
+    key = f"{_PREFIX}:dashboard:v3:{scope_token}:{role}"
     return key, await get_json(key)
 
 
