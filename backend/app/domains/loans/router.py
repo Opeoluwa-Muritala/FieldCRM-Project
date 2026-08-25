@@ -2205,7 +2205,7 @@ async def process_credit_review(
     # keeps the hand-off visible instead of sending every outcome through the
     # generic dashboard redirect.
     if stage_val == "crm_review":
-        next_url = "/dashboard?handoff=crm_review"
+        next_url = f"/applications/{application_id}"
     elif stage_val == "returned":
         next_url = "/dashboard?status=returned"
     else:
