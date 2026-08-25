@@ -2201,16 +2201,9 @@ async def process_credit_review(
         actor_role=current_user.role,
         reason=recommendation_notes
     )
-    # Return the reviewer to the queue that owns the resulting stage. This
-    # keeps the hand-off visible instead of sending every outcome through the
-    # generic dashboard redirect.
-    if stage_val == "crm_review":
-        next_url = f"/applications/{application_id}"
-    elif stage_val == "returned":
-        next_url = "/dashboard?status=returned"
-    else:
-        next_url = "/dashboard"
-    return RedirectResponse(url=next_url, status_code=status.HTTP_303_SEE_OTHER)
+    # Match the established role workflow: persist the transition, then
+    # return the acting reviewer to their normal queue/dashboard.
+    return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
 
 @router.get("/applications/{application_id}/approve")
 async def render_approval_readiness(
