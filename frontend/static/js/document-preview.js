@@ -88,9 +88,9 @@
     }, true);
 
     async function renderPreviewPages(url, requestId) {
-        // Seeded/demo documents may be stored as authorised local PDFs rather
-        // than Cloudinary page images. Detect that response and embed it in the
-        // same protected modal; cloud documents continue through page images.
+        // Local documents may be stored as authorised PDFs rather than
+        // Cloudinary page images. Detect that response and embed it in the same
+        // protected modal; cloud documents continue through page images.
         const firstResponse = await fetch(pageUrl(url, 1), { credentials: 'same-origin' });
         if (!firstResponse.ok) throw new Error('Preview request failed');
         const firstType = (firstResponse.headers.get('content-type') || '').split(';', 1)[0].toLowerCase();

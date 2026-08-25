@@ -1,6 +1,6 @@
 -- Migration 011: Remove credit_officer role from the system.
 -- Workflow is: Loan Officer → Branch Manager → CRM → Committee → ED → MD.
--- Run after 010_seed_new_roles.sql
+-- Apply after the workflow-role schema changes.
 
 -- =========================================================
 -- 1. Migrate any existing credit_officer users to loan_officer

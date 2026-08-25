@@ -63,7 +63,6 @@ from app.domains.loans.router import router as loans_router
 from app.domains.loans.collateral import router as collateral_router
 from app.domains.ocr.router import router as ocr_router
 from app.api.v1.mobile import router as mobile_api_router, warm_mobile_static_cache
-from app.domains.demo.router import router as demo_router
 from app.domains.core_banking.router import router as core_banking_router
 from app.domains.customers.router import router as customers_router
 from app.domains.configuration.router import router as configuration_router
@@ -214,8 +213,6 @@ templates = create_templates(templates_dir)
 templates.env.globals.update(
     brand_logo_black="https://res.cloudinary.com/ddezxlqjr/image/upload/v1784551475/MMFB_Logo_Black_lnma0l.png",
     brand_logo_white="https://res.cloudinary.com/ddezxlqjr/image/upload/v1784551475/MMFB_logo_White_gzthxm.png",
-    demo_enabled=settings.demo_mode,
-    demo_org_id=settings.DEMO_ORG_ID,
 )
 
 
@@ -599,7 +596,6 @@ app.include_router(users_router, prefix=f"{settings.API_V1_STR}/users", tags=["U
 app.include_router(branches_router, tags=["Branches"])
 app.include_router(mobile_api_router, prefix=f"{settings.API_V1_STR}/mobile", tags=["Mobile API"])
 app.include_router(ocr_router)
-app.include_router(demo_router)
 app.include_router(core_banking_router)
 app.include_router(customers_router)
 app.include_router(configuration_router)
@@ -617,9 +613,7 @@ import urllib.parse
 
 
 def browser_login_url(next_url: str | None = None) -> str:
-    """Keep demo deployments inside the synthetic presenter experience."""
-    if settings.demo_mode:
-        return "/demo"
+    """Return the staff login URL with an optional same-site destination."""
     if next_url:
         return f"/login?next={urllib.parse.quote(next_url)}"
     return "/login"
@@ -635,7 +629,7 @@ def browser_home_url(role: str | None) -> str:
 @app.exception_handler(StarletteHTTPException)
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    # Authentication failures lead to the correct staff or demo entry point.
+    # Authentication failures lead to the staff login entry point.
     # All other browser failures render HTML; APIs retain the JSON contract.
     is_api = request.url.path.startswith("/api/")
     if exc.status_code == status.HTTP_401_UNAUTHORIZED and not is_api:
@@ -742,8 +736,6 @@ async def sitemap_xml(request: Request):
 
 @app.get("/login")
 async def render_login(request: Request):
-    if settings.demo_mode:
-        return RedirectResponse(url="/demo", status_code=status.HTTP_303_SEE_OTHER)
     token = request.cookies.get("session") or request.cookies.get("__Host-session")
     if token:
         try:
@@ -773,8 +765,6 @@ async def login_web(
     conn=Depends(db_conn),
 ):
     """Authenticate user by email and password, set session cookie."""
-    if settings.demo_mode:
-        return RedirectResponse(url="/demo", status_code=status.HTTP_303_SEE_OTHER)
     from app.domains.auth.repository import AuthRepository
     from app.domains.auth.service import AuthService
 
@@ -837,7 +827,7 @@ async def logout_web(request: Request, next: str = Form(None), conn=Depends(db_c
     )
     redirect_url = browser_login_url()
     validated_next = safe_relative_redirect(next)
-    if validated_next and not settings.demo_mode:
+    if validated_next:
         redirect_url += f"?next={urllib.parse.quote(validated_next)}"
 
     redirect = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
@@ -897,8 +887,7 @@ async def process_reset_password(
     ok = await AuthService(AuthRepository(conn)).reset_password(token, new_password)
     if not ok:
         return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": "Invalid or expired reset link.", "success": False, "invitation": invitation})
-    reset_destination = "/demo" if settings.demo_mode else "/login?reset=1"
-    return RedirectResponse(url=reset_destination, status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/login?reset=1", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/api/v1/health")
 async def health_check():

@@ -4048,21 +4048,3 @@ body, body * { font-family: "Montserrat", sans-serif !important; }
 .supervisor-review-page .supervisor-decision-card form { flex:0 0 auto!important; margin:0 0 0 auto!important; }
 .supervisor-review-page .supervisor-decision-card .btn-primary-filled { min-height:40px!important; padding-inline:20px!important; }
 @media (max-width:700px) { .supervisor-review-page .supervisor-decision-card { position:static; }.supervisor-review-page .supervisor-decision-card .csp-s-5ffb91a26b04 { align-items:stretch!important; flex-direction:column!important; }.supervisor-review-page .supervisor-decision-card form,.supervisor-review-page .supervisor-decision-card a,.supervisor-review-page .supervisor-decision-card .btn-primary-filled { width:100%!important; margin:0!important; } }
-/* Synthetic demo tenant: persistent visual separation from live customer data. */
-.demo-environment-banner {
-  position: sticky; top: 0; z-index: 9999; display: flex; justify-content: center;
-  gap: 16px; padding: 8px 16px; background: #8a1c1c; color: #fff;
-  font-weight: 800; letter-spacing: .08em; text-align: center;
-}
-.demo-environment-banner a { color: #fff; text-decoration: underline; }
-.demo-presenter-page { min-height: 100vh; margin: 0; padding: 32px 16px; background: #f4eff8; }
-.demo-presenter-card { max-width: 980px; margin: 0 auto; background: #fff; border-radius: 18px; padding: 28px; box-shadow: 0 18px 55px rgba(46,0,82,.14); }
-.demo-presenter-badge { display: inline-block; padding: 7px 12px; border-radius: 999px; background: #8a1c1c; color: #fff; font-weight: 800; letter-spacing: .06em; }
-.demo-presenter-form { display: grid; gap: 12px; max-width: 460px; }
-.demo-presenter-form input { min-height: 44px; padding: 10px 12px; }
-.demo-role-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(210px,1fr)); gap: 14px; margin: 20px 0; }
-.demo-role-card { display: grid; gap: 7px; padding: 16px; border: 1px solid #ded4e5; border-radius: 12px; background: #fff; }
-.demo-role-card.active { border: 2px solid #89268b; background: #fbf5fc; }
-.demo-role-card button { margin-top: 8px; min-height: 40px; cursor: pointer; }
-.demo-journey-status { margin: 18px 0; padding: 14px; border-left: 5px solid #89268b; background: #f8f1fa; }
-.demo-lock-link { color: #7f1d1d; }

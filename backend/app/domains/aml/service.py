@@ -10,49 +10,6 @@ async def screen_entity(full_name: str, loan_application_id=None, subject_type="
     Screens a full name against Youverify PEP and Sanction Screening API.
     Normalizes result to match_status: clear / pep_hit / sanctions_hit / review_required / not_configured.
     """
-    # Seed screening responses exist only for the isolated demo experience.
-    if settings.demo_mode and "Jane Doe" in full_name:
-        # Clear case
-        raw = {
-            "success": True,
-            "statusCode": 200,
-            "message": "AML Check retrieved successfully!",
-            "data": {
-                "categoryCount": { "sanctions": 0, "pep": 0, "crime": 0, "debarment": 0, "financial_services": 0, "government": 0 },
-                "status": "clear",
-                "pep": [],
-                "sanctions": []
-            }
-        }
-        res = {
-            "match_status": "clear",
-            "category_count": raw["data"]["categoryCount"],
-            "raw_response": raw
-        }
-        await _save_sanctions_check(loan_application_id, subject_type, full_name, "clear", raw["data"]["categoryCount"], raw, conn)
-        return res
-
-    elif settings.demo_mode and ("Adeyemi" in full_name or "Bola Adeyemi" in full_name):
-        # PEP/review_required case
-        raw = {
-            "success": True,
-            "statusCode": 200,
-            "message": "AML Check retrieved successfully!",
-            "data": {
-                "categoryCount": { "sanctions": 0, "pep": 1, "crime": 0, "debarment": 0, "financial_services": 0, "government": 0 },
-                "status": "review_required",
-                "pep": [ { "title": ["Dr. Bola Adeyemi"], "entityType": "Person", "position": ["member of the House of Representatives of Nigeria"], "nationality": ["ng"] } ],
-                "sanctions": []
-            }
-        }
-        res = {
-            "match_status": "review_required",
-            "category_count": raw["data"]["categoryCount"],
-            "raw_response": raw
-        }
-        await _save_sanctions_check(loan_application_id, subject_type, full_name, "review_required", raw["data"]["categoryCount"], raw, conn)
-        return res
-
     if not settings.AML_SCREENING_ENABLED:
         res = {
             "match_status": "not_configured",

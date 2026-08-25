@@ -16,7 +16,7 @@ class CreditRegistryProvider:
     async def get_session_code(self) -> str:
         """Acquires a session code from CreditRegistry /api/Login."""
         if not settings.CREDIT_REGISTRY_USERNAME or not settings.CREDIT_REGISTRY_PASSWORD:
-            return "mock_session_code_12345" if settings.demo_mode else ""
+            return ""
 
         url = f"{self.base_url}/api/Login"
         payload = {
@@ -38,8 +38,6 @@ class CreditRegistryProvider:
 
     async def find_customer(self, session_code: str, bvn: str, phone: str = None, name: str = None) -> str:
         """Finds RegistryID for customer via /api/FindSummary."""
-        if session_code.startswith("mock_"):
-            return "mock_registry_id_999888" if settings.demo_mode else ""
         if not settings.CREDIT_REGISTRY_USERNAME or not settings.CREDIT_REGISTRY_PASSWORD:
             return ""
 
@@ -65,23 +63,6 @@ class CreditRegistryProvider:
 
     async def get_report(self, loan_application_id: str, registry_id: str, session_code: str) -> dict:
         """Retrieves credit report via /api/GetReport200 and persists to DB."""
-        if settings.demo_mode and session_code.startswith("mock_"):
-            raw_report = {
-                "status": "success",
-                "registry_id": registry_id,
-                "report_type": "AutoCred_v8_Summary",
-                "data": {
-                    "is_approximate_placeholder": True,
-                    "score": 680,
-                    "active_loans_count": 2,
-                    "total_outstanding_balance": 1200000.0,
-                    "total_monthly_repayments": 85000.0,
-                    "total_delinquent_accounts": 0,
-                    "worst_payment_status": "performing"
-                }
-            }
-            await self.service._save_submission(loan_application_id, registry_id, "success", "AutoCred_v8_Summary", raw_report, self.name)
-            return raw_report
         if (
             not settings.CREDIT_REGISTRY_USERNAME
             or not settings.CREDIT_REGISTRY_PASSWORD
@@ -111,14 +92,6 @@ class CreditRegistryProvider:
 
     async def submit_account(self, loan_application_id: str, session_code: str, loan_data: dict) -> dict:
         """Pushes disbursement details outward via /api/AddUpdateAccount."""
-        if settings.demo_mode and session_code.startswith("mock_"):
-            raw_response = {
-                "success": True,
-                "message": "Disbursed loan reported to CreditRegistry successfully (mock mode).",
-                "reported_at": "now"
-            }
-            await self.service._save_submission(loan_application_id, "mock_registry_id_999888", "disbursed_reported", "add_update_account", raw_response, self.name)
-            return raw_response
         if (
             not settings.CREDIT_REGISTRY_USERNAME
             or not settings.CREDIT_REGISTRY_PASSWORD
@@ -169,7 +142,7 @@ class CrcProvider:
     async def get_session_code(self) -> str:
         """Acquires a session code/token from CRC."""
         if not settings.CRC_API_KEY:
-            return "mock_session_code_crc_123" if settings.demo_mode else ""
+            return ""
 
         url = f"{self.base_url}/api/v1/token"
         try:
@@ -187,8 +160,6 @@ class CrcProvider:
 
     async def find_customer(self, session_code: str, bvn: str, phone: str = None, name: str = None) -> str:
         """Finds CRC ID for customer."""
-        if session_code.startswith("mock_"):
-            return "mock_crc_id_777666" if settings.demo_mode else ""
         if not settings.CRC_API_KEY:
             return ""
 
@@ -210,23 +181,6 @@ class CrcProvider:
 
     async def get_report(self, loan_application_id: str, registry_id: str, session_code: str) -> dict:
         """Retrieves credit report from CRC and persists to DB."""
-        if settings.demo_mode and session_code.startswith("mock_"):
-            raw_report = {
-                "status": "success",
-                "registry_id": registry_id,
-                "report_type": "CRC_Credit_Report_Summary",
-                "data": {
-                    "is_approximate_placeholder": True,
-                    "score": 710,
-                    "active_loans_count": 1,
-                    "total_outstanding_balance": 800000.0,
-                    "total_monthly_repayments": 50000.0,
-                    "total_delinquent_accounts": 0,
-                    "worst_payment_status": "performing"
-                }
-            }
-            await self.service._save_submission(loan_application_id, registry_id, "success", "CRC_Credit_Report_Summary", raw_report, self.name)
-            return raw_report
         if not settings.CRC_API_KEY or session_code.startswith("mock_"):
             return {"status": "not_configured", "data": {}}
 
@@ -252,14 +206,6 @@ class CrcProvider:
 
     async def submit_account(self, loan_application_id: str, session_code: str, loan_data: dict) -> dict:
         """Pushes disbursement details outward to CRC."""
-        if settings.demo_mode and session_code.startswith("mock_"):
-            raw_response = {
-                "success": True,
-                "message": "Disbursed loan reported to CRC successfully (mock mode).",
-                "reported_at": "now"
-            }
-            await self.service._save_submission(loan_application_id, "mock_crc_id_777666", "disbursed_reported", "crc_add_update_account", raw_response, self.name)
-            return raw_response
         if not settings.CRC_API_KEY or session_code.startswith("mock_"):
             return {"success": False, "status": "not_configured"}
 
