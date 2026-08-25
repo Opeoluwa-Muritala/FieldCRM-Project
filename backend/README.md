@@ -108,13 +108,13 @@ AML_BASE_URL=
 
 `DOCUMENT_UPLOAD_DIR`, `DOCUMENT_MAX_UPLOAD_BYTES`, `DOCUMENT_ALLOWED_MIME_TYPES`, `EMAIL_SERVICE_URL`, and `ORG_REGISTRATION_SECRET` are additional supported settings. Defaults are defined in `app/core/config.py`. Set `COOKIE_SECURE=true`, a fixed `JWT_SECRET_KEY`, an HTTPS `APP_BASE_URL`, and `ORG_REGISTRATION_SECRET` before production. If no JWT secret is provided locally, the server generates one on startup, so existing sessions expire when it restarts.
 
-For PostgreSQL, the included runner applies migrations `001` through `005` and demo data:
+For PostgreSQL, the included runner applies the maintained schema migrations. It does not create demo organisations, fixed-password users, or sample loan data:
 
 ```powershell
 python backend\migrations\run_migration.py
 ```
 
-Later migration files are maintained separately; review and apply them deliberately for an existing deployment. Do not run demo/seed migrations against a production tenant.
+Review migrations deliberately for an existing deployment and bootstrap the first organisation and administrator through the approved operational process.
 
 Start the service:
 
@@ -136,7 +136,7 @@ python backend\test_routes_render.py
 python backend\test_responsive_smoke.py
 ```
 
-The HTTP and rendering checks require the expected local database/application setup. Inspect the repository root README for demo account details.
+The HTTP and rendering checks require the expected local database/application setup and authorized test credentials supplied outside source control.
 
 ## Operational notes
 

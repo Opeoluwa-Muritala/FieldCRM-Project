@@ -16,9 +16,7 @@ ENV_PATH = os.path.join(MIGRATION_DIR, "..", ".env")
 MIGRATION_FILES = [
     "001_full_schema.sql",
     "002_ref_no_sequence.sql",
-    "003_seed_demo.sql",
     "004_notifications.sql",
-    "005_seed_notifications_and_pledges.sql",
     "024_branch_scoping.sql",
     "025_mobile_creation_idempotency.sql",
     "026_document_upload_intents.sql",
@@ -118,10 +116,8 @@ def run_migrations() -> None:
         if history_count == 0 and users_exist:
             cursor.execute("INSERT INTO migration_history (filename) VALUES ('001_full_schema.sql') ON CONFLICT DO NOTHING;")
             cursor.execute("INSERT INTO migration_history (filename) VALUES ('002_ref_no_sequence.sql') ON CONFLICT DO NOTHING;")
-            cursor.execute("INSERT INTO migration_history (filename) VALUES ('003_seed_demo.sql') ON CONFLICT DO NOTHING;")
             if notifications_exist:
                 cursor.execute("INSERT INTO migration_history (filename) VALUES ('004_notifications.sql') ON CONFLICT DO NOTHING;")
-                cursor.execute("INSERT INTO migration_history (filename) VALUES ('005_seed_notifications_and_pledges.sql') ON CONFLICT DO NOTHING;")
             if branches_exist:
                 cursor.execute("INSERT INTO migration_history (filename) VALUES ('024_branch_scoping.sql') ON CONFLICT DO NOTHING;")
             conn.commit()
@@ -169,7 +165,7 @@ def run_migrations() -> None:
         # Verify: count users
         cursor.execute("SELECT count(*) FROM users")
         user_count = cursor.fetchone()[0]
-        logger.info("Users seeded: %d", user_count)
+        logger.info("Existing users: %d", user_count)
 
     except Exception as e:
         logger.error("Migration failed: %s", e)

@@ -21,7 +21,7 @@
     {% block extra_css %}{% endblock %}
     <style nonce="{{ csp_nonce }}">:root{--brand-accent:{{ brand_accent }}}</style>
 </head>
-<body data-demo-enabled="{{ 'true' if demo_enabled else 'false' }}">
+<body>
     {% set db_role = current_user.role if current_user else "loan_officer" %}
     {% set role_labels = {
         "loan_officer": "Relationship Officer",

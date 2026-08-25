@@ -9,57 +9,6 @@ async def verify_bvn(bvn: str, loan_application_id=None, conn=None) -> dict:
     Calls Qore BVN Basic: GET /v1/ng/identities/bvn-basic/{bvnNumber}
     Normalized result: is_valid, first_name, last_name, other_names, dob, phone, raw_response, status.
     """
-    # Deterministic identities are demo fixtures only. They must never be
-    # treated as verified records in a normal development or production run.
-    if settings.demo_mode and bvn == "22216142222":
-        # EXACT_MATCH case
-        raw = {
-            "RequestStatus": True,
-            "ResponseMessage": "Successful.",
-            "isBvnValid": True,
-            "bvnDetails": {
-                "BVN": "22216142222",
-                "phoneNumber": "08029348596",
-                "FirstName": "JANE",
-                "LastName": "DOE",
-                "OtherNames": "BOND",
-                "DOB": "20-Apr-90"
-            }
-        }
-        res = {
-            "is_valid": True,
-            "first_name": "JANE",
-            "last_name": "DOE",
-            "other_names": "BOND",
-            "dob": "1990-04-20", # or "20-Apr-90"
-            "phone": "08029348596",
-            "status": "success",
-            "raw_response": raw
-        }
-        await _save_verification_check(loan_application_id, "bvn", "qoreid", "success", True, raw, conn)
-        return res
-
-    elif settings.demo_mode and bvn == "22216142223":
-        # Mismatch case
-        raw = {
-            "RequestStatus": True,
-            "ResponseMessage": "Successful.",
-            "isBvnValid": False,
-            "bvnDetails": None
-        }
-        res = {
-            "is_valid": False,
-            "first_name": "",
-            "last_name": "",
-            "other_names": "",
-            "dob": "",
-            "phone": "",
-            "status": "failed",
-            "raw_response": raw
-        }
-        await _save_verification_check(loan_application_id, "bvn", "qoreid", "failed", False, raw, conn)
-        return res
-
     if not settings.VERIFICATION_ENABLED:
         res = {
             "is_valid": False,

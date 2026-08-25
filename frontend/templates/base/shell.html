@@ -22,13 +22,7 @@
 </head>
 {# Role is applied as data-attribute for CSS theming — accent colors shift per role #}
 {% set user_role = user.role|lower|replace(' ', '_') if user else 'loan_officer' %}
-<body data-role="{{ user_role }}" data-demo-enabled="{{ 'true' if demo_enabled else 'false' }}">
-    {% if demo_enabled and user and user.org_id|string == demo_org_id %}
-    <div class="demo-environment-banner" role="status">
-        DEMO — SYNTHETIC DATA
-        <a href="/demo">Switch role</a>
-    </div>
-    {% endif %}
+<body data-role="{{ user_role }}">
     {# Offline connectivity banner — shown via JS when network drops #}
     <div class="offline-banner" id="offlineBanner">
         You are currently offline. Changes will be saved locally.
@@ -117,7 +111,7 @@
                         body,
                     });
                 } finally {
-                    window.location.href = {{ ('/demo' if demo_enabled else '/login')|tojson }};
+                    window.location.href = "/login";
                 }
             }
 
