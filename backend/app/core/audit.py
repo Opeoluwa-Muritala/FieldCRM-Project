@@ -104,13 +104,17 @@ class AuditService:
                 source="manual",
                 notes=reason,
             )
-            await self._notify_workflow_event(
-                application_id=_as_uuid(application_id),
-                org_id=_as_uuid(org_id),
-                action=action,
-                to_stage=str_to,
-                actor_role=db_role,
-            )
+            # Credit underwriting recommendations are recorded in the
+            # application audit trail and surfaced in the next role's queue;
+            # they are intentionally not emitted as user notifications.
+            if action != "Credit Underwriting Verdict":
+                await self._notify_workflow_event(
+                    application_id=_as_uuid(application_id),
+                    org_id=_as_uuid(org_id),
+                    action=action,
+                    to_stage=str_to,
+                    actor_role=db_role,
+                )
 
     async def _notify_workflow_event(
         self,
