@@ -1,6 +1,6 @@
--- Keep legacy branch files actionable while preserving branch isolation.
--- A Team Lead may take ownership only when the file is unassigned and is
--- already in their branch's Team Lead review stage.
+-- Correct the Team Lead mutation scope for existing installations. Approval is
+-- branch-owned, so a stale manager assignment must not block that branch's
+-- authenticated Team Lead from acting on its review queue.
 CREATE OR REPLACE FUNCTION public.app_can_mutate_loan_values(
   loan_org uuid, loan_creator uuid, loan_branch uuid, loan_manager uuid,
   loan_credit_officer uuid, loan_owner uuid, loan_stage text
@@ -12,8 +12,7 @@ AS $$
   SELECT loan_org = public.app_current_org_id()
     AND CASE public.app_current_role()
       WHEN 'account_officer' THEN loan_creator = public.app_current_user_id() AND loan_stage = 'intake'
-      WHEN 'branch_manager' THEN loan_branch = public.app_current_branch_id()
-        AND loan_stage = 'branch_manager_review'
+      WHEN 'branch_manager' THEN loan_branch = public.app_current_branch_id() AND loan_stage = 'branch_manager_review'
       WHEN 'branch_supervisor' THEN loan_branch = public.app_current_branch_id() AND loan_stage = 'branch_supervisor_review'
       WHEN 'credit_analyst' THEN (loan_credit_officer = public.app_current_user_id() OR loan_owner = public.app_current_user_id())
         AND loan_stage IN ('credit_analyst_review', 'credit_review')

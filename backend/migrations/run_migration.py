@@ -42,6 +42,7 @@ MIGRATION_FILES = [
     "046_configurable_workflow_permissions.sql",
     "047_operational_work.sql",
     "048_branch_manager_workflow_rls.sql",
+    "049_branch_manager_branch_scope.sql",
 ]
 
 
