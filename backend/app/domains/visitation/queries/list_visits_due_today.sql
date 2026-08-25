@@ -1,7 +1,7 @@
 -- visitation/queries/list_visits_due_today.sql
 -- Returns loans that need visitation reports for a given officer.
 -- A visit is "due" if the loan has no visitation report yet and is in
--- an active stage (intake through branch_approval).
+-- an active pre-disbursement stage.
 -- Params: $1=org_id, $2=officer_user_id
 
 SELECT
