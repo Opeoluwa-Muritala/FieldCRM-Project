@@ -636,6 +636,16 @@ def browser_home_url(role: str | None) -> str:
         return "/configuration"
     return "/dashboard"
 
+
+async def public_db_conn():
+    """Unauthenticated connection for login and password-recovery forms.
+
+    Do not let a stale session/refresh cookie trigger transparent auth before
+    the user has a chance to submit fresh credentials.
+    """
+    async with get_connection() as conn:
+        yield conn
+
 @app.exception_handler(StarletteHTTPException)
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -772,7 +782,7 @@ async def login_web(
     username: str = Form(...),
     password: str = Form(...),
     next: str = Form(None),
-    conn=Depends(db_conn),
+    conn=Depends(public_db_conn),
 ):
     """Authenticate user by email and password, set session cookie."""
     from app.domains.auth.repository import AuthRepository
