@@ -5,6 +5,7 @@
 UPDATE loan_applications
 SET
     stage        = $5,
+    branch_manager_id = COALESCE(branch_manager_id, $3),
     approved_by  = $3,
     approved_at  = NOW(),
     updated_at   = NOW()
