@@ -48,6 +48,7 @@ MIGRATION_FILES = [
     "052_workflow_notification_scope.sql",
     "053_notification_insert_runtime_scope.sql",
     "054_secure_notification_insert.sql",
+    "055_fix_notification_id_type.sql",
 ]
 
 
