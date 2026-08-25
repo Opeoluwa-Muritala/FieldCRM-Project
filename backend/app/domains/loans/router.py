@@ -137,6 +137,25 @@ def return_target_for(app, user_role: str) -> str | None:
         return None
     return target_stage
 
+
+async def workflow_receiver(conn, app, target_stage: str, org_id: UUID):
+    """Resolve the server-owned recipient for a returned workflow stage."""
+    target_role = dict(WORKFLOW_STAGES).get(target_stage)
+    if target_role == "account_officer":
+        return app.created_by
+    if target_role == "branch_manager" and app.branch_manager_id:
+        return app.branch_manager_id
+    if target_role == "credit_analyst" and app.credit_officer_id:
+        return app.credit_officer_id
+    row = await conn.fetchrow(
+        """SELECT id FROM users
+           WHERE org_id=$1 AND role=$2 AND active=TRUE AND deleted_at IS NULL
+             AND ($3::uuid IS NULL OR branch_id=$3)
+           ORDER BY (branch_id = $3) DESC, created_at ASC LIMIT 1""",
+        org_id, target_role, app.branch_id,
+    )
+    return row["id"] if row else None
+
 def form_data_to_jsonable_dict(form_data) -> dict:
     payload = {}
     for key in form_data.keys():
@@ -2337,7 +2356,16 @@ async def process_return_page(
     if corrections:
         reason += ". Required corrections: " + ", ".join(corrections)
 
-    returned = await repo.advance_stage(UUID(application_id), current_user.org_id, target_stage)
+    receiver_id = await workflow_receiver(conn, app, target_stage, current_user.org_id)
+    if not receiver_id:
+        raise HTTPException(status_code=409, detail="No active receiver is configured for the previous workflow role")
+    returned = await conn.fetchrow(
+        """UPDATE loan_applications
+           SET stage=$1, current_owner_id=$2, updated_at=NOW()
+           WHERE id=$3 AND org_id=$4 AND stage=$5 AND deleted_at IS NULL
+           RETURNING id""",
+        target_stage, receiver_id, UUID(application_id), current_user.org_id, app.stage,
+    )
     if not returned:
         raise HTTPException(status_code=400, detail="Unable to return the application")
     await conn.execute(

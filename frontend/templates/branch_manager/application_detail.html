@@ -390,7 +390,7 @@
         <div class="page-card csp-s-b3a2297a12f5 supervisor-decision-card">
             <div class="csp-s-5ffb91a26b04">
                 <div class="csp-s-4dd169649d12">
-                    <a href="/applications/{{ app_id }}/return?type=officer" class="csp-s-7ee1400d1897">Return to Relationship Officer</a>
+                    {% if can_return_previous %}<a href="/applications/{{ app_id }}/return" class="csp-s-7ee1400d1897">Return to {{ return_target_label }}</a>{% endif %}
                 </div>
                 
                 <form action="/applications/{{ app_id }}/approve" method="POST" class="csp-s-f6cda3b21d28">
