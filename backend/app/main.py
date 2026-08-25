@@ -619,6 +619,16 @@ def browser_login_url(next_url: str | None = None) -> str:
     return "/login"
 
 
+def safe_login_destination(value: str | None) -> str | None:
+    """Reject authentication endpoints as post-login redirect targets."""
+    candidate = safe_relative_redirect(value)
+    if candidate:
+        path = urllib.parse.urlsplit(candidate).path.rstrip("/") or "/"
+        if path in {"/login", "/logout", "/forgot-password", "/reset-password"}:
+            return None
+    return candidate
+
+
 def browser_home_url(role: str | None) -> str:
     """Return the authenticated landing page for a server-trusted role."""
     normalized = (role or "").strip().lower().replace(" ", "_")
@@ -637,7 +647,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         if request.url.query:
             next_url += f"?{request.url.query}"
         return RedirectResponse(
-            url=browser_login_url(next_url),
+            url=browser_login_url(safe_login_destination(next_url)),
             status_code=status.HTTP_303_SEE_OTHER
         )
     if not is_api:
@@ -792,7 +802,7 @@ async def login_web(
     
     # Safe redirect validation: prevent open redirect to external domains
     redirect_url = browser_home_url(session_data.get("role"))
-    validated_next = safe_relative_redirect(next)
+    validated_next = safe_login_destination(next)
     if validated_next:
         redirect_url = validated_next
 
