@@ -158,7 +158,7 @@ class Settings(BaseSettings):
     CONFIGURATION_HUB_ENABLED: bool = os.getenv("CONFIGURATION_HUB_ENABLED", "false").lower() in ("true", "1", "yes")
     CONFIGURABLE_PRODUCTS_ENABLED: bool = os.getenv("CONFIGURABLE_PRODUCTS_ENABLED", "false").lower() in ("true", "1", "yes")
     CONFIGURABLE_WORKFLOW_ENABLED: bool = os.getenv("CONFIGURABLE_WORKFLOW_ENABLED", "false").lower() in ("true", "1", "yes")
-    OPERATIONS_UI_ENABLED: bool = os.getenv("OPERATIONS_UI_ENABLED", "false").lower() in ("true", "1", "yes")
+    OPERATIONS_UI_ENABLED: bool = os.getenv("OPERATIONS_UI_ENABLED", "true").lower() in ("true", "1", "yes")
 
     @property
     def VERIFICATION_ENABLED(self) -> bool:

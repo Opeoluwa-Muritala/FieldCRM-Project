@@ -4,6 +4,7 @@ from fastapi import APIRouter,Depends,Form,HTTPException,Request
 from app.config import settings
 from app.core.dependencies import authenticated_db_conn,get_current_user
 from app.core.templates import create_templates
+from app.core.template_utils import build_template_context
 from app.domains.tasks.service import TaskService
 router=APIRouter();templates=create_templates(str(Path(__file__).resolve().parents[4]/"frontend"/"templates"))
 def enabled():
@@ -20,11 +21,11 @@ async def my_work(request:Request,current_user=Depends(get_current_user),conn=De
         if due and due<now:buckets["overdue"].append(row)
         elif due and due.date()==now.date():buckets["due_today"].append(row)
         if row["priority"] in {"high","urgent"}:buckets["high_priority"].append(row)
-    return templates.TemplateResponse(request,"tasks/my_work.html",{"current_user":current_user,"buckets":buckets})
+    return templates.TemplateResponse(request,"tasks/my_work.html",build_template_context(request,current_user,buckets=buckets,active_page="my_work"))
 @router.get("/exceptions")
 async def exceptions(request:Request,current_user=Depends(get_current_user),conn=Depends(authenticated_db_conn)):
     enabled();rows=await conn.fetch("SELECT * FROM operational_exceptions WHERE org_id=$1 AND status IN('open','investigating') ORDER BY created_at DESC",current_user.org_id)
-    return templates.TemplateResponse(request,"tasks/exceptions.html",{"current_user":current_user,"exceptions":rows})
+    return templates.TemplateResponse(request,"tasks/exceptions.html",build_template_context(request,current_user,exceptions=rows,active_page="exceptions"))
 @router.post("/applications/{application_id}/notes")
 async def note(application_id:UUID,category:str=Form(...),body:str=Form(...),mentions:list[UUID]=Form(default=[]),current_user=Depends(get_current_user),conn=Depends(authenticated_db_conn)):
     enabled();return dict(await TaskService(conn).add_note(current_user,application_id,category,body,mentions))
