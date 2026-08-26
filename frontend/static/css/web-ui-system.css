@@ -160,3 +160,90 @@ table { min-width: 620px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* Approval workspaces: one clear forward action, quiet supporting actions,
+   and fields that read as deliberate decision inputs rather than defaults. */
+.approval-review-desk,
+.approval-page,
+.md-workflow-page,
+.crm-review-page,
+.executive-approval-page { --approval-gap: 24px; }
+.approval-review-desk .approval-review-hero,
+.approval-page .page-card:first-child { border-radius: var(--ui-radius-card) !important; }
+.approval-review-desk .approval-review-main,
+.approval-review-desk .approval-decision-panel { padding: 28px !important; }
+.approval-review-desk .approval-review-progress,
+.approval-review-desk .approval-evidence-callout,
+.approval-review-desk .approval-check-list,
+.approval-review-desk .approval-decision-card,
+.approval-page .page-card,
+.md-workflow-page .page-card,
+.crm-review-page .page-card { border-radius: var(--ui-radius-card) !important; }
+.approval-review-desk .approval-decision-panel { border-left: 1px solid var(--ui-line); }
+.approval-review-desk .approval-decision-form,
+.approval-page form,
+.md-workflow-page form,
+.crm-review-page form { gap: var(--approval-gap); }
+.approval-review-desk .approval-decision-form input:not([type="checkbox"]),
+.approval-review-desk .approval-decision-form textarea,
+.approval-page input[type="number"],
+.approval-page textarea,
+.md-workflow-page input[type="number"],
+.md-workflow-page textarea,
+.crm-review-page input[type="number"],
+.crm-review-page textarea { width: 100%; min-height: 50px; padding: 14px 16px; border: 1.5px solid #b9c4d2; border-radius: 12px; background: #fbfcfe; color: var(--ui-ink); font-size: 15px; line-height: 1.5; }
+.approval-review-desk .approval-decision-form textarea,
+.approval-page textarea,
+.md-workflow-page textarea,
+.crm-review-page textarea { min-height: 132px; }
+.approval-review-desk .approval-decision-form input:focus,
+.approval-review-desk .approval-decision-form textarea:focus,
+.approval-page input:focus, .approval-page textarea:focus,
+.md-workflow-page input:focus, .md-workflow-page textarea:focus,
+.crm-review-page input:focus, .crm-review-page textarea:focus { border-color: var(--ui-secondary); background: #fff; box-shadow: 0 0 0 4px rgba(111,38,118,.14); }
+.approval-review-desk .approval-action-buttons,
+.approval-page .approval-action-buttons,
+.md-workflow-page .approval-action-buttons,
+.crm-review-page .approval-action-buttons,
+.md-workflow-page .csp-s-633fe02090af,
+.crm-review-page .csp-s-695296fc9a22 { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.approval-review-desk .approval-action-buttons .btn-primary-filled,
+.approval-page .approval-action-buttons .btn-primary-filled,
+.md-workflow-page .btn-primary,
+.crm-review-page .btn-primary { order: 1; background: var(--ui-primary) !important; color: #fff !important; }
+.approval-review-desk .approval-return-button,
+.approval-page .approval-return-button,
+.md-workflow-page .btn-secondary,
+.crm-review-page .btn-secondary { order: 2; background: transparent !important; color: var(--ui-muted) !important; border: 1px solid var(--ui-line) !important; }
+.approval-review-desk .approval-action-buttons .btn-danger,
+.approval-page .approval-action-buttons .btn-danger,
+.md-workflow-page .btn-danger { order: 3; margin-left: 8px; }
+.approval-page .btn-ghost-link,
+.md-workflow-page a.btn-secondary[href*="queue"],
+.crm-review-page .btn-ghost { background: transparent !important; color: var(--ui-muted) !important; border-color: transparent !important; }
+.approval-page .page-card + .page-card,
+.md-workflow-page .page-card + .page-card,
+.crm-review-page .page-card + .page-card { margin-top: var(--approval-gap); }
+
+@media (max-width: 980px) {
+  .approval-review-desk .approval-review-layout { grid-template-columns: 1fr !important; }
+  .approval-review-desk .approval-decision-panel { border-left: 0; border-top: 1px solid var(--ui-line); }
+  .approval-review-desk .approval-review-main,
+  .approval-review-desk .approval-decision-panel { padding: 24px 20px !important; }
+}
+@media (max-width: 640px) {
+  .approval-review-desk .approval-review-hero,
+  .approval-review-desk .approval-review-main,
+  .approval-review-desk .approval-decision-panel { padding: 20px 16px !important; }
+  .approval-review-desk .approval-action-buttons,
+  .approval-page .approval-action-buttons,
+  .md-workflow-page .approval-action-buttons,
+  .md-workflow-page .csp-s-633fe02090af,
+  .crm-review-page .csp-s-695296fc9a22 { align-items: stretch; flex-direction: column; }
+  .approval-review-desk .approval-action-buttons > *,
+  .approval-page .approval-action-buttons > *,
+  .md-workflow-page .approval-action-buttons > *,
+  .md-workflow-page .csp-s-633fe02090af > *,
+  .crm-review-page .csp-s-695296fc9a22 > * { width: 100%; margin-left: 0; }
+  .approval-review-desk .approval-action-buttons .btn-danger { order: 3; }
+}
