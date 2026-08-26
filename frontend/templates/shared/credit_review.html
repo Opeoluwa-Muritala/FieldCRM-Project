@@ -329,8 +329,8 @@
             <a href="/applications/{{ app_id }}" class="btn-ghost-link">&larr; Back to Profile</a>
             <input type="hidden" name="recommendation_decision" id="recommendationDecision" value="Recommend Approval">
             <div class="action-button-group">
-                <button type="submit" class="btn-primary-filled" onclick="setRecommendation('Recommend Approval')">Record recommendation &amp; move up</button>
-                <button type="submit" class="btn-secondary" onclick="setRecommendation('Return for Correction')">Return for Correction</button>
+                <button type="submit" class="btn-primary-filled" data-set-recommendation="Recommend Approval">Record recommendation &amp; move up</button>
+                <button type="submit" class="btn-secondary" data-set-recommendation="Return for Correction">Return for Correction</button>
             </div>
         </div>
 
@@ -371,11 +371,6 @@
     document.querySelectorAll('[data-review-tab]').forEach((button) => {
         button.addEventListener('click', () => switchReviewTab(button.dataset.reviewTab));
     });
-    function setRecommendation(value) {
-        document.getElementById('recommendationDecision').value = value;
-        const radio = document.querySelector(`[name="recommendation_choice"][value="${value}"]`);
-        if (radio) radio.checked = true;
-    }
     document.querySelectorAll('[name="recommendation_choice"]').forEach((radio) => {
         radio.addEventListener('change', () => {
             document.getElementById('recommendationDecision').value = radio.value;

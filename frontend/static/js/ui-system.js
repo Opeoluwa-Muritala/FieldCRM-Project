@@ -10,6 +10,13 @@
     dismiss.addEventListener('click', remove); item.appendChild(dismiss); region.appendChild(item); window.setTimeout(remove, 6000);
   };
   document.addEventListener('click', function (event) {
+    var recommendation = event.target.closest('[data-set-recommendation]');
+    if (recommendation) {
+      var decision = document.getElementById('recommendationDecision');
+      if (decision) decision.value = recommendation.dataset.setRecommendation;
+      var choice = document.querySelector('[name="recommendation_choice"][value="' + recommendation.dataset.setRecommendation + '"]');
+      if (choice) choice.checked = true;
+    }
     var control = event.target.closest('[data-confirm]');
     if (!control || control.dataset.confirmed === 'true') return;
     event.preventDefault();
