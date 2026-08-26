@@ -72,6 +72,10 @@ body .field-select, body .field-textarea, body .config-input {
 }
 body textarea, body .field-textarea { min-height: 116px; resize: vertical; }
 body input:focus, body select:focus, body textarea:focus { border-color: var(--ui-secondary); box-shadow: var(--ui-focus); }
+body input[type="text"], body input[type="number"], body input[type="email"], body input[type="tel"],
+body input[type="date"], body input[type="password"], body input[type="search"], body select,
+body textarea, body .field-input, body .field-select, body .field-textarea, body .config-input {
+  background: #fbfcfe; line-height: 1.4; }
 
 /* Round the rectangular surfaces used throughout legacy and role templates. */
 .page-card, .card, .panel, .queue-card, .metric-card, .application-card,
@@ -94,22 +98,56 @@ body input:focus, body select:focus, body textarea:focus { border-color: var(--u
 @keyframes ui-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 .table-wrap, .table-responsive, .data-table-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.users-page { min-width: 0; width: 100%; }
+.users-table-wrap { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: visible; }
+.users-table { width: 100%; }
+.users-directory-head, .users-hero { min-width: 0; }
+.users-directory-head > *, .users-hero > * { min-width: 0; max-width: 100%; }
+.user-identity, .user-identity > div { min-width: 0; }
+.user-identity small, .user-branch, .user-role { overflow-wrap: anywhere; }
+.user-row-actions { flex-wrap: wrap; justify-content: flex-end; }
 table { min-width: 620px; }
 .action-button-group, .approval-action-buttons, .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.approval-page, .approval-review-main, .approval-decision-panel, .supervisor-review-page,
+.md-workflow-page, .crm-review-page, .executive-approval-page { min-width: 0; }
+.approval-action-buttons > *, .approval-decision-actions > *, .decision-actions > *,
+.md-workflow-page form, .crm-review-page form { min-width: 0; }
+.approval-decision-panel textarea, .approval-review-main textarea,
+.md-workflow-page textarea, .crm-review-page textarea { width: 100%; }
 
 @media (max-width: 1100px) {
   .page-content, .main-content, .content-area { padding-inline: 24px; }
   .layout-two-col, .approval-review-identity, .hero-stats { grid-template-columns: 1fr; }
+  .users-invite-form { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .users-invite-form .users-invite-button { grid-column: 1 / -1; width: 100%; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* The legacy shell collapses its rail at tablet widths; keep the brand
+     mark legible instead of shrinking it to an indistinct glyph. */
+  .sidebar { width: 88px; }
+  .main-content { margin-left: 88px; }
+  .sidebar .logo-composite { width: 64px; height: auto; }
 }
 @media (max-width: 760px) {
   .page-content, .main-content, .content-area { padding-inline: 16px; }
   .page-card { padding: 20px 16px; }
+  .users-invite-form { grid-template-columns: 1fr !important; }
+  .users-invite-form .users-invite-button { grid-column: auto; }
   .action-button-group, .approval-action-buttons, .form-actions { align-items: stretch; flex-direction: column; }
   .action-button-group > *, .approval-action-buttons > *, .form-actions > * { width: 100%; }
+  .approval-decision-actions, .decision-actions { align-items: stretch; flex-direction: column; gap: 12px; }
+  .approval-decision-actions > *, .decision-actions > * { width: 100%; }
+  .approval-page .page-card, .supervisor-review-page .page-card,
+  .md-workflow-page .page-card, .crm-review-page .page-card { overflow-wrap: anywhere; }
   .sticky-actions, .wizard-footer { position: static; }
   .table-wrap::after, .table-responsive::after, .data-table-wrap::after { content: 'Swipe to view more'; display: block; padding: 6px 0; color: var(--ui-muted); font-size: 11px; text-align: right; }
   #field-confirmation { width: min(440px, calc(100vw - 32px)) !important; padding: 22px !important; }
   .field-message-region { right: 12px; left: 12px; bottom: 12px; max-width: none; }
+}
+@media (max-width: 1179px) {
+  /* The responsive drawer is hidden until opened, but its logo should remain
+     full-size when the drawer is shown. */
+  .desktop-sidebar .sidebar-logo .logo-composite { width: 168px; max-width: 100%; height: auto; }
 }
 @media (max-width: 420px) {
   .page-content, .main-content, .content-area { padding-inline: 12px; }
