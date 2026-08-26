@@ -4,6 +4,10 @@ Welcome to the FieldCRM documentation repository. This directory contains detail
 
 ## Documentation Index
 
+- [Web UI Functional Inventory](web-ui-role-inventory/README.md): Role-by-role screens, visible information, fields, and actions.
+- [Web UI Design System](web-ui-role-inventory/design-system.md): Exact color assignments, semantic actions, element treatments, spacing, responsiveness, and accessibility.
+- [Web UI Arrangement Sketches](web-ui-role-inventory/layout-sketches.md): Reusable desktop/tablet/mobile wireframes mapped to every web template.
+- [Web UI Source Catalog](web-ui-role-inventory/source-catalog.md): Complete coverage of all 124 Jinja templates and every web CSS/JavaScript asset.
 - [Architecture Overview](file:///C:/Users/LENOVO/Desktop/FieldCRM/docs/system-architecture/architecture-overview.md): High-level system design, data boundaries, and modular structure.
 - [Current Component Map](file:///C:/Users/LENOVO/Desktop/FieldCRM/docs/system-architecture/current-component-map.md): Graph representation of systems interactions.
 - [Deployment Map](file:///C:/Users/LENOVO/Desktop/FieldCRM/docs/system-architecture/deployment-map.md): Infrastructure hosting setup, TLS termination, and server specifications.

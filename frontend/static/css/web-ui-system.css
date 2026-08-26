@@ -11,8 +11,8 @@
   --ui-secondary: #6f2676;
   --ui-secondary-hover: #5b1f61;
   --ui-secondary-soft: #f7eff8;
-  --ui-warning: #b45309;
-  --ui-warning-hover: #92400e;
+  --ui-warning: #6f2676;
+  --ui-warning-hover: #5b1f61;
   --ui-danger: #b42318;
   --ui-danger-hover: #912018;
   --ui-success: #147a55;
@@ -99,7 +99,7 @@ body .action-warning {
   border: 1px solid var(--ui-warning) !important;
   color: var(--ui-warning) !important;
 }
-body .action-warning:hover { background: #fff7ed !important; border-color: var(--ui-warning-hover) !important; color: var(--ui-warning-hover) !important; }
+body .action-warning:hover { background: var(--ui-secondary-soft) !important; border-color: var(--ui-warning-hover) !important; color: var(--ui-warning-hover) !important; }
 body .action-danger,
 body .btn-danger.action-danger { background: var(--ui-danger) !important; border: 1px solid var(--ui-danger) !important; color: #fff !important; }
 body .action-danger:hover,

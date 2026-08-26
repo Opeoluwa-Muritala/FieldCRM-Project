@@ -2,6 +2,14 @@
 
 This document is the functional UI specification for the server-rendered FieldCRM web application. It records what each visible or interactive element does and how each screen is arranged. Repeated elements are defined once under **Shared UI** and referenced by the role sections.
 
+Last verified: 26 August 2026
+
+Companion references:
+
+- [Design system and exact element colors](design-system.md)
+- [Desktop, tablet, mobile, page, and fragment arrangement sketches](layout-sketches.md)
+- [Complete catalog of all HTML templates, CSS assets, and JavaScript modules](source-catalog.md)
+
 ## Legend
 
 | Kind | Meaning |
@@ -155,7 +163,7 @@ Back/Next/Save controls persist steps. Reviewer mode disables editing and provid
 
 ## Relationship Officer (account_officer / loan_officer)
 
-Sidebar arrangement: Dashboard, My Queue, New Application, Drafts, Returned, Visit Schedule, My Visitation Reports, Upload Form, OCR Review Queue.
+Sidebar arrangement: Dashboard, My Work, My Queue, New Application, Drafts, Returned, Visit Schedule, My Visitation Reports, Documents Needing Action, and feature-aware MCC.
 
 | Screen | Informational elements | Clickable/editable elements and result |
 |---|---|---|
@@ -171,7 +179,7 @@ Sidebar arrangement: Dashboard, My Queue, New Application, Drafts, Returned, Vis
 
 ## Team Lead (branch_manager)
 
-Sidebar arrangement: Dashboard, Awaiting Me, Visit Signoffs, Pipeline, Current Loans.
+Sidebar arrangement: Dashboard, Awaiting Me, Visit Signoffs, Exceptions Centre, Pipeline, Current Loans, and feature-aware MCC.
 
 | Screen | Informational elements | Clickable/editable elements and result |
 |---|---|---|
@@ -184,7 +192,7 @@ Sidebar arrangement: Dashboard, Awaiting Me, Visit Signoffs, Pipeline, Current L
 
 ## Supervisor (branch_supervisor)
 
-Sidebar arrangement: Dashboard, Review Queue, Borrowers.
+Sidebar arrangement: Dashboard, Review Queue, Borrowers, and feature-aware MCC.
 
 | Screen | Informational elements | Clickable/editable elements and result |
 |---|---|---|
@@ -196,7 +204,7 @@ Sidebar arrangement: Dashboard, Review Queue, Borrowers.
 
 ## Credit Analyst (credit_analyst)
 
-Sidebar arrangement: Dashboard, Underwriting Queue, OCR Exceptions, Current Loans.
+Sidebar arrangement: Dashboard, Underwriting Queue, Document Exceptions, Exceptions Centre, Current Loans, and feature-aware MCC.
 
 | Screen | Informational elements | Clickable/editable elements and result |
 |---|---|---|
@@ -208,7 +216,7 @@ Sidebar arrangement: Dashboard, Underwriting Queue, OCR Exceptions, Current Loan
 
 ## CRM Officer and Head CRM
 
-Sidebar arrangement: Dashboard, Dossier Review Queue, Current Loans, Portfolio at Risk. Head CRM uses the same areas with final CRM authority labels.
+Sidebar arrangement: Dashboard, Dossier Review Queue, Current Loans, Portfolio at Risk, and feature-aware MCC. Head CRM uses the same areas with final CRM authority labels.
 
 | Screen | Informational elements | Clickable/editable elements and result |
 |---|---|---|
@@ -251,7 +259,7 @@ Sidebar arrangement: Dashboard, Approval Queue, MCC, PAR Report, Borrowers.
 
 ## Legal
 
-Sidebar arrangement: Dashboard and Legal Review Queue.
+Sidebar arrangement: Dashboard, Legal Review Queue, and feature-aware MCC.
 
 | Screen | Informational elements | Clickable/editable elements and result |
 |---|---|---|
@@ -260,7 +268,7 @@ Sidebar arrangement: Dashboard and Legal Review Queue.
 
 ## Auditor
 
-Sidebar arrangement: Dashboard, Compliance Flags, Audit Trail, Current Loans.
+Sidebar arrangement: Dashboard, Compliance Flags, Audit Trail, Current Loans, and feature-aware MCC.
 
 | Screen | Informational elements | Clickable/editable elements and result |
 |---|---|---|
@@ -281,6 +289,39 @@ Sidebar arrangement: Dashboard, Users, System Activity.
 | System Activity | Login/activity summaries and recent audit events | Manage Users and linked entities where supplied. |
 | Interest Presets | Existing rates, products, tenors and active state | Product/rate/tenor inputs; Create Preset; Delete preset. |
 | Application Detail | Full evidence sidebar, final oversight and verification summary | Document preview and permitted system-control actions. |
+
+## Customer Identity
+
+Customer Identity is feature-flagged and staff-only. System Admin does not gain customer PII access from its administrative role.
+
+| Screen | Informational elements | Clickable/editable elements and result |
+|---|---|---|
+| New Customer | Legal name, identity/contact/address/classification fields, probable duplicate results | Create customer; duplicate matches stop persistence unless the authorized staff member enters a typed override reason. |
+| Customer 360 | Identity header, applications, current loans, CBS exposure, repayments, visits, documents, guarantors, collateral, credit evidence, communications and activity | Section navigation and tenant/object-authorized record/document links; no hidden-UI authorization assumptions. |
+
+## My Work and Exceptions Centre
+
+These Phase 6 surfaces are feature-aware and appear only when enabled for the role.
+
+| Screen | Informational elements | Clickable/editable elements and result |
+|---|---|---|
+| My Work | Work buckets, task identity, case/application, ownership, due/age state | Bucket filters and authorized record links open the underlying work item. |
+| Exceptions Centre | Exception category, severity/state, application, owner and age | Filters and authorized record links open contextual resolution surfaces. |
+
+## Configuration Administrator
+
+Configuration Admin is a separate localhost-only, non-production control plane with dedicated role, encrypted TOTP, short-lived step-up session and maker-checker controls.
+
+| Screen | Informational elements | Clickable/editable elements and result |
+|---|---|---|
+| MFA | Control-centre identity and step-up guidance | TOTP input verifies the dedicated Configuration Admin session. |
+| Hub | Current/effective version, working draft, readiness and configuration areas | Open Versions, Products, Forms, Documents or Features; Exit returns to the operational shell. |
+| Versions | Creator, validator, approver, publisher, reasons, effective timestamps and immutable history | Create/validate/approve/publish actions appear only when policy allows; high-risk approval requires a different person. |
+| Products | Draft product cards, status, limits and configuration completeness | Add/open a working-draft product; published definitions are not edited in place. |
+| Product Editor | Rules, sections, checks, SLA, workflow, approval limits and CBS applicability | Edit allowlisted draft-bound fields and save the working draft. |
+| Form Fields | Field type, label, help, validation, visibility and required state | Add/edit/reorder draft-bound fields; patterns come from the server allowlist. |
+| Document Checklists | Document type, required state, percentage gates and quality expectations | Add/edit/reorder draft-bound checklist entries. |
+| Feature Controls | Grouped operational switches and current values | Search feature cards and update only the current working draft. |
 
 ## Public/client UI
 

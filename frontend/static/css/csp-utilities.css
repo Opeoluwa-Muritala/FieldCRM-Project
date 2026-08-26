@@ -243,7 +243,7 @@
                  border:0.5px solid var(--border-color); border-radius:8px; padding:14px;
                  background-color:var(--bg-secondary); }
 .csp-s-6dbb7d1680f3 { font-size: 12px !important; line-height: 1.6 !important; margin: 0 !important; }
-.csp-s-6e06ef6e9aac { background-color:rgba(160,90,0,0.05) !important; }
+.csp-s-6e06ef6e9aac { background-color:rgba(111,38,118,0.05) !important; }
 .csp-s-6e146183a3a3 { display:flex !important; flex-direction:column !important; gap:8px !important; }
 .csp-s-6e22c58a7a6a { display: none !important; }
 .csp-s-6e8ff20aada1 { display: block !important; font-size: 14px !important; color: var(--color-brand-shield) !important; }
@@ -417,7 +417,7 @@
 .csp-s-ac743fbf2a74 { display: flex !important; justify-content: space-between !important; border-bottom: 0.5px solid var(--color-divider) !important; padding-bottom: 8px !important; margin-bottom: 12px !important; }
 .csp-s-aca0be8055e3 { font-weight:400 !important;color:var(--text-muted) !important; }
 .csp-s-acd72f9d1765 { text-align: center !important; padding: 24px !important; color: var(--text-muted) !important; font-size: 13px !important; }
-.csp-s-aed139af528c { background-color:rgba(160,90,0,0.03) !important; }
+.csp-s-aed139af528c { background-color:rgba(111,38,118,0.03) !important; }
 .csp-s-aed5b676a9a2 { font-size: 14px !important; color: var(--accent-brand) !important; font-weight: 600 !important; margin-bottom: 8px !important; }
 .csp-s-af04a756ec2b { padding-bottom: 8px !important; }
 .csp-s-af299494cc80 { display: flex !important; align-items: flex-start !important; gap: 8px !important; margin-top: 12px !important; font-size: 12px !important; line-height: 1.5 !important; cursor: pointer !important; }

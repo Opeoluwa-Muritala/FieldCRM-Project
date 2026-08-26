@@ -14,7 +14,7 @@
     --border-color: #C8C5D0;
     --color-divider: #E2DFE8;
     --accent-success: #1A6B45;
-    --accent-warning: #A05A00;
+    --accent-warning: #6F2676;
     --accent-danger: #A01A1A;
     --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -71,9 +71,9 @@
 }
 
 @keyframes pulseRing {
-    0%   { box-shadow: 0 0 0 0   rgba(160, 90, 0, 0.35); }
-    70%  { box-shadow: 0 0 0 6px rgba(160, 90, 0, 0); }
-    100% { box-shadow: 0 0 0 0   rgba(160, 90, 0, 0); }
+    0%   { box-shadow: 0 0 0 0   rgba(111, 38, 118, 0.30); }
+    70%  { box-shadow: 0 0 0 6px rgba(111, 38, 118, 0); }
+    100% { box-shadow: 0 0 0 0   rgba(111, 38, 118, 0); }
 }
 
 @keyframes slideInFromRight {
@@ -661,7 +661,7 @@ button, input, select, textarea {
 }
 
 .status-badge.needs-review, .status-badge.low-confidence {
-    background-color: rgba(160, 90, 0, 0.1);
+    background-color: rgba(111, 38, 118, 0.10);
     color: var(--accent-warning);
     border: 0.5px solid var(--accent-warning);
 }
@@ -683,7 +683,7 @@ button, input, select, textarea {
 .flat-card.warning {
     background-color: #FEF3C7;
     color: var(--accent-warning);
-    border-color: rgba(160, 90, 0, 0.2);
+    border-color: rgba(111, 38, 118, 0.20);
 }
 
 .flat-card.danger {
