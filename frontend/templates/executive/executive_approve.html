@@ -52,12 +52,12 @@
         <label class="field-label csp-s-3d9df89ef84d">Approved/Recommended Amount (₦)</label>
         <input type="number" name="amount" class="field-input csp-s-37ab52c9d67a" value="{{ app.amount or 0 }}" required>
     </div>
-    <div>
-        <button type="submit" class="btn btn-primary csp-s-6f042b8931b1"
+    <div class="approval-action-buttons">
+        <button type="submit" class="btn btn-primary action-primary csp-s-6f042b8931b1"
           data-confirm="Issue disbursement instruction for {{ app.applicant_name }}?">
           &#10003; Issue Disbursement Instruction
         </button>
-        <a href="/executive-queue" class="btn btn-secondary csp-s-c56fa2191449">Cancel</a>
+        <a href="/executive-queue" class="btn btn-secondary action-secondary-ghost csp-s-c56fa2191449">Cancel</a>
     </div>
   </form>
 </div>

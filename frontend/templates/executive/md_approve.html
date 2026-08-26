@@ -22,7 +22,7 @@
 </div>
 
 <div class="page-card workflow-analysis-card">
-  <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary workflow-analysis-link">Open Collateral &amp; Repayment Feasibility Analysis &rarr;</a>
+  <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary workflow-analysis-link action-secondary-filled">Open Collateral &amp; Repayment Feasibility Analysis &rarr;</a>
 </div>
 
 {% if app.crm_notes %}
@@ -62,8 +62,8 @@
   <p class="csp-s-7ae589b899ff">Return this application to ED for the final decision.</p>
   <form method="post" action="/applications/{{ app_id }}/md-approve" class="csp-s-633fe02090af">
     <textarea name="md_notes" rows="3" placeholder="Optional quick note for ED" class="field-textarea"></textarea>
-    <button type="submit" name="action" value="return_ed" class="btn btn-secondary" data-confirm="Return this application to ED?">Return to ED</button>
-    <a href="/md-queue" class="btn btn-secondary">Cancel</a>
+    <button type="submit" name="action" value="return_ed" class="btn btn-secondary action-secondary-outlined" data-confirm="Return this application to ED?">Return to ED</button>
+    <a href="/md-queue" class="btn btn-secondary action-secondary-ghost">Cancel</a>
   </form>
   {% else %}
   <h3 class="csp-s-4636770b4968">MD Final Approval</h3>
@@ -82,12 +82,14 @@
       <textarea id="md_notes_approve" name="md_notes" rows="3"
         placeholder="Any final comments or conditions…" class="csp-s-7f2f7061619d"></textarea>
     </div>
-    <button type="submit" name="action" value="approve" class="btn btn-primary csp-s-6f042b8931b1"
+    <div class="approval-action-buttons">
+    <button type="submit" name="action" value="approve" class="btn btn-primary action-primary csp-s-6f042b8931b1"
       data-confirm="Issue disbursement instruction for {{ app.applicant_name }}?">
       &#10003; Issue Disbursement Instruction
     </button>
-    <button type="submit" name="action" value="deny" class="btn btn-danger" data-confirm="Deny and archive this loan?">&#10007; Deny &amp; Archive</button>
-    <a href="/md-queue" class="btn btn-secondary csp-s-c56fa2191449">Cancel</a>
+    <button type="submit" name="action" value="deny" class="btn btn-danger action-danger" data-confirm="Deny and archive this loan?">&#10007; Deny &amp; Archive</button>
+    <a href="/md-queue" class="btn btn-secondary action-secondary-ghost csp-s-c56fa2191449">Cancel</a>
+    </div>
   </form>
   {% endif %}
 </div>
@@ -113,7 +115,7 @@
       <label class="csp-s-176722429920">Notes</label>
       <input type="text" name="notes" placeholder="What to ask…" class="csp-s-06e3cc3a30eb">
     </div>
-    <button type="submit" class="btn btn-secondary csp-s-6c19517da870">Request Opinion</button>
+    <button type="submit" class="btn btn-secondary action-secondary-filled csp-s-6c19517da870">Request Opinion</button>
   </form>
   {% if board_referrals %}
   <table class="custom-table">
@@ -135,6 +137,6 @@
   {% endif %}
 </div>
 
-<a href="/md-queue" class="btn btn-secondary">&#8592; Back to MD Queue</a>
+<a href="/md-queue" class="btn btn-secondary action-secondary-ghost">&#8592; Back to MD Queue</a>
 </div>
 {% endblock %}

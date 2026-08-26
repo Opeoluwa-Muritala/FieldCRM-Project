@@ -28,7 +28,7 @@
 </section>
 
 <div class="page-card workflow-analysis-card">
-  <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary workflow-analysis-link">Open Collateral &amp; Repayment Feasibility Analysis &rarr;</a>
+  <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary workflow-analysis-link action-secondary-filled">Open Collateral &amp; Repayment Feasibility Analysis &rarr;</a>
 </div>
 
 <div class="page-card csp-s-3c4a3d440074">
@@ -76,7 +76,7 @@
         <label class="csp-s-176722429920">File</label>
         <input type="file" name="file" required class="csp-s-84f41f4cdab1">
       </div>
-      <button type="submit" class="btn btn-secondary csp-s-6c19517da870">Upload</button>
+      <button type="submit" class="btn btn-secondary action-secondary-filled csp-s-6c19517da870">Upload</button>
     </div>
   </form>
   {% if documents %}
@@ -111,8 +111,8 @@
   <h3 class="csp-s-4636770b4968">Head CRM Application Reference Views</h3>
   <p class="action-note">Use these read-only links to inspect the details submitted by the applicant and relationship officer:</p>
   <div class="workflow-reference-links">
-    <a href="/applications/{{ app_id }}/step/1" class="btn btn-secondary" target="_blank">View Application Form (Step 1) &nearr;</a>
-    <a href="/applications/{{ app_id }}/guarantors/1/step/7" class="btn btn-secondary" target="_blank">View Guarantor Details (Step 7) &nearr;</a>
+    <a href="/applications/{{ app_id }}/step/1" class="btn btn-secondary action-secondary-outlined" target="_blank">View Application Form (Step 1) &nearr;</a>
+    <a href="/applications/{{ app_id }}/guarantors/1/step/7" class="btn btn-secondary action-secondary-outlined" target="_blank">View Guarantor Details (Step 7) &nearr;</a>
   </div>
 </div>
 {% endif %}
@@ -149,15 +149,15 @@
       <textarea id="crm_notes" name="crm_notes" rows="4"
         placeholder="Summarise dossier completeness and any flags…" class="csp-s-7f2f7061619d"></textarea>
     </div>
-    <div class="csp-s-695296fc9a22">
-      <button type="submit" name="action" value="advance" class="btn btn-primary">{{ 'Approve and send to ED' if current_user.role == 'head_crm' else 'Send to Head CRM' }}</button>
-      <button type="button" id="show-crm-return" class="btn btn-secondary">Return Application</button>
+    <div class="csp-s-695296fc9a22 approval-action-buttons">
+      <button type="submit" name="action" value="advance" class="btn btn-primary action-primary">{{ 'Approve and send to ED' if current_user.role == 'head_crm' else 'Send to Head CRM' }}</button>
+      <button type="button" id="show-crm-return" class="btn btn-secondary action-secondary-outlined">Return Application</button>
     </div>
-    <div id="crm-return-confirmation" class="flat-card warning csp-s-76977cc9f242" hidden>
+    <div id="crm-return-confirmation" class="flat-card warning csp-s-76977cc9f242 decision-actions" hidden>
       <strong>Return this application to the branch?</strong>
       <p class="csp-s-21595e3fffef">The file will move back to the preceding pipeline stage.</p>
-      <button type="submit" name="action" value="return" class="btn btn-secondary">Confirm return</button>
-      <button type="button" id="cancel-crm-return" class="btn btn-ghost">Cancel</button>
+      <button type="submit" name="action" value="return" class="btn btn-secondary action-secondary-outlined">Confirm return</button>
+      <button type="button" id="cancel-crm-return" class="btn btn-ghost action-secondary-ghost">Cancel</button>
     </div>
   </form>
 </div>

@@ -30,11 +30,11 @@
 
     <!-- Inside page tabbed navigation -->
     <div class="tab-row">
-        <button type="button" class="tab-btn active" id="tabSummaryBtn" data-review-tab="summary">Summary</button>
-        <button type="button" class="tab-btn" id="tabAffordabilityBtn" data-review-tab="affordability">Affordability</button>
-        <button type="button" class="tab-btn" id="tabDocsBtn" data-review-tab="docs">Documents</button>
-        <button type="button" class="tab-btn" id="tabOcrBtn" data-review-tab="ocr">OCR Exceptions</button>
-        <button type="button" class="tab-btn" id="tabRecBtn" data-review-tab="recommendation">Recommendation</button>
+        <button type="button" class="tab-btn active action-secondary-compact" id="tabSummaryBtn" data-review-tab="summary">Summary</button>
+        <button type="button" class="tab-btn action-secondary-compact" id="tabAffordabilityBtn" data-review-tab="affordability">Affordability</button>
+        <button type="button" class="tab-btn action-secondary-compact" id="tabDocsBtn" data-review-tab="docs">Documents</button>
+        <button type="button" class="tab-btn action-secondary-compact" id="tabOcrBtn" data-review-tab="ocr">OCR Exceptions</button>
+        <button type="button" class="tab-btn action-secondary-compact" id="tabRecBtn" data-review-tab="recommendation">Recommendation</button>
     </div>
 
     <form id="creditBureauPullForm" action="/applications/{{ app_id }}/credit-bureau-pull" method="POST"></form>
@@ -64,7 +64,7 @@
                     <textarea class="field-textarea" readonly>{{ collateral_desc or 'Shop Stock, Household Appliances' }}</textarea>
                 </div>
                 <div class="workflow-analysis-section">
-                    <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary workflow-analysis-link">Open Collateral &amp; Repayment Feasibility Analysis &rarr;</a>
+                    <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary workflow-analysis-link action-secondary-filled">Open Collateral &amp; Repayment Feasibility Analysis &rarr;</a>
                 </div>
             </div>
 
@@ -108,7 +108,7 @@
                         </div>
                         
                         <div class="csp-s-3aab6f18fbd3">
-                            <button form="creditBureauPullForm" type="submit" class="btn-primary-filled csp-s-0c23ed10a9b7">
+                            <button form="creditBureauPullForm" type="submit" class="btn-primary-filled action-secondary-filled csp-s-0c23ed10a9b7">
                                 {% if bureau_sub %}Re-Run Bureau Check{% else %}Run Bureau Check{% endif %}
                             </button>
                         </div>
@@ -203,7 +203,7 @@
         <div id="tabDocs" class="tab-pane csp-s-6e22c58a7a6a">
             <div class="csp-s-8e7137fcc774">
                 <div class="csp-s-419fbd51b92c">Document Verification Log</div>
-                <a href="/applications/{{ app_id }}/documents/upload" class="btn-ghost-link csp-s-287d78d965d1">+ Request Missing Document</a>
+                <a href="/applications/{{ app_id }}/documents/upload" class="btn-ghost-link action-secondary-outlined csp-s-287d78d965d1">+ Request Missing Document</a>
             </div>
 
             <div class="custom-table-container">
@@ -326,11 +326,11 @@
 
         <!-- Sticky Bottom actions bar -->
         <div class="audit-action-panel csp-s-de404aec8115">
-            <a href="/applications/{{ app_id }}" class="btn-ghost-link">&larr; Back to Profile</a>
+            <a href="/applications/{{ app_id }}" class="btn-ghost-link action-secondary-ghost">&larr; Back to Profile</a>
             <input type="hidden" name="recommendation_decision" id="recommendationDecision" value="Recommend Approval">
             <div class="action-button-group">
-                <button type="submit" class="btn-primary-filled" data-set-recommendation="Recommend Approval">Record recommendation &amp; move up</button>
-                <button type="submit" class="btn-secondary" data-set-recommendation="Return for Correction">Return for Correction</button>
+                <button type="submit" class="btn-primary-filled action-primary" data-set-recommendation="Recommend Approval">Record recommendation &amp; move up</button>
+                <button type="submit" class="btn-secondary action-secondary-outlined" data-set-recommendation="Return for Correction">Return for Correction</button>
             </div>
         </div>
 

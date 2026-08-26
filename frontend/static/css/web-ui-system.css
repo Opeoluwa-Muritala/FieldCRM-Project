@@ -7,9 +7,16 @@
   --ui-muted: #526174;
   --ui-line: #cbd5e1;
   --ui-primary: #2e0052;
-  --ui-primary-hover: #4b1471;
+  --ui-primary-hover: #23003f;
   --ui-secondary: #6f2676;
-  --ui-danger: #a12626;
+  --ui-secondary-hover: #5b1f61;
+  --ui-secondary-soft: #f7eff8;
+  --ui-warning: #b45309;
+  --ui-warning-hover: #92400e;
+  --ui-danger: #b42318;
+  --ui-danger-hover: #912018;
+  --ui-success: #147a55;
+  --ui-disabled: #94a3b8;
   --ui-radius-control: 10px;
   --ui-radius-card: 14px;
   --ui-radius-dialog: 18px;
@@ -28,7 +35,10 @@ html, body, .app-shell, .responsive-shell, .responsive-main, .responsive-content
 body { overflow-x: hidden; }
 button, input, select, textarea { border-radius: var(--ui-radius-control); }
 button, [role="button"], a.btn, .btn, .btn-primary, .btn-secondary,
-.btn-primary-filled, .btn-ghost-link, .sidebar-utility-link, .config-exit {
+.btn-primary-filled, .btn-ghost-link, .sidebar-utility-link, .config-exit,
+.action-primary, .action-secondary-filled, .action-secondary-outlined,
+.action-secondary-ghost, .action-secondary-compact, .action-warning,
+.action-danger {
   border-radius: var(--ui-radius-control);
   min-height: 44px;
   padding-inline: 16px;
@@ -40,14 +50,80 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   box-shadow: var(--ui-focus);
 }
 .btn, .btn-primary, .btn-secondary, .btn-primary-filled { gap: 8px; }
+
+/* Semantic action hierarchy. Legacy classes remain in markup for compatibility;
+   these classes own the final color and emphasis in the last stylesheet. */
+body .action-primary {
+  background: var(--ui-primary) !important;
+  border: 1px solid var(--ui-primary) !important;
+  color: #fff !important;
+}
+body .action-primary:hover { background: var(--ui-primary-hover) !important; border-color: var(--ui-primary-hover) !important; transform: translateY(-1px); }
+[data-role] .action-primary,
+[data-role] .btn-primary-filled.action-primary { background: var(--ui-primary) !important; border-color: var(--ui-primary) !important; color: #fff !important; }
+[data-role] .action-primary:hover,
+[data-role] .btn-primary-filled.action-primary:hover { background: var(--ui-primary-hover) !important; border-color: var(--ui-primary-hover) !important; }
+body .action-secondary-filled {
+  background: var(--ui-secondary) !important;
+  border: 1px solid var(--ui-secondary) !important;
+  color: #fff !important;
+}
+body .action-secondary-filled:hover { background: var(--ui-secondary-hover) !important; border-color: var(--ui-secondary-hover) !important; transform: translateY(-1px); }
+[data-role] .action-secondary-filled,
+[data-role] .btn-primary-filled.action-secondary-filled { background: var(--ui-secondary) !important; border-color: var(--ui-secondary) !important; color: #fff !important; }
+[data-role] .action-secondary-filled:hover,
+[data-role] .btn-primary-filled.action-secondary-filled:hover { background: var(--ui-secondary-hover) !important; border-color: var(--ui-secondary-hover) !important; }
+body .action-secondary-outlined {
+  background: transparent !important;
+  border: 1px solid var(--ui-secondary) !important;
+  color: var(--ui-secondary) !important;
+}
+body .action-secondary-outlined:hover { background: var(--ui-secondary-soft) !important; border-color: var(--ui-secondary-hover) !important; color: var(--ui-secondary-hover) !important; }
+body .action-secondary-ghost {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: var(--ui-secondary) !important;
+}
+body .action-secondary-ghost:hover { background: var(--ui-secondary-soft) !important; color: var(--ui-secondary-hover) !important; }
+body .action-secondary-compact {
+  min-height: 36px;
+  padding-inline: 12px;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: var(--ui-secondary) !important;
+}
+body .action-secondary-compact:hover,
+body .action-secondary-compact.active { background: var(--ui-secondary-soft) !important; border-color: #d8bfdb !important; color: var(--ui-secondary-hover) !important; }
+body .action-warning {
+  background: transparent !important;
+  border: 1px solid var(--ui-warning) !important;
+  color: var(--ui-warning) !important;
+}
+body .action-warning:hover { background: #fff7ed !important; border-color: var(--ui-warning-hover) !important; color: var(--ui-warning-hover) !important; }
+body .action-danger,
+body .btn-danger.action-danger { background: var(--ui-danger) !important; border: 1px solid var(--ui-danger) !important; color: #fff !important; }
+body .action-danger:hover,
+body .btn-danger.action-danger:hover { background: var(--ui-danger-hover) !important; border-color: var(--ui-danger-hover) !important; }
+body .action-link { color: var(--ui-secondary) !important; text-decoration-color: rgba(111,38,118,.42); }
+body .action-link:hover { color: var(--ui-secondary-hover) !important; text-decoration-color: currentColor; }
+body button:disabled, body .btn:disabled, body [aria-disabled="true"], body .action-disabled {
+  background: var(--ui-disabled) !important;
+  border-color: var(--ui-disabled) !important;
+  color: #fff !important;
+  cursor: not-allowed;
+  opacity: 1;
+  transform: none !important;
+}
+
+/* Compatibility defaults for actions not yet annotated semantically. */
 .btn-primary, .btn-primary-filled { background: var(--ui-primary); color: #fff; }
 .btn-primary:hover, .btn-primary-filled:hover { background: var(--ui-primary-hover); transform: translateY(-1px); }
 .btn-secondary { background: #fff; color: var(--ui-secondary); border: 1px solid #b99abd; }
-.btn-secondary:hover { background: #f5edf6; border-color: var(--ui-secondary); }
+.btn-secondary:hover { background: var(--ui-secondary-soft); border-color: var(--ui-secondary); }
 .btn-danger { background: var(--ui-danger); color: #fff; border: 1px solid var(--ui-danger); }
-.btn-danger:hover { background: #7f1d1d; }
-.btn-ghost-link { background: transparent; color: var(--ui-muted); border: 1px solid transparent; }
-.btn-ghost-link:hover { color: var(--ui-ink); background: var(--ui-surface-soft); border-color: var(--ui-line); }
+.btn-danger:hover { background: var(--ui-danger-hover); }
+.btn-ghost-link { background: transparent; color: var(--ui-secondary); border: 1px solid transparent; }
+.btn-ghost-link:hover { color: var(--ui-secondary-hover); background: var(--ui-secondary-soft); }
 
 .page-card, .card, .queue-card, .metric-card, .application-card {
   border-radius: var(--ui-radius-card);
@@ -59,12 +135,13 @@ input, select, textarea { min-height: 44px; border-color: var(--ui-line); color:
 textarea { min-height: 110px; padding: 12px 14px; }
 ::placeholder { color: #526174; opacity: 1; }
 
-/* One clear primary action; cancel/secondary actions stay quiet and neutral. */
-body .btn-secondary,
-body button.btn-secondary,
-body a.btn-secondary { background: transparent !important; color: var(--ui-muted) !important; border: 1px solid var(--ui-line) !important; }
-body .btn-secondary:hover { background: var(--ui-surface-soft) !important; color: var(--ui-ink) !important; border-color: var(--ui-muted) !important; }
-body .btn-ghost-link { background: transparent !important; color: var(--ui-muted) !important; }
+/* Unannotated legacy secondary actions stay quiet; semantic classes above
+   override these rules when an action needs plum emphasis. */
+body .btn-secondary:not(.action-secondary-filled):not(.action-secondary-outlined):not(.action-secondary-ghost):not(.action-warning),
+body button.btn-secondary:not(.action-secondary-filled):not(.action-secondary-outlined):not(.action-secondary-ghost):not(.action-warning),
+body a.btn-secondary:not(.action-secondary-filled):not(.action-secondary-outlined):not(.action-secondary-ghost):not(.action-warning) { background: transparent !important; color: var(--ui-muted) !important; border: 1px solid var(--ui-line) !important; }
+body .btn-secondary:not(.action-secondary-filled):not(.action-secondary-outlined):not(.action-secondary-ghost):not(.action-warning):hover { background: var(--ui-surface-soft) !important; color: var(--ui-ink) !important; border-color: var(--ui-muted) !important; }
+body .btn-ghost-link:not(.action-secondary-ghost) { background: transparent !important; color: var(--ui-secondary) !important; }
 body .btn-danger { color: #fff !important; }
 body input[type="text"], body input[type="number"], body input[type="email"],
 body input[type="tel"], body input[type="date"], body input[type="password"],
@@ -88,10 +165,11 @@ body textarea, body .field-input, body .field-select, body .field-textarea, body
 .sidebar-utility-link, .config-exit { min-height: 46px; width: 100%; justify-content: flex-start; gap: 10px; color: #fff; background: transparent; border: 1px solid transparent; }
 .sidebar-utility-link:hover, .config-exit:hover { color: #fff; background: rgba(220,70,90,.18); border-color: rgba(255,255,255,.24); }
 
-#field-confirmation-backdrop { animation: ui-fade-in .16s ease both; }
-#field-confirmation { border-radius: var(--ui-radius-dialog) !important; padding: 26px !important; text-align: center; }
+#field-confirmation-backdrop { position: fixed; inset: 0; z-index: 2000; background: rgba(18,10,28,.42); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); animation: ui-fade-in .16s ease both; }
+#field-confirmation { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 2001; width: min(420px, calc(100vw - 40px)); max-width: 420px; background: #fff; border: 1px solid var(--ui-line); box-shadow: 0 18px 48px rgba(18,10,28,.24); border-radius: var(--ui-radius-dialog) !important; padding: 26px !important; text-align: center; }
 #field-confirmation p { color: var(--ui-ink); font-size: 15px; line-height: 1.55; }
 #field-confirmation button { min-width: 104px; }
+#field-confirmation .confirmation-actions { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
 .field-message-region { position: fixed; right: 20px; bottom: 20px; z-index: 2000; max-width: 360px; }
 .field-toast { color: #fff; border-radius: var(--ui-radius-control); box-shadow: 0 10px 28px rgba(0,0,0,.22); padding: 14px 42px 14px 16px; line-height: 1.45; position: relative; margin-top: 8px; }
 .field-toast.is-error { background: #7f1d1d; }
@@ -110,6 +188,19 @@ body textarea, body .field-input, body .field-select, body .field-textarea, body
 .user-row-actions { flex-wrap: wrap; justify-content: flex-end; }
 table { min-width: 620px; }
 .action-button-group, .approval-action-buttons, .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.approval-action-buttons .action-primary, .decision-actions .action-primary { order: 1; }
+.approval-action-buttons .action-secondary-filled, .approval-action-buttons .action-secondary-outlined,
+.approval-action-buttons .action-warning, .decision-actions .action-secondary-filled,
+.decision-actions .action-secondary-outlined, .decision-actions .action-warning { order: 2; }
+.approval-action-buttons .action-danger, .decision-actions .action-danger { order: 3; }
+.approval-action-buttons .action-secondary-ghost, .decision-actions .action-secondary-ghost { order: 4; }
+.status-badge.verified, .status-badge.approved, .status-badge.complete { background: #e8f5ef; color: var(--ui-success); }
+.status-badge.needs-review, .status-badge.returned { background: var(--ui-secondary-soft); color: var(--ui-secondary); }
+.approval-page .approval-warning {
+  background: var(--ui-secondary-soft) !important;
+  border-color: #d8bfdb !important;
+  color: var(--ui-secondary-hover) !important;
+}
 .approval-page, .approval-review-main, .approval-decision-panel, .supervisor-review-page,
 .md-workflow-page, .crm-review-page, .executive-approval-page { min-width: 0; }
 .approval-action-buttons > *, .approval-decision-actions > *, .decision-actions > *,
@@ -145,6 +236,8 @@ table { min-width: 620px; }
   .sticky-actions, .wizard-footer { position: static; }
   .table-wrap::after, .table-responsive::after, .data-table-wrap::after { content: 'Swipe to view more'; display: block; padding: 6px 0; color: var(--ui-muted); font-size: 11px; text-align: right; }
   #field-confirmation { width: min(440px, calc(100vw - 32px)) !important; padding: 22px !important; }
+  #field-confirmation .confirmation-actions { align-items: stretch; flex-direction: column; }
+  #field-confirmation .confirmation-actions > * { width: 100%; }
   .field-message-region { right: 12px; left: 12px; bottom: 12px; max-width: none; }
 }
 @media (max-width: 1179px) {
@@ -207,20 +300,24 @@ table { min-width: 620px; }
 .crm-review-page .approval-action-buttons,
 .md-workflow-page .csp-s-633fe02090af,
 .crm-review-page .csp-s-695296fc9a22 { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
-.approval-review-desk .approval-action-buttons .btn-primary-filled,
-.approval-page .approval-action-buttons .btn-primary-filled,
-.md-workflow-page .btn-primary,
-.crm-review-page .btn-primary { order: 1; background: var(--ui-primary) !important; color: #fff !important; }
+.approval-review-desk .approval-action-buttons .action-primary,
+.approval-page .approval-action-buttons .action-primary,
+.md-workflow-page .action-primary,
+.crm-review-page .action-primary { order: 1; }
 .approval-review-desk .approval-return-button,
 .approval-page .approval-return-button,
-.md-workflow-page .btn-secondary,
-.crm-review-page .btn-secondary { order: 2; background: transparent !important; color: var(--ui-muted) !important; border: 1px solid var(--ui-line) !important; }
-.approval-review-desk .approval-action-buttons .btn-danger,
-.approval-page .approval-action-buttons .btn-danger,
-.md-workflow-page .btn-danger { order: 3; margin-left: 8px; }
-.approval-page .btn-ghost-link,
-.md-workflow-page a.btn-secondary[href*="queue"],
-.crm-review-page .btn-ghost { background: transparent !important; color: var(--ui-muted) !important; border-color: transparent !important; }
+.md-workflow-page .action-secondary-filled,
+.md-workflow-page .action-secondary-outlined,
+.md-workflow-page .action-warning,
+.crm-review-page .action-secondary-filled,
+.crm-review-page .action-secondary-outlined,
+.crm-review-page .action-warning { order: 2; }
+.approval-review-desk .approval-action-buttons .action-danger,
+.approval-page .approval-action-buttons .action-danger,
+.md-workflow-page .action-danger { order: 3; margin-left: 8px; }
+.approval-page .action-secondary-ghost,
+.md-workflow-page .action-secondary-ghost,
+.crm-review-page .action-secondary-ghost { order: 4; }
 .approval-page .page-card + .page-card,
 .md-workflow-page .page-card + .page-card,
 .crm-review-page .page-card + .page-card { margin-top: var(--approval-gap); }

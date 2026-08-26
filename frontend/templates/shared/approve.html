@@ -53,11 +53,11 @@
         </section>
 
         {% macro check_row(label, status='Verified', tone='verified', href='', action='') %}
-        {% if href %}<a href="{{ href }}" class="approval-check-row approval-check-row-clickable" aria-label="{{ action }}: {{ label }}">
+        {% if href %}<a href="{{ href }}" class="approval-check-row approval-check-row-clickable action-link" aria-label="{{ action }}: {{ label }}">
         {% else %}<div class="approval-check-row">{% endif %}
             <div class="approval-check-label">{{ label }}</div>
             <div class="approval-check-actions">
-                {% if href %}<span class="approval-row-action">{{ action }} <span aria-hidden="true">&rarr;</span></span>{% endif %}
+                {% if href %}<span class="approval-row-action action-secondary-compact">{{ action }} <span aria-hidden="true">&rarr;</span></span>{% endif %}
                 <span class="status-badge {{ tone }}">{{ status }}</span>
             </div>
         {% if href %}</a>{% else %}</div>{% endif %}
@@ -161,8 +161,8 @@
                         <input id="approval-amount" type="number" name="amount" class="field-input" value="{{ app.amount or 0 }}" required>
                     </div>
                     <div class="approval-action-buttons">
-                        {% if can_return_previous %}<a href="/applications/{{ app_id }}/return" class="btn-ghost-link approval-return-button">Return to {{ return_target_label }}</a>{% endif %}
-                        <button type="submit" class="btn-primary-filled" id="approveBtn">Concur &amp; Forward for Review &rarr;</button>
+                        {% if can_return_previous %}<a href="/applications/{{ app_id }}/return" class="btn-ghost-link approval-return-button action-secondary-outlined">Return to {{ return_target_label }}</a>{% endif %}
+                        <button type="submit" class="btn-primary-filled action-primary" id="approveBtn">Concur &amp; Forward for Review &rarr;</button>
                     </div>
                 </div>
             </form>
