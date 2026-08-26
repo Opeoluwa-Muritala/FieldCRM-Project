@@ -50,17 +50,17 @@
             {% if capabilities.can_edit_intake or capabilities.can_upload_documents %}
             <div class="application-secure-actions">
                 {% if capabilities.can_edit_intake %}
-                <a href="/applications/{{ app_id }}/step/1" class="btn btn-secondary">Edit intake</a>
+                <a href="/applications/{{ app_id }}/step/1" class="btn btn-secondary action-secondary-outlined">Edit intake</a>
                 {% endif %}
                 {% if capabilities.can_upload_documents %}
-                <a href="/applications/{{ app_id }}/documents/upload" class="btn btn-secondary">Upload document</a>
+                <a href="/applications/{{ app_id }}/documents/upload" class="btn btn-secondary action-secondary-filled">Upload document</a>
                 {% endif %}
             </div>
             {% endif %}
         </div>
         
         <div class="page-card csp-s-b3a2297a12f5">
-            <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary workflow-analysis-link-block">Feasibility Analysis &rarr;</a>
+            <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary action-secondary-filled workflow-analysis-link-block">Feasibility Analysis &rarr;</a>
         </div>
 
         <div class="page-card csp-s-b3a2297a12f5 application-activity-card">
@@ -96,7 +96,7 @@
                 
                 {# Stage 1 #}
                 <div class="csp-s-4fa00029d5b1">
-                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 1 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 1 %}var(--role-accent, #6F2676){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
                         {% if app.current_stage > 1 %}✓{% endif %}
                     </div>
                     <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 1 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 1 %}var(--text-main){% else %}var(--text-muted){% endif %};">Intake & Submission</div>
@@ -105,7 +105,7 @@
                 
                 {# Stage 2 #}
                 <div class="csp-s-4fa00029d5b1">
-                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 2 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 2 %}var(--role-accent, #6F2676){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
                         {% if app.current_stage > 2 %}✓{% endif %}
                     </div>
                     <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 2 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 2 %}var(--text-main){% else %}var(--text-muted){% endif %};">OCR Verification</div>
@@ -114,7 +114,7 @@
                 
                 {# Stage 3 #}
                 <div class="csp-s-4fa00029d5b1">
-                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 3 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 3 %}var(--role-accent, #6F2676){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
                         {% if app.current_stage > 3 %}✓{% endif %}
                     </div>
                     <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 3 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 3 %}var(--text-main){% else %}var(--text-muted){% endif %};">Credit Risk Review</div>
@@ -123,7 +123,7 @@
                 
                 {# Stage 4 #}
                 <div class="csp-s-4fa00029d5b1">
-                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 4 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 4 %}var(--role-accent, #6F2676){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
                         {% if app.current_stage > 4 %}✓{% endif %}
                     </div>
                     <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 4 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 4 %}var(--text-main){% else %}var(--text-muted){% endif %};">Branch Concurrence</div>
@@ -132,7 +132,7 @@
                 
                 {# Stage 5 & 6 #}
                 <div class="csp-s-4fa00029d5b1">
-                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 5 %}var(--role-accent, #A05A00){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
+                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 5 %}var(--role-accent, #6F2676){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
                         {% if app.current_stage > 5 %}✓{% endif %}
                     </div>
                     <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage >= 5 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 5 %}var(--text-main){% else %}var(--text-muted){% endif %};">Further Review</div>
@@ -388,13 +388,13 @@
         {# Concur / Return Action Bar #}
         {% if not readonly %}
         <div class="page-card csp-s-b3a2297a12f5 supervisor-decision-card">
-            <div class="csp-s-5ffb91a26b04">
+            <div class="csp-s-5ffb91a26b04 approval-action-buttons">
                 <div class="csp-s-4dd169649d12">
-                    {% if can_return_previous %}<a href="/applications/{{ app_id }}/return" class="csp-s-7ee1400d1897">Return to {{ return_target_label }}</a>{% endif %}
+                    {% if can_return_previous %}<a href="/applications/{{ app_id }}/return" class="csp-s-7ee1400d1897 action-secondary-outlined">Return to {{ return_target_label }}</a>{% endif %}
                 </div>
                 
                 <form action="/applications/{{ app_id }}/approve" method="POST" class="csp-s-f6cda3b21d28">
-                    <button type="submit" class="btn-primary-filled" id="approveBtn">
+                    <button type="submit" class="btn-primary-filled action-primary" id="approveBtn">
                         Concur &amp; Forward for Review &rarr;
                     </button>
                 </form>

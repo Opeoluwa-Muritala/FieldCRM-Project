@@ -16,7 +16,7 @@
 </div>
 
 <div class="page-card workflow-analysis-card">
-  <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary workflow-analysis-link">Open Collateral &amp; Repayment Feasibility Analysis &rarr;</a>
+  <a href="/applications/{{ app_id }}/repayment-feasibility" class="btn btn-secondary workflow-analysis-link action-secondary-filled">Open Collateral &amp; Repayment Feasibility Analysis &rarr;</a>
 </div>
 
 {% if app.crm_notes %}
@@ -67,20 +67,20 @@
         <label class="field-label csp-s-3d9df89ef84d">Approved/Recommended Amount (₦)</label>
         <input type="number" name="amount" class="field-input csp-s-37ab52c9d67a" value="{{ app.amount or 0 }}" required>
     </div>
-    <div class="csp-s-633fe02090af">
-      <button type="submit" name="action" value="approve" class="btn btn-primary csp-s-267f540099a7"
+    <div class="csp-s-633fe02090af approval-action-buttons">
+      <button type="submit" name="action" value="approve" class="btn btn-primary action-primary csp-s-267f540099a7"
         data-confirm="Issue disbursement instruction for {{ app.applicant_name }}?">
         &#10003; Approve — Issue Disbursement Instruction
       </button>
-      <button type="submit" name="action" value="deny" class="btn btn-danger" data-confirm="Deny and archive this loan?">&#10007; Deny &amp; Archive</button>
-      {% if (app.amount or 0) <= 10000000 %}<button type="submit" name="action" value="escalate_md" class="btn btn-secondary csp-s-8c1a4df4297d"
+      {% if (app.amount or 0) <= 10000000 %}<button type="submit" name="action" value="escalate_md" class="btn btn-secondary action-secondary-filled csp-s-8c1a4df4297d"
         data-confirm="Request MD input? The file will return to you for final approval.">
         &#8679; Request MD Input
       </button>{% endif %}
+      <button type="submit" name="action" value="deny" class="btn btn-danger action-danger" data-confirm="Deny and archive this loan?">&#10007; Deny &amp; Archive</button>
     </div>
   </form>
   <div class="csp-s-b6d781cbbc10">
-    <a href="/ed-queue" class="btn btn-secondary csp-s-cdcef186c815">&#8592; Back to Queue</a>
+    <a href="/ed-queue" class="btn btn-secondary action-secondary-ghost csp-s-cdcef186c815">&#8592; Back to Queue</a>
   </div>
 </div>
 {% endblock %}

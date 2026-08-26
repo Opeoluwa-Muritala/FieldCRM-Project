@@ -1,74 +1,22 @@
 /* =============================================
    Role-Based Theming via data-role Attribute
    =============================================
-   Each role gets slightly different accent tones
-   while preserving the core Mainstreet brand.
+   Every role uses the same Mainstreet action and navigation accents.
    Applied via [data-role="role_name"] on <body>.
 */
 
-/* === LOAN OFFICER — Primary Purple (default brand) === */
-[data-role="loan_officer"] {
-    --role-accent: #6B3FA0;
-    --role-accent-hover: #8B5CC8;
-    --role-accent-tint: #F0E8FA;
-    --role-accent-light: #B794D4;
-    --role-badge-bg: #F0E8FA;
-    --role-badge-color: #6B3FA0;
-    --role-nav-active-bg: rgba(107, 63, 160, 0.12);
-    --role-nav-active-border: #8B5CC8;
-    --role-nav-active-text: #B794D4;
-}
-
-/* === CREDIT OFFICER — Forest Green tint === */
-[data-role="credit_officer"] {
-    --role-accent: #1A6B45;
-    --role-accent-hover: #238C5A;
-    --role-accent-tint: #E8FAF0;
-    --role-accent-light: #6BCF9A;
-    --role-badge-bg: #E8FAF0;
-    --role-badge-color: #1A6B45;
-    --role-nav-active-bg: rgba(26, 107, 69, 0.12);
-    --role-nav-active-border: #238C5A;
-    --role-nav-active-text: #6BCF9A;
-}
-
-/* === BRANCH MANAGER — Warm Amber === */
-[data-role="branch_manager"] {
-    --role-accent: #A05A00;
-    --role-accent-hover: #C07000;
-    --role-accent-tint: #FFF5E8;
-    --role-accent-light: #D4A46B;
-    --role-badge-bg: #FFF5E8;
-    --role-badge-color: #A05A00;
-    --role-nav-active-bg: rgba(160, 90, 0, 0.10);
-    --role-nav-active-border: #C07000;
-    --role-nav-active-text: #D4A46B;
-}
-
-/* === AUDITOR — Neutral Slate === */
-[data-role="auditor"] {
-    --role-accent: #4A5568;
-    --role-accent-hover: #636D7F;
-    --role-accent-tint: #EDF2F7;
-    --role-accent-light: #A0AEC0;
-    --role-badge-bg: #EDF2F7;
-    --role-badge-color: #4A5568;
-    --role-nav-active-bg: rgba(74, 85, 104, 0.10);
-    --role-nav-active-border: #636D7F;
-    --role-nav-active-text: #A0AEC0;
-}
-
-/* === SYSTEM ADMIN — Deep Brand === */
-[data-role="system_admin"] {
-    --role-accent: #2D1A4A;
-    --role-accent-hover: #3D2A5A;
-    --role-accent-tint: #EDE8F4;
-    --role-accent-light: #8B6BB0;
-    --role-badge-bg: #EDE8F4;
-    --role-badge-color: #2D1A4A;
-    --role-nav-active-bg: rgba(45, 26, 74, 0.12);
-    --role-nav-active-border: #3D2A5A;
-    --role-nav-active-text: #8B6BB0;
+/* All operational roles share one brand-plum interaction system. Keeping this
+   as a final variable layer also covers compatibility and newly added roles. */
+[data-role] {
+    --role-accent: #6F2676;
+    --role-accent-hover: #5B1F61;
+    --role-accent-tint: #F7EFF8;
+    --role-accent-light: #D8BFDB;
+    --role-badge-bg: #F7EFF8;
+    --role-badge-color: #6F2676;
+    --role-nav-active-bg: rgba(111, 38, 118, 0.18);
+    --role-nav-active-border: #B98FBD;
+    --role-nav-active-text: #F7EFF8;
 }
 
 /* === Role Badge Component === */
@@ -84,30 +32,10 @@
     color: var(--role-badge-color, #6B3FA0);
 }
 
-/* Role-specific badge variants */
-.mobile-role-badge.role-loan_officer {
-    background-color: #F0E8FA;
-    color: #6B3FA0;
-}
-
-.mobile-role-badge.role-credit_officer {
-    background-color: #E8FAF0;
-    color: #1A6B45;
-}
-
-.mobile-role-badge.role-branch_manager {
-    background-color: #FFF5E8;
-    color: #A05A00;
-}
-
-.mobile-role-badge.role-auditor {
-    background-color: #EDF2F7;
-    color: #4A5568;
-}
-
-.mobile-role-badge.role-system_admin {
-    background-color: #EDE8F4;
-    color: #2D1A4A;
+/* Role badge variants share the same plum treatment. */
+.mobile-role-badge[class*="role-"] {
+    background-color: #F7EFF8;
+    color: #6F2676;
 }
 
 /* === Sidebar badge variants for danger/warning === */
@@ -115,8 +43,9 @@
     background-color: var(--accent-danger) !important;
 }
 
-.sidebar-badge-warning {
-    background-color: var(--accent-warning) !important;
+.sidebar-badge-warning,
+[data-role] .sidebar-badge-warning {
+    background-color: var(--role-accent) !important;
 }
 
 /* === Role-aware overrides === */
