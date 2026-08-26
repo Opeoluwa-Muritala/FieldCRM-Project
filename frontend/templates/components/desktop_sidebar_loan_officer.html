@@ -10,13 +10,12 @@
         <a href="/dashboard" class="sidebar-nav-link {% if active_page == 'dashboard' %}active{% endif %}">
             <span>Dashboard</span>
         </a>
-        {% if (feature_flags|default({})).get('my_work', true) %}<a href="/my-work" class="sidebar-nav-link {% if active_page == 'my_work' %}active{% endif %}"><span>My Work</span></a>
         <a href="/my-queue" class="sidebar-nav-link {% if active_page == 'queue' %}active{% endif %}">
             <span>My Queue</span>
             {% if metrics and metrics.my_applications %}
             <span class="sidebar-badge">{{ metrics.my_applications }}</span>
             {% endif %}
-        </a>{% endif %}
+        </a>
         <a href="/applications/new" class="sidebar-nav-link {% if active_page == 'new_application' %}active{% endif %}">
             <span>New Application</span>
         </a>

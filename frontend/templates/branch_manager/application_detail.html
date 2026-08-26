@@ -10,6 +10,7 @@
     
     {# === LEFT COLUMN: APPLICATION IDENTITY, TIMELINE & DOCUMENTS === #}
     <div class="app-detail-sidebar">
+        <div class="app-detail-sidebar-sticky">
         
         {# Identity Card #}
         <div class="page-card csp-s-b3a2297a12f5">
@@ -249,6 +250,7 @@
         </div>
         {% endif %}
 
+        </div>
     </div>
     
     {# === RIGHT COLUMN: BRANCH MANAGER CONCURRENCE WORKSPACE === #}
@@ -389,15 +391,14 @@
         {% if not readonly %}
         <div class="page-card csp-s-b3a2297a12f5 supervisor-decision-card">
             <div class="csp-s-5ffb91a26b04 approval-action-buttons">
-                <div class="csp-s-4dd169649d12">
-                    {% if can_return_previous %}<a href="/applications/{{ app_id }}/return" class="csp-s-7ee1400d1897 action-secondary-outlined">Return to {{ return_target_label }}</a>{% endif %}
-                </div>
-                
                 <form action="/applications/{{ app_id }}/approve" method="POST" class="csp-s-f6cda3b21d28">
                     <button type="submit" class="btn-primary-filled action-primary" id="approveBtn">
                         Concur &amp; Forward for Review &rarr;
                     </button>
                 </form>
+                <div class="csp-s-4dd169649d12">
+                    {% if can_return_previous %}<a href="/applications/{{ app_id }}/return" class="csp-s-7ee1400d1897 action-secondary-outlined">Return to {{ return_target_label }}</a>{% endif %}
+                </div>
             </div>
         </div>
         {% endif %}

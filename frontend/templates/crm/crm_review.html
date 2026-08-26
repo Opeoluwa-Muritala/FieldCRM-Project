@@ -4,7 +4,7 @@
 {% block page_title %}CRM Dossier Review{% endblock %}
 {% block breadcrumb %}CRM -> Review -> {{ app.ref_no }}{% endblock %}
 {% block extra_css %}
-<link rel="stylesheet" href="/static/css/dashboard_legacy.css?v=20260826-plum2">
+<link rel="stylesheet" href="/static/css/dashboard_legacy.css?v=20260826-layout">
 {% endblock %}
 
 {% block content %}
@@ -106,6 +106,8 @@
     </table>
   </div>
   {% endif %}
+</div>
+
 {% if current_user.role == 'head_crm' %}
 <div class="page-card workflow-analysis-card">
   <h3 class="csp-s-4636770b4968">Head CRM Application Reference Views</h3>
@@ -119,7 +121,7 @@
 
 {% include "components/loan_recommendations.html" %}
 
-<div class="audit-action-panel">
+<div class="page-card audit-action-panel approval-decision-footer">
   <h3 class="csp-s-4636770b4968">{{ 'Head CRM Approval' if current_user.role == 'head_crm' else 'CRM Dossier Review' }}</h3>
   <p class="action-note">{{ 'This approval records the Head CRM handover and routes the complete dossier to ED.' if current_user.role == 'head_crm' else 'This review records dossier completeness and routes the file to Head CRM for approval.' }}</p>
   {% if request.query_params.get('error') %}

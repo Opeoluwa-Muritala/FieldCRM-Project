@@ -230,6 +230,20 @@
 
   <!-- ── ACTIVITY / SYSTEM PULSE ───────────────────────────── -->
   <!-- EKG-style pulse line (heartbeat / activity monitor) -->
+  <!-- MANAGEMENT CREDIT COMMITTEE: three members sharing one checked decision. -->
+  <symbol id="icon-mcc-o" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="5" r="2.25"/>
+      <circle cx="5.5" cy="8.25" r="2"/>
+      <circle cx="18.5" cy="8.25" r="2"/>
+      <path d="M8.25 11.25c.7-1.55 2.05-2.4 3.75-2.4s3.05.85 3.75 2.4M2.75 13c.35-1.45 1.35-2.35 2.75-2.35 1.05 0 1.9.45 2.45 1.25M21.25 13c-.35-1.45-1.35-2.35-2.75-2.35-1.05 0-1.9.45-2.45 1.25M3.5 14.5h17v6h-17zM8.5 17.25l2 1.75 4.25-4"/>
+    </g>
+  </symbol>
+  <symbol id="icon-mcc-f" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 2.75a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5ZM5.5 6.25a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm13 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4ZM12 8.85c1.7 0 3.05.85 3.75 2.4H8.25c.7-1.55 2.05-2.4 3.75-2.4ZM5.5 10.65c1.05 0 1.9.45 2.45 1.25H2.75c.35-.8 1.35-1.25 2.75-1.25Zm13 0c1.4 0 2.4.45 2.75 1.25h-5.2c.55-.8 1.4-1.25 2.45-1.25ZM3.5 14.5h17v6h-17z"/>
+    <path fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="m8.5 17.25 2 1.75 4.25-4"/>
+  </symbol>
+
   <symbol id="icon-activity-o" viewBox="0 0 24 24">
     <path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
       d="M2,12 H6 L8,7 L11,17 L13,9 L15,12 H22"/>
