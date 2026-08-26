@@ -18,27 +18,18 @@
     </div>
 
     <div class="pipeline-board">
-        {% set stage_labels = {
-            1: ("Intake", "Prepare application"),
-            2: ("OCR Review", "Verify extracted values"),
-            3: ("Credit Review", "Assess affordability"),
-            4: ("Branch Approval", "Readiness review"),
-            5: ("Disbursement Ready", "Await release"),
-            6: ("Disbursed", "Completed")
-        } %}
-        {% for stage_num in [1, 2, 3, 4, 5, 6] %}
-            {% set stage_key = "stage_" ~ stage_num %}
+        {% for pipeline_stage in pipeline_stages %}
             <section class="pipeline-column">
                 <header class="pipeline-column-header">
                     <div>
-                        <h2>{{ stage_labels[stage_num][0] }}</h2>
-                        <span>{{ stage_labels[stage_num][1] }}</span>
+                        <h2>{{ pipeline_stage.label }}</h2>
+                        <span>{{ pipeline_stage.description }}</span>
                     </div>
-                    <strong>{{ stage_counts[stage_key] }}</strong>
+                    <strong>{{ pipeline_stage.count }}</strong>
                 </header>
 
                 <div class="pipeline-list">
-                    {% for app in applications if app.current_stage == stage_num %}
+                    {% for app in applications if app.stage == pipeline_stage.key %}
                         <a class="pipeline-card" href="/applications/{{ app.id }}">
                             <div class="pipeline-card-top">
                                 <span class="pipeline-ref">{{ app.ref_no }}</span>
