@@ -57,6 +57,28 @@ input, select, textarea { min-height: 44px; border-color: var(--ui-line); color:
 textarea { min-height: 110px; padding: 12px 14px; }
 ::placeholder { color: #526174; opacity: 1; }
 
+/* One clear primary action; cancel/secondary actions stay quiet and neutral. */
+body .btn-secondary,
+body button.btn-secondary,
+body a.btn-secondary { background: transparent !important; color: var(--ui-muted) !important; border: 1px solid var(--ui-line) !important; }
+body .btn-secondary:hover { background: var(--ui-surface-soft) !important; color: var(--ui-ink) !important; border-color: var(--ui-muted) !important; }
+body .btn-ghost-link { background: transparent !important; color: var(--ui-muted) !important; }
+body .btn-danger { color: #fff !important; }
+body input[type="text"], body input[type="number"], body input[type="email"],
+body input[type="tel"], body input[type="date"], body input[type="password"],
+body input[type="search"], body select, body textarea, body .field-input,
+body .field-select, body .field-textarea, body .config-input {
+  min-height: 46px; padding: 11px 14px; border: 1px solid var(--ui-line); border-radius: var(--ui-radius-control); background: var(--ui-surface); color: var(--ui-ink); box-shadow: inset 0 1px 1px rgba(15,23,42,.03);
+}
+body textarea, body .field-textarea { min-height: 116px; resize: vertical; }
+body input:focus, body select:focus, body textarea:focus { border-color: var(--ui-secondary); box-shadow: var(--ui-focus); }
+
+/* Round the rectangular surfaces used throughout legacy and role templates. */
+.page-card, .card, .panel, .queue-card, .metric-card, .application-card,
+.table-card, .form-card, .review-card, .decision-card, .approval-card,
+.config-panel, .config-hero, .config-metric, .mfa-card, .empty-action,
+.definition-card, .product-card, .feature-group, .draft-banner { border-radius: var(--ui-radius-card) !important; }
+
 .sidebar-utility-link, .config-exit { min-height: 46px; width: 100%; justify-content: flex-start; gap: 10px; color: #fff; background: transparent; border: 1px solid transparent; }
 .sidebar-utility-link:hover, .config-exit:hover { color: #fff; background: rgba(220,70,90,.18); border-color: rgba(255,255,255,.24); }
 
