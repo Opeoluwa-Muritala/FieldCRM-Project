@@ -24,6 +24,8 @@
 }
 
 body { background: var(--ui-bg); color: var(--ui-ink); }
+html, body, .app-shell, .responsive-shell, .responsive-main, .responsive-content, .content-wrapper { min-width: 0; max-width: 100%; }
+body { overflow-x: hidden; }
 button, input, select, textarea { border-radius: var(--ui-radius-control); }
 button, [role="button"], a.btn, .btn, .btn-primary, .btn-secondary,
 .btn-primary-filled, .btn-ghost-link, .sidebar-utility-link, .config-exit {
@@ -127,6 +129,7 @@ table { min-width: 620px; }
   .sidebar { width: 88px; }
   .main-content { margin-left: 88px; }
   .sidebar .logo-composite { width: 64px; height: auto; }
+  .content-wrapper { width: 100%; padding-inline: 20px; }
 }
 @media (max-width: 760px) {
   .page-content, .main-content, .content-area { padding-inline: 16px; }
@@ -148,6 +151,7 @@ table { min-width: 620px; }
   /* The responsive drawer is hidden until opened, but its logo should remain
      full-size when the drawer is shown. */
   .desktop-sidebar .sidebar-logo .logo-composite { width: 168px; max-width: 100%; height: auto; }
+  .content-wrapper, .responsive-content { width: 100%; max-width: 100%; }
 }
 @media (max-width: 420px) {
   .page-content, .main-content, .content-area { padding-inline: 12px; }
