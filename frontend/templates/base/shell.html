@@ -81,7 +81,7 @@
             if (existing) existing.remove();
             const panel = document.createElement('div');
             panel.id = 'field-confirmation'; panel.setAttribute('role', 'alertdialog'); panel.setAttribute('aria-modal', 'true');
-            panel.style.cssText = 'position:fixed;inset:auto 20px 20px auto;z-index:2001;max-width:380px;background:#fff;border:1px solid #e5c7ca;border-radius:12px;box-shadow:0 14px 38px rgba(0,0,0,.22);padding:18px;color:#2d172e;';
+            panel.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2001;width:min(380px,calc(100vw - 40px));max-width:380px;background:#fff;border:1px solid #e5c7ca;border-radius:12px;box-shadow:0 14px 38px rgba(0,0,0,.22);padding:18px;color:#2d172e;';
             const message = document.createElement('p'); message.textContent = control.dataset.confirm; message.style.margin = '0 0 16px';
             const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel'; cancel.className = 'btn btn-secondary';
             const proceed = document.createElement('button'); proceed.type = 'button'; proceed.textContent = 'Confirm'; proceed.className = 'btn btn-primary'; proceed.style.marginLeft = '8px';
