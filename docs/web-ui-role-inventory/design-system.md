@@ -99,6 +99,8 @@ Every operational role uses one visual role system. Role changes affect labels, 
 | `.action-link` | Plain `#6F2676` text | `#5B1F61`, stronger underline | Low-competition navigation |
 | Disabled | Filled/bordered `#94A3B8`, white text | No lift; not-allowed cursor | Unavailable submit/upload/continue |
 
+All decision-panel action classes (`.action-primary`, `.action-secondary-filled`, `.action-secondary-outlined`, `.action-secondary-ghost`, and `.action-danger`) share identical sizing and responsive behavior: minimum touch target, full-width breakpoints, stacking order, and mobile spacing (see Responsive and accessibility contract). Only fill, border, and text color differ. `.action-secondary-compact` is the deliberate exception for tabs, zoom, and row utilities; it stays compact and inline and never becomes a full-width decision action.
+
 Decision-panel order is primary, workflow secondary/correction, danger, then cancel/back. On mobile the same semantic order is enforced while controls become full width.
 
 ### Cards, tables, forms, and states
@@ -148,7 +150,7 @@ Decision-panel order is primary, workflow secondary/correction, danger, then can
 
 - Desktop: persistent sidebar and grouped horizontal actions.
 - Tablet: reduced/collapsible rail; cards and action rows wrap in source/semantic order.
-- Mobile: drawer navigation; one-column page cards; decision actions full width.
+- Mobile: drawer navigation; one-column page cards; every action class in a decision panel or form footer becomes full width. Primary and secondary actions in the same panel match in width and height and differ only by color/fill.
 - Tables use horizontal scrolling with an explicit “Swipe to view more” cue where appropriate.
 - Focus is visible on every interactive element.
 - Dialog focus stays inside the confirmation panel; Escape closes it and returns focus.
@@ -160,7 +162,8 @@ Decision-panel order is primary, workflow secondary/correction, danger, then can
 
 1. Add a semantic action class alongside legacy classes; do not remove route, form, name, value, or confirmation attributes for styling.
 2. Keep one `.action-primary` per decision panel.
-3. Put shared behavior in external JavaScript and shared presentation in external CSS.
-4. Load `web-ui-system.css` after legacy/page styles.
-5. Version changed static assets in every shell that loads them.
-6. Update this document, `layout-sketches.md`, and `source-catalog.md` whenever a new web surface or asset is added.
+3. Secondary and danger actions in the same panel must match the primary action's touch target and responsive width; sizing never implies hierarchy, only color/fill does.
+4. Put shared behavior in external JavaScript and shared presentation in external CSS.
+5. Load `web-ui-system.css` after legacy/page styles.
+6. Version changed static assets in every shell that loads them.
+7. Update this document, `layout-sketches.md`, and `source-catalog.md` whenever a new web surface or asset is added.

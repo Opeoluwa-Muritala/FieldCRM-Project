@@ -9,6 +9,7 @@
 {% set reviewer_label = {'branch_manager': 'Team Lead', 'team_lead': 'Team Lead', 'branch_supervisor': 'Supervisor'}.get(reviewer_role, reviewer_role|replace('_', ' ')|title) %}
 <div class="app-detail-layout approval-page">
     <aside class="app-detail-sidebar">
+        <div class="app-detail-sidebar-sticky">
         <section class="page-card approval-app-card">
             <span class="approval-eyebrow">Application under review</span>
             <h2 class="page-card-title">{{ borrower_name }}</h2>
@@ -41,6 +42,7 @@
                 {% endfor %}
             </div>
         </section>
+        </div>
     </aside>
 
     <main class="app-detail-main">
@@ -161,8 +163,8 @@
                         <input id="approval-amount" type="number" name="amount" class="field-input" value="{{ app.amount or 0 }}" required>
                     </div>
                     <div class="approval-action-buttons">
-                        {% if can_return_previous %}<a href="/applications/{{ app_id }}/return" class="btn-ghost-link approval-return-button action-secondary-outlined">Return to {{ return_target_label }}</a>{% endif %}
                         <button type="submit" class="btn-primary-filled action-primary" id="approveBtn">Concur &amp; Forward for Review &rarr;</button>
+                        {% if can_return_previous %}<a href="/applications/{{ app_id }}/return" class="btn-ghost-link approval-return-button action-secondary-outlined">Return to {{ return_target_label }}</a>{% endif %}
                     </div>
                 </div>
             </form>
