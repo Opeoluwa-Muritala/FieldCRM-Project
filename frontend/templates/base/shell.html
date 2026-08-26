@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}FieldCRM — Mainstreet Microfinance Bank{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}Mainstreet Microfinance Bank — Loan Origination System{% endblock %}">
     <meta name="theme-color" content="#2E0052">
@@ -17,6 +17,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/dashboard.css">
     <link rel="stylesheet" href="/static/css/role-themes.css">
+    <link rel="stylesheet" href="/static/css/web-ui-system.css?v=20260826">
     {% block extra_css %}{% endblock %}
     <script defer src="/static/js/csrf.js?v=20260815"></script>
 </head>
@@ -32,6 +33,7 @@
 
     <script defer src="/static/js/dashboard.js?v=20260729"></script>
     <script defer src="/static/js/motion.js?v=20260729"></script>
+    <script defer src="/static/js/ui-system.js?v=20260826"></script>
     <script nonce="{{ csp_nonce }}">
         if (document.querySelector('[data-document-preview], a[href*="/api/v1/documents/"][href*="/preview"]')) {
             const previewScript = document.createElement('script');
@@ -46,7 +48,8 @@
             document.head.appendChild(progScript);
         }
     </script>
-    <script nonce="{{ csp_nonce }}">
+    {# Shared feedback, confirmation, and inactivity behavior lives in ui-system.js. #}
+    {#
         window.showFieldMessage = function(message, tone = 'error') {
             let region = document.getElementById('field-message-region');
             if (!region) {
@@ -79,15 +82,19 @@
             event.preventDefault();
             const existing = document.getElementById('field-confirmation');
             if (existing) existing.remove();
+            const backdrop = document.createElement('div');
+            backdrop.id = 'field-confirmation-backdrop';
+            backdrop.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(18,10,28,.42);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);';
             const panel = document.createElement('div');
             panel.id = 'field-confirmation'; panel.setAttribute('role', 'alertdialog'); panel.setAttribute('aria-modal', 'true');
             panel.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2001;width:min(380px,calc(100vw - 40px));max-width:380px;background:#fff;border:1px solid #e5c7ca;border-radius:12px;box-shadow:0 14px 38px rgba(0,0,0,.22);padding:18px;color:#2d172e;';
             const message = document.createElement('p'); message.textContent = control.dataset.confirm; message.style.margin = '0 0 16px';
             const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel'; cancel.className = 'btn btn-secondary';
             const proceed = document.createElement('button'); proceed.type = 'button'; proceed.textContent = 'Confirm'; proceed.className = 'btn btn-primary'; proceed.style.marginLeft = '8px';
-            cancel.addEventListener('click', () => panel.remove());
-            proceed.addEventListener('click', () => { panel.remove(); control.dataset.confirmed = 'true'; control.click(); delete control.dataset.confirmed; });
-            panel.append(message, cancel, proceed); document.body.appendChild(panel); proceed.focus();
+            cancel.addEventListener('click', () => { panel.remove(); backdrop.remove(); });
+            proceed.addEventListener('click', () => { panel.remove(); backdrop.remove(); control.dataset.confirmed = 'true'; control.click(); delete control.dataset.confirmed; });
+            backdrop.addEventListener('click', (event) => { if (event.target === backdrop) { panel.remove(); backdrop.remove(); } });
+            panel.append(message, cancel, proceed); document.body.append(backdrop, panel); proceed.focus();
         });
 
         // Global inactivity timeout handler (15 minutes)
@@ -123,7 +130,7 @@
 
             resetTimer();
         })();
-    </script>
+    </script>#}
     {% block extra_js %}{% endblock %}
 </body>
 </html>
