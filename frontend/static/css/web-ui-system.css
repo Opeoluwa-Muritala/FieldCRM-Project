@@ -1,0 +1,98 @@
+/* FieldCRM web UI system: final cascade shared by every web surface. */
+:root {
+  --ui-bg: #f3f5f7;
+  --ui-surface: #ffffff;
+  --ui-surface-soft: #f8fafb;
+  --ui-ink: #172033;
+  --ui-muted: #526174;
+  --ui-line: #cbd5e1;
+  --ui-primary: #2e0052;
+  --ui-primary-hover: #4b1471;
+  --ui-secondary: #6f2676;
+  --ui-danger: #a12626;
+  --ui-radius-control: 10px;
+  --ui-radius-card: 14px;
+  --ui-radius-dialog: 18px;
+  --ui-space-1: 4px;
+  --ui-space-2: 8px;
+  --ui-space-3: 12px;
+  --ui-space-4: 16px;
+  --ui-space-5: 20px;
+  --ui-space-6: 24px;
+  --ui-space-8: 32px;
+  --ui-focus: 0 0 0 3px rgba(111,38,118,.28);
+}
+
+body { background: var(--ui-bg); color: var(--ui-ink); }
+button, input, select, textarea { border-radius: var(--ui-radius-control); }
+button, [role="button"], a.btn, .btn, .btn-primary, .btn-secondary,
+.btn-primary-filled, .btn-ghost-link, .sidebar-utility-link, .config-exit {
+  border-radius: var(--ui-radius-control);
+  min-height: 44px;
+  padding-inline: 16px;
+  font-weight: 650;
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus);
+}
+.btn, .btn-primary, .btn-secondary, .btn-primary-filled { gap: 8px; }
+.btn-primary, .btn-primary-filled { background: var(--ui-primary); color: #fff; }
+.btn-primary:hover, .btn-primary-filled:hover { background: var(--ui-primary-hover); transform: translateY(-1px); }
+.btn-secondary { background: #fff; color: var(--ui-secondary); border: 1px solid #b99abd; }
+.btn-secondary:hover { background: #f5edf6; border-color: var(--ui-secondary); }
+.btn-danger { background: var(--ui-danger); color: #fff; border: 1px solid var(--ui-danger); }
+.btn-danger:hover { background: #7f1d1d; }
+.btn-ghost-link { background: transparent; color: var(--ui-muted); border: 1px solid transparent; }
+.btn-ghost-link:hover { color: var(--ui-ink); background: var(--ui-surface-soft); border-color: var(--ui-line); }
+
+.page-card, .card, .queue-card, .metric-card, .application-card {
+  border-radius: var(--ui-radius-card);
+}
+.page-card { padding: clamp(20px, 2.4vw, 32px); }
+.form-group, .field-group { margin-bottom: var(--ui-space-5); }
+.form-group > label, .field-label { margin-bottom: var(--ui-space-2); }
+input, select, textarea { min-height: 44px; border-color: var(--ui-line); color: var(--ui-ink); }
+textarea { min-height: 110px; padding: 12px 14px; }
+::placeholder { color: #526174; opacity: 1; }
+
+.sidebar-utility-link, .config-exit { min-height: 46px; width: 100%; justify-content: flex-start; gap: 10px; color: #fff; background: transparent; border: 1px solid transparent; }
+.sidebar-utility-link:hover, .config-exit:hover { color: #fff; background: rgba(220,70,90,.18); border-color: rgba(255,255,255,.24); }
+
+#field-confirmation-backdrop { animation: ui-fade-in .16s ease both; }
+#field-confirmation { border-radius: var(--ui-radius-dialog) !important; padding: 26px !important; text-align: center; }
+#field-confirmation p { color: var(--ui-ink); font-size: 15px; line-height: 1.55; }
+#field-confirmation button { min-width: 104px; }
+.field-message-region { position: fixed; right: 20px; bottom: 20px; z-index: 2000; max-width: 360px; }
+.field-toast { color: #fff; border-radius: var(--ui-radius-control); box-shadow: 0 10px 28px rgba(0,0,0,.22); padding: 14px 42px 14px 16px; line-height: 1.45; position: relative; margin-top: 8px; }
+.field-toast.is-error { background: #7f1d1d; }
+.field-toast.is-success { background: #14532d; }
+.field-toast-dismiss { position: absolute; right: 10px; top: 7px; border: 0; background: transparent; color: #fff; font-size: 24px; cursor: pointer; min-height: 28px; padding: 0 6px; }
+@keyframes ui-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.table-wrap, .table-responsive, .data-table-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { min-width: 620px; }
+.action-button-group, .approval-action-buttons, .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+
+@media (max-width: 1100px) {
+  .page-content, .main-content, .content-area { padding-inline: 24px; }
+  .layout-two-col, .approval-review-identity, .hero-stats { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .page-content, .main-content, .content-area { padding-inline: 16px; }
+  .page-card { padding: 20px 16px; }
+  .action-button-group, .approval-action-buttons, .form-actions { align-items: stretch; flex-direction: column; }
+  .action-button-group > *, .approval-action-buttons > *, .form-actions > * { width: 100%; }
+  .sticky-actions, .wizard-footer { position: static; }
+  .table-wrap::after, .table-responsive::after, .data-table-wrap::after { content: 'Swipe to view more'; display: block; padding: 6px 0; color: var(--ui-muted); font-size: 11px; text-align: right; }
+  #field-confirmation { width: min(440px, calc(100vw - 32px)) !important; padding: 22px !important; }
+  .field-message-region { right: 12px; left: 12px; bottom: 12px; max-width: none; }
+}
+@media (max-width: 420px) {
+  .page-content, .main-content, .content-area { padding-inline: 12px; }
+  button, [role="button"], a.btn, .btn { min-height: 46px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
