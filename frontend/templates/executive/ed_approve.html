@@ -72,6 +72,7 @@
         data-confirm="Issue disbursement instruction for {{ app.applicant_name }}?">
         &#10003; Approve — Issue Disbursement Instruction
       </button>
+      <button type="submit" name="action" value="deny" class="btn btn-danger" data-confirm="Deny and archive this loan?">&#10007; Deny &amp; Archive</button>
       {% if (app.amount or 0) <= 10000000 %}<button type="submit" name="action" value="escalate_md" class="btn btn-secondary csp-s-8c1a4df4297d"
         data-confirm="Request MD input? The file will return to you for final approval.">
         &#8679; Request MD Input

@@ -61,6 +61,7 @@
   <h3 class="csp-s-4636770b4968">MD Input Requested</h3>
   <p class="csp-s-7ae589b899ff">Return this application to ED for the final decision.</p>
   <form method="post" action="/applications/{{ app_id }}/md-approve" class="csp-s-633fe02090af">
+    <textarea name="md_notes" rows="3" placeholder="Optional quick note for ED" class="field-textarea"></textarea>
     <button type="submit" name="action" value="return_ed" class="btn btn-secondary" data-confirm="Return this application to ED?">Return to ED</button>
     <a href="/md-queue" class="btn btn-secondary">Cancel</a>
   </form>
@@ -85,6 +86,7 @@
       data-confirm="Issue disbursement instruction for {{ app.applicant_name }}?">
       &#10003; Issue Disbursement Instruction
     </button>
+    <button type="submit" name="action" value="deny" class="btn btn-danger" data-confirm="Deny and archive this loan?">&#10007; Deny &amp; Archive</button>
     <a href="/md-queue" class="btn btn-secondary csp-s-c56fa2191449">Cancel</a>
   </form>
   {% endif %}
