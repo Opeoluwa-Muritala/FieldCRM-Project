@@ -163,7 +163,21 @@ body textarea, body .field-input, body .field-select, body .field-textarea, body
 .definition-card, .product-card, .feature-group, .draft-banner { border-radius: var(--ui-radius-card) !important; }
 
 .sidebar-utility-link, .config-exit { min-height: 46px; width: 100%; justify-content: flex-start; gap: 10px; color: #fff; background: transparent; border: 1px solid transparent; }
-.sidebar-utility-link:hover, .config-exit:hover { color: #fff; background: rgba(220,70,90,.18); border-color: rgba(255,255,255,.24); }
+.sidebar-utility-link:hover, .config-exit:hover { color: #fff; background: rgba(111,38,118,.32); border-color: rgba(216,191,219,.5); }
+
+/* Role dashboard cards are navigation surfaces, not caution states. Keep their
+   hover and keyboard-focus treatment plum for every role, independent of any
+   institution or legacy role variables loaded earlier in the cascade. */
+[data-role] .role-list-card:hover,
+[data-role] .role-list-card:focus-visible,
+[data-role] .role-stage-card:hover,
+[data-role] .role-stage-card:focus-visible,
+[data-role] .role-pipeline-row:hover,
+[data-role] .role-pipeline-row:focus-visible {
+  background: var(--ui-secondary-soft) !important;
+  border-color: #d8bfdb !important;
+  color: var(--ui-ink) !important;
+}
 
 #field-confirmation-backdrop { position: fixed; inset: 0; z-index: 2000; background: rgba(18,10,28,.42); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); animation: ui-fade-in .16s ease both; }
 #field-confirmation { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 2001; width: min(420px, calc(100vw - 40px)); max-width: 420px; background: #fff; border: 1px solid var(--ui-line); box-shadow: 0 18px 48px rgba(18,10,28,.24); border-radius: var(--ui-radius-dialog) !important; padding: 26px !important; text-align: center; }
