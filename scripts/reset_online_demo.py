@@ -1,7 +1,6 @@
 import asyncio
 import json
 import os
-import random
 import sys
 import uuid
 from datetime import date, datetime, timedelta, timezone
@@ -11,9 +10,10 @@ from pathlib import Path
 import asyncpg
 from dotenv import load_dotenv
 
-
 load_dotenv("backend/.env")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
+
+from app.core.workflow import WORKFLOW_STAGES
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 DEMO_PASSWORD_HASH = "pbkdf2_sha256$260000$ZmllbGRjcm0tZGVtby1zYWx0$ditwuWjTVIp6hukjbeVVTR4M1YOImExIsrQd4OjY/aY="
@@ -70,18 +70,10 @@ IMMUTABLE_HISTORY_TABLES = (
     "signature_events", "signature_event_pdfs",
 )
 
-STAGES = [
-    "intake",
-    "branch_manager_review",
-    "branch_supervisor_review",
-    "credit_analyst_review",
-    "crm_review",
-    "head_crm_review",
-    "ed_approval",
-    "md_approval",
-    "disbursement_ready",
-    "disbursed",
-]
+# Keep demo coverage tied to the authoritative workflow definition.  The
+# terminal disbursed state is deliberately appended because it is not a
+# decision stage in WORKFLOW_STAGES but is still an important demo surface.
+STAGES = [stage for stage, _ in WORKFLOW_STAGES] + ["disbursed"]
 
 APPLICANTS = [
     ("Grace Omowunmi", "Fashion retail stock expansion", "msef", "direct_debit", "trade"),
@@ -241,7 +233,9 @@ def upload_seed_document(
 
 def pick(users_by_role, role, fallback):
     rows = users_by_role.get(role) or []
-    return random.choice(rows)["id"] if rows else fallback["id"]
+    # Seed data must be reproducible across resets; user order is explicitly
+    # stable in the query that builds users below.
+    return rows[0]["id"] if rows else fallback["id"]
 
 
 def role_name(user_id, users):
@@ -314,6 +308,8 @@ async def seed_org(conn, org, users):
 
     org_id = org["id"]
     prefix = (org["code"] or "CRM").upper()
+    # Keep queues and dashboard age metrics representative of a freshly reset
+    # demo while deterministic references and UUIDs make records repeatable.
     now = datetime.now(timezone.utc)
 
     loan_types = ("enterprise", "msef", "payee", "other")
@@ -332,9 +328,9 @@ async def seed_org(conn, org, users):
             loan_type = seeded_loan_type
             amount = Decimal(250000 + (idx * 175000) + (variant * 50000))
             tenor = 6 + ((idx + variant) % 18)
-            loan_id = uuid.uuid4()
             created_at = now - timedelta(days=idx * 3 + variant)
             ref_no = f"{prefix}-2026-{record_no:04d}"
+            loan_id = uuid.uuid5(uuid.NAMESPACE_URL, f"fieldcrm-demo:{org_id}:{ref_no}")
 
             owner = {
                 "intake": loan_officer,

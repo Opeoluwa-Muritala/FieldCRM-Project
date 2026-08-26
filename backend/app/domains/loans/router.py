@@ -26,7 +26,7 @@ from app.core.template_utils import (
     get_role_template,
 )
 from app.core.templates import create_templates
-from app.core.workflow import WORKFLOW_STAGES, ROLE_LABELS
+from app.core.workflow import ROLE_LABELS, STAGE_DESCRIPTIONS, STAGE_LABELS, WORKFLOW_STAGES
 from app.core.loan_authorization import (
     canonical_role,
     capabilities_for,
@@ -2430,28 +2430,23 @@ async def render_loan_pipeline(
     repo = LoanRepository(conn)
     counts = await repo.count_by_stage(current_user.org_id)
     
-    stage_counts = {
-        "stage_1": 0,
-        "stage_2": 0,
-        "stage_3": 0,
-        "stage_4": 0,
-        "stage_5": 0,
-        "stage_6": 0
-    }
-    
-    mapping = {
-        'intake': 1,
-        'ocr_review': 2,
-        'credit_review': 3,
-        'branch_approval': 4,
-        'disbursement_ready': 5,
-        'disbursed': 6
-    }
-    
-    for c in counts:
-        num = mapping.get(c.stage)
-        if num:
-            stage_counts[f"stage_{num}"] = c.count
+    pipeline_stages = [
+        {
+            "key": stage,
+            "label": STAGE_LABELS[stage],
+            "description": STAGE_DESCRIPTIONS[stage],
+            "count": 0,
+        }
+        for stage, _ in WORKFLOW_STAGES
+    ] + [{
+        "key": "disbursed",
+        "label": STAGE_LABELS["disbursed"],
+        "description": STAGE_DESCRIPTIONS["disbursed"],
+        "count": 0,
+    }]
+    counts_by_stage = {row.stage: row.count for row in counts}
+    for stage in pipeline_stages:
+        stage["count"] = counts_by_stage.get(stage["key"], 0)
 
     applications = await repo.list_recent(current_user.org_id, limit=500)
 
@@ -2459,7 +2454,7 @@ async def render_loan_pipeline(
         request,
         current_user,
         applications=applications,
-        stage_counts=stage_counts,
+        pipeline_stages=pipeline_stages,
         active_tab="pipeline",
         active_page="pipeline",
     )
