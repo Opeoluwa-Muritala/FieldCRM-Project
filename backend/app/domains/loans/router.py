@@ -2935,6 +2935,13 @@ async def process_ed_approve(
             actor_id=str(current_user.id),
             actor_role=current_user.role,
         )
+    elif action == "deny":
+        app = await repo.advance_stage(UUID(application_id), current_user.org_id, "rejected")
+        if not app:
+            raise HTTPException(status_code=400, detail="Application cannot be denied in its current stage")
+        await AuditService(conn).log(application_id=application_id, org_id=str(current_user.org_id),
+            action="ED Loan Denied", from_stage=current_application.stage, to_stage="rejected",
+            actor_id=str(current_user.id), actor_role=current_user.role, reason="Denied by ED")
     elif action == "escalate_md":
         application = await repo.get_by_id(UUID(application_id), current_user.org_id)
         if not application or application.stage != "ed_approval":
@@ -3053,6 +3060,13 @@ async def process_md_approve(
             actor_role=current_user.role,
             reason=md_notes,
         )
+    elif action == "deny":
+        app = await repo.advance_stage(UUID(application_id), current_user.org_id, "rejected")
+        if not app:
+            raise HTTPException(status_code=400, detail="Application cannot be denied in its current stage")
+        await AuditService(conn).log(application_id=application_id, org_id=str(current_user.org_id),
+            action="MD Loan Denied", from_stage=application.stage, to_stage="rejected",
+            actor_id=str(current_user.id), actor_role=current_user.role, reason=md_notes or "Denied by MD")
     elif action in {"comment", "return_ed"}:
         if not await repo.md_add_comment(UUID(application_id), current_user.org_id, md_notes):
             raise HTTPException(status_code=400, detail="Application not in md_approval stage")
