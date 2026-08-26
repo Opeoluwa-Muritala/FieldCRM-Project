@@ -2115,8 +2115,8 @@ textarea,
 }
 
 .role-list-card:hover {
-    border-color: var(--role-accent, var(--color-brand-shield));
-    background: var(--role-accent-tint, var(--color-brand-tint));
+    border-color: #D8BFDB;
+    background: #F7EFF8;
 }
 
 .role-list-card strong {
