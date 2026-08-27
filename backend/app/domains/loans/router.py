@@ -467,9 +467,9 @@ async def render_awaiting_me(
 async def render_pending_signoffs(
     request: Request,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Branch Manager"]))
+    current_user = Depends(RoleChecker(["Credit Analyst"]))
 ):
-    """Render visitation signoffs awaiting branch manager concurrence."""
+    """Render visitation signoffs awaiting credit analyst concurrence."""
     dashboard_svc = DashboardService(conn)
     signoffs = await dashboard_svc.get_pending_signoffs(current_user)
     recent_visits = await conn.fetch(
@@ -480,7 +480,7 @@ async def render_pending_signoffs(
            JOIN loan_applications la ON la.id = vr.loan_id AND la.org_id = vr.org_id
            LEFT JOIN users officer ON officer.id = vr.visiting_officer_id
            WHERE vr.org_id = $1
-             AND la.branch_id = $2
+             AND (la.branch_id = $2 OR $2 IS NULL)
              AND la.deleted_at IS NULL
            ORDER BY vr.updated_at DESC LIMIT 20""",
         current_user.org_id,
@@ -950,60 +950,48 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
         ],
     )
 
+    # Keep dossier reads on the request-scoped, tenant-identified connection.
+    # Opening six extra connections concurrently here exhausted the bounded pool
+    # as soon as two application pages overlapped, producing intermittent 500s.
     async def load_snapshot():
-        async with get_connection() as detail_conn:
-            return await LoanRepository(detail_conn).get_application_detail_snapshot(
-                app_uuid,
-                current_user.org_id,
-            )
+        return await repo.get_application_detail_snapshot(app_uuid, current_user.org_id)
 
     async def load_documents():
-        async with get_connection() as detail_conn:
-            return await DocumentRepository(detail_conn).get_by_loan(
-                app_uuid,
-                current_user.org_id,
-            )
+        return await DocumentRepository(conn).get_by_loan(app_uuid, current_user.org_id)
 
     async def load_readiness():
-        async with get_connection() as detail_conn:
-            return await LoanRepository(detail_conn).get_readiness_summary(
-                app_uuid,
-                current_user.org_id,
-            )
+        return await repo.get_readiness_summary(app_uuid, current_user.org_id)
 
     async def load_events():
-        async with get_connection() as detail_conn:
-            return await LoanRepository(detail_conn).list_workflow_events_for_application(
-                current_user.org_id,
-                app_uuid,
-                limit=200,
-            )
+        return await repo.list_workflow_events_for_application(
+            current_user.org_id,
+            app_uuid,
+            limit=200,
+        )
 
     async def load_activity():
-        async with get_connection() as detail_conn:
-            return await LoanRepository(detail_conn).list_application_activity(
-                current_user.org_id,
-                app_uuid,
-                limit=200,
-            )
+        return await repo.list_application_activity(
+            current_user.org_id,
+            app_uuid,
+            limit=200,
+        )
 
     async def load_flags():
-        async with get_connection() as detail_conn:
-            return await DashboardService(detail_conn).get_application_compliance_flags(
-                current_user,
-                app_uuid,
-                limit=200,
-            )
+        return await DashboardService(conn).get_application_compliance_flags(
+            current_user,
+            app_uuid,
+            limit=200,
+        )
 
     if cached_detail is None:
-        snapshot, documents, readiness_summary, audit_events, activity_events, flags = await asyncio.gather(
-            load_snapshot(),
-            load_documents(),
-            load_readiness(),
-            load_events(),
-            load_activity(),
-            load_flags(),
-        )
+        # SQLAlchemy connections do not support concurrent operations. Keeping
+        # these reads sequential also caps each request at one database slot.
+        snapshot = await load_snapshot()
+        documents = await load_documents()
+        readiness_summary = await load_readiness()
+        audit_events = await load_events()
+        activity_events = await load_activity()
+        flags = await load_flags()
         await cache_scoped_data(
             detail_cache_key,
             {
@@ -1982,7 +1970,7 @@ async def process_visitation_report(
     application_id: str,
     action: str = Form(...),
     service: VisitationService = Depends(get_visitation_service),
-    current_user = Depends(RoleChecker(["Loan Officer", "Branch Manager"]))
+    current_user = Depends(RoleChecker(["Loan Officer", "Credit Analyst"]))
 ):
     """POST processor for Field visitation report."""
     form_data = await request.form()
@@ -2005,13 +1993,13 @@ async def process_visitation_report(
         user_role=current_user.role,
     )
 
-    if action == "concur" and current_user.role == "branch_manager":
+    if action == "concur" and current_user.role == "credit_analyst":
         await service.submit_manager_signoff(
             loan_id=UUID(application_id),
             org_id=current_user.org_id,
             manager_id=current_user.id,
             manager_role=current_user.role,
-            notes="Branch Manager Concurred",
+            notes="Credit Analyst Concurred",
             decision="concurred",
             signature=form_data.get("bm_sig"),
             return_reason=form_data.get("concurrence_return_reason"),

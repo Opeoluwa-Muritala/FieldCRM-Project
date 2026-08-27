@@ -14,18 +14,18 @@ class CustomerRepository:
                    EXISTS(
                      SELECT 1 FROM customer_accounts ca
                      WHERE ca.customer_id=c.id AND ca.org_id=c.org_id
-                       AND $8 IS NOT NULL AND ca.account_number_lookup_hash=$8
+                       AND $8::text IS NOT NULL AND ca.account_number_lookup_hash=$8::text
                    ) AS account_match
             FROM customers c
             WHERE c.org_id=$1 AND c.active=TRUE AND (
-              ($2 IS NOT NULL AND c.bvn_lookup_hash=$2) OR
-              ($3 IS NOT NULL AND c.nin_lookup_hash=$3) OR
-              ($4 IS NOT NULL AND c.phone_lookup_hash=$4) OR
-              ($5 IS NOT NULL AND c.email_lookup_hash=$5) OR
-              ($6 IS NOT NULL AND c.date_of_birth=$6) OR
-              ($7 IS NOT NULL AND c.normalized_address=$7) OR
-              ($9 IS NOT NULL AND c.external_customer_id=$9 AND c.cbs_provider=$10) OR
-              EXISTS(SELECT 1 FROM customer_accounts ca WHERE ca.customer_id=c.id AND ca.org_id=c.org_id AND $8 IS NOT NULL AND ca.account_number_lookup_hash=$8)
+              ($2::text IS NOT NULL AND c.bvn_lookup_hash=$2::text) OR
+              ($3::text IS NOT NULL AND c.nin_lookup_hash=$3::text) OR
+              ($4::text IS NOT NULL AND c.phone_lookup_hash=$4::text) OR
+              ($5::text IS NOT NULL AND c.email_lookup_hash=$5::text) OR
+              ($6::date IS NOT NULL AND c.date_of_birth=$6::date) OR
+              ($7::text IS NOT NULL AND c.normalized_address=$7::text) OR
+              ($9::text IS NOT NULL AND c.external_customer_id=$9::text AND c.cbs_provider=$10::text) OR
+              EXISTS(SELECT 1 FROM customer_accounts ca WHERE ca.customer_id=c.id AND ca.org_id=c.org_id AND $8::text IS NOT NULL AND ca.account_number_lookup_hash=$8::text)
             )
             ORDER BY c.updated_at DESC LIMIT 200
             """,
@@ -126,10 +126,10 @@ class CustomerRepository:
                 OR coalesce(c.external_customer_id,'') ILIKE '%' || $5 || '%'
                 OR coalesce(la.ref_no,'') ILIKE '%' || $5 || '%'
                 OR coalesce(la.external_loan_id,'') ILIKE '%' || $5 || '%'
-                OR ($6 IS NOT NULL AND c.phone_lookup_hash=$6)
-                OR ($7 IS NOT NULL AND c.bvn_lookup_hash=$7)
-                OR ($8 IS NOT NULL AND c.nin_lookup_hash=$8)
-                OR ($9 IS NOT NULL AND ca.account_number_lookup_hash=$9)
+                OR ($6::text IS NOT NULL AND c.phone_lookup_hash=$6::text)
+                OR ($7::text IS NOT NULL AND c.bvn_lookup_hash=$7::text)
+                OR ($8::text IS NOT NULL AND c.nin_lookup_hash=$8::text)
+                OR ($9::text IS NOT NULL AND ca.account_number_lookup_hash=$9::text)
               )
             ORDER BY c.legal_name LIMIT $10
             """,

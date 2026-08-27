@@ -21,7 +21,8 @@ JOIN loan_applications la ON la.id = vr.loan_id
 LEFT JOIN users officer ON officer.id = vr.visiting_officer_id
 WHERE vr.org_id = $1
   AND (
-      la.branch_manager_id = $2
+      la.credit_officer_id = $2
+      OR (SELECT branch_id FROM users WHERE id = $2) IS NULL
       OR la.branch_id = (SELECT branch_id FROM users WHERE id = $2)
   )
   AND la.deleted_at IS NULL

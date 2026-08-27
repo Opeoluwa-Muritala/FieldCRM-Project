@@ -69,7 +69,8 @@ def test_hub_is_separate_and_defaults_external_surfaces_off():
 def test_configuration_ui_catalog_only_contains_working_feature_controls():
     catalog_keys = [key for group in FEATURE_GROUPS for key, _label, _description in group["features"]]
     assert len(catalog_keys) == len(set(catalog_keys))
-    assert set(catalog_keys) == set(FEATURE_DEFAULTS)
+    # Internal document-processing support is not exposed in the web feature editor.
+    assert set(catalog_keys) == set(FEATURE_DEFAULTS) - {"ocr"}
 
     template_root = Path(__file__).resolve().parents[2] / "frontend/templates/configuration"
     template = (
@@ -89,7 +90,7 @@ def test_configuration_ui_catalog_only_contains_working_feature_controls():
 
 def test_disabled_feature_routes_have_server_side_gate_mappings():
     assert required_feature_for_path("/my-work") == "my_work"
-    assert required_feature_for_path("/applications/abc/ocr-review") == "ocr"
+    assert required_feature_for_path("/applications/abc/ocr-review") is None
     assert required_feature_for_path("/applications/abc/guarantors/1/step/2") == "guarantors"
     assert required_feature_for_path("/applications/abc/collateral") == "collateral"
     assert required_feature_for_path("/reports/par") == "par"
