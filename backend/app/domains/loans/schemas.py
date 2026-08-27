@@ -135,7 +135,7 @@ class LoanRow(BaseModel):
     def status(self) -> str:
         mapping = {
             'intake': 'Draft',
-            'ocr_review': 'OCR Review',
+            'ocr_review': 'Document Review',
             'branch_manager_review': 'Team Lead Review',
             'branch_supervisor_review': 'Supervisor Review',
             'credit_analyst_review': 'Credit Analyst Review',
@@ -237,7 +237,7 @@ class LoanListItem(BaseModel):
     def status(self) -> str:
         mapping = {
             'intake': 'Draft',
-            'ocr_review': 'OCR Review',
+            'ocr_review': 'Document Review',
             'credit_review': 'Credit Review',
             'branch_approval': 'Branch Approval',
             'crm_review': 'CRM Review',

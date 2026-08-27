@@ -35,7 +35,7 @@ FEATURE_GROUPS = (
         "features": (
             ("my_work", "My Work", "Show assigned work and task queues for operational users."),
             ("pipeline", "Pipeline", "Show the branch application pipeline workspace."),
-            ("document_work_queue", "Document work queue", "Show missing, rejected, OCR, and verification document exceptions."),
+            ("document_work_queue", "Document work queue", "Show missing, rejected, and document-quality exceptions."),
             ("credit_reviews", "Credit reviews", "Show underwriting and credit-review workspaces."),
             ("exceptions_centre", "Exceptions Centre", "Show the central operational exceptions workspace."),
         ),
@@ -45,7 +45,6 @@ FEATURE_GROUPS = (
         "description": "Control how staff collect application evidence and field information.",
         "features": (
             ("external_applicant_portal", "External applicant portal", "Allow applicants to start an application outside the staff workspace."),
-            ("ocr", "Document OCR", "Extract text from submitted documents and route exceptions for review."),
             ("visits", "Field visits", "Enable visit planning, findings, and completion evidence."),
             ("gps", "GPS capture", "Allow location evidence on supported field activities."),
             ("guarantors", "Guarantors", "Collect and validate guarantor information for applicable products."),

@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+import inspect
 from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
@@ -76,3 +77,9 @@ def test_application_overview_renders_feature_aware_secure_dossier():
 def test_product_requirements_query_is_tenant_scoped():
     source = (Path(__file__).resolve().parents[1] / "app/domains/loans/router.py").read_text(encoding="utf-8")
     assert "WHERE product_code = $1 AND org_id = $2 AND is_mandatory = TRUE" in source
+
+
+def test_dossier_context_reuses_request_connection_without_pool_fanout():
+    source = inspect.getsource(_get_dossier_context)
+    assert "async with get_connection()" not in source
+    assert "asyncio.gather(" not in source

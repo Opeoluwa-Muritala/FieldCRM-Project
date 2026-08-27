@@ -238,13 +238,12 @@ class DashboardService:
         """Branch Manager dashboard: approvals, signoffs, and assigned pipeline."""
         metrics = await self._fetch_one("loans", "dashboard_branch_manager", user.org_id, user.id)
         queue = await self.get_awaiting_concurrence(user, limit=8)
-        signoffs = await self.get_pending_signoffs(user, limit=6)
         pipeline = await self.get_branch_pipeline(user)
 
         return {
             "metrics": metrics,
             "queue": queue,
-            "signoffs": signoffs,
+            "signoffs": [],
             "pipeline": pipeline,
         }
 
@@ -252,15 +251,18 @@ class DashboardService:
         """Credit Analyst dashboard: underwriting files and data-quality exceptions."""
         reviews = await self.get_credit_reviews(user, limit=8)
         exceptions = await self.get_credit_ocr_exceptions(user, limit=8)
+        signoffs = await self.get_pending_signoffs(user, limit=6)
         return {
             "metrics": {
                 "reviews_due": len(reviews),
                 "ocr_exceptions": len(exceptions),
+                "pending_signoffs": len(signoffs),
                 "reviewed_today": 0,
                 "returned_this_week": 0,
             },
             "reviews": reviews,
             "exceptions": exceptions,
+            "signoffs": signoffs,
         }
 
     async def _branch_supervisor_data(self, user) -> dict:
