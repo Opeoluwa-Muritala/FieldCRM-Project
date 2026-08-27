@@ -177,3 +177,20 @@ class UserService:
         delivered = await AuthService(AuthRepository(self.repo.conn)).request_password_reset(user.email)
         if not delivered:
             raise DomainException("The reset email could not be delivered. Try again later.", 503)
+
+    async def resend_invitation(self, current_admin: UserRow, user_id) -> tuple[UserRow, str]:
+        user = await self.repo.get_by_id(user_id)
+        if not user or user.org_id != current_admin.org_id:
+            raise DomainException("User not found.", 404)
+        if user.active:
+            raise DomainException("This user is already active.", 400)
+        if canonical_role(user.role) == "configuration_admin":
+            raise DomainException("Configuration Admin invitations use the restricted control process.", 403)
+
+        auth_repo = AuthRepository(self.repo.conn)
+        await auth_repo.invalidate_reset_tokens(str(user.id))
+        token = secrets.token_urlsafe(32)
+        await auth_repo.create_reset_token(
+            str(user.id), token, datetime.now(timezone.utc) + timedelta(hours=72)
+        )
+        return user, token

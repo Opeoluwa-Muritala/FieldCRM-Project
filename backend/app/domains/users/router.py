@@ -137,3 +137,24 @@ async def reset_user_password(
 ):
     await service.reset_user_password(current_admin, user_id)
     return {"id": str(user_id), "message": "A secure password reset link was sent to the user's email."}
+
+
+@router.post("/{user_id}/resend-invitation")
+async def resend_user_invitation(
+    user_id: UUID,
+    service: UserService = Depends(get_user_service),
+    current_admin: UserRow = Depends(RoleChecker(["System Admin"])),
+):
+    user, token = await service.resend_invitation(current_admin, user_id)
+    invitation_url = f"{settings.public_base_url}/accept-invitation?token={token}"
+    delivered = EmailService().send_invitation(
+        recipient=user.email,
+        full_name=user.full_name,
+        role=user.role,
+        invitation_url=invitation_url,
+    )
+    return {
+        "id": str(user.id),
+        "email_sent": delivered,
+        "message": "Invitation email resent." if delivered else "A new invitation was created, but email delivery failed. Check the email service before trying again.",
+    }
