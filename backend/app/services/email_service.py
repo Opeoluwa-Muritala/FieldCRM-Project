@@ -80,3 +80,25 @@ class EmailService:
         # Invitations are automated notifications and intentionally do not set
         # a reply contact.
         return self._deliver(recipient=recipient, payload=payload)
+
+    def send_password_reset(self, *, recipient: str, full_name: str, reset_url: str) -> bool:
+        """Deliver a short-lived recovery link without exposing the token in logs."""
+        safe_name = html.escape(full_name)
+        safe_url = html.escape(reset_url, quote=True)
+        payload = {
+            "to": recipient,
+            "subject": "Reset your FieldCRM password",
+            "text": (
+                f"Hello {full_name},\n\nA password reset was requested for your FieldCRM account. "
+                "Use the secure link below within one hour. The link can only be used once.\n\n"
+                f"{reset_url}\n\nIf you did not request this, you can ignore this email."
+            ),
+            "html": (
+                f"<p>Hello {safe_name},</p>"
+                "<p>A password reset was requested for your FieldCRM account. "
+                "Use this secure link within one hour; it can only be used once.</p>"
+                f"<p><a href=\"{safe_url}\">Reset password</a></p>"
+                "<p>If you did not request this, you can ignore this email.</p>"
+            ),
+        }
+        return self._deliver(recipient=recipient, payload=payload)

@@ -4,6 +4,7 @@ from uuid import UUID
 
 from app.domains.users.repository import UserRepository
 from app.domains.auth.repository import AuthRepository
+from app.domains.auth.service import AuthService
 from app.core.security import get_password_hash
 from app.core.exceptions import DomainException
 from app.domains.users.schemas import UserRow
@@ -165,3 +166,14 @@ class UserService:
         await self.repo.update_branch(user.id, branch_id)
         await invalidate_auth_user(user.id)
         return await self.repo.get_by_id(user.id)
+
+    async def reset_user_password(self, current_admin: UserRow, user_id) -> None:
+        user = await self.repo.get_by_id(user_id)
+        if not user or user.org_id != current_admin.org_id:
+            raise DomainException("User not found.", 404)
+        if not user.active:
+            raise DomainException("Activate the user before requesting a password reset.", 400)
+
+        delivered = await AuthService(AuthRepository(self.repo.conn)).request_password_reset(user.email)
+        if not delivered:
+            raise DomainException("The reset email could not be delivered. Try again later.", 503)

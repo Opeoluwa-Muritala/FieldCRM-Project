@@ -165,12 +165,24 @@ class AuthService:
     async def revoke_web_session(self, refresh_token: str | None) -> None:
         await self.revoke_mobile_session(refresh_token)
 
-    async def request_password_reset(self, email: str) -> None:
+    async def request_password_reset(self, email: str) -> bool:
         user = await self.repo.get_user_by_email(email)
-        if user:
-            token = secrets.token_urlsafe(32)
-            expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
-            await self.repo.create_reset_token(str(user.id), token, expires_at)
+        if not user or not user.active:
+            return False
+
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+        await self.repo.create_reset_token(str(user.id), token, expires_at)
+        from urllib.parse import quote
+        from app.config import settings
+        from app.services.email_service import EmailService
+
+        reset_url = f"{settings.public_base_url}/reset-password?token={quote(token, safe='')}"
+        return EmailService().send_password_reset(
+            recipient=user.email,
+            full_name=user.full_name,
+            reset_url=reset_url,
+        )
 
     async def validate_reset_token(self, token: str):
         row = await self.repo.get_valid_reset_token(token)
