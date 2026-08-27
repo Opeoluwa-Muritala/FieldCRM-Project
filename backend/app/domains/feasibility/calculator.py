@@ -126,3 +126,80 @@ def calculate_feasibility(
         "verified_cashflow_count": verified_count,
         "data_quality_status": "verified" if included_count > 0 and verified_count == included_count else "declared",
     }
+
+
+def calculate_cam_feasibility(
+    profile: Mapping[str, Any] | None,
+    obligations: Iterable[Mapping[str, Any]],
+    collateral_items: Iterable[Mapping[str, Any]],
+) -> dict[str, Any]:
+    profile = profile or {}
+    debts = list(obligations)
+    collateral = list(collateral_items)
+
+    cash_at_bank = as_decimal(profile.get("cash_at_bank"))
+    stock = as_decimal(profile.get("stock"))
+    prepayment = as_decimal(profile.get("prepayment"))
+    fixed_assets = as_decimal(profile.get("fixed_assets"))
+    monthly_turnover = as_decimal(profile.get("monthly_turnover"))
+    margin = as_decimal(profile.get("margin"))
+    monthly_expenses = as_decimal(profile.get("monthly_expenses"))
+    recommended_amount = as_decimal(profile.get("recommended_amount"))
+    interest_rate = as_decimal(profile.get("interest_rate"))
+    proposed_tenor = int(profile.get("proposed_tenor") or 0)
+
+    total_assets = cash_at_bank + stock + prepayment + fixed_assets
+    monthly_gross_profit = margin * monthly_turnover
+    net_profit = monthly_gross_profit - monthly_expenses
+
+    if proposed_tenor > 0:
+        mainstreet_installment = (((interest_rate / Decimal("100")) * recommended_amount * Decimal(proposed_tenor)) + recommended_amount) / Decimal(proposed_tenor)
+    else:
+        mainstreet_installment = ZERO
+
+    total_external_rental = ZERO
+    total_outstanding_loan = ZERO
+    for debt in debts:
+        if debt.get("source_type") == "external":
+            total_external_rental += as_decimal(debt.get("periodic_payment"))
+            total_outstanding_loan += as_decimal(debt.get("outstanding_balance"))
+
+    total_rental = mainstreet_installment + total_external_rental
+
+    dti = (total_rental / net_profit * Decimal("100")) if net_profit > ZERO else None
+    # The CAM cell for Asset to Loan Ratio has no source formula. Do not invent
+    # one until the bank confirms the policy definition.
+    asset_to_loan = None
+    gearing = ((total_outstanding_loan + recommended_amount) / total_assets) if total_assets > ZERO else None
+
+    # Collateral coverage
+    total_collateral_valuation = sum(
+        (
+            as_decimal(
+                item.get("cam_forced_sale_value")
+                if item.get("cam_forced_sale_value") is not None
+                else item.get("force_sale_value")
+            )
+            for item in collateral
+        ),
+        ZERO,
+    )
+    collateral_coverage = (total_collateral_valuation / recommended_amount * Decimal("100")) if recommended_amount > ZERO else ZERO
+
+    def money(value: Decimal) -> Decimal:
+        return value.quantize(MONEY, rounding=ROUND_HALF_UP)
+
+    return {
+        "total_assets": money(total_assets),
+        "monthly_gross_profit": money(monthly_gross_profit),
+        "net_profit": money(net_profit),
+        "mainstreet_installment": money(mainstreet_installment),
+        "total_external_rental": money(total_external_rental),
+        "total_rental": money(total_rental),
+        "dti_ratio": dti.quantize(MONEY, rounding=ROUND_HALF_UP) if dti is not None else None,
+        "asset_to_loan_ratio": asset_to_loan,
+        "total_outstanding_loan": money(total_outstanding_loan),
+        "gearing_ratio": gearing.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP) if gearing is not None else None,
+        "total_collateral_valuation": money(total_collateral_valuation),
+        "collateral_coverage": collateral_coverage.quantize(MONEY, rounding=ROUND_HALF_UP),
+    }

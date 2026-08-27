@@ -1,94 +1,211 @@
 {% extends shell %}
+{% block title %}Feasibility Analysis | FieldCRM{% endblock %}
+{% block page_title %}Feasibility Analysis{% endblock %}
+{% block breadcrumb %}Applications &rarr; {{ app.ref_no }} &rarr; Feasibility Analysis{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/cam-feasibility.css?v=20260826-cam1">{% endblock %}
 
-{% block title %}Repayment Feasibility | FieldCRM{% endblock %}
-{% block page_title %}Repayment Feasibility{% endblock %}
-{% block breadcrumb %}Applications &rarr; {{ app.ref_no }} &rarr; Feasibility Summary{% endblock %}
+{% macro disabled_attr() %}{% if not can_edit_cam %}disabled{% endif %}{% endmacro %}
+{% macro history_row(kind, row={}) %}
+<tr data-history-kind="{{ kind }}">
+  <td><input form="cam-feasibility-form" class="cam-input wide" name="{{ kind }}_institution[]" maxlength="160" value="{{ row.lender_name or '' }}" {{ disabled_attr() }}></td>
+  <td><input form="cam-feasibility-form" class="cam-input" type="date" name="{{ kind }}_start_date[]" value="{{ row.start_date or '' }}" {{ disabled_attr() }}></td>
+  <td><input form="cam-feasibility-form" class="cam-input" type="date" name="{{ kind }}_end_date[]" value="{{ row.end_date or '' }}" {{ disabled_attr() }}></td>
+  <td><input form="cam-feasibility-form" class="cam-input" type="number" min="0" step="0.01" name="{{ kind }}_amount[]" value="{{ row.facility_amount or 0 }}" {{ disabled_attr() }}></td>
+  <td><input form="cam-feasibility-form" class="cam-input" type="number" min="0" step="0.01" name="{{ kind }}_rental[]" value="{{ row.periodic_payment or 0 }}" {{ disabled_attr() }}></td>
+  <td><input form="cam-feasibility-form" class="cam-input" type="number" min="0" max="1200" step="1" name="{{ kind }}_tenure[]" value="{{ row.remaining_tenor_months or '' }}" {{ disabled_attr() }}></td>
+  <td><input form="cam-feasibility-form" class="cam-input" type="number" min="0" step="0.01" name="{{ kind }}_outstanding[]" value="{{ row.outstanding_balance or 0 }}" {{ disabled_attr() }}></td>
+  <td><select form="cam-feasibility-form" class="cam-select" name="{{ kind }}_classification[]" {{ disabled_attr() }}>{% for value,label in [('performing','Performing'),('watchlist','Watchlist'),('substandard','Substandard'),('doubtful','Doubtful'),('lost','Lost'),('closed','Closed')] %}<option value="{{ value }}" {% if (row.classification or 'performing') == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></td>
+  <td><select form="cam-feasibility-form" class="cam-select" name="{{ kind }}_status[]" {{ disabled_attr() }}>{% for value,label in [('current','Current'),('closed','Closed'),('past_due','Past due'),('restructured','Restructured'),('disputed','Disputed')] %}<option value="{{ value }}" {% if (row.status or 'current') == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></td>
+  {% if can_edit_cam %}<td><button type="button" class="action-secondary-compact cam-row-remove" data-remove-row>Remove</button></td>{% endif %}
+</tr>
+{% endmacro %}
 
-{% block extra_css %}
-<style nonce="{{ csp_nonce }}">
-  .feasibility-actions{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:14px 0 22px;padding:0 4px}.feasibility-back{display:inline-flex;align-items:center;gap:.45rem;min-height:40px;padding:0 14px;border:1px solid #d9cddd;border-radius:9px;background:#fff;color:#2e0052;font-weight:700;text-decoration:none}.feasibility-back:hover{border-color:#89268b;background:#faf6fb}.feasibility-dashboard{display:grid;gap:1.5rem;padding-bottom:28px}.feasibility-hero{padding:1.75rem;background:linear-gradient(135deg,#2e0052,#742178);color:#fff;border-radius:18px}.feasibility-hero h2{margin:0 0 .35rem;font-size:1.65rem}.feasibility-hero p{margin:0;color:rgba(255,255,255,.75)}
-  .feasibility-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.feasibility-metric{padding:1.35rem;border:1px solid #e9e2ed;border-radius:14px;background:#fff}.feasibility-label{display:block;color:#706777;font-size:.78rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}.feasibility-value{display:block;margin:.45rem 0;font-size:1.75rem;color:#2e0052}.feasibility-help{color:#766f79;font-size:.84rem;line-height:1.45}
-  .feasibility-visuals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.feasibility-chart{padding:1.5rem;border:1px solid #e9e2ed;border-radius:14px;background:#fff}.feasibility-chart h3{margin:0;color:#2e0052}.ratio-visual{display:flex;align-items:center;gap:1.5rem;margin-top:1.2rem}.ratio-ring{width:138px;height:138px;transform:rotate(-90deg)}.ratio-track{fill:none;stroke:#eee8f1;stroke-width:12}.ratio-value{fill:none;stroke:#89268b;stroke-width:12;stroke-linecap:round}.ratio-copy strong{display:block;font-size:1.8rem;color:#2e0052}.ratio-copy span{color:#766f79;font-size:.85rem}
-  .capacity-bars{display:grid;gap:1rem;margin-top:1.3rem}.capacity-row{display:grid;grid-template-columns:145px 1fr auto;gap:.75rem;align-items:center;font-size:.85rem}.capacity-track{height:14px;border-radius:99px;background:#eee8f1;overflow:hidden}.capacity-fill{height:100%;border-radius:99px;background:#89268b}.capacity-fill.installment{background:#d6a63d}.capacity-status{margin-top:1.25rem;padding:.8rem 1rem;border-radius:10px;background:#f8f4fa;color:#554b59}.capacity-status.good{background:#eaf7ee;color:#226036}.capacity-status.warning{background:#fff6df;color:#76550a}.capacity-status.risk{background:#fdecec;color:#8a2929}
-  @media(max-width:800px){.feasibility-metrics,.feasibility-visuals{grid-template-columns:1fr}.capacity-row{grid-template-columns:110px 1fr}.capacity-row strong{grid-column:2}.ratio-visual{flex-direction:column;align-items:flex-start}}
-</style>
-{% endblock %}
+{% macro guarantor_fields(slot, guarantor={}) %}
+<div class="cam-grid-3">
+  <div class="cam-field"><label>Name</label><input form="cam-feasibility-form" class="cam-input" name="g{{ slot }}_full_name" maxlength="160" value="{{ guarantor.full_name or '' }}" {{ disabled_attr() }}></div>
+  <div class="cam-field"><label>Business Name</label><input form="cam-feasibility-form" class="cam-input" name="g{{ slot }}_business_name" maxlength="160" value="{{ guarantor.business_name or '' }}" {{ disabled_attr() }}></div>
+  <div class="cam-field"><label>Business Address</label><input form="cam-feasibility-form" class="cam-input" name="g{{ slot }}_business_address" maxlength="500" value="{{ guarantor.business_address or '' }}" {{ disabled_attr() }}></div>
+  <div class="cam-field"><label>Phone Number</label><input form="cam-feasibility-form" class="cam-input" name="g{{ slot }}_phone" maxlength="20" value="{{ guarantor.phone or '' }}" {{ disabled_attr() }}></div>
+  <div class="cam-field"><label>Description / Landmark</label><input form="cam-feasibility-form" class="cam-input" name="g{{ slot }}_landmark" maxlength="500" value="{{ guarantor.description_landmark or '' }}" {{ disabled_attr() }}></div>
+  <div class="cam-field"><label>BVN</label><input form="cam-feasibility-form" class="cam-input" name="g{{ slot }}_bvn" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" value="{{ guarantor.bvn or '' }}" {{ disabled_attr() }}></div>
+</div>
+{% endmacro %}
 
 {% block content %}
-{% set f = feasibility %}
-{% set coverage_ratio_f = coverage_ratio|float if coverage_ratio else 0.0 %}
-{% set coverage_percent = ([coverage_ratio_f / 0.70 * 100, 100]|min) if coverage_ratio_f > 0 else 0.0 %}
-{% set dscr_f = f.dscr|float if f.dscr is not none else 0.0 %}
-{% set comparison_max = [f.monthly_cash_available|float|abs, f.monthly_total_debt_service|float, 1]|max %}
-<nav class="feasibility-actions" aria-label="Feasibility navigation">
-  <a class="feasibility-back" href="/applications/{{ app_id }}"><span aria-hidden="true">&larr;</span> Back to Application</a>
-</nav>
-<div class="feasibility-dashboard">
-  <section class="feasibility-hero">
-    <h2>Feasibility Summary</h2>
-    <p>{{ app.applicant_name }} &middot; {{ app.ref_no }} &middot; &#8358;{{ "{:,.0f}".format(app.amount or 0) }} requested over {{ app.tenor_months or 0 }} months</p>
-  </section>
+<div class="cam-page">
+  <div class="cam-page-head">
+    <div><h1>CRM Analysis / Comments and Recommendation</h1><p>{{ app.ref_no }} · CAM-aligned feasibility assessment</p></div>
+    <a class="action-secondary-ghost" href="/applications/{{ app_id }}">&larr; Back to dossier</a>
+  </div>
+  {% if request.query_params.get('success') == 'saved' %}<div class="cam-readonly-note"><strong>Feasibility analysis saved.</strong> The calculation inputs and analyst evidence were updated.</div>{% endif %}
+  {% if not can_edit_cam %}<div class="cam-readonly-note"><strong>Read-only view.</strong> Only the assigned Credit Analyst can update this memo during Credit Analyst Review.</div>{% endif %}
 
-  <section class="feasibility-metrics" aria-label="Feasibility metrics">
-    <article class="feasibility-metric"><span class="feasibility-label">Monthly Operating Inflow</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(f.monthly_operating_inflows) }}</strong><span class="feasibility-help">Recurring business or salary inflows after frequency normalisation.</span></article>
-    <article class="feasibility-metric"><span class="feasibility-label">Monthly Operating Outflow</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(f.monthly_operating_outflows) }}</strong><span class="feasibility-help">Operating costs excluding financing and own-account transfers.</span></article>
-    <article class="feasibility-metric"><span class="feasibility-label">Cash Available for Debt</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(f.monthly_cash_available) }}</strong><span class="feasibility-help">Operating cash flow plus verified other income, less household costs and maintenance capex.</span></article>
-    <article class="feasibility-metric"><span class="feasibility-label">Total Monthly Debt Service</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(f.monthly_total_debt_service) }}</strong><span class="feasibility-help">Existing obligations plus the proposed {{ proposed_payment_frequency|replace('_', ' ') }} repayment.</span></article>
-    <article class="feasibility-metric"><span class="feasibility-label">Debt Service Coverage Ratio</span><strong class="feasibility-value">{% if f.dscr is not none %}{{ "{:.2f}".format(f.dscr) }}x{% else %}&mdash;{% endif %}</strong><span class="feasibility-help">Cash available divided by all monthly-equivalent debt service. Apply the bank's approved product threshold.</span></article>
-    <article class="feasibility-metric"><span class="feasibility-label">Residual Cash After Debt</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(f.monthly_residual_cash) }}</strong><span class="feasibility-help">Amount remaining after existing and proposed repayments.</span></article>
-    <article class="feasibility-metric"><span class="feasibility-label">Working Capital Need</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(f.working_capital_need) }}</strong><span class="feasibility-help">Estimated from inventory, receivable and payable cycle values.</span></article>
-    <article class="feasibility-metric"><span class="feasibility-label">Collateral Market Value</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(total_market_value or 0) }}</strong><span class="feasibility-help">{{ "{:.2f}".format(market_coverage_ratio or 0) }}x the loan. Policy requires total current market value to exceed the requested amount.</span></article>
-    <article class="feasibility-metric"><span class="feasibility-label">Total Pledged Collateral (FSV)</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(total_pledged_value or 0) }}</strong><span class="feasibility-help">Combined forced-sale value recorded in the loan form.</span></article>
-    <article class="feasibility-metric"><span class="feasibility-label">Collateral Coverage Ratio</span><strong class="feasibility-value">{{ "{:.2%}".format(coverage_ratio or 0) }}</strong><span class="feasibility-help">Minimum target is 70% of the requested loan (0.70x).</span></article>
-    <article class="feasibility-metric"><span class="feasibility-label">Proposed {{ proposed_payment_frequency|replace('_', ' ')|title }} Installment</span><strong class="feasibility-value">&#8358;{{ "{:,.2f}".format(proposed_installment or 0) }}</strong><span class="feasibility-help">Derived from &#8358;{{ "{:,.0f}".format(app.amount or 0) }} over {{ app.tenor_months or 0 }}m at {{ proposed_interest_rate }}% P.A.</span></article>
-    <article class="feasibility-metric"><span class="feasibility-label">Evidence Quality</span><strong class="feasibility-value">{{ f.data_quality_status|title }}</strong><span class="feasibility-help">{{ f.verified_cashflow_count }} of {{ f.included_cashflow_count }} included cash movements are verified. Declared inputs require human review.</span></article>
-  </section>
+  <form id="cam-feasibility-form" method="post" action="/applications/{{ app_id }}/repayment-feasibility" data-editable="{{ 'true' if can_edit_cam else 'false' }}" data-application-id="{{ app_id }}">
+    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+  </form>
 
-  <section class="feasibility-chart">
-    <h3>Collateral valuation by asset class</h3>
-    <div class="table-responsive">
-      <table class="data-table">
-        <thead><tr><th>Asset</th><th>Market value</th><th>Retention</th><th>Policy FSV</th><th>Review basis</th></tr></thead>
-        <tbody>
-          {% for item in collateral_items %}
-          <tr>
-            <td><strong>{{ item.display_name or item.collateral_type|replace('_', ' ')|title }}</strong><br><span class="feasibility-help">{{ item.narration }}</span></td>
-            <td>&#8358;{{ "{:,.2f}".format(item.loan_based_price or 0) }}</td>
-            <td>{{ "{:.0%}".format(item.retention_rate or 0) }}</td>
-            <td>&#8358;{{ "{:,.2f}".format(item.force_sale_value or 0) }}</td>
-            <td><span class="feasibility-help">{{ item.policy_note or 'Apply approved valuation policy.' }}{% if item.manual_review_required %} Manual review required.{% endif %}</span></td>
-          </tr>
-          {% else %}<tr><td colspan="5">No collateral has been recorded.</td></tr>{% endfor %}
-        </tbody>
-      </table>
+  <section class="cam-card" aria-labelledby="cam-header-title">
+    <div class="cam-card-head"><h2 id="cam-header-title">Header block</h2><span class="cam-section-number">1 of 11</span></div>
+    <div class="cam-header-grid">
+      {% for label,value in [
+        ('Business Name', intake_data.get('business_name') or app.applicant_name),
+        ('Personal Name', app.applicant_name),
+        ('Business Address', intake_data.get('business_address') or intake_data.get('residential_address')),
+        ('Email', intake_data.get('email')),
+        ('Loan Status', 'Existing' if internal_obligations else 'New'),
+        ('Branch', application_header.get('branch_name')),
+        ('R.O Name', application_header.get('officer_name')),
+        ('BVN', app.bvn),
+        ('Sector', intake_data.get('business_sector') or intake_data.get('sector')),
+        ('RO Status', intake_data.get('ro_status') or 'SME'),
+        ('Account No.', intake_data.get('account_number')),
+        ('Phone No.', app.phone),
+        ('Date', app.updated_at.strftime('%d %B %Y') if app.updated_at else '')
+      ] %}
+      <div class="cam-field"><span class="cam-label">{{ label }}</span><div class="cam-value">{{ value or '—' }}</div></div>
+      {% endfor %}
     </div>
   </section>
 
-  <section class="feasibility-visuals">
-    <article class="feasibility-chart">
-      <h3>Collateral coverage</h3>
-      <div class="ratio-visual">
-        <svg class="ratio-ring" viewBox="0 0 120 120" role="img" aria-label="Collateral coverage {{ '{:.0%}'.format(coverage_ratio or 0) }}">
-          <circle class="ratio-track" cx="60" cy="60" r="48"></circle>
-          <circle class="ratio-value" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="{{ coverage_percent }} 100"></circle>
-        </svg>
-        <div class="ratio-copy"><strong>{{ "{:.2f}".format(coverage_ratio or 0) }}x</strong><span>{% if coverage_ratio_f >= 0.70 %}70% target met{% else %}{{ "{:.0%}".format(0.70 - coverage_ratio_f) }} below the 0.70x target{% endif %}</span></div>
-      </div>
-    </article>
-
-    <article class="feasibility-chart">
-      <h3>Monthly-equivalent repayment capacity</h3>
-      <div class="capacity-bars">
-        <div class="capacity-row"><span>Cash available</span><div class="capacity-track"><div class="capacity-fill" data-csp-style="width:{{ (f.monthly_cash_available|float|abs / comparison_max * 100) }}%"></div></div><strong>&#8358;{{ "{:,.0f}".format(f.monthly_cash_available) }}</strong></div>
-        <div class="capacity-row"><span>Total debt service</span><div class="capacity-track"><div class="capacity-fill installment" data-csp-style="width:{{ (f.monthly_total_debt_service|float / comparison_max * 100) }}%"></div></div><strong>&#8358;{{ "{:,.0f}".format(f.monthly_total_debt_service) }}</strong></div>
-      </div>
-      <div class="capacity-status {% if dscr_f >= 1 %}good{% elif f.monthly_cash_available < 0 %}risk{% else %}warning{% endif %}">
-        {% if dscr_f >= 1 %}<strong>Debt service is covered.</strong> Confirm the ratio also meets the configured product and credit-policy threshold.
-        {% elif f.monthly_cash_available < 0 %}<strong>Negative cash available.</strong> Current inflows do not cover operating and household commitments.
-        {% else %}<strong>Capacity shortfall.</strong> Available cash does not cover all existing and proposed repayments.{% endif %}
-      </div>
-      <p class="feasibility-help">Cash conversion cycle: {{ f.cash_conversion_cycle_days }} days. Existing obligations included: {{ obligations|length }}.</p>
-    </article>
+  <section class="cam-card" aria-labelledby="internal-title">
+    <div class="cam-card-head"><h2 id="internal-title">Credit History with Mainstreet MFB (Internal)</h2><span class="cam-section-number">2 of 11</span></div>
+    <p class="cam-swipe">Swipe to view all columns.</p>
+    <div class="cam-table-wrap"><table class="cam-table"><thead><tr><th>Institution</th><th>Start Date</th><th>End Date</th><th>Amount</th><th>Rental</th><th>Tenure</th><th>Outstanding</th><th>Classification</th><th>Status</th>{% if can_edit_cam %}<th>Action</th>{% endif %}</tr></thead>
+      <tbody id="internal-history-body">{% for row in internal_obligations %}{{ history_row('internal', row) }}{% else %}{% if can_edit_cam %}{{ history_row('internal') }}{% else %}<tr><td class="cam-empty cam-nil" colspan="9">NIL</td></tr>{% endif %}{% endfor %}</tbody>
+    </table></div>
+    {% if can_edit_cam %}<button type="button" class="action-secondary-compact" data-add-row data-template="internal-history-template" data-target="internal-history-body">Add internal facility</button>{% endif %}
   </section>
+
+  <section class="cam-card" aria-labelledby="external-title">
+    <div class="cam-card-head"><h2 id="external-title">External Borrower History</h2><span class="cam-section-number">3 of 11</span></div>
+    <p class="cam-help">Rental and Outstanding feed Total Rental, DTI, and Gearing live.</p><p class="cam-swipe">Swipe to view all columns.</p>
+    <div class="cam-table-wrap"><table class="cam-table"><thead><tr><th>Institution</th><th>Start Date</th><th>End Date</th><th>Amount</th><th>Rental</th><th>Tenure</th><th>Outstanding</th><th>Classification</th><th>Status</th>{% if can_edit_cam %}<th>Action</th>{% endif %}</tr></thead>
+      <tbody id="external-history-body">{% for row in external_obligations %}{{ history_row('external', row) }}{% else %}{% if can_edit_cam %}{{ history_row('external') }}{% else %}<tr><td class="cam-empty cam-nil" colspan="9">NIL</td></tr>{% endif %}{% endfor %}</tbody>
+    </table></div>
+    {% if can_edit_cam %}<button type="button" class="action-secondary-compact" data-add-row data-template="external-history-template" data-target="external-history-body">Add external facility</button>{% endif %}
+  </section>
+
+  <section class="cam-card" aria-labelledby="turnover-title">
+    <div class="cam-card-head"><h2 id="turnover-title">Bank(s) Turnover</h2><span class="cam-section-number">4 of 11</span></div>
+    <p class="cam-help">Straight sums and averages of actual bank inflows. No cash-sales multiplier or 20% adjustment is applied.</p>
+    <div class="cam-table-wrap"><table class="cam-table"><thead><tr><th>Month</th><th>Bank</th><th>Inflow</th><th>Transaction Count</th>{% if can_edit_cam %}<th>Action</th>{% endif %}</tr></thead>
+      <tbody id="turnover-body">{% for row in bank_turnovers %}<tr data-turnover-row><td><input form="cam-feasibility-form" class="cam-input" type="month" name="turnover_month[]" value="{{ row.entry_date.strftime('%Y-%m') if row.entry_date else row.description or '' }}" {{ disabled_attr() }}></td><td><input form="cam-feasibility-form" class="cam-input wide" name="turnover_bank[]" maxlength="120" value="{{ row.channel or '' }}" {{ disabled_attr() }}></td><td><input form="cam-feasibility-form" class="cam-input" type="number" min="0" step="0.01" name="turnover_amount[]" value="{{ row.amount or 0 }}" {{ disabled_attr() }}></td><td><input form="cam-feasibility-form" class="cam-input" type="number" min="0" step="1" name="turnover_transaction_count[]" value="{{ row.transaction_count or 0 }}" {{ disabled_attr() }}></td>{% if can_edit_cam %}<td><button type="button" class="action-secondary-compact" data-remove-row>Remove</button></td>{% endif %}</tr>{% else %}{% if not can_edit_cam %}<tr><td class="cam-empty cam-nil" colspan="4">No bank turnover recorded.</td></tr>{% endif %}{% endfor %}</tbody>
+      <tfoot><tr class="cam-total-row"><td colspan="2">TOTAL</td><td id="turnover-total-inflow">₦0.00</td><td id="turnover-total-count">0</td>{% if can_edit_cam %}<td></td>{% endif %}</tr><tr class="cam-total-row"><td colspan="2">AVERAGE</td><td id="turnover-average-inflow">₦0.00</td><td id="turnover-average-count">0</td>{% if can_edit_cam %}<td></td>{% endif %}</tr></tfoot>
+    </table></div>
+    {% if can_edit_cam %}<button type="button" class="action-secondary-compact" data-add-row data-template="turnover-template" data-target="turnover-body">Add bank/month row</button>{% endif %}
+    <h3>Consolidated monthly turnover</h3><p class="cam-swipe">Swipe to view bank columns and consolidated totals.</p>
+    <div class="cam-table-wrap"><table class="cam-table" id="turnover-consolidated-table" aria-label="Bank turnover by month and consolidated totals"></table></div>
+  </section>
+
+  <section class="cam-card" aria-labelledby="remita-title">
+    <div class="cam-card-head"><h2 id="remita-title">Remita Bank Details</h2><span class="cam-section-number">5 of 11</span></div>
+    <div class="cam-grid-2">
+      <div class="cam-field"><label>Email</label><input form="cam-feasibility-form" class="cam-input" type="email" name="remita_email" maxlength="254" value="{{ financial_profile.remita_email or '' }}" {{ disabled_attr() }}></div>
+      <div class="cam-field"><label>Account No.</label><input form="cam-feasibility-form" class="cam-input" name="remita_account_no" maxlength="30" value="{{ financial_profile.remita_account_no or '' }}" {{ disabled_attr() }}></div>
+      <div class="cam-field"><label>Account Name</label><input form="cam-feasibility-form" class="cam-input" name="remita_account_name" maxlength="160" value="{{ financial_profile.remita_account_name or '' }}" {{ disabled_attr() }}></div>
+      <div class="cam-field"><label>Bank</label><input form="cam-feasibility-form" class="cam-input" name="remita_bank" maxlength="120" value="{{ financial_profile.remita_bank or '' }}" {{ disabled_attr() }}></div>
+    </div>
+  </section>
+
+  <section class="cam-card" aria-labelledby="security-title">
+    <div class="cam-card-head"><h2 id="security-title">Security / Collateral</h2><span class="cam-section-number">6 of 11</span></div>
+    <p class="cam-help">Forced Sale Value feeds Tangible Collateral Coverage. Evidence remains protected by the existing document preview controls.</p><p class="cam-swipe">Swipe to view all columns.</p>
+    <div class="cam-table-wrap"><table class="cam-table"><thead><tr><th>Owner</th><th>Collateral</th><th>Chassis No.</th><th>Registration No.</th><th>Colour</th><th>Year</th><th>Forced Sale Value</th><th>Evidence</th></tr></thead><tbody>
+      {% for item in collateral_items %}<tr data-collateral-row>
+        <td><select form="cam-feasibility-form" class="cam-select" name="collateral_owner_{{ item.id }}" {{ disabled_attr() }}><option value="">Select</option>{% for value,label in [('client','Client'),('guarantor','Guarantor'),('client_asset','Client-Asset')] %}<option value="{{ value }}" {% if item.owner_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></td>
+        <td class="cam-collateral-name">{{ item.display_name or item.collateral_type|replace('_',' ')|title }}<div class="cam-help">{{ item.narration }}</div></td>
+        <td><input form="cam-feasibility-form" class="cam-input" name="collateral_chassis_{{ item.id }}" maxlength="120" value="{{ item.chassis_no or '' }}" {{ disabled_attr() }}></td>
+        <td><input form="cam-feasibility-form" class="cam-input" name="collateral_reg_{{ item.id }}" maxlength="120" value="{{ item.registration_no or '' }}" {{ disabled_attr() }}></td>
+        <td><input form="cam-feasibility-form" class="cam-input" name="collateral_colour_{{ item.id }}" maxlength="80" value="{{ item.colour or '' }}" {{ disabled_attr() }}></td>
+        <td><input form="cam-feasibility-form" class="cam-input" type="number" min="1900" max="2200" name="collateral_year_{{ item.id }}" value="{{ item.year or '' }}" {{ disabled_attr() }}></td>
+        <td><input form="cam-feasibility-form" class="cam-input" data-collateral-fsv type="number" min="0" step="0.01" name="collateral_fsv_{{ item.id }}" value="{{ item.cam_forced_sale_value if item.cam_forced_sale_value is not none else item.force_sale_value or 0 }}" {{ disabled_attr() }}></td>
+        <td><div class="cam-docs">{% for doc in item.documents %}<a class="action-secondary-compact" href="/api/v1/documents/collateral/{{ doc.id }}/preview">Preview</a>{% else %}<span class="cam-help">No evidence</span>{% endfor %}{% if can_edit_cam %}<button type="button" class="action-secondary-compact" data-collateral-upload="{{ item.id }}">Upload</button>{% endif %}</div></td>
+      </tr>{% else %}<tr><td colspan="8" class="cam-empty">No collateral line items have been recorded.</td></tr>{% endfor %}
+      <tr class="cam-total-row"><td colspan="6">Total</td><td id="security-total-fsv">₦{{ "{:,.2f}".format(cam_feasibility.total_collateral_valuation) }}</td><td></td></tr>
+    </tbody></table></div>
+  </section>
+
+  <section class="cam-card" aria-labelledby="appraisal-title">
+    <div class="cam-card-head"><h2 id="appraisal-title">Appraisal &amp; Parameters</h2><span class="cam-section-number">7 of 11</span></div>
+    <div class="cam-grid-3">
+      {% for name,label,value in [
+        ('cash_at_bank','Cash @ Bank',financial_profile.cash_at_bank or 0),
+        ('stock','Stock',financial_profile.stock or 0),
+        ('prepayment','Prepayment',financial_profile.prepayment or 0),
+        ('fixed_assets','Fixed Asset',financial_profile.fixed_assets or 0),
+        ('monthly_turnover','Monthly Turnover/Sales/Income',financial_profile.monthly_turnover or 0),
+        ('margin','Margin (%)',(financial_profile.margin * 100) if financial_profile.margin else 0),
+        ('monthly_expenses','Monthly Expenses',financial_profile.monthly_expenses or 0),
+        ('recommended_amount','Recommended Amount',financial_profile.recommended_amount or app.amount or 0),
+        ('interest_rate','Interest rate — flat per tenor (%)',financial_profile.interest_rate or proposed_interest_rate or 0),
+        ('proposed_tenor','Proposed Tenor (months)',financial_profile.proposed_tenor or app.tenor_months or 12),
+        ('shop_allowance','Shop Allowance',financial_profile.shop_allowance or 0),
+        ('shop_allowance_verified','Verified Shop Allowance',financial_profile.shop_allowance_verified or 0)
+      ] %}<div class="cam-field"><label>{{ label }}{% if name in ['cash_at_bank','stock','monthly_turnover','margin','monthly_expenses','recommended_amount','interest_rate','proposed_tenor'] %} <span class="cam-required">*</span>{% endif %}</label><input form="cam-feasibility-form" class="cam-input" type="number" min="0" step="{{ '1' if name == 'proposed_tenor' else '0.01' }}" name="{{ name }}" value="{{ value }}" {% if name == 'proposed_tenor' %}max="120"{% endif %} {{ disabled_attr() }}></div>{% endfor %}
+      <div class="cam-field"><label>Shop Allocation</label><input form="cam-feasibility-form" class="cam-input" name="shop_allocation" maxlength="160" value="{{ financial_profile.shop_allocation or '' }}" {{ disabled_attr() }}></div>
+    </div>
+    <div class="cam-metrics" aria-label="CAM calculated outputs">
+      {% for id,label,value,suffix in [
+        ('cam-total-assets','Total Asset',cam_feasibility.total_assets,'money'),
+        ('cam-gross-profit','Monthly Gross Profit',cam_feasibility.monthly_gross_profit,'money'),
+        ('cam-net-profit','Net Profit',cam_feasibility.net_profit,'money'),
+        ('cam-installment','Mainstreet Installment',cam_feasibility.mainstreet_installment,'money'),
+        ('cam-external-rental','Total External Rental',cam_feasibility.total_external_rental,'money'),
+        ('cam-total-rental','Total Rental',cam_feasibility.total_rental,'money'),
+        ('cam-dti','Debt to Income Ratio (max 35%)',cam_feasibility.dti_ratio,'percent'),
+        ('cam-outstanding','Total Outstanding Loan',cam_feasibility.total_outstanding_loan,'money'),
+        ('cam-gearing','Gearing Ratio (max 50%)',cam_feasibility.gearing_ratio * 100 if cam_feasibility.gearing_ratio is not none else none,'percent'),
+        ('cam-collateral-total','Total Collateral Valuation',cam_feasibility.total_collateral_valuation,'money'),
+        ('cam-collateral-coverage','Tangible Collateral Coverage (%)',cam_feasibility.collateral_coverage,'percent')
+      ] %}<article class="cam-metric formula"><span class="cam-computed-badge">Calculated</span><span class="cam-metric-label">{{ label }}</span><strong class="cam-metric-value" id="{{ id }}">{% if value is none %}Not available{% elif suffix == 'money' %}₦{{ "{:,.2f}".format(value) }}{% else %}{{ "{:,.2f}".format(value) }}%{% endif %}</strong>{% if id == 'cam-dti' %}<span id="cam-dti-flag" class="cam-status {{ 'pass' if value is not none and value <= 35 else 'fail' if value is not none else 'pending' }}">{{ 'Within 35% ceiling' if value is not none and value <= 35 else 'Above 35% ceiling' if value is not none else 'Cannot calculate' }}</span>{% elif id == 'cam-gearing' %}<span id="cam-gearing-flag" class="cam-status {{ 'pass' if value is not none and value <= 50 else 'fail' if value is not none else 'pending' }}">{{ 'Within 50% ceiling' if value is not none and value <= 50 else 'Above 50% ceiling' if value is not none else 'Cannot calculate' }}</span>{% endif %}</article>{% endfor %}
+      <article class="cam-metric formula"><span class="cam-computed-badge">Pending rule</span><span class="cam-metric-label">Asset to Loan Ratio (min 2:1)</span><strong class="cam-metric-value">Not configured</strong><span class="cam-help">The CAM contains no source formula. No ratio is inferred.</span></article>
+    </div>
+    <div class="cam-callout"><strong>Formula source</strong>Turnover uses the entered monthly value without a 1.1 multiplier, cash-sales percentage, or goods-in-transit adjustment.</div>
+  </section>
+
+  {% set g1 = guarantors|selectattr('slot','equalto',1)|first|default({}, true) %}
+  {% set g2 = guarantors|selectattr('slot','equalto',2)|first|default({}, true) %}
+  <section class="cam-card" aria-labelledby="guarantor-title">
+    <div class="cam-card-head"><h2 id="guarantor-title">Guarantor(s) Verified by Analyst</h2><span class="cam-section-number">8 of 11</span></div>
+    <h3>Guarantor 1</h3>{{ guarantor_fields(1, g1) }}<h3>Guarantor 2</h3>{{ guarantor_fields(2, g2) }}
+  </section>
+
+  <section class="cam-card" aria-labelledby="property-title">
+    <div class="cam-card-head"><h2 id="property-title">Property</h2><span class="cam-section-number">9 of 11</span></div>
+    <div class="cam-grid-2"><div class="cam-field"><label>Google Coordinates Map link</label><input form="cam-feasibility-form" class="cam-input" type="url" name="property_coordinates_link" maxlength="500" placeholder="https://maps.google.com/…" value="{{ financial_profile.property_coordinates_link or '' }}" {{ disabled_attr() }}></div><div class="cam-field"><label>Full Description of the Property</label><textarea form="cam-feasibility-form" class="cam-textarea" name="property_description" maxlength="2000" {{ disabled_attr() }}>{{ financial_profile.property_description or '' }}</textarea></div></div>
+  </section>
+
+  <section class="cam-card" aria-labelledby="comments-title">
+    <div class="cam-card-head"><h2 id="comments-title">Credit Analyst Comments</h2><span class="cam-section-number">10 of 11</span></div>
+    <div class="cam-grid-2"><div class="cam-field"><label>Analyst Name <span class="cam-required">*</span></label><input form="cam-feasibility-form" class="cam-input" name="analyst_name" maxlength="160" value="{{ financial_profile.analyst_name or user.name or '' }}" {{ disabled_attr() }}></div><div></div><div class="cam-field"><label>Recommendation Narrative <span class="cam-required">*</span></label><textarea form="cam-feasibility-form" class="cam-textarea" name="analyst_recommendation" maxlength="5000" {{ disabled_attr() }}>{{ financial_profile.analyst_recommendation or '' }}</textarea></div><div class="cam-field"><label>Numbered Pre-disbursement Conditions</label><textarea form="cam-feasibility-form" class="cam-textarea" name="pre_disbursement_conditions" maxlength="5000" placeholder="1. …&#10;2. …" {{ disabled_attr() }}>{{ financial_profile.pre_disbursement_conditions or '' }}</textarea></div></div>
+  </section>
+
+  <section class="cam-card" aria-labelledby="chain-title">
+    <div class="cam-card-head"><h2 id="chain-title">Recommendation / Approval Chain</h2><span class="cam-section-number">11 of 11</span></div>
+    <p class="cam-help">Amounts are application-specific recommendations. They are not treated as authorization ceilings.</p>
+    <div class="cam-table-wrap"><table class="cam-table cam-chain-table"><thead><tr><th>Role</th><th>Name</th><th>Recommendation</th><th>Amount</th></tr></thead><tbody>{% for item in recommendation_chain %}<tr><td>{{ item.role }}</td><td>{{ item.submitted_by_name or '—' }}</td><td>{{ item.notes or '—' }}</td><td>{% if item.recommended_amount is defined and item.recommended_amount is not none %}₦{{ "{:,.2f}".format(item.recommended_amount) }}{% else %}—{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+  </section>
+
+  <div class="cam-actions">
+    <a class="action-secondary-ghost" href="/applications/{{ app_id }}">Cancel / Back</a>
+    <div class="cam-actions-right">{% if can_edit_cam %}<button class="action-primary" type="submit" form="cam-feasibility-form">Submit Recommendation</button>{% endif %}</div>
+  </div>
+
+  {% if can_edit_cam %}
+  <template id="internal-history-template">{{ history_row('internal') }}</template>
+  <template id="external-history-template">{{ history_row('external') }}</template>
+  <template id="turnover-template"><tr data-turnover-row><td><input form="cam-feasibility-form" class="cam-input" type="month" name="turnover_month[]"></td><td><input form="cam-feasibility-form" class="cam-input wide" name="turnover_bank[]" maxlength="120"></td><td><input form="cam-feasibility-form" class="cam-input" type="number" min="0" step="0.01" name="turnover_amount[]" value="0"></td><td><input form="cam-feasibility-form" class="cam-input" type="number" min="0" step="1" name="turnover_transaction_count[]" value="0"></td><td><button type="button" class="action-secondary-compact" data-remove-row>Remove</button></td></tr></template>
+  <dialog id="cam-upload-dialog" class="confirmation-dialog">
+    <form id="cam-upload-form" method="post" enctype="multipart/form-data">
+      {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+      <h2>Upload collateral evidence</h2>
+      <div class="cam-field"><label>Document type</label><select class="cam-select" name="document_type" required><option value="vehicle_document">Vehicle document</option><option value="purchase_receipt">Generator / asset purchase receipt</option><option value="stock_hypothecation">Stock hypothecation record</option><option value="title_document">Property title document</option><option value="other_collateral_evidence">Other collateral evidence</option></select></div>
+      <div class="cam-field"><label>Supported worth (₦)</label><input class="cam-input" type="number" name="worth" min="0" step="0.01" required></div>
+      <div class="cam-field"><label>File</label><input class="cam-input" type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required></div>
+      <div class="cam-row-actions"><button type="submit" class="action-secondary-filled">Upload evidence</button><button type="button" class="action-secondary-ghost" data-close-upload>Cancel</button></div>
+    </form>
+  </dialog>
+  {% endif %}
 </div>
 {% endblock %}
+{% block extra_js %}<script defer src="/static/js/cam-feasibility.js?v=20260826-cam1"></script>{% endblock %}

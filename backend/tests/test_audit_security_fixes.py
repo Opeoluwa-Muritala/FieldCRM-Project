@@ -22,7 +22,7 @@ class QuorumConnection:
 
 
 def test_customer_uploads_are_not_public_static_assets():
-    response = TestClient(app).get("/static/uploads/demo/generated/example.pdf")
+    response = TestClient(app).get("/static/uploads/test/generated/example.pdf")
     assert response.status_code == 404
 
 
