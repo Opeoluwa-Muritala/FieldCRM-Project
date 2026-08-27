@@ -127,3 +127,13 @@ async def delete_user(
 ):
     await service.delete_managed_user(current_admin, user_id)
     return {"id": str(user_id), "message": "User deleted."}
+
+
+@router.post("/{user_id}/reset-password")
+async def reset_user_password(
+    user_id: UUID,
+    service: UserService = Depends(get_user_service),
+    current_admin: UserRow = Depends(RoleChecker(["System Admin"])),
+):
+    await service.reset_user_password(current_admin, user_id)
+    return {"id": str(user_id), "message": "A secure password reset link was sent to the user's email."}

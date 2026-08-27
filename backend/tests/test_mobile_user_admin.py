@@ -68,3 +68,57 @@ def test_legacy_admin_role_is_authorized_as_system_admin():
 
     mobile._ensure_roles(legacy_admin, {"system_admin"})
     assert RoleChecker(["System Admin"])(legacy_admin) is legacy_admin
+
+
+@pytest.mark.asyncio
+async def test_reset_user_password_endpoint(monkeypatch):
+    from app.domains.users.router import reset_user_password
+
+    captured = {}
+
+    class FakeUserService:
+        def __init__(self, repo):
+            pass
+        async def reset_user_password(self, admin, user_id):
+            captured["admin"] = admin
+            captured["user_id"] = user_id
+
+    admin = SimpleNamespace(role="system_admin", org_id=UUID("33333333-3333-3333-3333-333333333333"))
+    user_id = UUID("44444444-4444-4444-4444-444444444444")
+
+    res = await reset_user_password(user_id=user_id, service=FakeUserService(None), current_admin=admin)
+    assert res["id"] == str(user_id)
+    assert captured["admin"] == admin
+    assert captured["user_id"] == user_id
+
+
+@pytest.mark.asyncio
+async def test_reset_user_password_service(monkeypatch):
+    from app.domains.users.service import UserService
+    from app.domains.auth.service import AuthService
+
+    captured = {}
+
+    class FakeUserRepo:
+        conn = object()
+
+        async def get_by_id(self, user_id):
+            return SimpleNamespace(
+                id=user_id,
+                org_id=UUID("33333333-3333-3333-3333-333333333333"),
+                email="officer@example.com",
+                active=True,
+            )
+
+    async def request_reset(_service, email):
+        captured["email"] = email
+        return True
+
+    monkeypatch.setattr(AuthService, "request_password_reset", request_reset)
+
+    admin = SimpleNamespace(role="system_admin", org_id=UUID("33333333-3333-3333-3333-333333333333"))
+    user_id = UUID("44444444-4444-4444-4444-444444444444")
+
+    svc = UserService(FakeUserRepo())
+    await svc.reset_user_password(admin, user_id)
+    assert captured["email"] == "officer@example.com"
