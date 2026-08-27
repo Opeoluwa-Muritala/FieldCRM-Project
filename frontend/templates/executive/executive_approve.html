@@ -4,7 +4,9 @@
 {% block page_title %}Issue Disbursement Instruction{% endblock %}
 {% block breadcrumb %}Executive -> Approval -> {{ app.ref_no }}{% endblock %}
 {% block content %}
+<div class="approval-memo-workstation approval-memo-stack executive-approval-page approval-role-disbursement">
 <div class="page-card csp-s-3c4a3d440074">
+  <span class="approval-role-kicker">Executive · Disbursement authority</span>
   <h2 class="page-card-title">{{ app.applicant_name }}</h2>
   <div class="csp-s-0e63b0d79e95">
     <div><span class="csp-s-500708668cdd">Ref</span><br><strong>{{ app.ref_no }}</strong></div>
@@ -60,5 +62,6 @@
         <a href="/executive-queue" class="btn btn-secondary action-secondary-ghost csp-s-c56fa2191449">Cancel</a>
     </div>
   </form>
+</div>
 </div>
 {% endblock %}

@@ -83,4 +83,27 @@ def test_user_directory_shrinks_on_tablets_and_switches_to_phone_cards():
 
     with open(BASE_SHELL_PATH, "r", encoding="utf-8") as f:
         shell = f.read()
-    assert "dashboard.css?v=20260827-users-readable" in shell
+    assert "dashboard.css?v=20260827-approval-memo" in shell
+
+
+def test_approval_workstations_share_a_responsive_credit_memo_layout():
+    with open(CSS_PATH, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert ".approval-memo-workstation" in content
+    assert ".approval-memo-stack" in content
+    assert ".approval-decision-footer" in content
+    assert "@media(max-width:980px)" in content
+    assert "@media(max-width:700px)" in content
+
+    templates = (
+        "frontend/templates/shared/approve.html",
+        "frontend/templates/shared/credit_review.html",
+        "frontend/templates/crm/crm_review.html",
+        "frontend/templates/executive/executive_approve.html",
+        "frontend/templates/executive/ed_approve.html",
+        "frontend/templates/executive/md_approve.html",
+    )
+    for template_path in templates:
+        with open(template_path, "r", encoding="utf-8") as f:
+            assert "approval-memo-workstation" in f.read()

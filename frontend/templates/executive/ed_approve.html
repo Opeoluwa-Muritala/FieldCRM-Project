@@ -4,7 +4,9 @@
 {% block page_title %}ED Approval{% endblock %}
 {% block breadcrumb %}Executive Director -> Approval -> {{ app.ref_no }}{% endblock %}
 {% block content %}
+<div class="approval-memo-workstation approval-memo-stack executive-approval-page approval-role-ed">
 <div class="page-card csp-s-3c4a3d440074 executive-approval-page ed-approval-page">
+  <span class="approval-role-kicker">Executive Director · Final credit authority</span>
   <h2 class="page-card-title">{{ app.applicant_name }}</h2>
   <div class="csp-s-0e63b0d79e95">
     <div><span class="csp-s-500708668cdd">Ref</span><br><strong>{{ app.ref_no }}</strong></div>
@@ -81,5 +83,6 @@
       <a href="/ed-queue" class="btn btn-secondary action-secondary-ghost csp-s-cdcef186c815">&#8592; Back to Queue</a>
     </div>
   </form>
+</div>
 </div>
 {% endblock %}
