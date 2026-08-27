@@ -60,7 +60,7 @@
             </div>
         </section>
 
-        <section class="capability-band" aria-label="Core capabilities"><div><i class="capability-icon icon-device" aria-hidden="true"></i><span>Offline field capture</span></div><div><i class="capability-icon icon-document" aria-hidden="true"></i><span>Document scan &amp; OCR</span></div><div><i class="capability-icon icon-approval" aria-hidden="true"></i><span>Role-based approvals</span></div><div><i class="capability-icon icon-audit" aria-hidden="true"></i><span>Audit history</span></div></section>
+        <section class="capability-band" aria-label="Core capabilities"><div><i class="capability-icon icon-device" aria-hidden="true"></i><span>Offline field capture</span></div><div><i class="capability-icon icon-document" aria-hidden="true"></i><span>Secure document records</span></div><div><i class="capability-icon icon-approval" aria-hidden="true"></i><span>Role-based approvals</span></div><div><i class="capability-icon icon-audit" aria-hidden="true"></i><span>Audit history</span></div></section>
 
         <section class="section workflow" id="workflow">
             <p class="eyebrow">A controlled path</p><h2>Built around the credit workflow</h2>
@@ -68,7 +68,7 @@
         </section>
 
         <section class="section field-grid" id="security">
-            <article><p class="eyebrow">Field operations</p><h2>Work securely in the field</h2><ul><li>Encrypted session and document storage</li><li>Background synchronization</li><li>Camera document capture and OCR review</li><li>Role-aware work queues and approvals</li></ul></article>
+            <article><p class="eyebrow">Field operations</p><h2>Work securely in the field</h2><ul><li>Encrypted session and document storage</li><li>Background synchronization</li><li>Camera document capture</li><li>Role-aware work queues and approvals</li></ul></article>
             <article class="download-panel" id="mobile-app"><img src="/static/img/mainstreet-mark.png" alt="Mainstreet Microfinance Bank" width="64" height="64"><div><p class="eyebrow">Android application{% if release.channel == 'preview' %} &middot; Preview{% endif %}</p><h2>Get FieldCRM for Android</h2><dl><div><dt>Version</dt><dd>{{ release.version }}</dd></div><div><dt>Requires</dt><dd>Android 8.0+</dd></div>{% if release.released_at %}<div><dt>Released</dt><dd>{{ release.released_at }}</dd></div>{% endif %}</dl>{% if release.channel == 'preview' %}<p class="preview-warning">Testing build: signed with the Android debug certificate. Do not use as a production release.</p>{% endif %}{% if release.available %}<a class="button button-primary" href="/download/android">Download {% if release.channel == 'preview' %}Preview {% endif %}APK</a>{% else %}<span class="button button-disabled" aria-disabled="true">Android release coming soon</span>{% endif %}{% if release.sha256 %}<p class="checksum">SHA-256: <code>{{ release.sha256 }}</code></p>{% endif %}</div></article>
         </section>
 

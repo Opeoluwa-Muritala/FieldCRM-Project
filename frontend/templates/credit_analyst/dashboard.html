@@ -12,9 +12,11 @@
       <div class="skeleton-chip skeleton w-full"></div>
       <div class="skeleton-chip skeleton w-full"></div>
       <div class="skeleton-chip skeleton w-full"></div>
+      <div class="skeleton-chip skeleton w-full"></div>
     {% else %}
       <div class="role-stat"><span>Reviews due</span><strong>{{ m.get('reviews_due', 0) }}</strong></div>
-      <div class="role-stat warning"><span>OCR exceptions</span><strong>{{ m.get('ocr_exceptions', 0) }}</strong></div>
+      <div class="role-stat warning"><span>Documents to review</span><strong>{{ m.get('document_exceptions', 0) }}</strong></div>
+      <div class="role-stat info"><span>Visit Signoffs</span><strong>{{ m.get('pending_signoffs', 0) }}</strong></div>
       <div class="role-stat"><span>Reviewed today</span><strong>{{ m.get('reviewed_today', 0) }}</strong></div>
       <div class="role-stat danger"><span>Returned this week</span><strong>{{ m.get('returned_this_week', 0) }}</strong></div>
     {% endif %}
@@ -31,14 +33,25 @@
         {% endif %}
       </div>
     </section>
-    <section class="page-card" id="ca-exceptions" data-section-src="/dashboard">
-      <div class="role-section-head"><h2>Data exceptions</h2><a href="/ocr-exceptions">Review exceptions</a></div>
+    <section class="page-card" id="ca-signoffs" data-section-src="/dashboard">
+      <div class="role-section-head"><h2>Visit signoffs</h2><a href="/pending-signoffs">View all</a></div>
       <div class="role-card-list">
         {% if loading %}
           <div class="skeleton-card skeleton w-full mb-2"></div>
           <div class="skeleton-card skeleton w-full"></div>
         {% else %}
-          {% for item in data.exceptions %}<a class="role-list-card" href="/applications/{{ item.loan_id }}/ocr-review"><strong>{{ item.applicant_name }}</strong><span>{{ item.field_name }} · {{ item.confidence or 0 }}% confidence</span><em>{{ item.doc_type }}</em></a>{% else %}<div class="lo-empty-state">No OCR exceptions assigned.</div>{% endfor %}
+          {% for item in data.signoffs %}<a class="role-list-card" href="/applications/{{ item.loan_id }}/visitation"><strong>{{ item.applicant_name }}</strong><span>{{ item.ref_no }} · {{ item.visiting_officer_name or 'Officer' }}</span><em>{{ item.visit_date or 'No date' }}</em></a>{% else %}<div class="lo-empty-state">No visits awaiting signoff.</div>{% endfor %}
+        {% endif %}
+      </div>
+    </section>
+    <section class="page-card" id="ca-exceptions" data-section-src="/dashboard">
+      <div class="role-section-head"><h2>Document checks</h2><a href="/document-work-queue">Review documents</a></div>
+      <div class="role-card-list">
+        {% if loading %}
+          <div class="skeleton-card skeleton w-full mb-2"></div>
+          <div class="skeleton-card skeleton w-full"></div>
+        {% else %}
+          {% for item in data.exceptions %}<a class="role-list-card" href="/applications/{{ item.loan_id }}"><strong>{{ item.applicant_name }}</strong><span>{{ item.field_name }}</span><em>{{ item.doc_type }}</em></a>{% else %}<div class="lo-empty-state">No document checks assigned.</div>{% endfor %}
         {% endif %}
       </div>
     </section>

@@ -34,6 +34,12 @@
     <span class="tab-label">Pipeline</span>
 </button>
 
+<button class="tab-item {% if active_tab == 'new_application' %}active{% endif %}"
+        type="button" data-href="/applications/new" aria-label="New loan application">
+    <span class="tab-icon" aria-hidden="true">+</span>
+    <span class="tab-label">New loan</span>
+</button>
+
 <button class="tab-item"
         type="button" data-logout aria-label="Logout">
     <span class="tab-icon">{{ tab_icon('logout') }}</span>

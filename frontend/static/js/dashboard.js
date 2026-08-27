@@ -167,11 +167,11 @@ const roleGuideSteps = {
         {
             targetId: "loanApplicationCard",
             title: "Choose capture method",
-            desc: "Use Fill Form in App for structured entry or Upload Completed Form when OCR should extract handwritten or scanned values."
+            desc: "Use the structured form to record verified values, then attach supporting files after submission."
         },
         {
-            targetId: "ocrTitle",
-            title: "Correct OCR before submission",
+            targetId: "documentReviewTitle",
+            title: "Review document information before submission",
             desc: "Low-confidence values and missing signatures must be corrected before sending the file forward."
         },
         {
@@ -209,7 +209,7 @@ const roleGuideSteps = {
             desc: "Your queue focuses on credit risk, guarantor strength, loan terms, and collateral review."
         },
         {
-            targetId: "ocrTitle",
+            targetId: "documentReviewTitle",
             title: "Inspect critical values",
             desc: "Validate extracted loan amount, tenor, BVN, maximum guarantee amount, collateral, cheque, and account values."
         },
@@ -231,9 +231,9 @@ const roleGuideSteps = {
             desc: "Your queue shows files assigned to you for compliance review and return decisions."
         },
         {
-            targetId: "ocrTitle",
+            targetId: "documentReviewTitle",
             title: "Confirm extracted evidence",
-            desc: "Check OCR corrections and critical fields before marking compliance items as verified."
+            desc: "Check document corrections and critical fields before marking compliance items as verified."
         },
         {
             targetId: "docsTitle",
@@ -294,7 +294,7 @@ function bindFormChoices() {
             status.className = "status-pill";
             if (mode === "upload") {
                 status.classList.add("low");
-                status.textContent = "OCR Review";
+                status.textContent = "Document Review";
             } else {
                 status.classList.add("review");
                 status.textContent = "Needs Review";
@@ -315,7 +315,7 @@ function getFieldCrmIcon(value) {
     if (normalized.includes('signoff')) return 'icon-signoffs-o';
     if (normalized.includes('visit')) return 'icon-visits-o';
     if (normalized.includes('upload') || normalized.includes('document')) return 'icon-doc-upload-o';
-    if (normalized.includes('ocr')) return 'icon-ocr-o';
+    if (normalized.includes('document')) return 'icon-document-o';
     if (normalized.includes('flag')) return 'icon-flags-o';
     if (normalized.includes('policy') || normalized.includes('risk') || normalized.includes('alert') || normalized.includes('escalation')) return 'icon-flags-o';
     if (normalized.includes('audit')) return 'icon-audit-o';
@@ -503,7 +503,7 @@ function saveFormDraft() {
     const status = document.getElementById("dashboardInlineStatus") || document.createElement("div");
     status.id = "dashboardInlineStatus";
     status.className = "inline-empty-state";
-    status.textContent = `${definition.title} draft saved locally for ${activeFormMode === "upload" ? "OCR review" : "manual entry"}.`;
+    status.textContent = `${definition.title} draft saved locally for ${activeFormMode === "upload" ? "document review" : "manual entry"}.`;
     document.getElementById("inlineFormWorkspace")?.appendChild(status);
     closeFormWorkspace();
 }
@@ -584,7 +584,7 @@ function renderUploadMode(container, definition) {
     const title = document.createElement("strong");
     title.textContent = `Upload completed ${definition.title}`;
     const hint = document.createElement("span");
-    hint.textContent = "Accepted: PDF, JPG, JPEG, PNG. OCR values must be reviewed before submission.";
+    hint.textContent = "Accepted: PDF, JPG, JPEG, PNG. Review document details before submission.";
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".pdf,.jpg,.jpeg,.png";
@@ -594,11 +594,11 @@ function renderUploadMode(container, definition) {
     panel.appendChild(dropzone);
 
     const heading = document.createElement("h3");
-    heading.textContent = "OCR Review Preview";
+    heading.textContent = "Document Review Preview";
     panel.appendChild(heading);
 
     const list = document.createElement("div");
-    list.className = "ocr-review-list";
+    list.className = "document-review-list";
     [
         ["Applicant / Guarantor Name", "Grace Omowunmi", "96%"],
         ["BVN", "222***4455", "88%"],
@@ -606,7 +606,7 @@ function renderUploadMode(container, definition) {
         ["Signature", "Unreadable", "22%"]
     ].forEach(([label, value, confidence]) => {
         const row = document.createElement("div");
-        row.className = "ocr-review-item";
+        row.className = "document-review-item";
         const labelEl = document.createElement("strong");
         labelEl.textContent = label;
         const valueInput = document.createElement("input");

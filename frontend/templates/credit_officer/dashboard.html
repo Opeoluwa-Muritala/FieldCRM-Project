@@ -13,20 +13,20 @@
     <div class="role-hero"><div><div class="dashboard-date">{{ today_label }}</div><h1>Credit review workstation</h1></div><a class="btn-primary-filled desktop-only" href="/my-reviews">Open Reviews</a></div>
     <div class="role-stat-grid">
         <div class="role-stat"><span>Underwriting Queue</span><strong>{{ m.get('reviews_due', 0) }}</strong></div>
-        <div class="role-stat warning"><span>Avg Turnaround</span><strong>{{ m.get('ocr_exceptions', 0) }}</strong></div>
+        <div class="role-stat warning"><span>Documents to review</span><strong>{{ m.get('document_exceptions', 0) }}</strong></div>
         <div class="role-stat"><span>Approved Today</span><strong>{{ m.get('reviewed_today', 0) }}</strong></div>
         <div class="role-stat danger"><span>High Risk Cases</span><strong>{{ m.get('returned_this_week', 0) }}</strong></div>
     </div>
     <div class="role-grid-main">
         <section class="page-card"><div class="role-section-head"><h2>Review Queue</h2><a href="/my-reviews">View all</a></div><div class="role-card-list">
             {% for item in data.reviews %}
-            <a class="role-list-card" href="/applications/{{ item.id }}/credit-review"><strong>{{ item.applicant_name }}</strong><span>{{ item.ref_no }} - {{ item.exception_count }} OCR issues</span><em>{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% endif %}</em></a>
+            <a class="role-list-card" href="/applications/{{ item.id }}/credit-review"><strong>{{ item.applicant_name }}</strong><span>{{ item.ref_no }} - Credit review</span><em>{% if item.amount %}&#x20A6;{{ "{:,.0f}".format(item.amount) }}{% endif %}</em></a>
             {% else %}<div class="lo-empty-state">No credit reviews waiting.</div>{% endfor %}
         </div></section>
-        <section class="page-card"><div class="role-section-head"><h2>OCR Exceptions</h2><a href="/ocr-exceptions">Open</a></div><div class="role-card-list">
+        <section class="page-card"><div class="role-section-head"><h2>Document checks</h2><a href="/document-work-queue">Open</a></div><div class="role-card-list">
             {% for item in data.exceptions %}
-            <a class="role-list-card" href="/applications/{{ item.loan_id }}/ocr-review"><strong>{{ item.applicant_name }}</strong><span>{{ item.field_name }} - {{ item.confidence or 0 }}%</span><em>{{ item.doc_type }}</em></a>
-            {% else %}<div class="lo-empty-state">No OCR exceptions assigned.</div>{% endfor %}
+            <a class="role-list-card" href="/applications/{{ item.loan_id }}"><strong>{{ item.applicant_name }}</strong><span>{{ item.field_name }}</span><em>{{ item.doc_type }}</em></a>
+            {% else %}<div class="lo-empty-state">No document checks assigned.</div>{% endfor %}
         </div></section>
     </div>
 </div>

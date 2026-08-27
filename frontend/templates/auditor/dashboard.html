@@ -17,7 +17,7 @@
             <div class="skeleton-chip skeleton w-full"></div>
         {% else %}
             <div class="role-stat warning"><span>Flags Raised</span><strong>{{ m.get('unverified_documents', 0) }}</strong></div>
-            <div class="role-stat danger"><span>Policy Breaches</span><strong>{{ m.get('critical_ocr_gaps', 0) }}</strong></div>
+            <div class="role-stat danger"><span>Policy Breaches</span><strong>{{ m.get('document_gaps', 0) }}</strong></div>
             <div class="role-stat"><span>Audited Today</span><strong>{{ m.get('workflow_exceptions', 0) }}</strong></div>
             <div class="role-stat"><span>Workflow Exceptions</span><strong>{{ m.get('audit_events_today', 0) }}</strong></div>
         {% endif %}

@@ -71,7 +71,7 @@
                 <div class="lo-task-card-inner">
                     <div class="lo-task-card-type type-{{ task.task_type }}">
                         {% if task.task_type == 'returned' %}&#x21A9;
-                        {% elif task.task_type == 'ocr_review' %}&#x1F50D;
+                        {% elif task.task_type == 'document_review' %}&#x1F4C4;
                         {% else %}&#x1F4DD;{% endif %}
                     </div>
                     <div class="lo-task-card-info">
@@ -220,7 +220,7 @@
                                 <td>
                                     {% set stage_class = {
                                         'intake': 'needs-review',
-                                        'ocr_review': 'low-confidence',
+                                        'document_review': 'low-confidence',
                                         'credit_review': 'needs-review',
                                         'branch_approval': 'needs-review',
                                         'disbursement_ready': 'approved',
@@ -253,7 +253,7 @@
                     <div class="lo-pipeline-bar">
                         {% set stages = [
                             ('intake', 'Intake', m.get('drafts', 0)),
-                            ('ocr_review', 'OCR', m.get('ocr_review', 0)),
+                            ('document_review', 'Documents', m.get('document_review', 0)),
                             ('returned', 'Returned', m.get('returned', 0))
                         ] %}
                         {% for stage_key, stage_label, count in stages %}

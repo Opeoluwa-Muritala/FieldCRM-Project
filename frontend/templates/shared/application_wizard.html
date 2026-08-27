@@ -726,34 +726,15 @@
                     <div id="pledgeTotalText" class="csp-s-cd9f3dd1365c">Total Estimated Value: —</div>
                 </div>
 
-                <div class="form-grid-2 csp-s-98713d35975c">
-                    <div class="form-group">
-                        <label class="field-label">Witness Name</label>
-                        <input type="text" name="witness_name" class="field-input" value="{{ data.witness_name or '' }}">
-                    </div>
-                    <div class="form-group">
-                        <label class="field-label">Witness Address</label>
-                        <input type="text" name="witness_address" class="field-input" value="{{ data.witness_address or '' }}">
-                    </div>
-                </div>
                 {% set borrower_signature = signatures.primary if signatures and signatures.primary else data.get('borrower_pledge_signature') %}
-                {% set pledge_witness_signature = signatures.witness if signatures and signatures.witness else data.get('witness_pledge_signature') %}
-                {% if borrower_signature or pledge_witness_signature %}
+                {% if borrower_signature %}
                 <div class="csp-s-831c7ab7ba1b">
                     <h4 class="csp-s-bd256d0a30d3">Captured Electronic Evidence</h4>
                     <div class="form-grid-2">
-                        {% if borrower_signature %}
                         <div>
                             <span class="csp-s-bffd32daa889">Borrower Signature</span>
                             <img src="{{ borrower_signature }}" alt="Borrower Signature" class="csp-s-0a77b6cf03f2">
                         </div>
-                        {% endif %}
-                        {% if pledge_witness_signature %}
-                        <div>
-                            <span class="csp-s-bffd32daa889">Witness Signature</span>
-                            <img src="{{ pledge_witness_signature }}" alt="Witness Signature" class="csp-s-0a77b6cf03f2">
-                        </div>
-                        {% endif %}
                     </div>
                 </div>
                 {% endif %}
@@ -1139,7 +1120,6 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         if (canvasId === 'borrower_pledge_canvas') document.getElementById('borrower_pledge_sig_val').value = '';
-        if (canvasId === 'witness_pledge_canvas') document.getElementById('witness_pledge_sig_val').value = '';
         if (canvasId === 'applicant_sig_canvas') document.getElementById('applicant_sig_val').value = '';
     }
 

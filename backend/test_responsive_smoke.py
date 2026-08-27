@@ -4,6 +4,7 @@ import pytest
 
 CSS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "static", "css", "dashboard.css"))
 SHELL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "templates", "base", "desktop_shell.html"))
+BASE_SHELL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "templates", "base", "shell.html"))
 
 def test_css_breakpoints_and_tokens():
     """Verify that CSS contains correct breakpoints, responsive shell declarations, and overrides."""
@@ -56,3 +57,30 @@ def test_desktop_shell_responsive_elements():
     
     # Ensure body scroll lock is toggled
     assert "body-scroll-lock" in html
+
+
+def test_user_directory_shrinks_on_tablets_and_switches_to_phone_cards():
+    """Keep all access controls visible while preserving the table until phone size."""
+    with open(CSS_PATH, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    tablet_rules = content[content.index("@media (max-width: 1023px)"):]
+    assert ".users-table" in tablet_rules
+    assert "min-width: 0 !important" in tablet_rules
+    assert "table-layout: fixed" in tablet_rules
+    assert "white-space: normal !important" in tablet_rules
+    assert ".users-table .user-role-select" in tablet_rules
+    assert ".user-row-actions" in tablet_rules
+    assert "opacity: 1 !important" in tablet_rules
+    phone_rules = content[content.index("@media (max-width: 640px)"):]
+    assert '.users-table td[data-label="Actions"]' in phone_rules
+    assert "display: block !important" in phone_rules
+    assert "@media (min-width: 768px) and (max-width: 920px)" in content
+    assert "body:has(.users-page) .main-content" in content
+    assert "@media (min-width: 1024px) and (max-width: 1364px)" in content
+    assert "font-size: 13px" in tablet_rules
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in tablet_rules
+
+    with open(BASE_SHELL_PATH, "r", encoding="utf-8") as f:
+        shell = f.read()
+    assert "dashboard.css?v=20260827-users-readable" in shell
