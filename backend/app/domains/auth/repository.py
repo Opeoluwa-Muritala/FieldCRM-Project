@@ -40,6 +40,14 @@ class AuthRepository(BaseRepository):
             user_id, self._reset_token_hash(token), expires_at
         )
 
+    async def invalidate_reset_tokens(self, user_id: str) -> None:
+        await self.conn.execute(
+            """UPDATE password_reset_tokens
+               SET used_at = COALESCE(used_at, NOW())
+               WHERE user_id = $1 AND used_at IS NULL""",
+            user_id,
+        )
+
     async def get_valid_reset_token(self, token: str):
         return await self.conn.fetchrow(
             """SELECT user_id FROM password_reset_tokens

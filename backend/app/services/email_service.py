@@ -46,7 +46,7 @@ class EmailService:
 
     def send_invitation(self, *, recipient: str, full_name: str, role: str, invitation_url: str) -> bool:
         if not self.is_configured():
-            logger.warning("Email delivery is not configured; invitation link for %s: %s", recipient, invitation_url)
+            logger.warning("Email delivery is not configured; invitation for %s was not sent", recipient)
             return False
         role_map = {
             "account_officer": "Relationship Officer",

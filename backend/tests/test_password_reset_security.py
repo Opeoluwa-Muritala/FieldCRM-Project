@@ -134,3 +134,14 @@ async def test_inactive_account_cannot_request_self_service_reactivation():
             pytest.fail("Inactive accounts must not receive reset tokens")
 
     assert not await AuthService(InactiveRepository()).request_password_reset("inactive@example.com")
+
+
+@pytest.mark.asyncio
+async def test_resending_invitation_invalidates_prior_unused_tokens():
+    conn = RecordingConnection()
+    await AuthRepository(conn).invalidate_reset_tokens(str(uuid4()))
+
+    query, _args = conn.calls[0]
+    assert "UPDATE password_reset_tokens" in query
+    assert "used_at = COALESCE(used_at, NOW())" in query
+    assert "used_at IS NULL" in query

@@ -122,3 +122,42 @@ async def test_reset_user_password_service(monkeypatch):
     svc = UserService(FakeUserRepo())
     await svc.reset_user_password(admin, user_id)
     assert captured["email"] == "officer@example.com"
+
+
+@pytest.mark.asyncio
+async def test_resend_invitation_replaces_prior_token(monkeypatch):
+    from app.domains.auth.repository import AuthRepository
+    from app.domains.users.service import UserService
+
+    captured = []
+    org_id = UUID("33333333-3333-3333-3333-333333333333")
+    user_id = UUID("44444444-4444-4444-4444-444444444444")
+    pending = SimpleNamespace(
+        id=user_id, org_id=org_id, email="pending@example.com",
+        full_name="Pending User", role="account_officer", active=False,
+    )
+
+    class FakeUserRepo:
+        conn = object()
+
+        async def get_by_id(self, _user_id):
+            return pending
+
+    async def invalidate(_repo, target_id):
+        captured.append(("invalidate", target_id))
+
+    async def create(_repo, target_id, token, expires_at):
+        captured.append(("create", target_id, token, expires_at))
+
+    monkeypatch.setattr(AuthRepository, "invalidate_reset_tokens", invalidate)
+    monkeypatch.setattr(AuthRepository, "create_reset_token", create)
+
+    user, token = await UserService(FakeUserRepo()).resend_invitation(
+        SimpleNamespace(org_id=org_id), user_id
+    )
+
+    assert user is pending
+    assert len(token) >= 32
+    assert captured[0] == ("invalidate", str(user_id))
+    assert captured[1][0:2] == ("create", str(user_id))
+    assert captured[1][2] == token
