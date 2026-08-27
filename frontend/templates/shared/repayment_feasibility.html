@@ -2,7 +2,7 @@
 {% block title %}Feasibility Analysis | FieldCRM{% endblock %}
 {% block page_title %}Feasibility Analysis{% endblock %}
 {% block breadcrumb %}Applications &rarr; {{ app.ref_no }} &rarr; Feasibility Analysis{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="/static/css/cam-feasibility.css?v=20260826-cam1">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/cam-feasibility.css?v=20260827-metrics-table">{% endblock %}
 
 {% macro disabled_attr() %}{% if not can_edit_cam %}disabled{% endif %}{% endmacro %}
 {% macro history_row(kind, row={}) %}
@@ -144,7 +144,12 @@
       ] %}<div class="cam-field"><label>{{ label }}{% if name in ['cash_at_bank','stock','monthly_turnover','margin','monthly_expenses','recommended_amount','interest_rate','proposed_tenor'] %} <span class="cam-required">*</span>{% endif %}</label><input form="cam-feasibility-form" class="cam-input" type="number" min="0" step="{{ '1' if name == 'proposed_tenor' else '0.01' }}" name="{{ name }}" value="{{ value }}" {% if name == 'proposed_tenor' %}max="120"{% endif %} {{ disabled_attr() }}></div>{% endfor %}
       <div class="cam-field"><label>Shop Allocation</label><input form="cam-feasibility-form" class="cam-input" name="shop_allocation" maxlength="160" value="{{ financial_profile.shop_allocation or '' }}" {{ disabled_attr() }}></div>
     </div>
-    <div class="cam-metrics" aria-label="CAM calculated outputs">
+    <div class="cam-metrics-table-wrap" role="region" aria-labelledby="cam-calculated-results-title" tabindex="0">
+      <table class="cam-metrics-table">
+        <caption id="cam-calculated-results-title"><strong>Credit analyst assessment</strong><span>System calculations support the analyst’s documented judgment.</span></caption>
+        <thead><tr><th scope="col">Evidence</th><th scope="col">Metric</th><th scope="col">System result</th><th scope="col">Policy signal</th><th scope="col">Credit analyst assessment</th></tr></thead>
+        <tbody>
+      {% set metric_notes = financial_profile.analyst_metric_notes or {} %}
       {% for id,label,value,suffix in [
         ('cam-total-assets','Total Asset',cam_feasibility.total_assets,'money'),
         ('cam-gross-profit','Monthly Gross Profit',cam_feasibility.monthly_gross_profit,'money'),
@@ -157,8 +162,10 @@
         ('cam-gearing','Gearing Ratio (max 50%)',cam_feasibility.gearing_ratio * 100 if cam_feasibility.gearing_ratio is not none else none,'percent'),
         ('cam-collateral-total','Total Collateral Valuation',cam_feasibility.total_collateral_valuation,'money'),
         ('cam-collateral-coverage','Tangible Collateral Coverage (%)',cam_feasibility.collateral_coverage,'percent')
-      ] %}<article class="cam-metric formula"><span class="cam-computed-badge">Calculated</span><span class="cam-metric-label">{{ label }}</span><strong class="cam-metric-value" id="{{ id }}">{% if value is none %}Not available{% elif suffix == 'money' %}₦{{ "{:,.2f}".format(value) }}{% else %}{{ "{:,.2f}".format(value) }}%{% endif %}</strong>{% if id == 'cam-dti' %}<span id="cam-dti-flag" class="cam-status {{ 'pass' if value is not none and value <= 35 else 'fail' if value is not none else 'pending' }}">{{ 'Within 35% ceiling' if value is not none and value <= 35 else 'Above 35% ceiling' if value is not none else 'Cannot calculate' }}</span>{% elif id == 'cam-gearing' %}<span id="cam-gearing-flag" class="cam-status {{ 'pass' if value is not none and value <= 50 else 'fail' if value is not none else 'pending' }}">{{ 'Within 50% ceiling' if value is not none and value <= 50 else 'Above 50% ceiling' if value is not none else 'Cannot calculate' }}</span>{% endif %}</article>{% endfor %}
-      <article class="cam-metric formula"><span class="cam-computed-badge">Pending rule</span><span class="cam-metric-label">Asset to Loan Ratio (min 2:1)</span><strong class="cam-metric-value">Not configured</strong><span class="cam-help">The CAM contains no source formula. No ratio is inferred.</span></article>
+      ] %}{% set note_key = id|replace('cam-', '')|replace('-', '_') %}<tr><td><span class="cam-computed-badge">Calculated</span></td><th scope="row" class="cam-metric-label">{{ label }}</th><td><strong class="cam-metric-value" id="{{ id }}">{% if value is none %}Not available{% elif suffix == 'money' %}₦{{ "{:,.2f}".format(value) }}{% else %}{{ "{:,.2f}".format(value) }}%{% endif %}</strong></td><td>{% if id == 'cam-dti' %}<span id="cam-dti-flag" class="cam-status {{ 'pass' if value is not none and value <= 35 else 'fail' if value is not none else 'pending' }}">{{ 'Within 35% ceiling' if value is not none and value <= 35 else 'Above 35% ceiling' if value is not none else 'Cannot calculate' }}</span>{% elif id == 'cam-gearing' %}<span id="cam-gearing-flag" class="cam-status {{ 'pass' if value is not none and value <= 50 else 'fail' if value is not none else 'pending' }}">{{ 'Within 50% ceiling' if value is not none and value <= 50 else 'Above 50% ceiling' if value is not none else 'Cannot calculate' }}</span>{% else %}<span class="cam-rule-neutral">—</span>{% endif %}</td><td>{% if can_edit_cam %}<textarea form="cam-feasibility-form" class="cam-metric-note" name="metric_note_{{ note_key }}" maxlength="500" rows="2" aria-label="Analyst take on {{ label }}">{{ metric_notes.get(note_key, '') }}</textarea>{% else %}<span class="cam-analyst-note">{{ metric_notes.get(note_key) or 'No analyst comment.' }}</span>{% endif %}</td></tr>{% endfor %}
+          <tr><td><span class="cam-computed-badge pending">Pending rule</span></td><th scope="row" class="cam-metric-label">Asset to Loan Ratio (min 2:1)</th><td><strong class="cam-metric-value">Not configured</strong></td><td><span class="cam-help">The CAM contains no source formula. No ratio is inferred.</span></td><td>{% if can_edit_cam %}<textarea form="cam-feasibility-form" class="cam-metric-note" name="metric_note_asset_to_loan" maxlength="500" rows="2" aria-label="Analyst take on Asset to Loan Ratio">{{ metric_notes.get('asset_to_loan', '') }}</textarea>{% else %}<span class="cam-analyst-note">{{ metric_notes.get('asset_to_loan') or 'No analyst comment.' }}</span>{% endif %}</td></tr>
+        </tbody>
+      </table>
     </div>
     <div class="cam-callout"><strong>Formula source</strong>Turnover uses the entered monthly value without a 1.1 multiplier, cash-sales percentage, or goods-in-transit adjustment.</div>
   </section>
