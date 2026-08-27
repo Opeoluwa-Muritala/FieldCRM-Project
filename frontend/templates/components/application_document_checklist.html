@@ -1,12 +1,20 @@
 <section class="page-card application-document-checklist application-document-checklist-spaced">
-  <div class="page-card-header"><h3 class="page-card-title">Documents Checklist</h3><p class="page-card-subtitle">Required evidence and its current verification status.</p></div>
-  {% set required_documents = required_documents or [('passport_photo','Passport Photograph'),('id_card','Valid ID Card'),('utility_bill','Utility Bill'),('bank_statement','Bank Statement'),('guarantor_form_1','Guarantor Form 1'),('guarantor_form_2','Guarantor Form 2'),('pledge_form','Pledge Agreement')] %}
+  <div class="page-card-header">
+    <h3 class="page-card-title">Uploaded documents and images</h3>
+    <p class="page-card-subtitle">Files added in Section 9 after the application was submitted.</p>
+  </div>
+  {% if documents %}
   <div class="custom-table-container"><table class="custom-table">
-    <thead><tr><th>Required Document</th><th>Uploaded File</th><th>Uploaded by</th><th>Status</th><th>Action</th></tr></thead>
-    <tbody>{% for category, label in required_documents %}
-      {% set item = namespace(found=false,status='missing',url='',name='',uploader='',uploaded_at=none) %}
-      {% for doc in documents %}{% if doc.category == category or doc.doc_type == category %}{% set item.found=true %}{% set item.status=doc.status or 'uploaded' %}{% set item.url=doc.url %}{% set item.name=doc.original_name or label %}{% set item.uploader=doc.uploaded_by_name or doc.uploaded_by_role %}{% set item.uploaded_at=doc.uploaded_at %}{% endif %}{% endfor %}
-      <tr><td><strong>{{ label }}</strong></td><td>{{ item.name if item.found else 'Not uploaded' }}</td><td>{% if item.found %}{{ item.uploader or 'Unknown user' }}{% if item.uploaded_at %}<br><span class="page-card-subtitle">{{ item.uploaded_at.strftime('%d %b %Y %H:%M') }}</span>{% endif %}{% else %}&mdash;{% endif %}</td><td><span class="status-badge {{ 'verified' if item.status == 'verified' else 'needs-review' if item.found else 'returned' }}">{{ item.status|replace('_',' ')|title }}</span></td><td>{% if item.url and capabilities.can_download_documents %}<a href="{{ item.url }}" target="_blank" rel="noopener" class="btn-ghost-link">View document</a>{% else %}&mdash;{% endif %}</td></tr>
+    <thead><tr><th>File name</th><th>Uploaded by</th><th>Uploaded</th><th>Status</th><th>Action</th></tr></thead>
+    <tbody>{% for doc in documents %}
+      <tr>
+        <td><strong>{{ doc.original_name or 'Document' }}</strong></td>
+        <td>{{ doc.uploaded_by_name or doc.uploaded_by_role or 'Unknown user' }}</td>
+        <td>{{ (doc.uploaded_at or doc.created_at).strftime('%d %b %Y %H:%M') if (doc.uploaded_at or doc.created_at) else '—' }}</td>
+        <td><span class="status-badge {{ 'verified' if doc.status == 'verified' else 'needs-review' }}">{{ (doc.status or 'uploaded')|replace('_',' ')|title }}</span></td>
+        <td>{% if doc.url and capabilities.can_download_documents %}<a href="{{ doc.url }}" target="_blank" rel="noopener" class="action-secondary-compact">View</a>{% else %}&mdash;{% endif %}</td>
+      </tr>
     {% endfor %}</tbody>
   </table></div>
+  {% else %}<div class="approval-empty-state">No documents or images have been uploaded.</div>{% endif %}
 </section>
