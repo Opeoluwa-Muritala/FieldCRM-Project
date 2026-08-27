@@ -1,6 +1,7 @@
 """Persistence for feasibility inputs."""
 from __future__ import annotations
 
+import json
 from uuid import UUID
 
 from app.domains.feasibility.calculator import as_decimal
@@ -195,9 +196,9 @@ class FeasibilityRepository:
                     remita_account_name, remita_bank, property_coordinates_link,
                     property_description, analyst_name, analyst_recommendation,
                     pre_disbursement_conditions, shop_allocation, shop_allowance,
-                    shop_allowance_verified, source_type, verification_status, captured_by,
+                    shop_allowance_verified, analyst_metric_notes, source_type, verification_status, captured_by,
                     verified_by, verified_at)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, 'manual', 'verified', $24, $24, NOW())
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24::jsonb, 'manual', 'verified', $25, $25, NOW())
                ON CONFLICT (application_id) DO UPDATE SET
                    cash_at_bank = EXCLUDED.cash_at_bank,
                    stock = EXCLUDED.stock,
@@ -221,6 +222,7 @@ class FeasibilityRepository:
                    shop_allocation = EXCLUDED.shop_allocation,
                    shop_allowance = EXCLUDED.shop_allowance,
                    shop_allowance_verified = EXCLUDED.shop_allowance_verified,
+                   analyst_metric_notes = EXCLUDED.analyst_metric_notes,
                    verification_status = 'verified',
                    captured_by = EXCLUDED.captured_by,
                    verified_by = EXCLUDED.verified_by,
@@ -249,6 +251,7 @@ class FeasibilityRepository:
             prof.get("shop_allocation") or None,
             as_decimal(prof.get("shop_allowance")),
             as_decimal(prof.get("shop_allowance_verified")),
+            json.dumps(prof.get("analyst_metric_notes") or {}, ensure_ascii=True, sort_keys=True),
             captured_by,
         )
 
