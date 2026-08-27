@@ -1,13 +1,13 @@
 {% extends shell %}
 
-{% block title %}Approval Readiness Review | FieldCRM{% endblock %}
+{% block title %}Approval Workstation | FieldCRM{% endblock %}
 {% block breadcrumb %}Loans &rarr; Application {{ app_id }} &rarr; Approval Readiness{% endblock %}
-{% block page_title %}Approval Readiness Review{% endblock %}
+{% block page_title %}Approval Workstation{% endblock %}
 
 {% block content %}
 {% set reviewer_role = (current_user.role|lower|replace(' ', '_')) if current_user else '' %}
 {% set reviewer_label = {'branch_manager': 'Team Lead', 'team_lead': 'Team Lead', 'branch_supervisor': 'Supervisor'}.get(reviewer_role, reviewer_role|replace('_', ' ')|title) %}
-<div class="app-detail-layout approval-page">
+<div class="app-detail-layout approval-page approval-memo-workstation approval-role-{{ reviewer_role }}">
     <aside class="app-detail-sidebar">
         <div class="app-detail-sidebar-sticky">
         <section class="page-card approval-app-card">
@@ -48,7 +48,7 @@
     <main class="app-detail-main">
         <section class="page-card approval-intro-card">
             <div class="page-card-header">
-                <span class="approval-eyebrow">{{ reviewer_label }} decision desk</span>
+                <span class="approval-role-kicker">{{ reviewer_label }} · Readiness gate</span>
                 <h2 class="page-card-title">Cross-check the submitted application</h2>
                 <p class="page-card-subtitle">Select a form or checklist row to inspect its evidence, then record your concurrence decision.</p>
             </div>

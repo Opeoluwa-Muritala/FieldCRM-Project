@@ -8,7 +8,9 @@
 {% endblock %}
 
 {% block content %}
+<div class="approval-memo-workstation approval-memo-stack approval-role-{{ 'head-crm' if current_user.role == 'head_crm' else 'crm' }}">
 <div class="page-card csp-s-3c4a3d440074 crm-review-page">
+  <span class="approval-role-kicker">{{ 'Head CRM · Dossier approval' if current_user.role == 'head_crm' else 'CRM Officer · Completeness review' }}</span>
   <h2 class="page-card-title">{{ app.applicant_name }} — {{ app.ref_no }}</h2>
   <div class="csp-s-0e63b0d79e95">
     <div><span class="csp-s-500708668cdd">Amount</span><br><strong>{% if app.amount %}&#x20A6;{{ "{:,.0f}".format(app.amount) }}{% else %}—{% endif %}</strong></div>
@@ -164,6 +166,7 @@
   </form>
 </div>
 
+</div>
 <script nonce="{{ csp_nonce }}">
 (() => {
   const returnPanel = document.getElementById('crm-return-confirmation');
