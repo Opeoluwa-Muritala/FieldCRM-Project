@@ -14,6 +14,11 @@ HISTORY_STATUSES = {"current", "closed", "past_due", "restructured", "disputed"}
 HISTORY_CLASSIFICATIONS = {"performing", "watchlist", "substandard", "doubtful", "lost", "closed"}
 COLLATERAL_OWNERS = {"client", "guarantor", "client_asset"}
 GOOGLE_MAP_HOSTS = {"google.com", "www.google.com", "maps.google.com", "maps.app.goo.gl", "goo.gl"}
+CAM_METRIC_NOTE_KEYS = {
+    "total_assets", "gross_profit", "net_profit", "installment",
+    "external_rental", "total_rental", "dti", "outstanding",
+    "gearing", "collateral_total", "collateral_coverage", "asset_to_loan",
+}
 
 
 class CAMValidationError(ValueError):
@@ -175,6 +180,11 @@ def parse_cam_form(form, collateral_ids: list[UUID]) -> dict:
         "shop_allocation": _text(form, "shop_allocation", 160),
         "shop_allowance": _decimal(form.get("shop_allowance"), "Shop allowance"),
         "shop_allowance_verified": _decimal(form.get("shop_allowance_verified"), "Verified shop allowance"),
+        "analyst_metric_notes": {
+            key: note
+            for key in CAM_METRIC_NOTE_KEYS
+            if (note := _text(form, f"metric_note_{key}", 500))
+        },
     }
     if profile["remita_email"] and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", profile["remita_email"]):
         raise CAMValidationError("Remita email is invalid")

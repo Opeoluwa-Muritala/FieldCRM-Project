@@ -77,3 +77,20 @@ def test_cam_form_accepts_only_server_supplied_collateral_ids():
         "registration_no": "", "colour": "", "year": None,
         "forced_sale_value": Decimal("175000"),
     }]
+
+
+def test_cam_form_accepts_only_allowlisted_bounded_metric_notes():
+    payload = parse_cam_form(
+        valid_form(
+            ("metric_note_dti", "High ratio reflects the proposed short tenor."),
+            ("metric_note_untrusted", "Must not be persisted"),
+        ),
+        [],
+    )
+
+    assert payload["profile"]["analyst_metric_notes"] == {
+        "dti": "High ratio reflects the proposed short tenor."
+    }
+
+    with pytest.raises(CAMValidationError, match="Metric Note Dti is too long"):
+        parse_cam_form(valid_form(("metric_note_dti", "x" * 501)), [])
