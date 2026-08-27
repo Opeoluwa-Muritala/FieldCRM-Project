@@ -101,6 +101,8 @@ def test_repayment_feasibility_renders_decimal_database_values():
     assert "80.00%" in body
     assert "Asset to Loan Ratio (min 2:1)" in body
     assert "Not configured" in body
+    assert "Credit analyst assessment" in body
+    assert 'name="metric_note_dti"' in body
     section_titles = [
         "Header block",
         "Credit History with Mainstreet MFB (Internal)",
