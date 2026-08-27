@@ -20,6 +20,16 @@ def test_feasibility_migration_creates_inputs_and_backfills_drafts():
 def test_migration_runner_includes_feasibility_migration():
     runner = (ROOT / "migrations" / "run_migration.py").read_text(encoding="utf-8")
     assert '"038_feasibility_cashflow.sql"' in runner
+    assert '"056_cam_feasibility_analysis.sql"' in runner
+
+
+def test_cam_migration_is_additive_and_preserves_unconfirmed_ratio_rule():
+    sql = (ROOT / "migrations" / "056_cam_feasibility_analysis.sql").read_text(encoding="utf-8")
+
+    assert "ADD COLUMN IF NOT EXISTS facility_amount" in sql
+    assert "ADD COLUMN IF NOT EXISTS cam_forced_sale_value" in sql
+    assert "ADD COLUMN IF NOT EXISTS transaction_count" in sql
+    assert "asset_to_loan" not in sql
 
 
 def test_collateral_policy_migration_has_distinct_asset_haircuts():

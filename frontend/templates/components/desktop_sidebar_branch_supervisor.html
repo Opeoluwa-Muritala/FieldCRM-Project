@@ -8,6 +8,7 @@
             <span>Review Queue</span>
             {% if metrics and metrics.supervisory_reviews %}<span class="sidebar-badge sidebar-badge-warning">{{ metrics.supervisory_reviews }}</span>{% endif %}
         </a>
+        <a href="/pipeline" class="sidebar-nav-link {% if active_page == 'pipeline' %}active{% endif %}"><span>Pipeline</span></a>
     </div>
 </div>
 <div class="sidebar-nav-group">

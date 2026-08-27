@@ -1236,6 +1236,12 @@ async def render_wizard_step(
         return RedirectResponse(url=f"/applications/{application_id}/step/3", status_code=status.HTTP_303_SEE_OTHER)
     # Review-chain roles may inspect every completed section, but never edit it.
     readonly = user_role in reviewer_roles and not capabilities_for(current_user, app).can_edit_intake
+    is_ca_editing_step4 = (step == 4 and user_role == "credit_analyst" and app.stage in ("credit_analyst_review", "credit_review"))
+    is_visitation_editing_step4 = (step == 4 and app.stage in ("intake", "branch_manager_review", "branch_supervisor_review", "credit_analyst_review") and (
+        user_role in ("account_officer", "loan_officer") or user_role == "branch_manager"
+    ))
+    if is_ca_editing_step4 or is_visitation_editing_step4:
+        readonly = False
     applicant_signed = False
     signatures = {}
     if latest:
@@ -1302,7 +1308,14 @@ async def process_wizard_step(
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
-    require_intake_edit(current_user, app)
+    user_role = current_user.role.lower().replace(" ", "_")
+    is_ca_editing_step4 = (step == 4 and user_role == "credit_analyst" and app.stage in ("credit_analyst_review", "credit_review"))
+    is_visitation_editing_step4 = (step == 4 and app.stage in ("intake", "branch_manager_review", "branch_supervisor_review", "credit_analyst_review") and (
+        user_role in ("account_officer", "loan_officer") or user_role == "branch_manager"
+    ))
+    
+    if not (is_ca_editing_step4 or is_visitation_editing_step4):
+        require_intake_edit(current_user, app)
     form_data = await request.form()
     data_dict = form_data_to_jsonable_dict(form_data)
     open_guarantor = data_dict.pop("open_guarantor", None)

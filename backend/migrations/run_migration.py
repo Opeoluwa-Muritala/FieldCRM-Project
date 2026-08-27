@@ -49,6 +49,7 @@ MIGRATION_FILES = [
     "053_notification_insert_runtime_scope.sql",
     "054_secure_notification_insert.sql",
     "055_fix_notification_id_type.sql",
+    "056_cam_feasibility_analysis.sql",
 ]
 
 

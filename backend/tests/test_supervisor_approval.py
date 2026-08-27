@@ -5,6 +5,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from app.domains.loans import router
+from app.services.dashboard_service import DashboardService
 
 
 class Request:
@@ -18,6 +19,54 @@ class Connection:
 
     async def execute(self, query, *args):
         self.executions.append((query, args))
+
+
+class QueueConnection:
+    def __init__(self):
+        self.calls = []
+
+    async def fetch(self, query, *args):
+        self.calls.append((query, args))
+        return [{
+            "id": uuid4(),
+            "ref_no": "SUPERVISOR-CHECK",
+            "stage": "branch_supervisor_review",
+            "applicant_name": "Queue Verification",
+            "loan_type": "msef",
+            "amount": 250000,
+        }]
+
+
+def test_branchless_supervisor_dashboard_and_queue_use_institution_scope():
+    conn = QueueConnection()
+    user = SimpleNamespace(
+        id=uuid4(), org_id=uuid4(), branch_id=None, role="branch_supervisor"
+    )
+    service = DashboardService(conn)
+
+    dashboard = asyncio.run(service._branch_supervisor_data(user))
+    queue = asyncio.run(service.get_supervisory_review_queue(user))
+
+    assert dashboard["metrics"]["supervisory_reviews"] == 1
+    assert dashboard["queue"][0]["status"] == "Supervisor Review"
+    assert queue[0]["ref_no"] == "SUPERVISOR-CHECK"
+    assert len(conn.calls) == 2
+    for _query, args in conn.calls:
+        assert args[0] == user.org_id
+        assert args[1] == "branch_supervisor_review"
+        assert args[9] is None
+
+
+def test_branched_supervisor_dashboard_keeps_branch_filter():
+    conn = QueueConnection()
+    branch_id = uuid4()
+    user = SimpleNamespace(
+        id=uuid4(), org_id=uuid4(), branch_id=branch_id, role="branch_supervisor"
+    )
+
+    asyncio.run(DashboardService(conn)._branch_supervisor_data(user))
+
+    assert conn.calls[0][1][9] == branch_id
 
 
 def test_supervisor_advances_own_branch_file_to_credit_analyst(monkeypatch):

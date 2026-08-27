@@ -19,6 +19,12 @@ async def response_body(response) -> str:
     return response.body.decode("utf-8")
 
 
+def test_demo_route_is_not_registered():
+    assert not any(
+        getattr(route, "path", "") == "/demo" for route in main.app.routes
+    )
+
+
 async def test_home_renders_public_product_and_preview_metadata(monkeypatch):
     monkeypatch.setattr(main.settings, "ANDROID_APK_URL", "")
     response = await main.root_view(make_request())
@@ -42,7 +48,7 @@ async def test_home_labels_debug_channel_as_preview(monkeypatch):
 
 
 async def test_android_download_redirects_to_configured_release(monkeypatch):
-    monkeypatch.setattr(main.settings, "ANDROID_APK_URL", "https://res.cloudinary.com/demo/raw/upload/fieldcrm.apk")
+    monkeypatch.setattr(main.settings, "ANDROID_APK_URL", "https://res.cloudinary.com/fieldcrm-test/raw/upload/fieldcrm.apk")
     response = await main.download_android()
     assert response.status_code == 307
     assert response.headers["location"].startswith("https://res.cloudinary.com/")
