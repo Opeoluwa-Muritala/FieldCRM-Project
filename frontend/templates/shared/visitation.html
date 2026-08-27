@@ -29,14 +29,7 @@
                     <label class="field-label">Time of Arrival</label>
                     <input type="time" name="visit_time" class="field-input" value="{{ data.visit_time or '' }}">
                 </div>
-                <div class="form-group">
-                    <label class="field-label">Person Met <span class="required">*</span></label>
-                    <input type="text" name="person_met" class="field-input" value="{{ data.met_with or '' }}" placeholder="Customer, spouse, landlord, etc." required>
-                </div>
-                <div class="form-group">
-                    <label class="field-label">Relationship to Applicant</label>
-                    <input type="text" name="relationship" class="field-input" value="{{ data.relationship or '' }}">
-                </div>
+
                 <div class="form-group-full">
                     <label class="field-label">Premises Description <span class="required">*</span></label>
                     <textarea name="premises_description" class="field-textarea" placeholder="Detail structure type, walling, color, stores..." required>{{ data.premises_description or '' }}</textarea>
@@ -56,24 +49,6 @@
                 <div class="form-group">
                     <label class="field-label">Relationship Officer <span class="required">*</span></label>
                     <input type="text" name="account_officer" class="field-input" value="{{ data.account_officer or '' }}" required>
-                </div>
-
-                <div class="form-group csp-s-b034d5553764">
-                    <label class="field-label">Visiting Officer Signature <span class="required">*</span></label>
-                    <div class="signature-box">
-                        <canvas id="visitor_sig_canvas"></canvas>
-                        <button type="button" class="signature-clear-btn" data-clear-signature="visitor_sig_canvas">Clear</button>
-                    </div>
-                    <input type="hidden" name="visiting_officer_sig" id="visitor_sig_val" value="{{ data.visiting_officer_sig or '' }}">
-                </div>
-
-                <div class="form-group csp-s-b034d5553764">
-                    <label class="field-label">Relationship Officer Signature</label>
-                    <div class="signature-box">
-                        <canvas id="ao_sig_canvas"></canvas>
-                        <button type="button" class="signature-clear-btn" data-clear-signature="ao_sig_canvas">Clear</button>
-                    </div>
-                    <input type="hidden" name="account_officer_sig" id="ao_sig_val" value="{{ data.account_officer_sig or '' }}">
                 </div>
             </div>
         </div>
@@ -95,26 +70,26 @@
             </div>
         </div>
 
-        <!-- Section 2: Team Lead Concurrence -->
+        <!-- Section 2: Credit Analyst Concurrence -->
         <div class="csp-s-236eaeea2c5c">
-            <div class="csp-s-8e9487e647fc">Team Lead Concurrence</div>
+            <div class="csp-s-8e9487e647fc">Credit Analyst Concurrence</div>
             
-            {% set is_bm = (current_user.role == "branch_manager") %}
+            {% set is_bm = (current_user.role == "Credit Analyst") %}
             
             {% if not is_bm %}
             <!-- Locked State for Loan Officers or other roles -->
             <div class="flat-card warning csp-s-dbf260c1fd16">
                 <span class="csp-s-bf9d57d795a3">&#x1F512;</span>
                 <div>
-                    <span class="status-badge needs-review">Awaiting Team Lead Concurrence</span>
-                    <p class="csp-s-eb584e08e3e1">Concurrence signoff remains locked until a Team Lead logs in to review this application.</p>
+                    <span class="status-badge needs-review">Awaiting Credit Analyst Concurrence</span>
+                    <p class="csp-s-eb584e08e3e1">Concurrence signoff remains locked until a Credit Analyst logs in to review this application.</p>
                 </div>
             </div>
             {% else %}
-            <!-- Active State for Team Lead -->
+            <!-- Active State for Credit Analyst -->
             <div class="form-grid-2">
                 <div class="form-group">
-                    <label class="field-label">Team Lead Name</label>
+                    <label class="field-label">Credit Analyst Name</label>
                     <input type="text" name="bm_name" class="field-input" value="{{ current_user.name }}" readonly>
                 </div>
                 <div class="form-group">
@@ -138,18 +113,8 @@
 
                 <div class="form-group-full">
                     <label class="field-label">Concurrence Notes / Observations</label>
-                    <textarea name="bm_notes" class="field-textarea" placeholder="Team Lead feedback notes...">{{ data.bm_notes or '' }}</textarea>
-                </div>
-
-                <div class="form-group csp-s-b034d5553764">
-                    <label class="field-label">Team Lead Signature <span class="required">*</span></label>
-                    <div class="signature-box">
-                        <canvas id="bm_sig_canvas"></canvas>
-                        <button type="button" class="signature-clear-btn" data-clear-signature="bm_sig_canvas">Clear</button>
-                    </div>
-                    <input type="hidden" name="bm_sig" id="bm_sig_val" value="{{ data.bm_sig or '' }}">
-                </div>
-            </div>
+                    <textarea name="bm_notes" class="field-textarea" placeholder="Credit Analyst feedback notes...">{{ data.bm_notes or '' }}</textarea>
+                </div>            </div>
             {% endif %}
         </div>
 
@@ -184,76 +149,11 @@
         }
     }
 
-    function initSignature(canvasId, valInputId) {
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) return;
-
-        const rect = canvas.parentNode.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
-
-        const ctx = canvas.getContext('2d');
-        let drawing = false;
-
-        function startDrawing(e) {
-            drawing = true;
-            draw(e);
-        }
-
-        function endDrawing() {
-            drawing = false;
-            ctx.beginPath();
-            document.getElementById(valInputId).value = canvas.toDataURL();
-        }
-
-        function draw(e) {
-            if (!drawing) return;
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = '#1C1A2E';
-
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
-            ctx.lineTo(clientX - rect.left, clientY - rect.top);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(clientX - rect.left, clientY - rect.top);
-        }
-
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', endDrawing);
-
-        canvas.addEventListener('touchstart', startDrawing);
-        canvas.addEventListener('touchmove', draw);
-        canvas.addEventListener('touchend', endDrawing);
-    }
-
-    function clearSignature(canvasId) {
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        if (canvasId === 'visitor_sig_canvas') document.getElementById('visitor_sig_val').value = '';
-        if (canvasId === 'ao_sig_canvas') document.getElementById('ao_sig_val').value = '';
-        if (canvasId === 'bm_sig_canvas') document.getElementById('bm_sig_val').value = '';
-    }
-
     window.addEventListener('load', () => {
-        initSignature('visitor_sig_canvas', 'visitor_sig_val');
-        initSignature('ao_sig_canvas', 'ao_sig_val');
-        initSignature('bm_sig_canvas', 'bm_sig_val');
-        
         // Concurrence check
         if (document.getElementById('conc_no')) {
             toggleConcurrenceReturn();
         }
-    });
-    document.querySelectorAll('[data-clear-signature]').forEach((button) => {
-        button.addEventListener('click', () => clearSignature(button.dataset.clearSignature));
     });
     document.querySelectorAll('[name="concurrence"]').forEach((radio) => {
         radio.addEventListener('change', toggleConcurrenceReturn);

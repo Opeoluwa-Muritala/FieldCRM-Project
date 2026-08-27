@@ -1,4 +1,4 @@
-﻿{% set mobile_title_text = "Signoffs" %}
+{% set mobile_title_text = "Signoffs" %}
 {% extends "base/desktop_shell.html" %}
 
 {% block title %}Visit Signoffs - FieldCRM{% endblock %}
@@ -20,7 +20,7 @@
 {% if not signoffs and recent_visits %}
 <section class="page-card">
     <div class="role-section-head"><h2>Recent Branch Visits</h2></div>
-    <p class="page-card-subtitle">These visits exist but are not currently submitted for Team Lead signoff.</p>
+    <p class="page-card-subtitle">These visits exist but are not currently submitted for Credit Analyst signoff.</p>
     <div class="role-card-list">
         {% for item in recent_visits %}
         <a class="role-list-card" href="/applications/{{ item.loan_id }}/visitation">
@@ -33,10 +33,10 @@
 </section>
 {% endif %}
 <div class="custom-table-container queue-table-wrap page-card">
-    <table class="custom-table"><thead><tr><th>Applicant</th><th>Officer</th><th>Met With</th><th>Status</th><th>Updated</th></tr></thead><tbody>
+    <table class="custom-table"><thead><tr><th>Applicant</th><th>Officer</th><th>Status</th><th>Updated</th></tr></thead><tbody>
     {% for item in signoffs %}
-    <tr data-href="/applications/{{ item.loan_id }}/visitation" tabindex="0"><td>{{ item.applicant_name }}</td><td>{{ item.visiting_officer_name or '-' }}</td><td>{{ item.met_with or '-' }}</td><td>{{ item.status|title }}</td><td>{{ item.updated_at.strftime('%d %b %Y, %H:%M') if item.updated_at else '' }}</td></tr>
-    {% else %}<tr><td colspan="5" class="csp-s-542b2a1bdac0">No submitted visits awaiting signoff.</td></tr>{% endfor %}
+    <tr data-href="/applications/{{ item.loan_id }}/visitation" tabindex="0"><td>{{ item.applicant_name }}</td><td>{{ item.visiting_officer_name or '-' }}</td><td>{{ item.status|title }}</td><td>{{ item.updated_at.strftime('%d %b %Y, %H:%M') if item.updated_at else '' }}</td></tr>
+    {% else %}<tr><td colspan="4" class="csp-s-542b2a1bdac0">No submitted visits awaiting signoff.</td></tr>{% endfor %}
     </tbody></table>
 </div>
 {% endblock %}

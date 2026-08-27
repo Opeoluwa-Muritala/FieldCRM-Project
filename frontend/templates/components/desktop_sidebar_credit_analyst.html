@@ -5,6 +5,12 @@
     <a href="/dashboard" class="sidebar-nav-link {% if active_page == 'dashboard' %}active{% endif %}"><span>Dashboard</span></a>
     {% if (feature_flags|default({})).get('credit_reviews', true) %}<a href="/my-reviews" class="sidebar-nav-link {% if active_page == 'reviews' %}active{% endif %}"><span>Underwriting Queue</span></a>{% endif %}
     {% if (feature_flags|default({})).get('document_work_queue', true) %}<a href="/document-work-queue" class="sidebar-nav-link {% if active_page == 'document_work' %}active{% endif %}"><span>Document Exceptions</span></a>{% endif %}
+    {% if (feature_flags|default({})).get('visits', true) %}
+    <a href="/pending-signoffs" class="sidebar-nav-link {% if active_page == 'signoffs' %}active{% endif %}">
+        <span>Visit Signoffs</span>
+        {% if metrics and metrics.pending_signoffs %}<span class="sidebar-badge sidebar-badge-warning">{{ metrics.pending_signoffs }}</span>{% endif %}
+    </a>
+    {% endif %}
     <a href="/borrowers" class="sidebar-nav-link {% if active_page == 'borrowers' %}active{% endif %}"><span>Current Loans</span></a>
   </div>
 </div>

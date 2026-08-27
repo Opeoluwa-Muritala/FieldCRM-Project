@@ -1,7 +1,7 @@
 {# DEPRECATED: credit_officer role has been removed. This component is no longer used. #}
 {# Workflow is: Relationship Officer → Team Lead → Supervisor → Credit Analyst → CRM → Head CRM → ED → MD #}
 {# Mobile bottom tab bar — Credit Officer (DEPRECATED) #}
-{# Tabs: Home · Reviews · OCR · Loans · Logout #}
+{# Tabs: Home · Reviews · Documents · Loans · Logout #}
 
 {% set active_tab = active_tab|default('home') %}
 
@@ -25,9 +25,9 @@
 </button>
 
 <button class="tab-item {% if active_tab == 'exceptions' %}active{% endif %}"
-        type="button" data-href="/ocr-exceptions" aria-label="OCR Exceptions">
-    <span class="tab-icon">{{ tab_icon('ocr') }}</span>
-    <span class="tab-label">OCR</span>
+        type="button" data-href="/document-work-queue" aria-label="Document checks">
+    <span class="tab-icon">{{ tab_icon('document') }}</span>
+    <span class="tab-label">Documents</span>
 </button>
 
 <button class="tab-item {% if active_tab == 'loans' %}active{% endif %}"

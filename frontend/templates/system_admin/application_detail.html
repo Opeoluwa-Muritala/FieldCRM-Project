@@ -21,7 +21,6 @@
             
             {% set stage_class = {
                 'intake': 'needs-review',
-                'ocr_review': 'low-confidence',
                 'credit_review': 'needs-review',
                 'branch_approval': 'needs-review',
                 'disbursement_ready': 'approved',
@@ -54,7 +53,7 @@
                     <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 2 %}var(--role-accent, #2D1A4A){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
                         {% if app.current_stage > 2 %}✓{% endif %}
                     </div>
-                    <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 2 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 2 %}var(--text-main){% else %}var(--text-muted){% endif %};">OCR Verification</div>
+                    <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 2 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 2 %}var(--text-main){% else %}var(--text-muted){% endif %};">Team Lead Review</div>
                     <div class="csp-s-c029905cd705">{% if app.current_stage >= 2 %}Auto-scanned{% else %}Awaiting scan{% endif %}</div>
                 </div>
                 

@@ -121,7 +121,7 @@
                 <div class="page-card-header approval-section-header"><span>03</span><div><h3 class="page-card-title approval-card-title">Data quality &amp; checks</h3></div></div>
                 <div class="approval-check-list">
                     {{ check_row('BVN Matching Verification') }}
-                    {{ check_row('OCR Low-Confidence Exceptions', 'Needs Review', 'needs-review', '/applications/' ~ app_id ~ '/ocr-review', 'Fix') }}
+                    {{ check_row('Document Quality Checks', 'Needs Review', 'needs-review', '/applications/' ~ app_id, 'Review') }}
                 </div>
             </section>
             <section class="page-card approval-checklist-card">

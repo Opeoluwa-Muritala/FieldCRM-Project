@@ -33,7 +33,7 @@
         <button type="button" class="tab-btn active action-secondary-compact" id="tabSummaryBtn" data-review-tab="summary">Summary</button>
         <button type="button" class="tab-btn action-secondary-compact" id="tabAffordabilityBtn" data-review-tab="affordability">Affordability</button>
         <button type="button" class="tab-btn action-secondary-compact" id="tabDocsBtn" data-review-tab="docs">Documents</button>
-        <button type="button" class="tab-btn action-secondary-compact" id="tabOcrBtn" data-review-tab="ocr">OCR Exceptions</button>
+        <button type="button" class="tab-btn action-secondary-compact" id="tabQualityBtn" data-review-tab="quality">Document checks</button>
         <button type="button" class="tab-btn action-secondary-compact" id="tabRecBtn" data-review-tab="recommendation">Recommendation</button>
     </div>
 
@@ -246,8 +246,8 @@
 
         </div>
 
-        <!-- Tab 4: OCR Exceptions -->
-        <div id="tabOcr" class="tab-pane csp-s-6e22c58a7a6a">
+        <!-- Tab 4: Document checks -->
+        <div id="tabQuality" class="tab-pane csp-s-6e22c58a7a6a">
             <div class="csp-s-82e27e565ab7">Low-Confidence and Critical Field Exceptions</div>
             
             <div class="custom-table-container">
@@ -256,7 +256,7 @@
                         <tr>
                             <th>Form Name</th>
                             <th>Field Name</th>
-                            <th>Extracted OCR Value</th>
+                            <th>Recorded Value</th>
                             <th>Confidence</th>
                             <th>Status Tag</th>
                             <th>Override Action</th>
@@ -270,7 +270,7 @@
                             <td class="csp-s-d7af454a534c">61%</td>
                             <td><span class="source-pill corrected">Corrected</span></td>
                             <td>
-                                <select name="ocr_override_1" class="field-select csp-s-c3c6a4d9f90b">
+                                <select name="document_override_1" class="field-select csp-s-c3c6a4d9f90b">
                                     <option>Accept Correction</option>
                                     <option>Return for Correction</option>
                                 </select>
@@ -283,7 +283,7 @@
                             <td class="csp-s-cdee27c94461">22%</td>
                             <td><span class="source-pill csp-s-043429fff63f">Missing</span></td>
                             <td>
-                                <select name="ocr_override_2" class="field-select csp-s-c3c6a4d9f90b">
+                                <select name="document_override_2" class="field-select csp-s-c3c6a4d9f90b">
                                     <option>Return for Correction</option>
                                     <option>Accept Correction</option>
                                 </select>
@@ -342,14 +342,14 @@
         document.getElementById('tabSummaryBtn').classList.toggle('active', tab === 'summary');
         document.getElementById('tabAffordabilityBtn').classList.toggle('active', tab === 'affordability');
         document.getElementById('tabDocsBtn').classList.toggle('active', tab === 'docs');
-        document.getElementById('tabOcrBtn').classList.toggle('active', tab === 'ocr');
+        document.getElementById('tabQualityBtn').classList.toggle('active', tab === 'quality');
         document.getElementById('tabRecBtn').classList.toggle('active', tab === 'recommendation');
 
         // Toggle Panes visibility
         document.getElementById('tabSummary').style.display = (tab === 'summary') ? 'block' : 'none';
         document.getElementById('tabAffordability').style.display = (tab === 'affordability') ? 'block' : 'none';
         document.getElementById('tabDocs').style.display = (tab === 'docs') ? 'block' : 'none';
-        document.getElementById('tabOcr').style.display = (tab === 'ocr') ? 'block' : 'none';
+        document.getElementById('tabQuality').style.display = (tab === 'quality') ? 'block' : 'none';
         document.getElementById('tabRecommendation').style.display = (tab === 'recommendation') ? 'block' : 'none';
     }
 

@@ -12,7 +12,7 @@
     <div class="page-card-header queue-page-header">
         <div>
             <h2 class="page-card-title">Applications List</h2>
-            <p class="page-card-subtitle">Manage and filter loans through intake, OCR review, and approval pipelines.</p>
+            <p class="page-card-subtitle">Manage and filter loans through intake, credit review, approval, and disbursement.</p>
         </div>
         <a href="/applications/new" class="btn-primary-filled queue-new-link">New Loan Application</a>
     </div>
@@ -31,10 +31,6 @@
                     <div class="pill-radio-btn">
                         <input type="radio" name="stage" value="intake" id="stage_1" {% if current_stage == 'intake' %}checked{% endif %}>
                         <label for="stage_1">Intake</label>
-                    </div>
-                    <div class="pill-radio-btn">
-                        <input type="radio" name="stage" value="ocr_review" id="stage_2" {% if current_stage == 'ocr_review' %}checked{% endif %}>
-                        <label for="stage_2">OCR Review</label>
                     </div>
                     <div class="pill-radio-btn">
                         <input type="radio" name="stage" value="credit_review" id="stage_3" {% if current_stage == 'credit_review' %}checked{% endif %}>
@@ -92,21 +88,25 @@
         {% if applications %}
             {% for app in applications %}
             {% set app_id = app.id|string %}
-            <a class="queue-card" href="/applications/{{ app_id }}">
-                <span class="queue-card-name">{{ app.applicant_name }}</span>
+            <a class="queue-card application-queue-card" href="/applications/{{ app_id }}">
+                <span class="application-card-header">
+                    <span class="queue-card-name">{{ app.applicant_name }}</span>
+                    <span class="queue-card-reference">{{ app.ref_no }}</span>
+                </span>
                 <span class="queue-card-badge">
                     {% if app.stage in ['disbursement_ready', 'disbursed'] %}
                         <span class="status-badge verified"><span class="status-badge-label">{{ app.status }}</span></span>
                     {% elif app.stage == 'returned' %}
                         <span class="status-badge returned"><span class="status-badge-label">Returned</span></span>
-                    {% elif app.stage == 'ocr_review' %}
-                        <span class="status-badge low-confidence"><span class="status-badge-label">OCR</span></span>
                     {% else %}
                         <span class="status-badge needs-review"><span class="status-badge-label">{{ app.status }}</span></span>
                     {% endif %}
                 </span>
-                <span class="queue-card-meta">{{ app.ref_no }} · {{ app.loan_type|replace('_', ' ')|title }}</span>
-                <span class="queue-card-amount">NGN {{ "{:,}".format((app.amount or 0)|int) }}</span>
+                <span class="queue-card-meta"><span>Loan category</span><strong>{{ app.loan_type|replace('_', ' ')|title }}</strong></span>
+                <span class="application-card-footer">
+                    <span class="queue-card-amount"><small>Requested amount</small>NGN {{ "{:,}".format((app.amount or 0)|int) }}</span>
+                    <span class="application-card-open">Open <span aria-hidden="true">&rarr;</span></span>
+                </span>
             </a>
             {% endfor %}
         {% else %}
@@ -139,7 +139,7 @@
                         <td class="csp-s-7ba9bad628ec">{{ app.applicant_name }}</td>
                         <td>{{ app.loan_type|replace('_', ' ')|title }}</td>
                         <td>₦{{ "{:,}".format(app.amount|int) }}</td>
-                        <td>{{ app.stage|replace('_', ' ')|title }}</td>
+                        <td>{{ app.status }}</td>
                         <td>{{ app.officer_name or 'Unassigned' }}</td>
                         <td>{{ app.updated_at.strftime('%d %b %Y') }}</td>
                         <td>
@@ -147,8 +147,6 @@
                                 <span class="status-badge verified">Verified</span>
                             {% elif app.stage == 'returned' %}
                                 <span class="status-badge returned">Returned</span>
-                            {% elif app.stage == 'ocr_review' %}
-                                <span class="status-badge low-confidence">OCR Review</span>
                             {% else %}
                                 <span class="status-badge needs-review">Needs Review</span>
                             {% endif %}

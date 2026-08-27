@@ -40,6 +40,9 @@
 @media(max-width:980px){.ro-work-grid{grid-template-columns:1fr}.ro-work-aside{position:static;grid-row:1}.ro-progress-rail{grid-template-columns:1fr}.ro-progress-rail li{min-height:58px}.ro-progress-rail li:after{left:12px;right:auto;top:26px;bottom:0;width:2px;height:auto}}
 @media(max-width:640px){.ro-case-hero{align-items:flex-start;flex-direction:column;padding:20px}.ro-case-hero-actions{width:100%;padding:16px 0 0;border-left:0;border-top:1px solid rgba(255,255,255,.22)}.ro-intake-row{grid-template-columns:34px minmax(0,1fr)}.ro-intake-row .status-badge{grid-column:2;justify-self:start}.ro-intake-row .action-secondary-compact{grid-column:1/-1;width:100%;justify-content:center}.batch-file-row{grid-template-columns:1fr}.batch-upload-card{padding:20px}}
 
+/* Editorial credit dossier — Application Workstation */
+.ro-workstation{--dossier-paper:#f6f2e9;--dossier-ink:#211b20;--dossier-rule:#d8d0c1;--dossier-plum:#5a174f;position:relative;padding:8px;background:linear-gradient(90deg,rgba(90,23,79,.025) 1px,transparent 1px),var(--dossier-paper);background-size:32px 100%;border:1px solid #e4ddcf;border-radius:2px}.ro-workstation:before{content:"CREDIT DOSSIER";position:absolute;right:26px;top:18px;color:rgba(90,23,79,.12);font-family:Georgia,'Times New Roman',serif;font-size:12px;font-weight:700;letter-spacing:.24em}.ro-case-hero{position:relative;overflow:hidden;align-items:flex-end;padding:38px 38px 32px;color:#f8f3ea;background:var(--dossier-ink);border:0;border-radius:1px;box-shadow:8px 8px 0 rgba(90,23,79,.13);animation:dossier-in .45s ease-out both}.ro-case-hero:after{content:"";position:absolute;right:-46px;bottom:-86px;width:240px;height:240px;border:1px solid rgba(255,255,255,.11);border-radius:50%;box-shadow:0 0 0 32px rgba(255,255,255,.025),0 0 0 64px rgba(255,255,255,.018)}.ro-case-hero h1{position:relative;z-index:1;max-width:760px;font-family:Georgia,'Times New Roman',serif;font-size:clamp(34px,5vw,62px);font-weight:400;letter-spacing:-.035em}.ro-case-kicker{color:#d6b98c;letter-spacing:.16em}.ro-case-hero-actions{position:relative;z-index:1;border-color:rgba(214,185,140,.35)}.ro-case-hero-actions .action-secondary-compact{color:var(--dossier-ink);background:#d6b98c;border-color:#d6b98c;border-radius:1px}.ro-workstation>.page-card,.ro-workstation .ro-work-grid .page-card,.ro-workstation .ro-evidence-stack>.page-card{border:1px solid var(--dossier-rule);border-radius:1px;background:rgba(255,253,248,.88);box-shadow:none}.ro-progress-card{animation:dossier-in .45s .06s ease-out both}.ro-section-heading{padding-bottom:12px;border-bottom:1px solid var(--dossier-rule)}.ro-section-heading h2{font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:400;color:var(--dossier-ink)}.ro-eyebrow{color:var(--dossier-plum);letter-spacing:.18em}.ro-progress-dot{border-radius:1px;transform:rotate(45deg)}.ro-progress-dot:not(:empty){font-family:Georgia,serif}.ro-progress-dot::first-line{transform:rotate(-45deg)}.ro-progress-rail li.is-complete .ro-progress-dot,.ro-progress-rail li.is-current .ro-progress-dot{background:var(--dossier-plum);border-color:var(--dossier-plum)}.ro-progress-rail li.is-complete:after{background:var(--dossier-plum)}.ro-work-grid{animation:dossier-in .45s .12s ease-out both}.ro-intake-row{padding:18px 0}.ro-intake-index{border-radius:1px;background:transparent;font-family:Georgia,serif;font-size:14px}.ro-intake-index.is-complete{background:var(--dossier-plum)}.ro-intake-row h3{font-family:Georgia,'Times New Roman',serif;font-size:16px;font-weight:400}.ro-document-drop-link,.ro-locked-space{border-radius:1px;background:repeating-linear-gradient(-45deg,rgba(90,23,79,.025),rgba(90,23,79,.025) 8px,transparent 8px,transparent 16px)}.ro-document-drop-link>span,.ro-locked-space>span,.batch-upload-icon{background:var(--dossier-plum);border-radius:1px}.ro-task-item i{background:#b78b3d;box-shadow:none;border-radius:0;transform:rotate(45deg)}.ro-task-count{background:var(--dossier-plum);border-radius:1px}.ro-case-summary dd{font-family:Georgia,'Times New Roman',serif;font-weight:400}.ro-workstation .action-secondary-compact{border-radius:1px}.ro-workstation .status-badge{border-radius:1px;text-transform:uppercase;letter-spacing:.06em;font-size:9px}@keyframes dossier-in{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.ro-case-hero,.ro-progress-card,.ro-work-grid{animation:none}}@media(max-width:640px){.ro-workstation{padding:0;background:var(--dossier-paper)}.ro-workstation:before{display:none}.ro-case-hero{padding:28px 22px}.ro-case-hero h1{font-size:36px}}
+
 /* === ANIMATION KEYFRAMES === */
 
 @keyframes fadeSlideUp {
@@ -3693,6 +3696,78 @@ body { background: #F2F2F2; }
     .user-row-actions {
         opacity: 1 !important;
     }
+
+    /* Keep the directory tabular on tablets, but let every column contract and
+       wrap instead of forcing the action cell beyond the viewport. */
+    .users-table {
+        min-width: 0 !important;
+        table-layout: fixed;
+    }
+    .users-table th,
+    .users-table td {
+        padding-inline: 8px !important;
+        overflow-wrap: anywhere;
+        white-space: normal !important;
+        vertical-align: top;
+    }
+    .users-table th:nth-child(1) { width: 24%; }
+    .users-table th:nth-child(2) { width: 14%; }
+    .users-table th:nth-child(3) { width: 14%; }
+    .users-table th:nth-child(4) { width: 11%; }
+    .users-table th:nth-child(5) { width: 14%; }
+    .users-table th:nth-child(6) { width: 23%; }
+    .user-identity {
+        align-items: flex-start;
+        gap: 7px;
+    }
+    .user-avatar {
+        flex: 0 0 30px;
+        width: 30px;
+        height: 30px;
+    }
+    .user-identity strong,
+    .user-branch,
+    .user-role,
+    .users-table td {
+        font-size: 13px;
+        line-height: 1.4;
+    }
+    .user-identity small {
+        font-size: 12px;
+        line-height: 1.4;
+    }
+    .user-status {
+        padding: 4px 6px;
+        white-space: normal;
+    }
+    .user-row-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+        gap: 4px;
+    }
+    .user-row-actions button {
+        min-height: 36px;
+        padding: 6px 7px;
+        font-size: 11.5px !important;
+        line-height: 1.25;
+        white-space: normal;
+    }
+    .users-table .user-role-select,
+    .users-table .user-branch-select {
+        width: 100%;
+        min-width: 0 !important;
+        max-width: 100%;
+    }
+    .responsive-content .content-wrapper:has(.users-page) {
+        padding-inline: 12px !important;
+    }
+    .users-directory {
+        padding-inline: 12px !important;
+    }
+    .users-table-wrap {
+        overflow-x: visible;
+    }
 }
 
 @media (max-width: 767px) {
@@ -3717,6 +3792,125 @@ body { background: #F2F2F2; }
         align-items: flex-start !important;
         gap: 16px !important;
     }
+}
+
+@media (min-width: 768px) and (max-width: 920px) {
+    body:has(.users-page) .sidebar {
+        width: 64px !important;
+    }
+    body:has(.users-page) .main-content {
+        margin-left: 64px !important;
+    }
+    body:has(.users-page) .sidebar .logo-composite {
+        width: 46px !important;
+    }
+    .responsive-content .content-wrapper:has(.users-page) {
+        padding-inline: 8px !important;
+    }
+    .users-directory {
+        padding-inline: 8px !important;
+    }
+    .users-table th,
+    .users-table td {
+        padding-inline: 5px !important;
+    }
+    .users-table th:nth-child(1) { width: 22%; }
+    .users-table th:nth-child(2) { width: 12%; }
+    .users-table th:nth-child(3) { width: 13%; }
+    .users-table th:nth-child(4) { width: 10%; }
+    .users-table th:nth-child(5) { width: 12%; }
+    .users-table th:nth-child(6) { width: 31%; }
+    .user-avatar {
+        flex-basis: 26px;
+        width: 26px;
+        height: 26px;
+        font-size: 10px;
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1364px) {
+    .responsive-content .content-wrapper:has(.users-page) {
+        padding-inline: 14px !important;
+    }
+    .users-directory {
+        padding-inline: 12px !important;
+    }
+    .users-table {
+        min-width: 0 !important;
+        table-layout: fixed;
+    }
+    .users-table th,
+    .users-table td {
+        padding-inline: 7px !important;
+        overflow-wrap: anywhere;
+        white-space: normal !important;
+        vertical-align: top;
+    }
+    .users-table th:nth-child(1) { width: 23%; }
+    .users-table th:nth-child(2) { width: 13%; }
+    .users-table th:nth-child(3) { width: 13%; }
+    .users-table th:nth-child(4) { width: 10%; }
+    .users-table th:nth-child(5) { width: 13%; }
+    .users-table th:nth-child(6) { width: 28%; }
+    .user-identity {
+        align-items: flex-start;
+        gap: 7px;
+    }
+    .user-avatar {
+        flex: 0 0 30px;
+        width: 30px;
+        height: 30px;
+    }
+    .user-identity strong,
+    .user-branch,
+    .user-role,
+    .users-table td {
+        font-size: 13px;
+        line-height: 1.4;
+    }
+    .user-identity small {
+        font-size: 12px;
+        line-height: 1.4;
+    }
+    .user-status {
+        padding: 4px 6px;
+        white-space: normal;
+    }
+    .user-row-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+        gap: 4px;
+        opacity: 1 !important;
+    }
+    .user-row-actions button {
+        min-height: 36px;
+        padding: 6px 7px;
+        font-size: 11.5px !important;
+        line-height: 1.25;
+        white-space: normal;
+    }
+    .users-table .user-role-select,
+    .users-table .user-branch-select {
+        width: 100%;
+        min-width: 0 !important;
+        max-width: 100%;
+    }
+    .users-table-wrap {
+        overflow-x: visible;
+    }
+}
+
+@media (max-width: 480px) {
+    .users-stat-row {
+        grid-template-columns: 1fr !important;
+    }
+    .role-stat-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 640px) {
     .users-table,
     .users-table thead,
     .users-table tbody,
@@ -3729,53 +3923,67 @@ body { background: #F2F2F2; }
         display: none !important;
     }
     .users-table tr {
+        height: auto !important;
+        margin-bottom: 12px !important;
+        padding: 16px !important;
         border: 1px solid var(--border-color) !important;
         border-radius: 12px !important;
-        padding: 16px !important;
-        margin-bottom: 12px !important;
         background: #fff !important;
-        height: auto !important;
     }
     .users-table td {
-        border: none !important;
-        padding: 8px 0 !important;
-        text-align: left !important;
         display: flex !important;
-        justify-content: space-between !important;
         align-items: center !important;
+        justify-content: space-between !important;
+        gap: 16px !important;
+        padding: 8px 0 !important;
+        border: 0 !important;
         border-bottom: 0.5px solid var(--color-divider) !important;
-    }
-    .users-table td:last-child {
-        border-bottom: none !important;
-        padding-top: 12px !important;
-        justify-content: flex-end !important;
+        font-size: 12px;
+        text-align: left !important;
     }
     .users-table td::before {
         content: attr(data-label) ": " !important;
-        font-weight: 700 !important;
-        font-size: 11px !important;
+        flex: 0 0 auto;
         color: var(--text-muted) !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
         text-transform: uppercase !important;
     }
     .users-table td[data-label="Team member"] {
-        border-bottom: 1px solid var(--color-divider) !important;
-        padding-bottom: 10px !important;
         display: block !important;
+        padding-bottom: 10px !important;
+        border-bottom: 1px solid var(--color-divider) !important;
     }
-    .users-table td[data-label="Team member"]::before {
-        display: none !important;
-    }
+    .users-table td[data-label="Team member"]::before,
     .users-table td[data-label="Actions"]::before {
         display: none !important;
     }
-}
-
-@media (max-width: 480px) {
-    .users-stat-row {
-        grid-template-columns: 1fr !important;
+    .users-table td[data-label="Actions"] {
+        padding-top: 12px !important;
+        border-bottom: 0 !important;
     }
-    .role-stat-grid {
-        grid-template-columns: 1fr !important;
+    .users-table td > :not(.user-row-actions),
+    .users-table .user-identity {
+        min-width: 0;
+        max-width: 70%;
+        text-align: right;
+    }
+    .users-table td[data-label="Team member"] .user-identity {
+        max-width: 100%;
+        text-align: left;
+    }
+    .user-row-actions {
+        display: flex;
+        width: 100%;
+        justify-content: flex-start;
+        gap: 8px;
+    }
+    .user-row-actions button {
+        min-height: 40px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        background: var(--color-surface-subtle, #f7f4f8);
+        font-size: 12px !important;
     }
 }
 /* Use Montserrat consistently across all dashboard views and components. */
@@ -4077,3 +4285,12 @@ body, body * { font-family: "Montserrat", sans-serif !important; }
 .supervisor-review-page .supervisor-decision-card form { flex:0 0 auto!important; margin:0 0 0 auto!important; }
 .supervisor-review-page .supervisor-decision-card .btn-primary-filled { min-height:40px!important; padding-inline:20px!important; }
 @media (max-width:700px) { .supervisor-review-page .supervisor-decision-card { position:static; }.supervisor-review-page .supervisor-decision-card .csp-s-5ffb91a26b04 { align-items:stretch!important; flex-direction:column!important; }.supervisor-review-page .supervisor-decision-card form,.supervisor-review-page .supervisor-decision-card a,.supervisor-review-page .supervisor-decision-card .btn-primary-filled { width:100%!important; margin:0!important; } }
+
+/* Application Workstation — refined dossier composition */
+.dossier-workstation{gap:18px;padding:12px;overflow:hidden}.dossier-workstation:before{top:23px;right:30px}.dossier-workstation .ro-case-hero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:end;gap:28px;min-height:250px;padding:42px 40px 36px}.dossier-case-number{position:relative;z-index:1;align-self:start;color:#d6b98c;font-family:Georgia,'Times New Roman',serif;font-size:64px;line-height:.8;letter-spacing:-.08em}.dossier-case-intro{position:relative;z-index:1}.dossier-overline{margin:0 0 7px!important;color:rgba(255,255,255,.55)!important;font-size:10px!important;font-weight:800;letter-spacing:.2em;text-transform:uppercase}.dossier-case-caption{max-width:520px;margin-top:12px!important;font-size:13px!important;line-height:1.55}.dossier-amount-block{position:relative;z-index:1;min-width:245px;padding:18px 0 3px 25px;border-left:1px solid rgba(214,185,140,.4);display:grid;gap:7px}.dossier-amount-block span,.dossier-amount-block small{color:rgba(255,255,255,.58);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}.dossier-amount-block strong{color:#fff;font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:400;letter-spacing:-.02em}.dossier-workstation .ro-progress-card{padding:22px 28px}.dossier-workstation .ro-progress-dot{transform:none;border-radius:1px}.dossier-workstation .ro-progress-dot>span{display:block}.dossier-workstation .ro-progress-rail li:after{top:13px}.dossier-section-card,.dossier-workstation .ro-document-space,.dossier-workstation .ro-work-aside>.page-card{padding:24px 26px}.dossier-workstation .ro-intake-row{grid-template-columns:36px minmax(0,1fr) auto auto;min-height:72px}.dossier-workstation .ro-intake-row:hover{margin-inline:-12px;padding-inline:12px;background:rgba(90,23,79,.035)}.dossier-workstation .ro-intake-row,.dossier-workstation .ro-document-drop-link,.dossier-workstation .ro-task-item a{transition:background-color .18s ease,color .18s ease,border-color .18s ease}.dossier-primary-action{display:flex;justify-content:center;width:100%;margin-top:22px;box-sizing:border-box}.dossier-workstation .ro-document-drop-link:hover{border-color:var(--dossier-plum);background:rgba(90,23,79,.055)}.dossier-workstation a:focus-visible{outline:3px solid rgba(90,23,79,.28);outline-offset:3px}.dossier-workstation .ro-work-aside{top:84px}.dossier-action-card{border-top:4px solid var(--dossier-plum)!important}.dossier-workstation .ro-all-clear>span{width:24px;height:24px;display:grid;place-items:center;color:#fff;background:#2f7650}.dossier-workstation .ro-return-alert{align-items:center;padding:16px 20px;border-radius:1px}.dossier-workstation .ro-return-alert strong{flex:0 0 auto}
+@media(max-width:980px){.dossier-workstation .ro-case-hero{grid-template-columns:auto minmax(0,1fr)}.dossier-amount-block{grid-column:1/-1;display:flex;align-items:baseline;gap:12px;padding:18px 0 0;border-top:1px solid rgba(214,185,140,.28);border-left:0}.dossier-amount-block small{margin-left:auto}.dossier-workstation .ro-work-grid{grid-template-columns:1fr}.dossier-workstation .ro-work-aside{position:static;grid-template-columns:minmax(0,1.2fr) minmax(260px,.8fr)}}
+@media(max-width:700px){.dossier-workstation{padding:0;border:0}.dossier-workstation .ro-case-hero{grid-template-columns:1fr;min-height:0;padding:30px 22px 26px}.dossier-case-number{font-size:44px}.dossier-case-intro h1{font-size:38px}.dossier-amount-block{grid-column:auto;display:grid;grid-template-columns:1fr auto;align-items:end}.dossier-amount-block strong{grid-row:2}.dossier-amount-block small{grid-row:2;margin:0;text-align:right}.dossier-workstation .ro-progress-card{padding:20px}.dossier-workstation .ro-progress-rail{grid-template-columns:1fr;gap:0}.dossier-workstation .ro-progress-rail li{min-height:54px;padding:0}.dossier-workstation .ro-progress-rail li:after{left:13px;right:auto;top:26px;bottom:0;width:2px;height:auto}.dossier-workstation .ro-progress-rail li div{padding-top:3px}.dossier-workstation .ro-work-aside{grid-template-columns:1fr}.dossier-section-card,.dossier-workstation .ro-document-space,.dossier-workstation .ro-work-aside>.page-card{padding:20px}.dossier-workstation .ro-intake-row{grid-template-columns:34px minmax(0,1fr) auto;gap:10px}.dossier-workstation .ro-intake-row>.status-badge{justify-self:start}.dossier-workstation .ro-intake-row>.action-secondary-compact{grid-column:2/-1;width:100%;min-height:44px;display:flex;align-items:center;justify-content:center;box-sizing:border-box}.dossier-workstation .ro-return-alert{align-items:flex-start;flex-direction:column}.dossier-workstation .ro-document-drop-link,.dossier-workstation .ro-locked-space{align-items:flex-start}.dossier-workstation .dossier-primary-action{min-height:46px}}
+@media(prefers-reduced-motion:reduce){.dossier-workstation .ro-intake-row,.dossier-workstation .ro-document-drop-link,.dossier-workstation .ro-task-item a{transition:none}}
+
+/* Application Workstation — canonical FieldCRM design-system palette */
+.dossier-workstation{--dossier-paper:#F3F5F7;--dossier-ink:#172033;--dossier-rule:#CBD5E1;--dossier-plum:#6F2676;color:#172033;background:#F3F5F7;border-color:#CBD5E1;border-radius:14px}.dossier-workstation:before{color:rgba(111,38,118,.14)}.dossier-workstation .ro-case-hero{background:linear-gradient(120deg,#2E0052 0%,#59145F 58%,#7D267E 100%);border-radius:14px;box-shadow:0 4px 20px rgba(75,0,130,.08)}.dossier-workstation .ro-case-hero:after{border-color:rgba(255,255,255,.14);box-shadow:0 0 0 32px rgba(255,255,255,.035),0 0 0 64px rgba(255,255,255,.02)}.dossier-workstation .dossier-case-number{color:#F7EFF8}.dossier-workstation .ro-case-kicker{color:#F7EFF8}.dossier-workstation .dossier-overline,.dossier-workstation .dossier-case-caption,.dossier-workstation .dossier-amount-block span,.dossier-workstation .dossier-amount-block small{color:rgba(255,255,255,.78)!important}.dossier-workstation .dossier-amount-block{border-color:rgba(216,191,219,.55)}.dossier-workstation>.page-card,.dossier-workstation .ro-work-grid .page-card,.dossier-workstation .ro-evidence-stack>.page-card{color:#172033;background:#FFFFFF;border-color:#CBD5E1;border-radius:14px;box-shadow:0 4px 20px rgba(75,0,130,.08)}.dossier-workstation .ro-section-heading{border-color:#CBD5E1}.dossier-workstation .ro-section-heading h2{color:#172033}.dossier-workstation .ro-section-heading>span,.dossier-workstation .ro-intake-row p,.dossier-workstation .ro-section-copy,.dossier-workstation .ro-case-summary dt,.dossier-workstation .ro-task-item p,.dossier-workstation .ro-all-clear p{color:#526174}.dossier-workstation .ro-eyebrow,.dossier-workstation .ro-task-item a{color:#6F2676}.dossier-workstation .ro-progress-dot,.dossier-workstation .ro-intake-index{color:#526174;background:#F8FAFB;border-color:#CBD5E1;border-radius:10px}.dossier-workstation .ro-progress-rail li:after,.dossier-workstation .ro-intake-row,.dossier-workstation .ro-uploaded-files article,.dossier-workstation .ro-case-summary dl div{border-color:#CBD5E1}.dossier-workstation .ro-progress-rail li.is-complete .ro-progress-dot,.dossier-workstation .ro-progress-rail li.is-current .ro-progress-dot,.dossier-workstation .ro-intake-index.is-complete,.dossier-workstation .ro-task-count{color:#FFFFFF;background:#6F2676;border-color:#6F2676}.dossier-workstation .ro-progress-rail li.is-complete:after{background:#6F2676}.dossier-workstation .ro-intake-row:hover{background:#F7EFF8}.dossier-workstation .ro-document-drop-link,.dossier-workstation .ro-locked-space{color:#172033;background:#F8FAFB;border-color:#D8BFDB;border-radius:14px}.dossier-workstation .ro-document-drop-link:hover{color:#172033;background:#F7EFF8;border-color:#6F2676}.dossier-workstation .ro-document-drop-link>span,.dossier-workstation .ro-locked-space>span{color:#FFFFFF;background:#6F2676;border-radius:10px}.dossier-workstation .ro-task-item i{background:#6F2676}.dossier-workstation .dossier-action-card{border-top-color:#6F2676!important}.dossier-workstation .action-secondary-compact{color:#6F2676;border-color:#D8BFDB;border-radius:10px}.dossier-workstation .action-secondary-compact:hover{color:#5B1F61;background:#F7EFF8;border-color:#5B1F61}.dossier-workstation .dossier-primary-action{color:#FFFFFF;background:#2E0052;border-color:#2E0052;border-radius:10px}.dossier-workstation .dossier-primary-action:hover{background:#23003F;border-color:#23003F}.dossier-workstation a:focus-visible{outline-color:rgba(111,38,118,.28)}

@@ -14,7 +14,7 @@
 <div class="page-card">
     <div class="page-card-header">
         <h1 class="page-card-title">Workflow Pipeline</h1>
-        <p class="page-card-subtitle">Applications move through dedicated full pages for intake, OCR, review, approval, return, and disbursement readiness.</p>
+        <p class="page-card-subtitle">Applications move through dedicated pages for intake, review, approval, return, and disbursement readiness.</p>
     </div>
 
     <div class="pipeline-board">
@@ -33,7 +33,7 @@
                         <a class="pipeline-card" href="/applications/{{ app.id }}">
                             <div class="pipeline-card-top">
                                 <span class="pipeline-ref">{{ app.ref_no }}</span>
-                                <span class="status-badge {% if app.stage in ['returned', 'rejected'] %}returned{% elif app.stage in ['ocr_review', 'credit_review'] %}needs-review{% else %}verified{% endif %}">
+                                <span class="status-badge {% if app.stage in ['returned', 'rejected'] %}returned{% elif app.stage == 'credit_review' %}needs-review{% else %}verified{% endif %}">
                                     {{ app.status }}
                                 </span>
                             </div>
