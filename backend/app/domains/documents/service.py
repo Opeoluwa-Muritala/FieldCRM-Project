@@ -118,18 +118,19 @@ class DocumentService:
         uploaded_by: UUID,
         user_role: str,
         form_code: str | None = None,
+        display_name: str | None = None,
     ) -> dict:
-        original_name = file.filename or "document"
-        mime_type = file.content_type or mimetypes.guess_type(original_name)[0] or ""
+        source_name = file.filename or "document"
+        mime_type = file.content_type or mimetypes.guess_type(source_name)[0] or ""
         content = await file.read(settings.DOCUMENT_MAX_IMAGE_BYTES + 1)
         content, mime_type, error = prepare_upload_file(
-            content, mime_type, set(settings.DOCUMENT_ALLOWED_MIME_TYPES), original_name
+            content, mime_type, set(settings.DOCUMENT_ALLOWED_MIME_TYPES), source_name
         )
         if error:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
 
         safe_doc_type = re.sub(r"[^a-zA-Z0-9_.-]+", "_", doc_type or "other").strip("._") or "other"
-        extension = Path(original_name).suffix.lower() or ALLOWED_EXTENSIONS[mime_type]
+        extension = Path(source_name).suffix.lower() or ALLOWED_EXTENSIONS[mime_type]
         if extension not in {".pdf", ".jpg", ".jpeg", ".png"}:
             extension = ALLOWED_EXTENSIONS[mime_type]
 
@@ -155,6 +156,10 @@ class DocumentService:
             (target_dir / stored_name).write_bytes(content)
             stored_path = "/static/uploads/" + (relative_dir / stored_name).as_posix()
 
+        clean_display_name = " ".join((display_name or "").split()).strip()
+        if len(clean_display_name) > 160:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Document name must be 160 characters or fewer")
+        original_name = clean_display_name or source_name
         document = await self.repo.create(
             loan_id=loan_id,
             org_id=org_id,

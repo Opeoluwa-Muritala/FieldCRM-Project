@@ -2,6 +2,7 @@ from uuid import UUID
 import datetime
 import random
 import json
+import math
 from app.domains.loans.repository import LoanRepository
 from app.core.audit import AuditService
 from app.core.exceptions import DomainException
@@ -70,6 +71,7 @@ class LoanService:
         loan_type: str,
         applicant_name: str,
         user_id: UUID,
+        officer_id: UUID | None = None,
         client_request_id: UUID | None = None,
     ) -> LoanRow:
         customer_type = _normalize_choice(customer_type, CUSTOMER_TYPE_MAP, "customer type")
@@ -91,7 +93,7 @@ class LoanService:
                 customer_type=customer_type,
                 loan_type=loan_type,
                 applicant_name=applicant_name,
-                created_by=user_id,
+                created_by=officer_id or user_id,
                 client_request_id=client_request_id,
             )
             if settings.CONFIGURABLE_WORKFLOW_ENABLED:
@@ -149,6 +151,29 @@ class LoanService:
                     422,
                 )
             
+            # Business/SME applications never accept employment-only fields,
+            # including values forged by bypassing the conditional web form.
+            if step == 4:
+                product_family = await conn.fetchval(
+                    "SELECT family FROM loan_products WHERE code = $1",
+                    app.loan_type,
+                )
+                if product_family == "corporate_business":
+                    form_data = dict(form_data)
+                    for field in (
+                        "employment_type", "industry", "years_employed",
+                        "employer_name", "monthly_salary", "employer_address",
+                    ):
+                        form_data.pop(field, None)
+                        existing_data.pop(field, None)
+
+            # National ID (NIN) does not expire. Discard a forged or stale
+            # expiry value so downstream views cannot imply otherwise.
+            if step == 1 and form_data.get("id_type") == "National ID":
+                form_data = dict(form_data)
+                form_data.pop("id_expiry", None)
+                existing_data.pop("id_expiry", None)
+
             # Merge form data
             for k, v in form_data.items():
                 existing_data[k] = v
@@ -158,23 +183,20 @@ class LoanService:
                     existing_data["repayment_mode"], REPAYMENT_MODE_MAP, "repayment mode"
                 )
                 
-            # Dynamic product limit checks for step 6 (Loan Request Details)
+            # Validate the requested amount, but do not impose product amount
+            # ceilings/floors. Approval routing can still use the amount.
             if step == 6:
                 amount = form_data.get("amount") or existing_data.get("amount")
                 tenor = form_data.get("tenor") or existing_data.get("tenor")
+                f_amount = _optional_float(amount)
+                if f_amount is None or not math.isfinite(f_amount) or f_amount <= 0:
+                    raise DomainException("Loan amount must be greater than zero", 422)
                 
                 prod = await conn.fetchrow(
-                    "SELECT min_amount, max_amount, min_tenor_months, max_tenor_months, name FROM loan_products WHERE code = $1",
+                    "SELECT min_tenor_months, max_tenor_months, name FROM loan_products WHERE code = $1",
                     app.loan_type
                 )
                 if prod:
-                    if amount:
-                        f_amount = _optional_float(amount)
-                        if f_amount is not None:
-                            if f_amount < float(prod["min_amount"]):
-                                raise DomainException(f"Amount is below the minimum limit of ₦{prod['min_amount']:,.2f} for {prod['name']}", 422)
-                            if f_amount > float(prod["max_amount"]):
-                                raise DomainException(f"Amount exceeds the maximum limit of ₦{prod['max_amount']:,.2f} for {prod['name']}", 422)
                     if tenor:
                         i_tenor = _optional_int(tenor)
                         if i_tenor is not None:
@@ -190,7 +212,7 @@ class LoanService:
                     applicant_name=app.applicant_name,
                     phone=app.phone,
                     bvn=app.bvn,
-                    amount=_optional_float(amount),
+                    amount=f_amount,
                     tenor_months=_optional_int(tenor),
                 )
                 

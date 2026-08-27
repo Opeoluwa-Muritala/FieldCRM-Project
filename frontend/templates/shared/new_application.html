@@ -26,6 +26,19 @@
         </div>
 
         <form id="newAppForm" action="/applications/new" method="POST" enctype="multipart/form-data">
+            {% if can_assign_officer %}
+            <div class="csp-s-e8a8a9c051f6">
+                <label class="field-label csp-s-a56b14ff62f4" for="officerId">Relationship Officer</label>
+                <select id="officerId" name="officer_id" class="field-select" required>
+                    {% for officer in officers %}
+                    <option value="{{ officer.id }}" {% if officer.id|string == current_user_id %}selected{% endif %}>
+                        {{ officer.full_name }}{% if officer.id|string == current_user_id %} (Assign to myself){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+                <p class="page-card-subtitle">The selected officer owns the application from intake. Only active officers in your branch are available.</p>
+            </div>
+            {% endif %}
             <!-- Customer Type selection -->
             <div class="csp-s-e8a8a9c051f6">
                 <label class="field-label csp-s-a56b14ff62f4">Customer Type</label>
@@ -142,9 +155,7 @@
                             <input type="radio" name="loan_type" value="{{ prod.code }}" id="radio_{{ prod.code }}" required class="csp-s-d0466aa33fa8">
                             <strong class="csp-s-a101ab7485d7 product-title">{{ prod.name }}</strong>
                             <span class="product-desc">{{ prod.description }}</span>
-                            <span class="product-limits">
-                                Limit: ₦{{ "{:,.0f}".format(prod.min_amount) }} - ₦{{ "{:,.0f}".format(prod.max_amount) }} | Tenor: {{ prod.min_tenor_months }}-{{ prod.max_tenor_months }} mos
-                            </span>
+                            <span class="product-limits">Tenor: {{ prod.min_tenor_months }}-{{ prod.max_tenor_months }} months</span>
                         </div>
                         {% endfor %}
                     </div>

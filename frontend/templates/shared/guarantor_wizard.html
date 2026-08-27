@@ -159,34 +159,6 @@
                 </div>
             </div>
 
-            <!-- Supporting Documents Checklist -->
-            <div class="csp-s-66836c804dc3">
-                <div class="field-label csp-s-451009175f33">Required Supporting Documents</div>
-                
-                <div class="csp-s-baf2fda59eac">
-                    <div class="csp-s-d7168c1b83a1">
-                        <div>
-                            <span class="csp-s-7ba9bad628ec">Guarantor Passport Photograph</span>
-                            <div class="csp-s-f779da42d59e">Clear, color photograph of face</div>
-                        </div>
-                        <div class="csp-s-b5e6692c7caf">
-                            <span class="status-badge {{ 'verified' if data.passport_photo_verified else 'missing' }}">{{ 'Verified' if data.passport_photo_verified else 'Missing' }}</span>
-                            <a href="/applications/{{ app_id }}/documents/upload?type=guarantor_{{ guarantor_index }}_photo" class="btn-ghost-link csp-s-b166ee10dc46">Upload</a>
-                        </div>
-                    </div>
-
-                    <div class="csp-s-d7168c1b83a1">
-                        <div>
-                            <span class="csp-s-7ba9bad628ec">Valid ID Card</span>
-                            <div class="csp-s-f779da42d59e">National ID, Driver's Licence or Voters Card</div>
-                        </div>
-                        <div class="csp-s-b5e6692c7caf">
-                            <span class="status-badge {{ 'verified' if data.id_document_verified else 'missing' }}">{{ 'Verified' if data.id_document_verified else 'Missing' }}</span>
-                            <a href="/applications/{{ app_id }}/documents/upload?type=guarantor_{{ guarantor_index }}_id" class="btn-ghost-link csp-s-b166ee10dc46">Upload</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
             {% endif %}
 
             <!-- STEP 6: DECLARATION -->

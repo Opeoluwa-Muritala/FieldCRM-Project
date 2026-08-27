@@ -734,7 +734,7 @@ async def render_applications_list(
 async def render_new_application(
     request: Request,
     conn = Depends(db_conn),
-    current_user = Depends(RoleChecker(["Account Officer"]))
+    current_user = Depends(RoleChecker(["Account Officer", "Branch Manager"]))
 ):
     """Renders Page 3 customer selection page."""
     products = await _effective_products(conn, current_user.org_id)
@@ -742,6 +742,17 @@ async def render_new_application(
     if settings.CONFIGURABLE_PRODUCTS_ENABLED:
         dynamic_fields = await conn.fetch("""SELECT pff.* FROM product_form_fields pff JOIN configuration_versions cv ON cv.id=pff.configuration_version_id
           WHERE pff.org_id=$1 AND cv.status='published' AND cv.effective_at<=NOW() ORDER BY pff.product_code,pff.display_order""", current_user.org_id)
+    is_team_lead = canonical_role(current_user.role) == "branch_manager"
+    officers = []
+    if is_team_lead:
+        officers = await conn.fetch(
+            """SELECT id, full_name, role FROM users
+               WHERE org_id=$1 AND active=TRUE
+                 AND branch_id IS NOT DISTINCT FROM $2
+                 AND (role IN ('account_officer','loan_officer') OR id=$3)
+               ORDER BY CASE WHEN id=$3 THEN 0 ELSE 1 END, full_name""",
+            current_user.org_id, current_user.branch_id, current_user.id,
+        )
     ctx = build_template_context(
         request,
         current_user,
@@ -751,6 +762,9 @@ async def render_new_application(
         customer_identity_enabled=settings.CUSTOMER_IDENTITY_ENABLED,
         configurable_products_enabled=settings.CONFIGURABLE_PRODUCTS_ENABLED,
         dynamic_fields=[dict(field) for field in dynamic_fields],
+        can_assign_officer=is_team_lead,
+        officers=[dict(officer) for officer in officers],
+        current_user_id=str(current_user.id),
     )
     return templates.TemplateResponse(request, "shared/new_application.html", ctx)
 
@@ -760,11 +774,30 @@ async def process_new_application(
     customer_type: str = Form(...),
     loan_type: str = Form(...),
     borrower_id: str | None = Form(None),
+    officer_id: str | None = Form(None),
     conn = Depends(db_conn),
     service: LoanService = Depends(get_loan_service),
-    current_user = Depends(RoleChecker(["Account Officer"]))
+    current_user = Depends(RoleChecker(["Account Officer", "Branch Manager"]))
 ):
     """Initializes a new borrower and loan application in draft stage."""
+    assigned_officer_id = current_user.id
+    if canonical_role(current_user.role) == "branch_manager":
+        try:
+            requested_officer_id = UUID(officer_id) if officer_id else current_user.id
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="Invalid Relationship Officer selection") from exc
+        assigned = await conn.fetchrow(
+            """SELECT id FROM users WHERE id=$1 AND org_id=$2 AND active=TRUE
+               AND branch_id IS NOT DISTINCT FROM $3
+               AND (role IN ('account_officer','loan_officer') OR id=$4)""",
+            requested_officer_id, current_user.org_id, current_user.branch_id, current_user.id,
+        )
+        if not assigned:
+            raise HTTPException(status_code=403, detail="Selected Relationship Officer is not available in your branch")
+        assigned_officer_id = assigned["id"]
+    elif officer_id and officer_id != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Relationship Officers cannot assign applications to another user")
+
     selected = None
     selected_id = None
     profile = None
@@ -822,7 +855,8 @@ async def process_new_application(
         customer_type=customer_type,
         loan_type=loan_type,
         applicant_name=profile["applicant_name"] if profile else "New Applicant",
-        user_id=current_user.id
+        user_id=current_user.id,
+        officer_id=assigned_officer_id,
     )
     if profile:
         snapshot = dict(profile)
@@ -1232,7 +1266,8 @@ async def render_wizard_step(
     if user_role in ("account_officer", "loan_officer") and app.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="You do not have permission to view/modify this application")
 
-    if step == 2 and data.get("marital_status") == "Single":
+    # Spousal consent is no longer part of origination for any applicant.
+    if step == 2:
         return RedirectResponse(url=f"/applications/{application_id}/step/3", status_code=status.HTTP_303_SEE_OTHER)
     # Review-chain roles may inspect every completed section, but never edit it.
     readonly = user_role in reviewer_roles and not capabilities_for(current_user, app).can_edit_intake
@@ -1365,7 +1400,6 @@ async def process_wizard_step(
         if any(value not in (None, "") for value in pnl_values) and not all(value not in (None, "") for value in pnl_values):
             query = urlencode({"error": "Complete the reporting period, revenue, and expenses together.", "focus": "wizardForm"})
             return RedirectResponse(url=f"/applications/{application_id}/step/4?{query}", status_code=status.HTTP_303_SEE_OTHER)
-    pledge_upload = form_data.get("pledge_file") if step == 8 else None
     from app.domains.signing.service import SigningService
     from app.domains.signing.repository import SigningRepository
     signing_svc = SigningService(SigningRepository(conn))
@@ -1536,36 +1570,12 @@ async def process_wizard_step(
             current_user.id,
         )
 
-    if pledge_upload is not None and getattr(pledge_upload, "filename", ""):
-        pledge_document = await get_document_service(conn).save_upload(
-            loan_id=app_uuid,
-            org_id=current_user.org_id,
-            doc_type="pledge_form",
-            form_code="MMFB/CRM/02",
-            file=pledge_upload,
-            uploaded_by=current_user.id,
-            user_role=current_user.role,
-        )
-        from app.services.ocr_extraction_service import OcrExtractionService
-        await OcrExtractionService(conn).process_document(
-            document_id=pledge_document["id"],
-            loan_id=app_uuid,
-            doc_type=pledge_document["doc_type"],
-            stored_path=pledge_document["stored_path"],
-            mime_type=pledge_document["mime_type"],
-            upload_dir=settings.DOCUMENT_UPLOAD_DIR,
-        )
-        await conn.execute(
-            "UPDATE ocr_jobs SET status = 'done', updated_at = CURRENT_TIMESTAMP WHERE document_id = $1",
-            pledge_document["id"],
-        )
-
     if request.query_params.get("draft") == "1":
         return {"saved": True, "step": step}
 
     if step < 8:
         next_step = step + 1
-        if step == 1 and data_dict.get("marital_status") == "Single":
+        if step == 1:
             next_step = 3
         return RedirectResponse(url=f"/applications/{application_id}/step/{next_step}", status_code=status.HTTP_303_SEE_OTHER)
     if app.stage != "intake":
@@ -1764,13 +1774,19 @@ async def render_document_upload(
     conn = Depends(db_conn),
     current_user = Depends(get_current_user)
 ):
-    """Page 13 Document Upload page."""
+    """Post-intake batch document upload page (application section 9)."""
     repo = LoanRepository(conn)
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
 
     _verify_loan_scope(app, current_user)
+    require_document_upload(current_user, app, type)
+    if app.stage == "intake":
+        return RedirectResponse(
+            url=f"/applications/{application_id}?error=Complete+and+submit+the+application+before+uploading+documents",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
     ctx = build_template_context(
         request,
@@ -1787,8 +1803,8 @@ async def render_document_upload(
 async def process_document_upload(
     application_id: str,
     type: str = "other",
-    category: str = Form("other"),
-    file: UploadFile = File(...),
+    files: list[UploadFile] = File(...),
+    display_names: list[str] = Form(default=[]),
     service: DocumentService = Depends(get_document_service),
     current_user = Depends(get_current_user)
 ):
@@ -1799,16 +1815,19 @@ async def process_document_upload(
         raise HTTPException(status_code=404, detail="Loan Application not found")
     _verify_loan_scope(app, current_user)
 
-    doc_type = category or type or "other"
+    if app.stage == "intake":
+        raise HTTPException(status_code=409, detail="Complete and submit the application before uploading documents")
+    if not files or len(files) > 20:
+        raise HTTPException(status_code=422, detail="Select between 1 and 20 documents")
+    doc_type = type or "other"
     require_document_upload(current_user, app, doc_type)
-    await service.save_upload(
-        loan_id=UUID(application_id),
-        org_id=current_user.org_id,
-        doc_type=doc_type,
-        file=file,
-        uploaded_by=current_user.id,
-        user_role=current_user.role,
-    )
+    for index, file in enumerate(files):
+        await service.save_upload(
+            loan_id=UUID(application_id), org_id=current_user.org_id,
+            doc_type=doc_type, file=file, uploaded_by=current_user.id,
+            user_role=current_user.role,
+            display_name=display_names[index] if index < len(display_names) else None,
+        )
     return RedirectResponse(url=f"/applications/{application_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 

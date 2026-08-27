@@ -1,313 +1,52 @@
 {% extends shell %}
-
-{% block title %}Application Detail — FieldCRM{% endblock %}
+{% block title %}{{ app.ref_no }} — Application Workstation | FieldCRM{% endblock %}
 {% block page_title %}Application Workstation{% endblock %}
-{% block breadcrumb %}Loans → Detail → {{ app.ref_no }}{% endblock %}
-
+{% block breadcrumb %}Applications &rarr; {{ app.ref_no }}{% endblock %}
 {% block content %}
-<div class="app-detail-layout relationship-officer-page">
-    
-    {# === LEFT COLUMN: APPLICATION IDENTITY, TIMELINE & DOCUMENTS === #}
-    <div class="app-detail-sidebar">
-        <div class="app-detail-sidebar-sticky">
-        
-        {# Identity Card #}
-        <div class="page-card csp-s-b3a2297a12f5">
-            <div class="csp-s-b58aaded1d86">{{ app.ref_no }}</div>
-            <h2 class="page-card-title csp-s-0344cc85b2e7">{{ borrower_name }}</h2>
-            <div class="csp-s-8a68ca586d8b">
-                {{ product_type }} · ₦{{ "{:,}".format(amount|int) }}
-            </div>
-            
-            {% set stage_class = {
-                'intake': 'needs-review',
-                'ocr_review': 'low-confidence',
-                'credit_review': 'needs-review',
-                'branch_approval': 'needs-review',
-                'disbursement_ready': 'approved',
-                'disbursed': 'verified',
-                'returned': 'returned',
-                'rejected': 'missing'
-            } %}
-            <span class="status-badge {{ stage_class.get(app.stage, '') }}">{{ app.status }}</span>
-        </div>
-        
-        {# Vertical Stage Timeline #}
-        <div class="page-card csp-s-b3a2297a12f5 application-timeline-card relationship-timeline-card">
-            <h3 class="csp-s-2e2b4cd7c4f9">Application Timeline</h3>
-            <div class="csp-s-b37edfac2acb">
-                
-                {# Vertical line element #}
-                <div class="csp-s-1a60179c1584"></div>
-                
-                {# Stage 1 #}
-                <div class="csp-s-4fa00029d5b1">
-                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 1 %}var(--role-accent, #6B3FA0){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
-                        {% if app.current_stage > 1 %}✓{% endif %}
-                    </div>
-                    <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 1 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 1 %}var(--text-main){% else %}var(--text-muted){% endif %};">Intake & Submission</div>
-                    <div class="csp-s-c029905cd705">{{ app.created_at.strftime('%d %b %Y') if app.created_at else '' }}</div>
-                </div>
-                
-                {# Stage 2 #}
-                <div class="csp-s-4fa00029d5b1">
-                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 2 %}var(--role-accent, #6B3FA0){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
-                        {% if app.current_stage > 2 %}✓{% endif %}
-                    </div>
-                    <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 2 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 2 %}var(--text-main){% else %}var(--text-muted){% endif %};">OCR Verification</div>
-                    <div class="csp-s-c029905cd705">{% if app.current_stage >= 2 %}Auto-scanned{% else %}Awaiting scan{% endif %}</div>
-                </div>
-                
-                {# Stage 3 #}
-                <div class="csp-s-4fa00029d5b1">
-                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 3 %}var(--role-accent, #6B3FA0){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
-                        {% if app.current_stage > 3 %}✓{% endif %}
-                    </div>
-                    <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 3 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 3 %}var(--text-main){% else %}var(--text-muted){% endif %};">Credit Risk Review</div>
-                    <div class="csp-s-c029905cd705">{% if app.current_stage >= 3 %}Credit review in progress{% else %}Awaiting review{% endif %}</div>
-                </div>
-                
-                {# Stage 4 #}
-                <div class="csp-s-4fa00029d5b1">
-                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 4 %}var(--role-accent, #6B3FA0){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
-                        {% if app.current_stage > 4 %}✓{% endif %}
-                    </div>
-                    <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage == 4 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 4 %}var(--text-main){% else %}var(--text-muted){% endif %};">Branch Concurrence</div>
-                    <div class="csp-s-c029905cd705">{% if app.current_stage >= 4 %}Concurrence in progress{% else %}Awaiting signoff{% endif %}</div>
-                </div>
-                
-                {# Stage 5 & 6 #}
-                <div class="csp-s-4fa00029d5b1">
-                    <div data-csp-style="position: absolute; left: -20px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background-color: {% if app.current_stage >= 5 %}var(--role-accent, #6B3FA0){% else %}var(--border-color){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff;">
-                        {% if app.current_stage > 5 %}✓{% endif %}
-                    </div>
-                    <div data-csp-style="font-size: 13px; font-weight: {% if app.current_stage >= 5 %}500{% else %}400{% endif %}; color: {% if app.current_stage >= 5 %}var(--text-main){% else %}var(--text-muted){% endif %};">Disbursement Released</div>
-                    <div class="csp-s-c029905cd705">Ready for release</div>
-                </div>
-                
-            </div>
-        </div>
-        
-        {# Quick Document List #}
-        {% if false %}
-        <div class="page-card csp-s-b3a2297a12f5">
-            <h3 class="csp-s-93e773d1eb63">Documents Checklist</h3>
-            <div class="csp-s-baf2fda59eac">
-                {% set doc_categories = [
-                    ('passport_photo', 'Passport Photograph'),
-                    ('id_card', 'Valid ID Card'),
-                    ('utility_bill', 'Utility Bill'),
-                    ('bank_statement', 'Bank Statement'),
-                    ('guarantor_form_1', 'Guarantor Form 1'),
-                    ('guarantor_form_2', 'Guarantor Form 2'),
-                    ('pledge_form', 'Pledge Agreement')
-                ] %}
-                
-                {% for cat_key, cat_name in doc_categories %}
-                    {% set doc_info = namespace(found=false, status='missing', url='') %}
-                    {% for doc in documents %}
-                        {% if doc.category == cat_key %}
-                            {% set doc_info.found = true %}
-                            {% set doc_info.status = doc.status %}
-                            {% set doc_info.url = doc.url %}
-                        {% endif %}
-                    {% endfor %}
-                    
-                    <div class="csp-s-9d119403466a">
-                        {% if doc_info.found and doc_info.url %}
-                            <a href="{{ doc_info.url }}" data-document-preview data-document-title="{{ cat_name }}" class="csp-s-24755a6a9e78">
-                                {{ cat_name }} &nearr;
-                            </a>
-                        {% else %}
-                            <span>{{ cat_name }}</span>
-                        {% endif %}
-                        {% if doc_info.status == 'verified' %}
-                            <span class="csp-s-ed426f3ea56b">✓</span>
-                        {% elif doc_info.status == 'needs_review' %}
-                            <span class="csp-s-193e651b3606">⚠</span>
-                        {% else %}
-                            <span class="csp-s-8eb8ddaf732d">✗</span>
-                        {% endif %}
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
+{% set stage_class = {'intake':'needs-review','ocr_review':'low-confidence','credit_review':'needs-review','branch_approval':'needs-review','disbursement_ready':'approved','disbursed':'verified','returned':'returned','rejected':'missing'} %}
+{% set is_business = wizard_data.business_type or wizard_data.business_name or wizard_data.monthly_sales %}
+{% set tasks = [] %}
+{% if not wizard_data.full_name %}{% set _ = tasks.append(('Applicant details','Complete identity and contact information.','/applications/' ~ app_id ~ '/step/1')) %}{% endif %}
+{% if not wizard_data.bvn %}{% set _ = tasks.append(('BVN required','Add the applicant’s 11-digit BVN.','/applications/' ~ app_id ~ '/step/1')) %}{% endif %}
+{% if not visitation_data or not visitation_data.premises_description %}{% set _ = tasks.append(('Field visitation','Complete the premises visitation report.','/applications/' ~ app_id ~ '/visitation')) %}{% endif %}
+<div class="ro-workstation">
+  <section class="ro-case-hero" aria-labelledby="case-title">
+    <div><div class="ro-case-kicker"><span>{{ app.ref_no }}</span><span class="status-badge {{ stage_class.get(app.stage,'') }}">{{ app.status }}</span></div><h1 id="case-title">{{ borrower_name }}</h1><p>{{ product_type }} &middot; <strong>&#8358;{{ "{:,.0f}".format(amount|float) }}</strong></p></div>
+    <div class="ro-case-hero-actions"><span>Current stage</span><strong>{{ app.stage|replace('_',' ')|title }}</strong><a href="/applications/{{ app_id }}/step/1" class="action-secondary-compact">Open intake</a></div>
+  </section>
+  {% if app.stage == 'returned' %}<div class="flat-card danger ro-return-alert" role="alert"><strong>Returned for correction</strong><span>{{ app.return_notes or 'Review and correct the outstanding items.' }}</span></div>{% endif %}
 
-        {% endif %}
-        {# Verification & Integrations Card #}
-        {% if false %}
-        <div class="page-card csp-s-b3a2297a12f5">
-            <h3 class="csp-s-93e773d1eb63">Verification & Screening</h3>
-            <div class="csp-s-18809276c4d1">
-                
-                {# Qore ID Verification #}
-                <div class="csp-s-9d119403466a">
-                    <span>Qore ID (BVN Check)</span>
-                    {% if not VERIFICATION_ENABLED %}
-                        <span class="status-badge csp-s-11e9e4393854">Not Configured</span>
-                    {% elif ver_check %}
-                        {% if ver_check.is_valid %}
-                            <span class="status-badge verified">Verified (Valid)</span>
-                        {% elif ver_check.status == 'failed' %}
-                            <span class="status-badge returned">Failed (Mismatch)</span>
-                        {% else %}
-                            <span class="status-badge needs-review">{{ ver_check.status|title }}</span>
-                        {% endif %}
-                    {% else %}
-                        <span class="status-badge needs-review">Awaiting Check</span>
-                    {% endif %}
-                </div>
-                
-                {# Credit Bureau Check #}
-                <div class="csp-s-9d119403466a">
-                    <span>{% if bureau_multiple_configured %}{% if bureau_sub %}{{ 'CRC' if bureau_sub.provider == 'crc' else 'Credit Registry' }}{% else %}Credit Bureau{% endif %}{% else %}{{ active_bureau_provider or 'Credit Bureau' }}{% endif %} Check</span>
-                    {% if not BUREAU_REPORTING_ENABLED %}
-                        <span class="status-badge csp-s-11e9e4393854">Not Configured</span>
-                    {% elif bureau_sub %}
-                        <div class="csp-s-f8df590e4541">
-                            {% if bureau_multiple_configured %}
-                                <span class="csp-s-c029905cd705">({{ 'CRC' if bureau_sub.provider == 'crc' else 'CreditRegistry' }})</span>
-                            {% endif %}
-                            <span class="status-badge {% if bureau_sub.status == 'success' %}verified{% else %}returned{% endif %}">
-                                {{ bureau_sub.status|replace('_', ' ')|title }}
-                            </span>
-                        </div>
-                    {% else %}
-                        <span class="status-badge needs-review">Awaiting Pull</span>
-                    {% endif %}
-                </div>
-                
-                {# Youverify AML / Sanctions Screening #}
-                <div class="csp-s-9d119403466a">
-                    <span>Youverify (AML Screening)</span>
-                    {% if not AML_SCREENING_ENABLED %}
-                        <span class="status-badge csp-s-11e9e4393854">Not Configured</span>
-                    {% elif aml_check %}
-                        <span class="status-badge {% if aml_check.status == 'clear' %}verified{% elif aml_check.status in ('pep_hit', 'sanctions_hit', 'review_required') %}returned{% else %}needs-review{% endif %}">
-                            {{ aml_check.status|replace('_', ' ')|title }}
-                        </span>
-                    {% else %}
-                        <span class="status-badge needs-review">Awaiting Screening</span>
-                    {% endif %}
-                </div>
-                
-            </div>
-        </div>
-        {% endif %}
+  <section class="page-card ro-progress-card" aria-labelledby="progress-title">
+    <div class="ro-section-heading"><div><span class="ro-eyebrow">Workflow</span><h2 id="progress-title">Application progress</h2></div><span>Stage {{ app.current_stage }} of 5</span></div>
+    {% set stages=[('Intake & submission',app.created_at.strftime('%d %b %Y') if app.created_at else 'In progress'),('OCR verification','Auto-scanned' if app.current_stage >= 2 else 'Awaiting scan'),('Credit risk review','In review' if app.current_stage >= 3 else 'Awaiting review'),('Branch concurrence','In review' if app.current_stage >= 4 else 'Awaiting sign-off'),('Disbursement','Released' if app.current_stage > 5 else 'Awaiting approval')] %}
+    <ol class="ro-progress-rail">{% for label,detail in stages %}<li class="{% if app.current_stage > loop.index %}is-complete{% elif app.current_stage == loop.index %}is-current{% endif %}"><span class="ro-progress-dot">{% if app.current_stage > loop.index %}&#10003;{% else %}{{ loop.index }}{% endif %}</span><div><strong>{{ label }}</strong><span>{{ detail }}</span></div></li>{% endfor %}</ol>
+  </section>
 
-        </div>
-    </div>
-    
-    {# === RIGHT COLUMN: LOAN OFFICER WORKSPACE === #}
-    <div class="app-detail-main">
-        
-        {# Active Alerts Banner (e.g. Returned) #}
-        {% if app.stage == 'returned' %}
-        <div class="flat-card danger csp-s-b3a2297a12f5">
-            <div class="csp-s-1e77625cb26b">⚠ Application Returned for Correction</div>
-            <div class="csp-s-c3b97501f8b4">{{ app.return_notes or 'Check file details and re-upload missing documentation.' }}</div>
-        </div>
-        {% endif %}
+  <div class="ro-work-grid">
+    <main class="ro-work-main">
+      <section class="page-card" aria-labelledby="sections-title">
+        <div class="ro-section-heading"><div><span class="ro-eyebrow">Origination</span><h2 id="sections-title">Application sections</h2></div><span>Complete in order</span></div>
+        {% set steps=[(1,'Applicant details','Identity and contact information'),(3,'Guarantors','Guarantor records and verification'),(4,('Business details' if is_business else 'Employment details'),('Business operations and cash flow' if is_business else 'Employment and income evidence')),(5,'Existing facilities','Current external obligations'),(6,'Loan request','Amount, tenor, purpose, and security'),(7,'Disbursement account','Optional payout account information'),(8,'Collateral pledge','Pledge details and application submission')] %}
+        <div class="ro-intake-list">{% for num,title,hint in steps %}
+          {% set done=(num==1 and wizard_data.full_name) or (num==3 and wizard_data.guarantor_1_name) or (num==4 and (wizard_data.employer_name or wizard_data.business_type)) or (num==5 and wizard_data.facility_bank) or (num==6 and (wizard_data.amount or wizard_data.loan_amount)) or (num==7 and wizard_data.account_name) or (num==8 and wizard_data.pledge_amount_figs) %}
+          <article class="ro-intake-row"><span class="ro-intake-index {% if done %}is-complete{% endif %}">{% if done %}&#10003;{% else %}{{ loop.index }}{% endif %}</span><div><h3>{{ title }}</h3><p>{{ hint }}</p></div><span class="status-badge {{ 'verified' if done else 'needs-review' }}">{{ 'Complete' if done else 'To do' }}</span><a href="/applications/{{ app_id }}/step/{{ num }}" class="action-secondary-compact">{{ 'Review' if done else 'Complete' }}</a></article>
+        {% endfor %}</div>
+      </section>
 
-        {# Checklist of what needs to be done #}
-        <div class="page-card csp-s-b3a2297a12f5">
-            <h2 class="page-card-title csp-s-56b52be0a8d2">Tasks Pending Submission</h2>
-            <div class="csp-s-baf2fda59eac">
-                {% set checklist = [] %}
-                {% if not wizard_data.full_name %}
-                    {% set _ = checklist.append('Applicant Details form section needs completion') %}
-                {% endif %}
-                {% if not wizard_data.bvn %}
-                    {% set _ = checklist.append('Critical: 11-digit BVN required for background check') %}
-                {% endif %}
-                {% if not visitation_data or not visitation_data.premises_description %}
-                    {% set _ = checklist.append('Visitations queue: Submit Field visitation report') %}
-                {% endif %}
-                
-                {% for item in checklist %}
-                <div class="csp-s-a80133d143f0">
-                    <span class="csp-s-8eb8ddaf732d">▪</span>
-                    <span>{{ item }}</span>
-                </div>
-                {% else %}
-                <div class="csp-s-7bbfb91c0951">
-                    <span>✔</span>
-                    <span>All intake requirements complete. Ready for OCR auto-scan review.</span>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        
-        {# Form Wizard Steps Grid #}
-        <div class="page-card csp-s-b3a2297a12f5">
-            <h2 class="page-card-title csp-s-56b52be0a8d2">Intake Wizard Progress</h2>
-            <div class="csp-s-4906e552c7c7">
-                
-                {% set step_names = [
-                    (1, "Applicant Details"),
-                    (2, "Spousal Consent"),
-                    (3, "Guarantors List"),
-                    (4, "Employment Details"),
-                    (5, "Existing Facilities"),
-                    (6, "Loan Request Details"),
-                    (7, "Disbursement Account"),
-                    (8, "Collateral Pledge & Submission")
-                ] %}
-                
-                {% for step_num, step_title in step_names %}
-                    {# Check if step is completed (simply checking if data is present or mock) #}
-                    {% set is_step_done = false %}
-                    {% if step_num == 1 and wizard_data.full_name %}
-                        {% set is_step_done = true %}
-                    {% elif step_num == 2 and wizard_data.marital_status %}
-                        {% set is_step_done = true %}
-                    {% elif step_num == 3 and wizard_data.guarantor_1_name %}
-                        {% set is_step_done = true %}
-                    {% elif step_num == 4 and wizard_data.employer_name %}
-                        {% set is_step_done = true %}
-                    {% elif step_num == 6 and wizard_data.loan_amount %}
-                        {% set is_step_done = true %}
-                    {% endif %}
-                    
-                    <div class="csp-s-3aed847cded6">
-                        <div>
-                            <div class="csp-s-c029905cd705">Step {{ step_num }}</div>
-                            <div class="csp-s-d3bfb4e04f8e">{{ step_title }}</div>
-                        </div>
-                        <a href="/applications/{{ app_id }}/step/{{ step_num }}" class="btn-primary-filled csp-s-5914a2f4f021">
-                            Edit
-                        </a>
-                    </div>
-                {% endfor %}
-                
-            </div>
-        </div>
+      <section class="page-card ro-document-space" aria-labelledby="documents-title">
+        <div class="ro-section-heading"><div><span class="ro-eyebrow">Section 9</span><h2 id="documents-title">Documents and images</h2></div><span>{{ documents|length }} uploaded</span></div>
+        <p class="ro-section-copy">Document upload opens after the application is submitted. Upload several files together and optionally give each one a clearer name.</p>
+        {% if app.stage == 'intake' %}<div class="ro-locked-space"><span aria-hidden="true">9</span><div><strong>Available after submission</strong><p>Finish the application sections above to unlock document upload.</p></div></div>
+        {% else %}<a href="/applications/{{ app_id }}/documents/upload" class="ro-document-drop-link"><span aria-hidden="true">+</span><div><strong>Upload documents or images</strong><small>Select multiple PDF, JPG, JPEG, or PNG files</small></div></a>{% endif %}
+        {% if documents %}<div class="ro-uploaded-files">{% for doc in documents %}<article><div><strong>{{ doc.original_name or 'Document' }}</strong><span>{{ (doc.doc_type or doc.category or 'document')|replace('_',' ')|title }}</span></div>{% if doc.url and capabilities.can_download_documents %}<a href="{{ doc.url }}" target="_blank" rel="noopener" class="action-secondary-compact">View</a>{% endif %}</article>{% endfor %}</div>{% endif %}
+      </section>
+    </main>
 
-        {# Upload zones #}
-        <div class="page-card csp-s-b3a2297a12f5">
-            <div class="csp-s-ab4de765f5e2">
-                <h2 class="page-card-title csp-s-06de003890e0">Supporting Document Intake</h2>
-            </div>
-            
-            <div class="csp-s-7f1a377cec75">
-                <a href="/applications/{{ app_id }}/documents/upload?type=passport_photo" class="csp-s-afb0015a6a08">
-                    <span class="csp-s-1193f3a6b03f">📷</span>
-                    <span class="csp-s-9c9f3d773f33">Passport Photo</span>
-                </a>
-                <a href="/applications/{{ app_id }}/documents/upload?type=id_card" class="csp-s-afb0015a6a08">
-                    <span class="csp-s-1193f3a6b03f">🗂️</span>
-                    <span class="csp-s-9c9f3d773f33">Valid ID Card</span>
-                </a>
-                <a href="/applications/{{ app_id }}/documents/upload?type=utility_bill" class="csp-s-afb0015a6a08">
-                    <span class="csp-s-1193f3a6b03f">📋</span>
-                    <span class="csp-s-9c9f3d773f33">Utility Bill</span>
-                </a>
-            </div>
-        </div>
-        
-    </div>
+    <aside class="ro-work-aside">
+      <section class="page-card"><div class="ro-section-heading"><div><span class="ro-eyebrow">Priority</span><h2>Next actions</h2></div><span class="ro-task-count">{{ tasks|length }}</span></div><div class="ro-task-list">{% for title,detail,url in tasks %}<article class="ro-task-item"><i></i><div><strong>{{ title }}</strong><p>{{ detail }}</p><a href="{{ url }}">Resolve now &rarr;</a></div></article>{% else %}<div class="ro-all-clear"><span>&#10003;</span><div><strong>Intake ready</strong><p>All core submission requirements are complete.</p></div></div>{% endfor %}</div></section>
+      <section class="page-card ro-case-summary"><div class="ro-section-heading"><div><span class="ro-eyebrow">At a glance</span><h2>Case summary</h2></div></div><dl><div><dt>Reference</dt><dd>{{ app.ref_no }}</dd></div><div><dt>Product</dt><dd>{{ product_type }}</dd></div><div><dt>Requested</dt><dd>&#8358;{{ "{:,.0f}".format(amount|float) }}</dd></div><div><dt>Created</dt><dd>{{ app.created_at.strftime('%d %b %Y') if app.created_at else '—' }}</dd></div></dl></section>
+    </aside>
+  </div>
+  <div class="ro-evidence-stack">{% include "components/loan_recommendations.html" %}{% include "components/core_banking_summary.html" %}</div>
 </div>
-{% include "components/loan_recommendations.html" %}
-{% include "components/core_banking_summary.html" %}
-{% include "components/application_document_checklist.html" %}
 {% endblock %}

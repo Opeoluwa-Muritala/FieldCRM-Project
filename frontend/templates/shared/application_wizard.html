@@ -1,6 +1,7 @@
 {% extends shell %}
 {% set hide_tabbar = true %}
 {% set mobile_title_text = "Application: Step " ~ step %}
+{% set is_business_sme = product and product.family == 'corporate_business' %}
 
 {% block title %}Application Wizard - Step {{ step }} | FieldCRM{% endblock %}
 
@@ -19,14 +20,8 @@
     {% endif %}
     <!-- Horizontal Step Indicator -->
     <div class="wizard-steps">
-        {% set is_single = (data.marital_status == 'Single') %}
-        {% if is_single %}
-            {% set steps_list = [1, 3, 4, 5, 6, 7, 8, 9] %}
-            {% set step_labels = ["Details", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge", "Review"] %}
-        {% else %}
-            {% set steps_list = [1, 2, 3, 4, 5, 6, 7, 8, 9] %}
-            {% set step_labels = ["Details", "Spousal Consent", "Guarantors", "Employment", "Facilities", "Loan Details", "Payout Account", "Collateral Pledge", "Review"] %}
-        {% endif %}
+        {% set steps_list = [1, 3, 4, 5, 6, 7, 8, 9] %}
+        {% set step_labels = ["Details", "Guarantors", ("Business" if is_business_sme else "Employment"), "Facilities", "Loan Details", "Payout Account", "Collateral Pledge", "Review"] %}
         {% for s_num in steps_list %}
             {% set is_active = (s_num == step) %}
             {% set current_idx = steps_list.index(step) if step in steps_list else 0 %}
@@ -52,7 +47,7 @@
                 {% if step == 1 %}Applicant Details
                 {% elif step == 2 %}Spousal Consent
                 {% elif step == 3 %}Guarantors List
-                {% elif step == 4 %}Employment & Business Details
+                {% elif step == 4 %}{{ "Business Details" if is_business_sme else "Employment Details" }}
                 {% elif step == 5 %}Existing Facilities
                 {% elif step == 6 %}Loan Request Details
                 {% elif step == 7 %}Disbursement Account
@@ -63,7 +58,7 @@
                 {% if step == 1 %}Personal identity and contact information.
                 {% elif step == 2 %}Required for married applicants.
                 {% elif step == 3 %}Two guarantors are required for this facility.
-                {% elif step == 4 %}Declare current income sources and upload supporting proofs.
+                {% elif step == 4 %}{{ "Provide business operations and cash-flow details." if is_business_sme else "Declare current employment income and upload supporting proofs." }}
                 {% elif step == 5 %}Disclose all active loan obligations with other financial institutions.
                 {% elif step == 6 %}Specify the amount, tenor, purpose, and security.
                 {% elif step == 7 %}Where the approved facility will be paid.
@@ -101,9 +96,9 @@
                         <input type="text" name="id_number" class="field-input" value="{{ data.id_number or '' }}" required>
                     </div>
 
-                    <div class="form-group">
+                    <div class="form-group" id="idExpiryGroup">
                         <label class="field-label">Expiry Date <span class="required">*</span></label>
-                        <input type="date" name="id_expiry" id="id_expiry" class="field-input" value="{{ data.id_expiry or '' }}" required>
+                        <input type="date" name="id_expiry" id="id_expiry" class="field-input" value="{{ data.id_expiry or '' }}">
                         <span class="error-msg csp-s-ee202e2f2e7b" id="err_expiry">This ID has expired. Please upload a valid ID.</span>
                     </div>
 
@@ -343,7 +338,8 @@
 
             <!-- STEP 4: EMPLOYMENT & BUSINESS -->
             {% if step == 4 %}
-            <div class="csp-s-f6279acc7326" {% if product.family == 'corporate_business' %}hidden{% endif %}>
+            {% if not is_business_sme %}
+            <div class="csp-s-f6279acc7326">
                 <label class="field-label">Employment Type</label>
                 <div class="pill-radio-group" id="empTypeGroup">
                     {% for opt in ["Full-time", "Part-time", "Contract Staff", "Public Servant", "Self-employed"] %}
@@ -380,9 +376,10 @@
                     <textarea name="employer_address" id="employer_address" class="field-textarea">{{ data.employer_address or '' }}</textarea>
                 </div>
             </div>
+            {% endif %}
 
             <!-- Fieldset for Self Employed -->
-            <div id="businessFields" class="form-grid-2 csp-s-6e22c58a7a6a">
+            <div id="businessFields" class="form-grid-2{% if not is_business_sme %} csp-s-6e22c58a7a6a{% endif %}">
                 <div class="form-group">
                     <label class="field-label">Type of Business</label>
                     <input type="text" name="business_type" class="field-input" value="{{ data.business_type or '' }}">
@@ -474,36 +471,6 @@
                 <div class="form-group"><label class="field-label">Supplier Payables (&#8358;)</label><input type="number" min="0" step="0.01" name="payables_value" class="field-input" value="{{ data.payables_value or 0 }}"></div>
             </div>
 
-            <!-- Required Documents slots -->
-            <div class="csp-s-ccacfa62cb3a">
-                <div class="field-label csp-s-b7000850f53c">Required Documents</div>
-                
-                <div class="csp-s-5dec27a09be9">
-                    <!-- Payslip / Business Statement -->
-                    <div class="csp-s-d7168c1b83a1">
-                        <div>
-                            <span id="docLabelPrimary" class="csp-s-7ba9bad628ec">Payslip / Business Statement</span>
-                            <div class="csp-s-f779da42d59e">PDF, JPG, JPEG, or PNG formats accepted</div>
-                        </div>
-                        <div class="csp-s-b5e6692c7caf">
-                            <span class="status-badge verified">Verified</span>
-                            <a href="/applications/{{ app_id }}/documents/upload?type=primary_statement" class="btn-ghost-link csp-s-b166ee10dc46">Upload</a>
-                        </div>
-                    </div>
-
-                    <!-- Bank Statement -->
-                    <div class="csp-s-d7168c1b83a1">
-                        <div>
-                            <span class="csp-s-7ba9bad628ec">Salary / Business Account Bank Statement</span>
-                            <div class="csp-s-f779da42d59e">Most recent 3 months history</div>
-                        </div>
-                        <div class="csp-s-b5e6692c7caf">
-                            <span class="status-badge missing">Missing</span>
-                            <a href="/applications/{{ app_id }}/documents/upload?type=bank_statement" class="btn-ghost-link csp-s-b166ee10dc46">Upload</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
             {% endif %}
 
             <!-- STEP 5: EXISTING FACILITIES -->
@@ -662,16 +629,16 @@
             {% if step == 7 %}
             <div class="form-grid-2">
                 <div class="form-group">
-                    <label class="field-label">Account Name <span class="required">*</span></label>
-                    <input type="text" name="account_name" class="field-input" value="{{ data.account_name or '' }}" required>
+                    <label class="field-label">Account Name <span class="field-optional">Optional</span></label>
+                    <input type="text" name="account_name" class="field-input" value="{{ data.account_name or '' }}">
                 </div>
                 <div class="form-group">
-                    <label class="field-label">Account Number <span class="required">*</span></label>
-                    <input type="text" name="account_number" class="field-input" value="{{ data.account_number or '' }}" maxlength="10" required>
+                    <label class="field-label">Account Number <span class="field-optional">Optional</span></label>
+                    <input type="text" name="account_number" class="field-input" value="{{ data.account_number or '' }}" maxlength="10">
                 </div>
                 <div class="form-group">
-                    <label class="field-label">Bank Name <span class="required">*</span></label>
-                    <input type="text" name="bank_name" class="field-input" value="{{ data.bank_name or '' }}" required>
+                    <label class="field-label">Bank Name <span class="field-optional">Optional</span></label>
+                    <input type="text" name="bank_name" class="field-input" value="{{ data.bank_name or '' }}">
                 </div>
                 <div class="form-group">
                     <label class="field-label">Sort Code</label>
@@ -691,11 +658,6 @@
                 Review the extracted values against the original PDF before approval.
             </div>
             {% endif %}
-            <div class="tab-row">
-                <button type="button" class="tab-btn active" id="tabFill" data-pledge-tab="fill">Fill Form</button>
-                <button type="button" class="tab-btn" id="tabUpload" data-pledge-tab="upload">Upload Completed Form</button>
-            </div>
-
             <!-- Tab content: Fill Form -->
             <div id="pledgeFillSection">
                 <div class="csp-s-a0f6f167f740">Receipt Details</div>
@@ -797,23 +759,6 @@
                 {% endif %}
             </div>
 
-            <!-- Tab content: Upload completed -->
-            <div id="pledgeUploadSection" class="csp-s-6e22c58a7a6a">
-                <div class="upload-dragzone" data-choose-pledge-file>
-                    <span>Drag and drop signed Pledge Form here</span>
-                    <span class="csp-s-83f4e781efc8">Supports PDF, PNG, JPG (Max 5MB)</span>
-                    <input type="file" id="pledge_file" name="pledge_file" accept="application/pdf,image/jpeg,image/png" class="csp-s-6e22c58a7a6a">
-                </div>
-                <div id="pledgeUploadFeedback" class="csp-s-3a737e15be5f">
-                    <div class="csp-s-5ffb91a26b04">
-                        <div>
-                            <strong id="pledge_fn"></strong>
-                            <div class="csp-s-f779da42d59e">Ready to upload when you save this step.</div>
-                        </div>
-                        <span class="status-badge needs-review">Ready to upload</span>
-                    </div>
-                </div>
-            </div>
             {% endif %}
 
 
@@ -822,7 +767,7 @@
             <div class="wizard-footer">
                 <div>
                     {% if step > 1 %}
-                        {% if is_single and step == 3 %}
+                        {% if step == 3 %}
                         <a href="/applications/{{ app_id }}/step/1" class="btn-ghost-link">&larr; Back</a>
                         {% else %}
                         <a href="/applications/{{ app_id }}/step/{{ step - 1 }}" class="btn-ghost-link">&larr; Back</a>
@@ -836,7 +781,7 @@
                         {% if step == 8 %}Submit to Team Lead &rarr;{% else %}Save &amp; Continue &rarr;{% endif %}
                     </button>
                     {% elif review_mode and step < 8 %}
-                        {% if is_single and step == 1 %}
+                        {% if step == 1 %}
                         <a href="/applications/{{ app_id }}/step/3" class="btn-primary-filled">Next Section &rarr;</a>
                         {% else %}
                         <a href="/applications/{{ app_id }}/step/{{ step + 1 }}" class="btn-primary-filled">Next Section &rarr;</a>
@@ -853,12 +798,12 @@
 <script nonce="{{ csp_nonce }}">
     // Toggle fields based on employment type selection
     function toggleEmploymentFields() {
-        const empType = document.querySelector('input[name="employment_type"]:checked').value;
+        const empType = document.querySelector('input[name="employment_type"]:checked')?.value;
         const salaryFields = document.getElementById('salaryFields');
         const businessFields = document.getElementById('businessFields');
         const docLabel = document.getElementById('docLabelPrimary');
 
-        if (!salaryFields || !businessFields) return;
+        if (!empType || !salaryFields || !businessFields) return;
 
         if (empType === 'Self-employed') {
             salaryFields.style.display = 'none';
@@ -885,10 +830,24 @@
     }
 
     // Checking ID expiry
+    function updateIdExpiryRequirement() {
+        const idType = document.querySelector('input[name="id_type"]:checked')?.value;
+        const group = document.getElementById('idExpiryGroup');
+        const input = document.getElementById('id_expiry');
+        const err = document.getElementById('err_expiry');
+        if (!group || !input) return;
+
+        const isNin = idType === 'National ID';
+        group.hidden = isNin;
+        input.disabled = isNin;
+        input.required = !isNin;
+        if (isNin && err) err.style.display = 'none';
+    }
+
     function checkIdExpiry() {
         const input = document.getElementById('id_expiry');
         const err = document.getElementById('err_expiry');
-        if (!input || !err) return;
+        if (!input || !err || input.disabled || !input.value) return;
         const expiryDate = new Date(input.value);
         const today = new Date();
         if (expiryDate < today) {
@@ -1262,6 +1221,7 @@
         if (document.querySelector('input[name="employment_type"]')) {
             toggleEmploymentFields();
         }
+        updateIdExpiryRequirement();
         if (document.getElementById('sec_Shop Stock')) {
             checkCollateralSelection();
         }
@@ -1300,6 +1260,7 @@
         }
     });
     document.getElementById('id_expiry')?.addEventListener('change', checkIdExpiry);
+    document.querySelectorAll('[name="id_type"]').forEach((input) => input.addEventListener('change', updateIdExpiryRequirement));
     document.getElementById('photo_file')?.addEventListener('change', (event) => previewPhoto(event.currentTarget));
     document.querySelector('[data-choose-photo]')?.addEventListener('click', () => document.getElementById('photo_file')?.click());
     document.querySelectorAll('[name="employment_type"]').forEach((input) => input.addEventListener('change', toggleEmploymentFields));
