@@ -191,3 +191,14 @@ def test_shared_content_scales_and_stays_inside_boundaries():
     assert "grid-template-columns:minmax(0,1fr)!important" in css
     assert "white-space:normal" in css
     assert "web-ui-system.css?v=20260831-content-containment" in shell
+
+
+def test_mcc_dossier_prevents_column_and_recommendation_overlap():
+    with open("frontend/templates/executive/mcc_summary.html", "r", encoding="utf-8") as f:
+        html = f.read()
+
+    assert "@media(max-width:1180px)" in html
+    assert "grid-template-columns:repeat(auto-fit" in html
+    assert ".mcc-member-recommendation{display:grid" in html
+    assert ".mcc-stack>.page-card{min-width:0" in html
+    assert "overflow-x:auto" in html
