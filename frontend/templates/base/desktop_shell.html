@@ -190,5 +190,17 @@
         collapseControl.setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
         try { window.localStorage.setItem('fieldcrm-sidebar-collapsed', collapsed ? 'true' : 'false'); } catch (_) { /* keep the in-memory state */ }
     });
+    document.querySelectorAll('a[href]').forEach((link) => {
+        const isBackControl = link.hasAttribute('data-history-back') || /^(←\s*)?back\b/i.test(link.textContent.trim());
+        if (!isBackControl) return;
+        link.addEventListener('click', (event) => {
+            if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            let hasSafePreviousPage = false;
+            try { hasSafePreviousPage = Boolean(document.referrer) && new URL(document.referrer).origin === window.location.origin && window.history.length > 1; } catch (_) { /* use the explicit same-origin fallback href */ }
+            if (!hasSafePreviousPage) return;
+            event.preventDefault();
+            window.history.back();
+        });
+    });
 </script>
 {% endblock %}

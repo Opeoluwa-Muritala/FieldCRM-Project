@@ -1,135 +1,39 @@
 {% extends shell %}
-
-{% block title %}Collateral Valuation — FieldCRM{% endblock %}
+{% block title %}Collateral Valuation | FieldCRM{% endblock %}
 {% block page_title %}Legal Appraisal Workstation{% endblock %}
-{% block breadcrumb %}Loans &rarr; Valuation &rarr; {{ app.ref_no }}{% endblock %}
-
+{% block breadcrumb %}Legal &rarr; Valuation &rarr; {{ app.ref_no }}{% endblock %}
 {% block content %}
-<div class="app-detail-layout balanced-detail-layout csp-s-68745a7985a4">
-    
-    {# === LEFT COLUMN: APPLICATION DETAIL SUMMARY === #}
-    <div class="app-detail-sidebar">
-        <div class="app-detail-sidebar-sticky">
-        
-        {# Identity Card #}
-        <div class="page-card csp-s-b3a2297a12f5">
-            <div class="csp-s-9c19c1a1a663">{{ app.ref_no }}</div>
-            <h2 class="page-card-title csp-s-cbc7eadb2c84">{{ borrower_name }}</h2>
-            <div class="csp-s-c4c3ed249eaf">
-                {{ product_type }} · ₦{{ "{:,}".format(amount|int) }}
-            </div>
-            <span class="status-badge needs-review">{{ app.stage|replace('_', ' ')|title }}</span>
+<main class="legal-workspace legal-valuation-workspace">
+  <header class="legal-page-heading">
+    <div><span class="eyebrow">{{ app.ref_no }}</span><h1>{{ borrower_name }}</h1><p>{{ product_type or 'Product not recorded' }} &middot; {{ tenure or 0 }} months</p></div>
+    <div class="legal-requested-amount"><span>Requested amount</span><strong>&#8358;{{ "{:,.2f}".format(amount or 0) }}</strong><small>{{ app.stage|replace('_', ' ')|title }}</small></div>
+  </header>
+  <form action="/applications/{{ app_id }}/valuation" method="post" id="valuationForm" class="legal-valuation-form">
+    <section class="legal-form-intro"><div><span class="eyebrow">Pledged assets</span><h2>Record independent appraisal evidence</h2><p>Values must be greater than zero. LTV is calculated against the requested facility amount.</p></div><span>{{ items|length }} item{% if items|length != 1 %}s{% endif %}</span></section>
+    <div class="legal-item-stack">
+      {% for item in items %}
+      <fieldset class="legal-item-card">
+        <legend><span>Item {{ item.item_number }}</span>{{ item.item_name }}</legend>
+        <div class="legal-item-context"><span>Officer estimate</span><strong>&#8358;{{ "{:,.2f}".format(item.estimated_value or 0) }}</strong>{% if item.description %}<p>{{ item.description }}</p>{% endif %}</div>
+        <div class="form-grid-2">
+          <div class="form-group"><label class="field-label" for="appraised_{{ item.id }}">Appraised value (&#8358;) <span class="required">*</span></label><input id="appraised_{{ item.id }}" type="number" min="0.01" step="0.01" name="appraised_value_{{ item.id }}" class="field-input" value="{{ item.appraised_value if item.appraised_value is not none else '' }}" data-ltv-item-id="{{ item.id }}" required></div>
+          <div class="form-group"><label class="field-label" for="ltv_{{ item.id }}">Calculated loan-to-value</label><output id="ltv_{{ item.id }}" class="field-input legal-ltv-output">{% if item.loan_to_value_ratio is not none %}{{ '{:.2f}%'.format(item.loan_to_value_ratio * 100) }}{% else %}&mdash;{% endif %}</output></div>
+          <div class="form-group"><label class="field-label" for="valuer_{{ item.id }}">Valuer name</label><input id="valuer_{{ item.id }}" type="text" maxlength="160" name="valuer_name_{{ item.id }}" class="field-input" value="{{ item.valuer_name or '' }}"></div>
+          <div class="form-group"><label class="field-label" for="license_{{ item.id }}">Valuer licence number</label><input id="license_{{ item.id }}" type="text" maxlength="80" name="valuer_license_no_{{ item.id }}" class="field-input" value="{{ item.valuer_license_no or '' }}"></div>
+          <div class="form-group"><label class="field-label" for="date_{{ item.id }}">Valuation date</label><input id="date_{{ item.id }}" type="date" name="valuation_date_{{ item.id }}" class="field-input" value="{{ item.valuation_date or '' }}"></div>
         </div>
-
-        {# Timeline Summary #}
-        <div class="page-card csp-s-b3a2297a12f5">
-            <h3 class="csp-s-02ca940a9f25">Application Details</h3>
-            <div class="csp-s-98d92af9a897">
-                <div class="csp-s-9de9ed288dc0">
-                    <span class="csp-s-9d21da37c47e">Tenor:</span>
-                    <strong class="csp-s-a8492c877bbf">{{ tenure }} Months</strong>
-                </div>
-                <div class="csp-s-9de9ed288dc0">
-                    <span class="csp-s-9d21da37c47e">Phone Number:</span>
-                    <strong class="csp-s-a8492c877bbf">{{ app.phone or '—' }}</strong>
-                </div>
-                <div class="csp-s-9de9ed288dc0">
-                    <span class="csp-s-9d21da37c47e">Email:</span>
-                    <strong class="csp-s-a8492c877bbf">{{ app.email or '—' }}</strong>
-                </div>
-            </div>
-        </div>
-        
-        </div>
+      </fieldset>
+      {% else %}<div class="legal-empty-state"><strong>No pledged collateral</strong><p>This dossier has no collateral items available for Legal appraisal.</p></div>{% endfor %}
     </div>
-
-    {# === RIGHT COLUMN: VALUATION FORM === #}
-    <div class="app-detail-main">
-        
-        <div class="page-card csp-s-b3a2297a12f5">
-            <h2 class="page-card-title csp-s-12705adb11a6">Collateral Appraisal & Property Valuation</h2>
-            
-            <form action="/applications/{{ app_id }}/valuation" method="POST" id="valuationForm">
-                
-                {% for item in items %}
-                    <div class="csp-s-5698e58ee642">
-                        <div class="csp-s-ac743fbf2a74">
-                            <strong class="csp-s-9ca850777f4e">Item #{{ item.item_number }}: {{ item.item_name }}</strong>
-                            <span class="csp-s-f779da42d59e">Est. Value: ₦{{ "{:,.2f}".format(item.estimated_value) if item.estimated_value else '0.00' }}</span>
-                        </div>
-                        
-                        {% if item.description %}
-                            <div class="csp-s-f144ecff48fd">
-                                <strong>Description:</strong> {{ item.description }}
-                            </div>
-                        {% endif %}
-                        
-                        <div class="form-grid-2 csp-s-2a6bce4dca07">
-                            
-                            <div class="form-group csp-s-b9270eba65cc">
-                                <label class="field-label csp-s-c3017a22a7d3">Appraised Value (₦) <span class="csp-s-cdee27c94461">*</span></label>
-                                <input type="number" step="0.01" name="appraised_value_{{ item.id }}" class="field-input csp-s-15e6a03c581f" 
-                                       value="{{ item.appraised_value if item.appraised_value is not none else '' }}" 
-                                       data-ltv-item-id="{{ item.id }}" required>
-                            </div>
-                            
-                            <div class="form-group csp-s-b9270eba65cc">
-                                <label class="field-label csp-s-c3017a22a7d3">Calculated Loan-to-Value (LTV)</label>
-                                <input type="text" id="ltv_{{ item.id }}" class="field-input csp-s-8862c070ce1a" readonly 
-                                       value="{% if item.loan_to_value_ratio is not none %}{{ '{:.2f}%'.format(item.loan_to_value_ratio * 100) }}{% else %}—{% endif %}">
-                            </div>
-
-                            <div class="form-group csp-s-b9270eba65cc">
-                                <label class="field-label csp-s-c3017a22a7d3">Valuer Name</label>
-                                <input type="text" name="valuer_name_{{ item.id }}" class="field-input csp-s-15e6a03c581f" 
-                                       value="{{ item.valuer_name if item.valuer_name else '' }}">
-                            </div>
-
-                            <div class="form-group csp-s-b9270eba65cc">
-                                <label class="field-label csp-s-c3017a22a7d3">Valuer License No.</label>
-                                <input type="text" name="valuer_license_no_{{ item.id }}" class="field-input csp-s-15e6a03c581f" 
-                                       value="{{ item.valuer_license_no if item.valuer_license_no else '' }}">
-                            </div>
-
-                            <div class="form-group csp-s-10e7f03704ec">
-                                <label class="field-label csp-s-c3017a22a7d3">Valuation Date</label>
-                                <input type="date" name="valuation_date_{{ item.id }}" class="field-input csp-s-15e6a03c581f" 
-                                       value="{{ item.valuation_date if item.valuation_date else '' }}">
-                            </div>
-
-                        </div>
-                    </div>
-                {% else %}
-                    <div class="csp-s-9d40dcbf69dd">
-                        No collateral pledged for this application.
-                    </div>
-                {% endfor %}
-                
-                <div class="csp-s-9dfec4074e26">
-                    <a href="/legal-queue" class="csp-s-4568314e4da6">&larr; Back to Queue</a>
-                    <button type="submit" class="btn-primary-filled csp-s-71bed4a51c29">Record Appraisal Valuations</button>
-                </div>
-                
-            </form>
-        </div>
-        
-    </div>
-</div>
-
+    <footer class="legal-form-actions"><a href="/legal-queue" class="btn-secondary" data-history-back>Back</a>{% if items %}<button type="submit" class="btn-primary-filled">Save appraisal valuations</button>{% endif %}</footer>
+  </form>
+</main>
 <script nonce="{{ csp_nonce }}">
-    const loanAmount = {{ amount }};
-    function calculateLTV(itemId, appraisedValStr) {
-        const appraisedVal = parseFloat(appraisedValStr);
-        const ltvInput = document.getElementById(`ltv_${itemId}`);
-        if (isNaN(appraisedVal) || appraisedVal <= 0) {
-            ltvInput.value = '—';
-            return;
-        }
-        const ratio = (loanAmount / appraisedVal) * 100;
-        ltvInput.value = ratio.toFixed(2) + '%';
-    }
-    document.querySelectorAll('[data-ltv-item-id]').forEach((input) => {
-        input.addEventListener('input', () => calculateLTV(input.dataset.ltvItemId, input.value));
-    });
+  const loanAmount = Number({{ amount or 0 }});
+  document.querySelectorAll('[data-ltv-item-id]').forEach((input) => {
+    const output = document.getElementById(`ltv_${input.dataset.ltvItemId}`);
+    const update = () => { const value = Number(input.value); output.textContent = Number.isFinite(value) && value > 0 && loanAmount > 0 ? `${((loanAmount / value) * 100).toFixed(2)}%` : '\u2014'; };
+    input.addEventListener('input', update);
+  });
 </script>
 {% endblock %}
