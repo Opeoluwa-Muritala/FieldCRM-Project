@@ -4,6 +4,7 @@
 
 {% block breadcrumb %}Field &rarr; Visitation &rarr; {{ app_id }}{% endblock %}
 {% block page_title %}Field Visitation Report{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/dashboard_legacy.css?v=20260831-visitation">{% endblock %}
 
 {% block content %}
 <div class="page-card no-shadow">
@@ -12,18 +13,35 @@
         <p class="page-card-subtitle">Verify business viability and residential premises for borrower {{ borrower_name }}.</p>
     </div>
 
+    <section class="loan-control-strip" aria-label="Visitation application summary">
+        <div><span>Application</span><strong>{{ app.ref_no or app_id }}</strong></div>
+        <div><span>Borrower</span><strong>{{ borrower_name }}</strong></div>
+        <div><span>Product</span><strong>{{ app.loan_type|replace('_',' ')|title }}</strong></div>
+        <div><span>Amount</span><strong>&#8358;{{ "{:,.0f}".format(app.amount or 0) }}</strong></div>
+        <div><span>Stage</span><strong>{{ app.stage|replace('_',' ')|title }}</strong></div>
+        <div><span>Visit status</span><strong>{{ data.status|default('Not submitted', true)|replace('_',' ')|title }}</strong></div>
+    </section>
+
     {% if readonly %}<div class="review-mode-banner"><strong>Read-only evidence view</strong><span>This report cannot be changed from the audit view.</span></div>{% endif %}
 
     <form id="visitationForm" action="/applications/{{ app_id }}/visitation" method="POST">
-        <fieldset {% if readonly %}disabled{% endif %} class="visitation-fieldset-reset">
+        <input type="hidden" name="action" value="save_report" data-visitation-action>
         <!-- Section 1: Visiting Officer Report -->
-        <div class="csp-s-e8a8a9c051f6">
+        <fieldset {% if not can_edit_report %}disabled{% endif %} class="visitation-fieldset-reset csp-s-e8a8a9c051f6">
             <div class="csp-s-8e9487e647fc">Officer Report</div>
             
             <div class="form-grid-2">
                 <div class="form-group">
                     <label class="field-label">Date of Visitation <span class="required">*</span></label>
                     <input type="date" name="visit_date" class="field-input" value="{{ data.visit_date or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Person Met <span class="required">*</span></label>
+                    <input type="text" name="person_met" class="field-input" value="{{ data.met_with or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Relationship to Borrower</label>
+                    <input type="text" name="relationship" class="field-input" value="{{ data.relationship or '' }}">
                 </div>
                 <div class="form-group">
                     <label class="field-label">Time of Arrival</label>
@@ -44,14 +62,14 @@
                 </div>
                 <div class="form-group">
                     <label class="field-label">Visiting Officer Name</label>
-                    <input type="text" name="visiting_officer" class="field-input" value="{{ data.visiting_officer or current_user.name }}" readonly>
+                    <input type="text" class="field-input" value="{{ data.visiting_officer or current_user.name }}" readonly>
                 </div>
                 <div class="form-group">
                     <label class="field-label">Relationship Officer <span class="required">*</span></label>
-                    <input type="text" name="account_officer" class="field-input" value="{{ data.account_officer or '' }}" required>
+                    <input type="text" class="field-input" value="{{ data.account_officer or current_user.name }}" readonly>
                 </div>
             </div>
-        </div>
+        </fieldset>
 
         <!-- GPS & Site Photo (from mobile) -->
         <div class="csp-s-17421d7438d5">
@@ -71,10 +89,10 @@
         </div>
 
         <!-- Section 2: Credit Analyst Concurrence -->
-        <div class="csp-s-236eaeea2c5c">
+        <fieldset {% if not can_concur %}disabled{% endif %} class="visitation-fieldset-reset csp-s-236eaeea2c5c">
             <div class="csp-s-8e9487e647fc">Credit Analyst Concurrence</div>
             
-            {% set is_bm = (current_user.role == "Credit Analyst") %}
+            {% set is_bm = can_concur %}
             
             {% if not is_bm %}
             <!-- Locked State for Loan Officers or other roles -->
@@ -116,20 +134,14 @@
                     <textarea name="bm_notes" class="field-textarea" placeholder="Credit Analyst feedback notes...">{{ data.bm_notes or '' }}</textarea>
                 </div>            </div>
             {% endif %}
-        </div>
+        </fieldset>
 
         <!-- Action Footer -->
         <div class="csp-s-2412d21f7a90">
             <a href="/applications/{{ app_id }}" class="btn-ghost-link">&larr; Back to Application</a>
-            {% if not readonly %}
-            {% if is_bm %}
-            <button type="submit" name="action" value="concur" class="btn-primary-filled">Submit Concurrence &rarr;</button>
-            {% else %}
-            <button type="submit" name="action" value="save_report" class="btn-primary-filled">Save Visitation Report &rarr;</button>
-            {% endif %}
-            {% endif %}
+            {% if can_concur %}<button type="submit" class="btn-primary-filled" data-submit-action="concur">Submit Concurrence &rarr;</button>
+            {% elif can_edit_report %}<button type="submit" class="btn-primary-filled" data-submit-action="save_report">Submit to Team Lead &rarr;</button>{% endif %}
         </div>
-        </fieldset>
     </form>
 </div>
 
@@ -158,5 +170,8 @@
     document.querySelectorAll('[name="concurrence"]').forEach((radio) => {
         radio.addEventListener('change', toggleConcurrenceReturn);
     });
+    document.querySelectorAll('[data-submit-action]').forEach((button) => button.addEventListener('click', () => {
+        document.querySelector('[data-visitation-action]').value = button.dataset.submitAction;
+    }));
 </script>
 {% endblock %}

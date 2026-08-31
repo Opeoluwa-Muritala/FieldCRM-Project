@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 
 from app.core.loan_authorization import (
+    can_edit_intake_section,
     can_edit_intake,
     can_upload_document,
     can_view_loan,
@@ -37,6 +38,25 @@ def test_officer_can_edit_only_owned_intake():
     assert can_edit_intake(officer, app(org=org, created_by=officer.id))
     assert not can_edit_intake(officer, app(org=org, created_by=uuid4()))
     assert not can_edit_intake(officer, app(org=org, created_by=officer.id, stage="branch_manager_review"))
+
+
+def test_credit_analyst_can_edit_only_business_and_facilities_during_review():
+    org = uuid4()
+    analyst = user(role="credit_analyst", org=org)
+    review = app(org=org, created_by=uuid4(), stage="credit_analyst_review")
+    assert can_edit_intake_section(analyst, review, 4)
+    assert can_edit_intake_section(analyst, review, 5)
+    assert not can_edit_intake_section(analyst, review, 1)
+    assert not can_edit_intake_section(analyst, app(org=org, created_by=uuid4(), stage="crm_review"), 4)
+    assert not can_edit_intake_section(analyst, app(org=uuid4(), created_by=uuid4(), stage="credit_analyst_review"), 4)
+
+
+def test_document_upload_is_available_to_owner_only_while_intake_is_open():
+    org = uuid4()
+    officer = user(role="account_officer", org=org)
+    assert can_upload_document(officer, app(org=org, created_by=officer.id, stage="intake"), "bank_statement")
+    assert not can_upload_document(officer, app(org=org, created_by=uuid4(), stage="intake"), "bank_statement")
+    assert not can_upload_document(officer, app(org=org, created_by=officer.id, stage="branch_manager_review"), "bank_statement")
 
 
 def test_assigned_team_lead_can_edit_only_own_branch_review():

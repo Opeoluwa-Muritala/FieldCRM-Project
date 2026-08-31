@@ -7,7 +7,7 @@ import os
 from html import escape
 from urllib.parse import urlencode
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status, Query
 from fastapi.responses import RedirectResponse
@@ -50,6 +50,7 @@ from app.domains.notifications.service import NotificationService
 from app.domains.signing.repository import SigningRepository
 from app.domains.signing.service import SigningService
 from app.domains.feasibility.repository import FeasibilityRepository
+from app.domains.feasibility.calculator import calculate_cam_feasibility
 from app.domains.core_banking.repository import CoreBankingRepository
 
 from app.config import settings
@@ -1259,7 +1260,7 @@ async def render_wizard_step(
         return RedirectResponse(url=f"/applications/{application_id}/step/3", status_code=status.HTTP_303_SEE_OTHER)
     # Review-chain roles may inspect every completed section, but never edit it.
     readonly = user_role in reviewer_roles and not capabilities_for(current_user, app).can_edit_intake
-    is_ca_editing_step4 = (step == 4 and user_role == "credit_analyst" and app.stage in ("credit_analyst_review", "credit_review"))
+    is_ca_editing_step4 = (step in (4, 5) and user_role == "credit_analyst" and app.stage in ("credit_analyst_review", "credit_review"))
     is_visitation_editing_step4 = (step == 4 and app.stage in ("intake", "branch_manager_review", "branch_supervisor_review", "credit_analyst_review") and (
         user_role in ("account_officer", "loan_officer") or user_role == "branch_manager"
     ))
@@ -1309,6 +1310,7 @@ async def render_wizard_step(
         review_mode=user_role in reviewer_roles,
         product=dict(product) if product else {},
         collateral_policies=collateral_policies,
+        adult_dob_max=(date.today().replace(year=date.today().year - 18, day=min(date.today().day, 28)) if date.today().month == 2 and date.today().day == 29 else date.today().replace(year=date.today().year - 18)).isoformat(),
     )
     return templates.TemplateResponse(request, "shared/application_wizard.html", ctx)
 
@@ -1332,7 +1334,7 @@ async def process_wizard_step(
         raise HTTPException(status_code=404, detail="Loan Application not found")
         
     user_role = current_user.role.lower().replace(" ", "_")
-    is_ca_editing_step4 = (step == 4 and user_role == "credit_analyst" and app.stage in ("credit_analyst_review", "credit_review"))
+    is_ca_editing_step4 = (step in (4, 5) and user_role == "credit_analyst" and app.stage in ("credit_analyst_review", "credit_review"))
     is_visitation_editing_step4 = (step == 4 and app.stage in ("intake", "branch_manager_review", "branch_supervisor_review", "credit_analyst_review") and (
         user_role in ("account_officer", "loan_officer") or user_role == "branch_manager"
     ))
@@ -1341,6 +1343,19 @@ async def process_wizard_step(
         require_intake_edit(current_user, app)
     form_data = await request.form()
     data_dict = form_data_to_jsonable_dict(form_data)
+
+    async def render_submitted_error(message: str, focus: str = "wizardForm"):
+        product = await conn.fetchrow("SELECT * FROM loan_products WHERE code = $1", app.loan_type)
+        policies = []
+        if step == 6:
+            policies = [dict(row) for row in await conn.fetch("SELECT * FROM collateral_valuation_policies WHERE active = TRUE")]
+        ctx = build_template_context(
+            request, current_user, app_id=application_id, step=step, data=data_dict,
+            readonly=False, applicant_signed=False, signatures={}, review_mode=False,
+            product=dict(product) if product else {}, collateral_policies=policies,
+            submitted_error=message, error_focus=focus, active_tab="queue", active_page="queue",
+        )
+        return templates.TemplateResponse(request, "shared/application_wizard.html", ctx, status_code=422)
     open_guarantor = data_dict.pop("open_guarantor", None)
     collateral_rows = []
     if step == 6:
@@ -1374,20 +1389,16 @@ async def process_wizard_step(
         total_market_value = sum((row["market_value"] for row in collateral_rows), Decimal("0"))
         total_forced_sale_value = sum((row["forced_sale_value"] for row in collateral_rows), Decimal("0"))
         if not collateral_rows:
-            query = urlencode({"error": "Add at least one valid collateral item.", "focus": "collateralEntries"})
-            return RedirectResponse(url=f"/applications/{application_id}/step/6?{query}", status_code=status.HTTP_303_SEE_OTHER)
+            return await render_submitted_error("Add at least one valid collateral item.", "collateralEntries")
         if loan_amount > 0 and total_market_value <= loan_amount:
-            query = urlencode({"error": "Total collateral market value must be greater than the requested loan amount.", "focus": "collateralEntries"})
-            return RedirectResponse(url=f"/applications/{application_id}/step/6?{query}", status_code=status.HTTP_303_SEE_OTHER)
+            return await render_submitted_error("Total collateral market value must be greater than the requested loan amount.", "collateralEntries")
         if loan_amount > 0 and total_forced_sale_value < loan_amount * Decimal("0.70"):
-            query = urlencode({"error": "Policy-adjusted forced-sale value must cover at least 70% of the requested loan.", "focus": "collateralEntries"})
-            return RedirectResponse(url=f"/applications/{application_id}/step/6?{query}", status_code=status.HTTP_303_SEE_OTHER)
+            return await render_submitted_error("Policy-adjusted forced-sale value must cover at least 70% of the requested loan.", "collateralEntries")
         data_dict["collateral_fsv"] = [str(row["forced_sale_value"]) for row in collateral_rows]
     if step == 4:
         pnl_values = [data_dict.get("pnl_period_label"), data_dict.get("pnl_revenue"), data_dict.get("pnl_expenses")]
         if any(value not in (None, "") for value in pnl_values) and not all(value not in (None, "") for value in pnl_values):
-            query = urlencode({"error": "Complete the reporting period, revenue, and expenses together.", "focus": "wizardForm"})
-            return RedirectResponse(url=f"/applications/{application_id}/step/4?{query}", status_code=status.HTTP_303_SEE_OTHER)
+            return await render_submitted_error("Complete the reporting period, revenue, and expenses together.")
     from app.domains.signing.service import SigningService
     from app.domains.signing.repository import SigningRepository
     signing_svc = SigningService(SigningRepository(conn))
@@ -1401,11 +1412,7 @@ async def process_wizard_step(
     except DomainException as exc:
         # Browser form posts should return users to the relevant field, not
         # the API's JSON exception response.
-        query = urlencode({"error": exc.message, "focus": "wizardForm"})
-        return RedirectResponse(
-            url=f"/applications/{application_id}/step/{step}?{query}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return await render_submitted_error(exc.message)
 
     if step == 3 and str(open_guarantor or "") in {"1", "2"}:
         prod = await conn.fetchrow(
@@ -1455,6 +1462,10 @@ async def process_wizard_step(
                 )
 
     if step == 4:
+        for field in ("household_expenses", "verified_other_income", "dependants", "maintenance_capex", "inventory_value", "receivables_value", "payables_value"):
+            raw_value = data_dict.get(field)
+            if raw_value not in (None, "") and Decimal(str(raw_value)) < 0:
+                raise HTTPException(status_code=422, detail=f"{field.replace('_', ' ').title()} cannot be below zero")
         location_addresses = form_data.getlist("business_location_address[]")
         location_cities = form_data.getlist("business_location_city[]")
         location_states = form_data.getlist("business_location_state[]")
@@ -1531,12 +1542,22 @@ async def process_wizard_step(
             frequency = frequencies[index] if index < len(frequencies) else "monthly"
             if frequency not in {"daily", "weekly", "biweekly", "monthly", "quarterly", "annual"}:
                 raise HTTPException(status_code=422, detail="Invalid facility repayment frequency")
+            try:
+                balance = Decimal(str(balances[index] or 0)) if index < len(balances) else Decimal("0")
+                payment = Decimal(str(payments[index] or 0)) if index < len(payments) else Decimal("0")
+                tenor_value = Decimal(str(tenors[index])) if index < len(tenors) and tenors[index] else None
+            except (InvalidOperation, TypeError, ValueError) as exc:
+                raise HTTPException(status_code=422, detail="Enter valid numeric facility values") from exc
+            if balance < 0 or payment < 0 or (tenor_value is not None and tenor_value < 0):
+                raise HTTPException(status_code=422, detail="Facility balances, payments, and remaining tenor cannot be below zero")
+            if tenor_value is not None and tenor_value != tenor_value.to_integral_value():
+                raise HTTPException(status_code=422, detail="Facility remaining tenor must be a whole number of months")
             obligations.append({
                 "lender_name": str(lender).strip(),
-                "outstanding_balance": balances[index] if index < len(balances) and balances[index] else 0,
-                "periodic_payment": payments[index] if index < len(payments) and payments[index] else 0,
+                "outstanding_balance": balance,
+                "periodic_payment": payment,
                 "payment_frequency": frequency,
-                "remaining_tenor_months": tenors[index] if index < len(tenors) else None,
+                "remaining_tenor_months": int(tenor_value) if tenor_value is not None else None,
                 "status": statuses[index] if index < len(statuses) else "current",
             })
         async with conn.transaction():
@@ -1561,31 +1582,19 @@ async def process_wizard_step(
     if request.query_params.get("draft") == "1":
         return {"saved": True, "step": step}
 
+    if is_ca_editing_step4:
+        return RedirectResponse(
+            url=f"/applications/{application_id}/credit-review?success=Section+updated",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
     if step < 8:
         next_step = step + 1
         if step == 1:
             next_step = 3
         return RedirectResponse(url=f"/applications/{application_id}/step/{next_step}", status_code=status.HTTP_303_SEE_OTHER)
-    if app.stage != "intake":
-        raise HTTPException(status_code=409, detail="Only an intake application can be submitted to the Team Lead")
-    if settings.CONFIGURABLE_PRODUCTS_ENABLED:
-        from app.domains.products.readiness import DynamicReadinessService
-        await DynamicReadinessService(conn).require_ready(app_uuid, current_user.org_id)
-    await repo.assign_default_branch_manager(app_uuid, current_user.org_id)
-    updated = await repo.advance_stage(app_uuid, current_user.org_id, "branch_manager_review")
-    if not updated:
-        raise HTTPException(status_code=409, detail="Application could not be submitted")
-    await AuditService(conn).log(
-        application_id=application_id,
-        org_id=str(current_user.org_id),
-        action="Intake submitted to Team Lead",
-        from_stage="intake",
-        to_stage="branch_manager_review",
-        actor_id=str(current_user.id),
-        actor_role=current_user.role,
-    )
     return RedirectResponse(
-        url=f"/applications/{application_id}?success=Submitted+to+Team+Lead",
+        url=f"/applications/{application_id}/documents/upload",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
@@ -1770,18 +1779,14 @@ async def render_document_upload(
 
     _verify_loan_scope(app, current_user)
     require_document_upload(current_user, app, type)
-    if app.stage == "intake":
-        return RedirectResponse(
-            url=f"/applications/{application_id}?error=Complete+and+submit+the+application+before+uploading+documents",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
+    documents = await get_document_service(conn).repo.get_by_loan(UUID(application_id), current_user.org_id)
     ctx = build_template_context(
         request,
         current_user,
         app_id=application_id,
         doc_type=type,
         borrower_name=app.applicant_name,
+        documents=documents,
         active_tab="upload",
         active_page="upload",
     )
@@ -1803,12 +1808,12 @@ async def process_document_upload(
         raise HTTPException(status_code=404, detail="Loan Application not found")
     _verify_loan_scope(app, current_user)
 
-    if app.stage == "intake":
-        raise HTTPException(status_code=409, detail="Complete and submit the application before uploading documents")
     if not files or len(files) > 20:
         raise HTTPException(status_code=422, detail="Select between 1 and 20 documents")
     doc_type = type or "other"
     require_document_upload(current_user, app, doc_type)
+    if len(display_names) != len(files) or any(not " ".join(name.split()) for name in display_names):
+        raise HTTPException(status_code=422, detail="Give every selected document a name")
     for index, file in enumerate(files):
         await service.save_upload(
             loan_id=UUID(application_id), org_id=current_user.org_id,
@@ -1816,7 +1821,7 @@ async def process_document_upload(
             user_role=current_user.role,
             display_name=display_names[index] if index < len(display_names) else None,
         )
-    return RedirectResponse(url=f"/applications/{application_id}", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url=f"/applications/{application_id}/documents/upload?success=Documents+uploaded", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/api/v1/applications/{application_id}/documents/upload-authorizations")
@@ -1947,7 +1952,17 @@ async def render_visitation_report(
     """Page 16 Field Visitation Report Page."""
     repo = LoanRepository(conn)
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
-    borrower_name = app.applicant_name if app else "Borrower"
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    require_view(current_user, app)
+    role = canonical_role(current_user.role)
+    can_edit_report = (
+        app.stage == "intake"
+        and role in {"account_officer", "credit_analyst"}
+        and (role == "credit_analyst" or app.created_by == current_user.id)
+    )
+    can_concur = role == "credit_analyst" and app.stage in {"branch_manager_review", "branch_supervisor_review", "credit_analyst_review"}
+    borrower_name = app.applicant_name
     
     visitation_repo = VisitationRepository(conn)
     data = await visitation_repo.get_by_loan(loan_id=UUID(application_id), org_id=current_user.org_id) or {}
@@ -1956,9 +1971,12 @@ async def render_visitation_report(
         request,
         current_user,
         app_id=application_id,
+        app=app,
         borrower_name=borrower_name,
         data=data,
-        readonly=request.query_params.get("readonly") == "1",
+        readonly=not (can_edit_report or can_concur),
+        can_edit_report=can_edit_report,
+        can_concur=can_concur,
         active_tab="visits",
         active_page="visits",
     )
@@ -1968,41 +1986,87 @@ async def render_visitation_report(
 async def process_visitation_report(
     request: Request,
     application_id: str,
-    action: str = Form(...),
+    action: str = Form("save_report"),
     service: VisitationService = Depends(get_visitation_service),
     current_user = Depends(RoleChecker(["Loan Officer", "Credit Analyst"]))
 ):
     """POST processor for Field visitation report."""
     form_data = await request.form()
-    
-    await service.submit_report(
-        loan_id=UUID(application_id),
-        org_id=current_user.org_id,
-        met_with=form_data.get("person_met") or form_data.get("met_with"),
-        premises_description=form_data.get("premises_description"),
-        direction_from_branch=form_data.get("direction_from_branch"),
-        visit_date=form_data.get("visit_date"),
-        visit_time=form_data.get("visit_time"),
-        relationship=form_data.get("relationship"),
-        business_condition=form_data.get("business_condition"),
-        account_officer=form_data.get("account_officer"),
-        visiting_officer=form_data.get("visiting_officer"),
-        visiting_officer_sig=form_data.get("visiting_officer_sig"),
-        account_officer_sig=form_data.get("account_officer_sig"),
-        submitted_by=current_user.id,
-        user_role=current_user.role,
-    )
+    app_uuid = UUID(application_id)
+    repo = LoanRepository(service.audit.conn)
+    app = await repo.get_by_id(app_uuid, current_user.org_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan Application not found")
+    require_view(current_user, app)
+    role = canonical_role(current_user.role)
+    if action not in {"save_report", "concur", "return"}:
+        raise HTTPException(status_code=422, detail="Select a valid visitation action")
 
-    if action == "concur" and current_user.role == "credit_analyst":
+    if action == "save_report":
+        if app.stage != "intake" or role not in {"account_officer", "credit_analyst"} or (role == "account_officer" and app.created_by != current_user.id):
+            raise HTTPException(status_code=403, detail="You cannot edit this visitation report")
+        required = {"visit_date": "Visit date", "person_met": "Person met", "premises_description": "Premises description", "direction_from_branch": "Direction from branch"}
+        missing = []
+        for name, label in required.items():
+            value = form_data.get("person_met") or form_data.get("met_with") if name == "person_met" else form_data.get(name)
+            if not str(value or "").strip():
+                missing.append(label)
+        if missing:
+            raise HTTPException(status_code=422, detail=f"Complete the required visitation fields: {', '.join(missing)}")
+        await service.submit_report(
+            loan_id=app_uuid,
+            org_id=current_user.org_id,
+            met_with=form_data.get("person_met") or form_data.get("met_with"),
+            premises_description=form_data.get("premises_description"),
+            direction_from_branch=form_data.get("direction_from_branch"),
+            visit_date=form_data.get("visit_date"),
+            visit_time=form_data.get("visit_time"),
+            relationship=form_data.get("relationship"),
+            business_condition=form_data.get("business_condition"),
+            account_officer=current_user.name if role == "account_officer" else None,
+            visiting_officer=current_user.name,
+            visiting_officer_sig=form_data.get("visiting_officer_sig"),
+            account_officer_sig=form_data.get("account_officer_sig"),
+            submitted_by=current_user.id,
+            user_role=current_user.role,
+        )
+        if settings.CONFIGURABLE_PRODUCTS_ENABLED:
+            from app.domains.products.readiness import DynamicReadinessService
+            await DynamicReadinessService(service.audit.conn).require_ready(app_uuid, current_user.org_id)
+        await repo.assign_default_branch_manager(app_uuid, current_user.org_id)
+        updated = await repo.advance_stage(app_uuid, current_user.org_id, "branch_manager_review")
+        if not updated:
+            raise HTTPException(status_code=409, detail="Application could not be submitted")
+        await AuditService(service.audit.conn).log(
+            application_id=application_id,
+            org_id=str(current_user.org_id),
+            action="Intake submitted to Team Lead",
+            from_stage="intake",
+            to_stage="branch_manager_review",
+            actor_id=str(current_user.id),
+            actor_role=current_user.role,
+        )
+        return RedirectResponse(url=f"/applications/{application_id}?success=Submitted+to+Team+Lead", status_code=status.HTTP_303_SEE_OTHER)
+
+    if role != "credit_analyst" or app.stage not in {"branch_manager_review", "branch_supervisor_review", "credit_analyst_review"}:
+        raise HTTPException(status_code=403, detail="Only the Credit Analyst can record visitation concurrence")
+    existing_report = await VisitationRepository(service.audit.conn).get_by_loan(loan_id=app_uuid, org_id=current_user.org_id)
+    if not existing_report:
+        raise HTTPException(status_code=409, detail="Submit the visitation report before concurrence")
+    decision = "returned" if action == "return" or form_data.get("concurrence") == "Returned for Correction" else "concurred"
+    return_reason = str(form_data.get("concurrence_return_reason") or "").strip()
+    if decision == "returned" and not return_reason:
+        raise HTTPException(status_code=422, detail="Provide a reason for returning the visitation report")
+    if action in {"concur", "return"}:
         await service.submit_manager_signoff(
             loan_id=UUID(application_id),
             org_id=current_user.org_id,
             manager_id=current_user.id,
             manager_role=current_user.role,
             notes="Credit Analyst Concurred",
-            decision="concurred",
+            decision=decision,
             signature=form_data.get("bm_sig"),
-            return_reason=form_data.get("concurrence_return_reason"),
+            return_reason=return_reason or None,
         )
         
     return RedirectResponse(url=f"/applications/{application_id}", status_code=status.HTTP_303_SEE_OTHER)
@@ -2241,6 +2305,11 @@ async def render_approval_readiness(
     app_uuid = UUID(application_id)
     documents = await get_document_service(conn).repo.get_by_loan(app_uuid, current_user.org_id)
     recommendations = await _get_loan_recommendations(conn, app_uuid)
+    cashflows, financial_profile, obligations = await FeasibilityRepository(conn).get_inputs(app_uuid)
+    collateral_items = [dict(row) for row in await conn.fetch(
+        "SELECT * FROM collateral_items WHERE application_id=$1 ORDER BY created_at, id", app_uuid
+    )]
+    cam_feasibility = calculate_cam_feasibility(financial_profile, obligations, collateral_items)
     
     ctx = build_template_context(
         request,
@@ -3536,6 +3605,8 @@ async def render_mcc_summary(request: Request, application_id: str, conn=Depends
         recommendations=recommendations, pnl=dict(pnl) if pnl else None,
         total_pledged_value=Decimal(str(total_pledged or 0)), coverage_ratio=coverage_ratio,
         proposed_installment=proposed_installment, proposed_interest_rate=rate,
+        cashflows=cashflows, financial_profile=financial_profile or {}, obligations=obligations,
+        cam_feasibility=cam_feasibility,
         can_finalize_mcc=role in {"crm", "head_crm"}, active_tab="mcc", active_page="mcc",
     )
     return templates.TemplateResponse(request, "executive/mcc_summary.html", ctx)
