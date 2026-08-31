@@ -28,8 +28,8 @@
     letter-spacing: 0.05em;
     padding: 2px 8px;
     border-radius: 99px;
-    background-color: var(--role-badge-bg, #F0E8FA);
-    color: var(--role-badge-color, #6B3FA0);
+    background-color: var(--role-badge-bg, #F7EFF8);
+    color: var(--role-badge-color, #6F2676);
 }
 
 /* Role badge variants share the same plum treatment. */
@@ -53,7 +53,7 @@
 /* Active sidebar link uses role accent */
 [data-role] .sidebar-nav-link.active {
     border-left-color: var(--role-nav-active-border, var(--color-brand-mid));
-    background-color: var(--role-nav-active-bg, rgba(107, 63, 160, 0.12));
+    background-color: var(--role-nav-active-bg, rgba(111, 38, 118, 0.18));
     color: var(--role-nav-active-text, var(--color-brand-light));
 }
 
@@ -90,7 +90,7 @@
 }
 
 .metric-icon-bg-danger {
-    background-color: rgba(160, 26, 26, 0.1) !important;
+    background-color: rgba(180, 35, 24, 0.1) !important;
     color: var(--accent-danger) !important;
 }
 

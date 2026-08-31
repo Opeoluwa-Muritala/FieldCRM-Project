@@ -34,8 +34,12 @@
     <aside class="desktop-sidebar" id="desktopSidebar" aria-label="Primary navigation">
         <div class="sidebar-logo">
             <a href="/dashboard" class="brand-home-link" aria-label="Go to dashboard"><img class="logo-composite" src="{{ brand_logo_white }}" alt="Mainstreet Microfinance Bank Logo" loading="lazy"></a>
+            <button type="button" class="sidebar-collapse-control" data-sidebar-collapse aria-label="Collapse navigation" aria-expanded="true">
+                <svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15.4 7.4 10.8 12l4.6 4.6-1.4 1.4L8 12l6-6z"/></svg>
+            </button>
         </div>
-        <nav class="sidebar-nav">
+        <div class="sidebar-workspace-label"><span>{{ role_labels.get(user_role, user_role) }}</span><small>Workspace</small></div>
+        <nav class="sidebar-nav" aria-label="{{ role_labels.get(user_role, user_role) }} workspace">
             {% block sidebar_nav %}
             {% include sidebar_component ignore missing %}
             {% if user_role != 'system_admin' %}
@@ -44,6 +48,10 @@
             {% endblock %}
         </nav>
         <div class="sidebar-user">
+            <a href="/settings" class="sidebar-profile-link" aria-label="Open profile and settings">
+                <span class="sidebar-profile-avatar" aria-hidden="true">{{ initials|upper }}</span>
+                <span class="sidebar-profile-copy"><strong>{{ user.name if user else 'User' }}</strong><small>{{ role_labels.get(user_role, user_role) }}</small></span>
+            </a>
             <form method="post" action="/logout">
             <button type="submit" class="sidebar-utility-link" title="Logout" aria-label="Logout">
                 <svg class="app-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><use href="/static/img/icons.svg#icon-logout-o"></use></svg>
@@ -162,5 +170,25 @@
     document.getElementById('sidebarBackdrop')?.addEventListener('click', closeSidebarDrawer);
     document.getElementById('mobileMenuToggle')?.addEventListener('click', toggleSidebarDrawer);
     document.querySelector('[data-sidebar-toggle]')?.addEventListener('click', toggleSidebarDrawer);
+    document.querySelectorAll('.desktop-sidebar .sidebar-nav-link').forEach((link) => {
+        const label = link.querySelector('span:first-of-type')?.textContent.trim();
+        if (!label) return;
+        link.setAttribute('aria-label', label);
+        if (!link.hasAttribute('title')) link.setAttribute('title', label);
+    });
+    const collapseControl = document.querySelector('[data-sidebar-collapse]');
+    let savedSidebarState = null;
+    try { savedSidebarState = window.localStorage.getItem('fieldcrm-sidebar-collapsed'); } catch (_) { /* preference storage is optional */ }
+    if (savedSidebarState === 'true') {
+        document.documentElement.classList.add('sidebar-is-collapsed');
+        collapseControl?.setAttribute('aria-expanded', 'false');
+        collapseControl?.setAttribute('aria-label', 'Expand navigation');
+    }
+    collapseControl?.addEventListener('click', () => {
+        const collapsed = document.documentElement.classList.toggle('sidebar-is-collapsed');
+        collapseControl.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        collapseControl.setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
+        try { window.localStorage.setItem('fieldcrm-sidebar-collapsed', collapsed ? 'true' : 'false'); } catch (_) { /* keep the in-memory state */ }
+    });
 </script>
 {% endblock %}

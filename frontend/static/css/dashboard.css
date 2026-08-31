@@ -3,7 +3,7 @@
 
 /* Approval Workstation: shared credit-memorandum structure. */
 .approval-memo-workstation{--approval-ink:#172033;--approval-muted:#526174;--approval-paper:#f3f5f7;--approval-rule:#cbd5e1;--approval-plum:#6f2676;--approval-deep:#2e0052;--approval-role:#6f2676;--approval-role-deep:#2e0052;color:var(--approval-ink)}
-.approval-role-credit{--approval-role:#9b6510;--approval-role-deep:#503307}.approval-role-crm{--approval-role:#287061;--approval-role-deep:#16483f}.approval-role-head-crm{--approval-role:#17677a;--approval-role-deep:#104654}.approval-role-ed{--approval-role:#6f2676;--approval-role-deep:#2e0052}.approval-role-md{--approval-role:#8b6420;--approval-role-deep:#3f2b0d}.approval-role-disbursement{--approval-role:#26704a;--approval-role-deep:#123e29}.approval-role-branch_manager,.approval-role-team_lead{--approval-role:#6f2676;--approval-role-deep:#2e0052}.approval-role-branch_supervisor{--approval-role:#315e86;--approval-role-deep:#183b5a}
+.approval-role-credit,.approval-role-crm,.approval-role-head-crm,.approval-role-ed,.approval-role-md,.approval-role-disbursement,.approval-role-branch_manager,.approval-role-team_lead,.approval-role-branch_supervisor{--approval-role:#6f2676;--approval-role-deep:#2e0052}
 .approval-role-kicker{position:relative;z-index:1;display:block;margin-bottom:8px;color:var(--approval-role);font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}.approval-memo-stack>.page-card:first-child .approval-role-kicker,.credit-review-page>.page-card-header .approval-role-kicker{color:rgba(255,255,255,.76)}
 .approval-memo-stack{display:flex;flex-direction:column;gap:16px;max-width:1240px;margin:0 auto;padding:12px;border:1px solid var(--approval-rule);border-radius:16px;background:var(--approval-paper)}
 .approval-memo-stack>.page-card{margin:0;padding:24px 28px;border:1px solid var(--approval-rule);border-radius:12px;background:#fff;box-shadow:0 4px 18px rgba(46,0,82,.055)}
@@ -29,20 +29,20 @@
 @media(max-width:700px){.approval-memo-stack{padding:0;border:0;background:transparent}.approval-memo-stack>.page-card{padding:20px}.approval-memo-stack>.page-card:first-child{padding:26px 22px}.approval-memo-stack>.page-card:first-child .csp-s-0e63b0d79e95{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:18px!important}.approval-memo-stack>.page-card:first-child .csp-s-0e63b0d79e95>div,.approval-memo-stack>.page-card:first-child .csp-s-0e63b0d79e95>div+div{padding:13px 10px 0 0}.approval-memo-stack .approval-action-buttons,.approval-memo-stack .approval-action-buttons .btn{width:100%}.approval-memo-workstation.credit-review-page>.loan-control-strip,.approval-memo-workstation.credit-review-page>.tab-row,.approval-memo-workstation.credit-review-page>form{margin-inline:16px}.approval-memo-workstation.credit-review-page>.tab-row{overflow-x:auto;flex-wrap:nowrap}.approval-page.approval-memo-workstation{padding:0;border:0;background:transparent}.approval-page.approval-memo-workstation .approval-decision-card{position:static}}
 
 :root {
-    --color-brand-shield: #6B3FA0;
-    --color-brand-deep: #2D1A4A;
-    --color-brand-mid: #8B5CC8;
-    --color-brand-light: #B794D4;
-    --color-brand-tint: #F0E8FA;
+    --color-brand-shield: #6F2676;
+    --color-brand-deep: #2E0052;
+    --color-brand-mid: #6F2676;
+    --color-brand-light: #D8BFDB;
+    --color-brand-tint: #F7EFF8;
     --bg-primary: #FFFFFF;
-    --bg-secondary: #F5F3F0;
-    --text-main: #1C1A2E;
-    --text-muted: #6B6880;
-    --border-color: #C8C5D0;
-    --color-divider: #E2DFE8;
-    --accent-success: #1A6B45;
+    --bg-secondary: #F3F5F7;
+    --text-main: #172033;
+    --text-muted: #526174;
+    --border-color: #CBD5E1;
+    --color-divider: #CBD5E1;
+    --accent-success: #147A55;
     --accent-warning: #6F2676;
-    --accent-danger: #A01A1A;
+    --accent-danger: #B42318;
     --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
     /* Animation tokens */
@@ -4189,7 +4189,7 @@ body, body * { font-family: "Montserrat", sans-serif !important; }
 }
 .btn-retry {
     padding: 8px 16px;
-    background-color: var(--color-brand-shield, #6B3FA0);
+    background-color: var(--color-brand-shield, #6F2676);
     color: #FFFFFF;
     border: none;
     border-radius: 4px;
@@ -4200,7 +4200,7 @@ body, body * { font-family: "Montserrat", sans-serif !important; }
     transition: var(--transition-smooth);
 }
 .btn-retry:hover {
-    background-color: var(--color-brand-mid, #8B5CC8);
+    background-color: var(--color-brand-mid, #6F2676);
 }
 
 /* Approval review desk — a quiet, document-led underwriting workspace. */
