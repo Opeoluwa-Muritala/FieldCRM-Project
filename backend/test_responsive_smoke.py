@@ -5,6 +5,22 @@ import pytest
 CSS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "static", "css", "dashboard.css"))
 SHELL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "templates", "base", "desktop_shell.html"))
 BASE_SHELL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "templates", "base", "shell.html"))
+UI_SYSTEM_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "static", "css", "web-ui-system.css"))
+ROLE_THEME_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "static", "css", "role-themes.css"))
+
+
+def test_shared_shell_uses_canonical_fieldcrm_palette_and_collapsible_rail():
+    with open(CSS_PATH, "r", encoding="utf-8") as dashboard_file, open(UI_SYSTEM_PATH, "r", encoding="utf-8") as ui_file, open(ROLE_THEME_PATH, "r", encoding="utf-8") as role_file:
+        shared_css = (dashboard_file.read() + ui_file.read() + role_file.read()).lower()
+    for required in ("#2e0052", "#6f2676", "#f7eff8", "#d8bfdb", "#172033", "#526174", "#cbd5e1"):
+        assert required in shared_css
+    for retired in ("#6b3fa0", "#2d1a4a", "#8b5cc8", "#b794d4", "#f0e8fa", "#a01a1a"):
+        assert retired not in shared_css
+    with open(SHELL_PATH, "r", encoding="utf-8") as shell_file:
+        shell = shell_file.read()
+    assert "data-sidebar-collapse" in shell
+    assert "sidebar-workspace-label" in shell
+    assert "sidebar-profile-link" in shell
 
 def test_css_breakpoints_and_tokens():
     """Verify that CSS contains correct breakpoints, responsive shell declarations, and overrides."""
@@ -83,7 +99,7 @@ def test_user_directory_shrinks_on_tablets_and_switches_to_phone_cards():
 
     with open(BASE_SHELL_PATH, "r", encoding="utf-8") as f:
         shell = f.read()
-    assert "dashboard.css?v=20260827-approval-memo" in shell
+    assert "dashboard.css?v=20260831-sidebar-palette" in shell
 
 
 def test_approval_workstations_share_a_responsive_credit_memo_layout():

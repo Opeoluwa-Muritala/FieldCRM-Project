@@ -2,20 +2,20 @@
 @import url('/static/css/motion.css');
 
 :root {
-    --color-brand-shield: #6B3FA0;
-    --color-brand-deep: #2D1A4A;
-    --color-brand-mid: #8B5CC8;
-    --color-brand-light: #B794D4;
-    --color-brand-tint: #F0E8FA;
+    --color-brand-shield: #6F2676;
+    --color-brand-deep: #2E0052;
+    --color-brand-mid: #6F2676;
+    --color-brand-light: #D8BFDB;
+    --color-brand-tint: #F7EFF8;
     --bg-primary: #FFFFFF;
-    --bg-secondary: #F5F3F0;
-    --text-main: #1C1A2E;
-    --text-muted: #6B6880;
-    --border-color: #C8C5D0;
-    --color-divider: #E2DFE8;
-    --accent-success: #1A6B45;
+    --bg-secondary: #F3F5F7;
+    --text-main: #172033;
+    --text-muted: #526174;
+    --border-color: #CBD5E1;
+    --color-divider: #CBD5E1;
+    --accent-success: #147A55;
     --accent-warning: #6F2676;
-    --accent-danger: #A01A1A;
+    --accent-danger: #B42318;
     --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
     /* Animation tokens */
