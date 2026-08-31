@@ -107,7 +107,26 @@ def can_upload_document(user: Any, app: Any, document_type: str | None = None) -
     role = canonical_role(_value(user, "role"))
     if document_type in CRM_DOCUMENT_TYPES:
         return can_view_loan(user, app) and role in {"crm", "head_crm"}
-    return can_edit_intake(user, app)
+    if not can_view_loan(user, app):
+        return False
+    stage = _value(app, "stage")
+    if role == "account_officer":
+        return stage == "intake" and _same(_value(app, "created_by"), _value(user, "id"))
+    if role == "branch_manager":
+        return can_edit_intake(user, app)
+    return False
+
+
+def can_edit_intake_section(user: Any, app: Any, step: int) -> bool:
+    """Authorize a specific intake section without broadening full intake access."""
+    if can_edit_intake(user, app):
+        return True
+    return (
+        can_view_loan(user, app)
+        and canonical_role(_value(user, "role")) == "credit_analyst"
+        and _value(app, "stage") in {"credit_analyst_review", "credit_review"}
+        and step in {4, 5}
+    )
 
 
 @dataclass(frozen=True)

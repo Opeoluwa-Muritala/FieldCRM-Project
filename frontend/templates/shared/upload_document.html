@@ -8,7 +8,7 @@
     <div class="page-card-header">
       <span class="ro-eyebrow">Section 9</span>
       <h2 class="page-card-title">Upload documents for {{ borrower_name }}</h2>
-      <p class="page-card-subtitle">Add documents and images after completing the application. Give each file a clearer name, or leave the name blank to keep its original filename.</p>
+      <p class="page-card-subtitle">Add and name every supporting document before completing the field visitation report.</p>
     </div>
     <form action="/applications/{{ app_id }}/documents/upload?type=other" method="POST" enctype="multipart/form-data" id="batchUploadForm">
       <label class="batch-dropzone" for="batchFiles" id="batchDropzone">
@@ -21,7 +21,7 @@
       <template id="batchFileRowTemplate">
         <div class="batch-file-row">
           <div class="batch-file-meta"><strong data-file-name></strong><span data-file-size></span></div>
-          <div class="form-group"><label class="field-label">Document name <span class="field-optional">Optional</span></label><input type="text" name="display_names" maxlength="160" class="field-input" placeholder="Keep original filename"></div>
+          <div class="form-group"><label class="field-label">Document name <span class="required">*</span></label><input type="text" name="display_names" maxlength="160" class="field-input" placeholder="e.g. June bank statement" required></div>
         </div>
       </template>
       <div class="form-submit-bar batch-upload-actions">
@@ -29,6 +29,10 @@
         <button type="submit" class="btn-primary-filled" id="uploadDocumentsButton" disabled>Upload selected files</button>
       </div>
     </form>
+    {% if documents %}
+    <div class="custom-table-container"><table class="custom-table"><thead><tr><th>Uploaded document</th><th>Status</th></tr></thead><tbody>{% for doc in documents %}<tr><td>{{ doc.original_name or 'Document' }}</td><td><span class="status-badge {{ 'verified' if doc.status == 'verified' else 'needs-review' }}">{{ doc.status|default('uploaded', true)|replace('_',' ')|title }}</span></td></tr>{% endfor %}</tbody></table></div>
+    <div class="form-submit-bar"><a class="btn btn-primary action-primary" href="/applications/{{ app_id }}/visitation">Next step: Visitation Report &rarr;</a></div>
+    {% endif %}
   </section>
 </div>
 <script nonce="{{ csp_nonce }}">
@@ -52,6 +56,10 @@
       batchList.appendChild(empty);
     }
     batchSubmit.disabled = files.length === 0 || files.length > 20;
+  });
+  batchList?.addEventListener('input', () => {
+    const names = Array.from(batchList.querySelectorAll('input[name="display_names"]'));
+    batchSubmit.disabled = !names.length || names.some((input) => !input.value.trim());
   });
   document.getElementById('batchUploadForm')?.addEventListener('submit', () => {
     batchSubmit.disabled = true;
