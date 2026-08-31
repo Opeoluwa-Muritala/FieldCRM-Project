@@ -332,13 +332,13 @@ async def save_repayment_feasibility(
         )
     except CAMValidationError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from None
 
     if payload["profile"]["recommended_amount"] > Decimal(str(app.amount or 0)):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Recommended Amount cannot exceed the requested loan amount.",
         )
 
