@@ -99,7 +99,7 @@
 {% endif %}
 
 
-{# ── Board Referrals ── #}
+{% if false %}{# Board referrals are intentionally unavailable in the MD review UI. #}
 <div class="page-card csp-s-3c4a3d440074">
   <h3 class="csp-s-4636770b4968">Board Member Opinions</h3>
   <p class="csp-s-759c47a698b8">
@@ -139,7 +139,8 @@
   <p class="csp-s-60c6744b7133">No board opinions requested yet.</p>
   {% endif %}
 </div>
+{% endif %}
 
-<a href="/md-queue" class="btn btn-secondary action-secondary-ghost">&#8592; Back to MD Queue</a>
+<a href="/md-queue" class="btn btn-secondary action-secondary-ghost" data-history-back>&#8592; Back</a>
 </div>
 {% endblock %}

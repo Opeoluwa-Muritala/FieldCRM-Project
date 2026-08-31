@@ -133,3 +133,47 @@ def test_credit_analyst_review_opens_on_affordability_without_summary_tab():
     assert 'class="tab-btn active action-secondary-compact" id="tabAffordabilityBtn"' in html
     assert 'id="tabAffordability" class="tab-pane"' in html
     assert "document.getElementById('tabAffordability').hidden" in html
+
+
+def test_legal_and_crm_workstations_use_shared_dossier_patterns():
+    with open("frontend/templates/legal/legal_queue.html", "r", encoding="utf-8") as f:
+        legal_queue = f.read()
+    with open("frontend/templates/legal/valuation.html", "r", encoding="utf-8") as f:
+        valuation = f.read()
+    with open("frontend/templates/crm/crm_review.html", "r", encoding="utf-8") as f:
+        crm_review = f.read()
+    with open(UI_SYSTEM_PATH, "r", encoding="utf-8") as f:
+        ui_css = f.read()
+
+    assert "legal-case-list" in legal_queue and "queue-table-wrap" not in legal_queue
+    assert 'min="0.01"' in valuation and "data-history-back" in valuation
+    assert "crm-dossier-layout" in crm_review
+    assert "View application details" in crm_review and "View all documents" in crm_review
+    assert "#2e0052" in ui_css.lower() and "#6f2676" in ui_css.lower()
+    assert "justify-content: center" in ui_css
+
+
+def test_shell_back_controls_prefer_safe_same_origin_history():
+    with open(SHELL_PATH, "r", encoding="utf-8") as f:
+        shell = f.read()
+    assert "data-history-back" in shell
+    assert "new URL(document.referrer).origin === window.location.origin" in shell
+    assert "window.history.back()" in shell
+
+
+def test_crm_application_detail_and_mcc_context_contracts_are_defined():
+    with open("backend/app/domains/loans/router.py", "r", encoding="utf-8") as f:
+        router = f.read()
+    mcc_handler = router[router.index("async def render_mcc_summary"):router.index("@router.post(\"/applications/{application_id}/mcc-vote\"")]
+
+    assert '"crm", "head_crm"' in router
+    assert "cashflows, financial_profile, obligations = await FeasibilityRepository(conn).get_inputs(app_uuid)" in mcc_handler
+    assert "cam_feasibility = calculate_cam_feasibility" in mcc_handler
+
+
+def test_md_review_hides_board_member_opinions():
+    with open("frontend/templates/executive/md_approve.html", "r", encoding="utf-8") as f:
+        html = f.read()
+    board_section = html[html.index("Board referrals are intentionally unavailable"):html.index("{% endif %}", html.index("Board referrals are intentionally unavailable"))]
+    assert "Board Member Opinions" in board_section
+    assert "{% if false %}" in html[html.rfind("{% if false %}", 0, html.index("Board Member Opinions")):html.index("Board Member Opinions")]

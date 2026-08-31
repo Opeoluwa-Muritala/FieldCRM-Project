@@ -1,69 +1,26 @@
 {% set mobile_title_text = "Legal Review Queue" %}
 {% extends "base/desktop_shell.html" %}
-{% block title %}Legal Review Queue - FieldCRM{% endblock %}
+{% block title %}Legal Review Queue | FieldCRM{% endblock %}
 {% block page_title %}Legal Review Queue{% endblock %}
 {% block breadcrumb %}Legal &rarr; Review Queue{% endblock %}
 {% block content %}
-<div class="queue-page-header csp-s-fec3619ed0de">
-  <div>
-    <div class="dashboard-date csp-s-90a09484088d">{{ today_label }}</div>
-    <h1 class="page-card-title csp-s-82ca42cb16b4">Legal Valuation Queue</h1>
-    <p class="csp-s-f6633708ba2c">Appraise pledged collateral items and record legal valuations for processing dossiers.</p>
-  </div>
-</div>
-
-<div class="queue-cards">
-  {% for item in queue %}
-  <a href="/applications/{{ item.id }}/valuation" class="queue-card csp-s-40fee5799882">
-    <div class="csp-s-3d50d9b20bc6">
-      <span class="queue-card-name csp-s-b7e0a7e725bd">{{ item.applicant_name }}</span>
-      <span class="status-badge queue-card-badge needs-review csp-s-55f5605788d3">{{ item.days_waiting }}d waiting</span>
-    </div>
-    <div class="csp-s-c7963e1e0224">
-      {{ item.ref_no }} &middot; Relationship Officer: {{ item.officer_name or '—' }} &middot; TL: {{ item.branch_manager_name or '—' }}
-    </div>
-    <div class="csp-s-3490dbc8a70a">
-      <span class="csp-s-080f972469d7">{{ item.stage|replace('_', ' ')|title }}</span>
-      <span class="queue-card-amount csp-s-37c503021b7e">{% if item.amount %}&#x20A6;{{ "{:,.2f}".format(item.amount) }}{% else %}No amount{% endif %}</span>
-    </div>
-  </a>
-  {% else %}
-  <div class="lo-empty-state csp-s-2d4fe8f45fbf">
-    No dossiers currently awaiting Legal Valuation.
-  </div>
-  {% endfor %}
-</div>
-
-<div class="custom-table-container queue-table-wrap page-card csp-s-b590be9f6525">
-  <table class="custom-table csp-s-57761fd3cad8">
-    <thead>
-      <tr class="csp-s-9f3e6e4fd751">
-        <th class="csp-s-81097e6aa680">Applicant</th>
-        <th class="csp-s-81097e6aa680">Ref</th>
-        <th class="csp-s-81097e6aa680">Stage</th>
-        <th class="csp-s-81097e6aa680">Amount</th>
-        <th class="csp-s-81097e6aa680">Waiting</th>
-        <th class="csp-s-aa7a6d3b8acd">Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in queue %}
-      <tr class="csp-s-02559e4e9a9f">
-        <td class="csp-s-2bd97b9e0d5d">{{ item.applicant_name }}</td>
-        <td class="csp-s-4f6c0c960b19">{{ item.ref_no }}</td>
-        <td class="csp-s-0df26ac894d6"><span class="csp-s-937ec8a3b94b">{{ item.stage|replace('_', ' ')|title }}</span></td>
-        <td class="csp-s-2bd97b9e0d5d">{% if item.amount %}&#x20A6;{{ "{:,.2f}".format(item.amount) }}{% else %}—{% endif %}</td>
-        <td class="csp-s-4f6c0c960b19">{{ item.days_waiting }}d</td>
-        <td class="csp-s-e25d88043677">
-          <a href="/applications/{{ item.id }}/valuation" class="btn btn-primary csp-s-814feaf330b1">Appraise</a>
-        </td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="6" class="csp-s-acd72f9d1765">Queue is empty.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+<main class="legal-workspace">
+  <header class="legal-page-heading">
+    <div><span class="eyebrow">{{ today_label }}</span><h1>Collateral valuation queue</h1><p>Review pledged assets and record defensible valuations for active credit dossiers.</p></div>
+    <span class="legal-queue-count">{{ queue|length }} awaiting review</span>
+  </header>
+  <section class="legal-case-list" aria-label="Applications awaiting legal valuation">
+    {% for item in queue %}
+    <article class="legal-case-row">
+      <a class="legal-case-main" href="/applications/{{ item.id }}/valuation"><span class="legal-case-ref">{{ item.ref_no }}</span><strong>{{ item.applicant_name }}</strong><span>{{ item.loan_type|replace('_', ' ')|title }} &middot; {{ item.stage|replace('_', ' ')|title }}</span></a>
+      <dl class="legal-case-facts">
+        <div><dt>Requested</dt><dd>{% if item.amount %}&#8358;{{ "{:,.2f}".format(item.amount) }}{% else %}Not recorded{% endif %}</dd></div>
+        <div><dt>Relationship officer</dt><dd>{{ item.officer_name or 'Not assigned' }}</dd></div>
+        <div><dt>Waiting</dt><dd>{{ item.days_waiting or 0 }} days</dd></div>
+      </dl>
+      <a class="btn-primary-filled legal-case-action" href="/applications/{{ item.id }}/valuation">Open appraisal</a>
+    </article>
+    {% else %}<div class="legal-empty-state"><strong>No dossiers awaiting valuation</strong><p>Eligible applications will appear here when collateral review is required.</p></div>{% endfor %}
+  </section>
+</main>
 {% endblock %}
