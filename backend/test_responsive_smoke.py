@@ -177,3 +177,17 @@ def test_md_review_hides_board_member_opinions():
     board_section = html[html.index("Board referrals are intentionally unavailable"):html.index("{% endif %}", html.index("Board referrals are intentionally unavailable"))]
     assert "Board Member Opinions" in board_section
     assert "{% if false %}" in html[html.rfind("{% if false %}", 0, html.index("Board Member Opinions")):html.index("Board Member Opinions")]
+
+
+def test_shared_content_scales_and_stays_inside_boundaries():
+    with open(UI_SYSTEM_PATH, "r", encoding="utf-8") as f:
+        css = f.read()
+    with open(BASE_SHELL_PATH, "r", encoding="utf-8") as f:
+        shell = f.read()
+
+    assert "font-size:clamp(" in css
+    assert "overflow-wrap:anywhere" in css
+    assert "overflow-x:auto" in css
+    assert "grid-template-columns:minmax(0,1fr)!important" in css
+    assert "white-space:normal" in css
+    assert "web-ui-system.css?v=20260831-content-containment" in shell
