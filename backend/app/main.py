@@ -676,7 +676,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     """Render form/page validation failures while retaining FastAPI's API JSON."""
     if request.url.path.startswith("/api/"):
         return await request_validation_exception_handler(request, exc)
-    return render_error_page(request, status.HTTP_422_UNPROCESSABLE_ENTITY)
+    return render_error_page(request, status.HTTP_422_UNPROCESSABLE_CONTENT)
 
 
 @app.exception_handler(Exception)
