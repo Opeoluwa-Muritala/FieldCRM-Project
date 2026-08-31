@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from app.config import settings
 from app.domains.customers.router import _enabled, router
@@ -55,6 +56,14 @@ class FakeCustomerRepository:
 
     async def add_activity(self, **values):
         self.activities.append(values)
+
+
+def test_customer_must_be_at_least_eighteen():
+    today = date.today()
+    adult_dob = today.replace(year=today.year - 18)
+    CustomerInput(legal_name="Adult Applicant", date_of_birth=adult_dob)
+    with pytest.raises(ValidationError, match="Applicant must be at least 18 years old"):
+        CustomerInput(legal_name="Minor Applicant", date_of_birth=adult_dob.replace(year=adult_dob.year + 1))
 
 
 @pytest.mark.asyncio

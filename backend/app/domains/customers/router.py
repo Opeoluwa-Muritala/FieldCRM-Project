@@ -18,6 +18,14 @@ from app.domains.customers.schemas import CustomerCreate, CustomerInput
 from app.domains.customers.service import CustomerService, DuplicateOverrideRequired, can_view_customer
 
 router = APIRouter(tags=["Customers"])
+
+
+def _adult_dob_max() -> str:
+    today = date.today()
+    try:
+        return today.replace(year=today.year - 18).isoformat()
+    except ValueError:  # 29 February
+        return today.replace(year=today.year - 18, day=28).isoformat()
 templates = create_templates(str(settings.ROOT_DIR / "frontend" / "templates") if hasattr(settings, "ROOT_DIR") else str(__import__('pathlib').Path(__file__).resolve().parents[4] / "frontend" / "templates"))
 
 
@@ -86,7 +94,7 @@ async def customer_application_profile(customer_id: UUID, conn=Depends(authentic
 @router.get("/customers/new")
 async def new_customer_page(request: Request, current_user=Depends(RoleChecker(["Account Officer"]))):
     _enabled()
-    return templates.TemplateResponse(request, "customers/new.html", build_template_context(request, current_user, values={}, duplicates=[], error=None, active_page="customers"))
+    return templates.TemplateResponse(request, "customers/new.html", build_template_context(request, current_user, values={}, duplicates=[], error=None, adult_dob_max=_adult_dob_max(), active_page="customers"))
 
 
 @router.post("/customers/new")
@@ -114,10 +122,10 @@ async def create_customer_web(
             payload=payload, source="manual_web",
         )
     except DuplicateOverrideRequired as exc:
-        ctx = build_template_context(request, current_user, values=values, duplicates=exc.matches, error="Probable duplicate found. Type a specific override reason to proceed.", active_page="customers")
+        ctx = build_template_context(request, current_user, values=values, duplicates=exc.matches, error="Probable duplicate found. Type a specific override reason to proceed.", adult_dob_max=_adult_dob_max(), active_page="customers")
         return templates.TemplateResponse(request, "customers/new.html", ctx, status_code=409)
     except (ValidationError, ValueError) as exc:
-        ctx = build_template_context(request, current_user, values=values, duplicates=[], error=str(exc), active_page="customers")
+        ctx = build_template_context(request, current_user, values=values, duplicates=[], error=str(exc), adult_dob_max=_adult_dob_max(), active_page="customers")
         return templates.TemplateResponse(request, "customers/new.html", ctx, status_code=422)
     return RedirectResponse(url=f"/customers/{customer['id']}", status_code=status.HTTP_303_SEE_OTHER)
 

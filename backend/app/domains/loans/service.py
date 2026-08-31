@@ -174,6 +174,17 @@ class LoanService:
                 form_data.pop("id_expiry", None)
                 existing_data.pop("id_expiry", None)
 
+            if step == 1:
+                raw_dob = form_data.get("dob")
+                try:
+                    dob = datetime.date.fromisoformat(str(raw_dob))
+                except (TypeError, ValueError):
+                    raise DomainException("Enter a valid date of birth", 422)
+                today = datetime.date.today()
+                age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+                if age < 18:
+                    raise DomainException("Applicant must be at least 18 years old", 422)
+
             # Merge form data
             for k, v in form_data.items():
                 existing_data[k] = v
@@ -192,18 +203,12 @@ class LoanService:
                 if f_amount is None or not math.isfinite(f_amount) or f_amount <= 0:
                     raise DomainException("Loan amount must be greater than zero", 422)
                 
-                prod = await conn.fetchrow(
-                    "SELECT min_tenor_months, max_tenor_months, name FROM loan_products WHERE code = $1",
-                    app.loan_type
-                )
-                if prod:
-                    if tenor:
-                        i_tenor = _optional_int(tenor)
-                        if i_tenor is not None:
-                            if i_tenor < prod["min_tenor_months"]:
-                                raise DomainException(f"Tenor is below the minimum limit of {prod['min_tenor_months']} months for {prod['name']}", 422)
-                            if i_tenor > prod["max_tenor_months"]:
-                                raise DomainException(f"Tenor exceeds the maximum limit of {prod['max_tenor_months']} months for {prod['name']}", 422)
+                try:
+                    i_tenor = _optional_int(tenor)
+                except (TypeError, ValueError, OverflowError):
+                    i_tenor = None
+                if i_tenor is None or i_tenor < 1 or str(tenor).strip() != str(i_tenor):
+                    raise DomainException("Loan tenor must be a positive whole number of months", 422)
                                 
                 # Sync amount and tenor_months to the main table
                 await tx_repo.update_intake_details(
@@ -213,7 +218,7 @@ class LoanService:
                     phone=app.phone,
                     bvn=app.bvn,
                     amount=f_amount,
-                    tenor_months=_optional_int(tenor),
+                    tenor_months=i_tenor,
                 )
                 
             # If step 1, we can pre-populate applicant_name/phone/bvn onto loan_application
