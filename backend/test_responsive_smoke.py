@@ -123,3 +123,13 @@ def test_approval_workstations_share_a_responsive_credit_memo_layout():
     for template_path in templates:
         with open(template_path, "r", encoding="utf-8") as f:
             assert "approval-memo-workstation" in f.read()
+
+
+def test_credit_analyst_review_opens_on_affordability_without_summary_tab():
+    with open("frontend/templates/shared/credit_review.html", "r", encoding="utf-8") as f:
+        html = f.read()
+
+    assert 'data-review-tab="summary"' not in html
+    assert 'class="tab-btn active action-secondary-compact" id="tabAffordabilityBtn"' in html
+    assert 'id="tabAffordability" class="tab-pane"' in html
+    assert "document.getElementById('tabAffordability').hidden" in html
