@@ -1083,9 +1083,9 @@ async def _get_dossier_context(request: Request, application_id: str, conn, curr
         app=app,
         app_id=application_id,
         borrower_name=app.applicant_name,
-        amount=app.amount or 500000,
-        tenure=app.tenure or 12,
-        product_type=app.product_type or "MSEF",
+        amount=app.amount or 0,
+        tenure=app.tenure or 0,
+        product_type=app.product_type,
         wizard_data=wizard_data,
         overview_sections=_overview_sections(wizard_data),
         documents=documents,
@@ -1152,7 +1152,7 @@ async def render_application_detail(
     # Branch Supervisor and Credit Analyst use their own dashboards/queues,
     # but share the Branch Manager's read-only application review layout.
     # Those role folders intentionally do not contain a duplicate detail view.
-    if role in ("branch_supervisor", "credit_analyst"):
+    if role in ("branch_supervisor", "credit_analyst", "crm", "head_crm"):
         template_name = "branch_manager/application_detail.html"
 
     ctx = await _get_dossier_context(request, application_id, conn, current_user, active_tab="applications")
@@ -3087,7 +3087,6 @@ async def render_md_approve(
     app = await repo.get_by_id(UUID(application_id), current_user.org_id)
     if not app:
         raise HTTPException(status_code=404, detail="Loan Application not found")
-    board_referrals = await repo.get_board_referrals(UUID(application_id), current_user.org_id)
     doc_svc = get_document_service(conn)
     documents = await doc_svc.repo.get_by_loan(UUID(application_id), current_user.org_id)
     recommendations = await _get_loan_recommendations(conn, UUID(application_id))
@@ -3099,7 +3098,7 @@ async def render_md_approve(
     ctx = build_template_context(
         request, current_user,
         app=app, app_id=application_id,
-        documents=documents, board_referrals=board_referrals, mcc_votes=[dict(v) for v in mcc_votes],
+        documents=documents, mcc_votes=[dict(v) for v in mcc_votes],
         recommendations=recommendations,
         active_tab="md_queue", active_page="md_queue",
     )
@@ -3492,13 +3491,27 @@ async def process_valuation_submission(
             item_ids.add(item_id_str)
             
     for item_id_str in item_ids:
-        item_uuid = UUID(item_id_str)
+        try:
+            item_uuid = UUID(item_id_str)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="Invalid collateral item") from exc
         appraised_value_val = form_data.get(f"appraised_value_{item_id_str}")
-        valuer_name_val = form_data.get(f"valuer_name_{item_id_str}")
-        valuer_license_no_val = form_data.get(f"valuer_license_no_{item_id_str}")
+        valuer_name_val = str(form_data.get(f"valuer_name_{item_id_str}") or "").strip()
+        valuer_license_no_val = str(form_data.get(f"valuer_license_no_{item_id_str}") or "").strip()
         valuation_date_val = form_data.get(f"valuation_date_{item_id_str}")
-        
-        appraised_value = Decimal(appraised_value_val) if appraised_value_val else Decimal(0)
+
+        try:
+            appraised_value = Decimal(str(appraised_value_val))
+        except (InvalidOperation, TypeError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail="Appraised value must be a valid amount") from exc
+        if not appraised_value.is_finite() or appraised_value <= 0 or appraised_value > Decimal("999999999999.99"):
+            raise HTTPException(status_code=422, detail="Appraised value is outside the permitted range")
+        if len(valuer_name_val) > 160 or len(valuer_license_no_val) > 80:
+            raise HTTPException(status_code=422, detail="Valuer details are too long")
+        try:
+            valuation_date = datetime.strptime(str(valuation_date_val), "%Y-%m-%d").date() if valuation_date_val else None
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="Valuation date is invalid") from exc
         ltv = None
         if appraised_value > 0 and app.amount:
             ltv = Decimal(str(app.amount)) / appraised_value
@@ -3516,7 +3529,7 @@ async def process_valuation_submission(
             appraised_value,
             valuer_name_val or None,
             valuer_license_no_val or None,
-            datetime.strptime(valuation_date_val, "%Y-%m-%d").date() if valuation_date_val else None,
+            valuation_date,
             ltv,
             item_uuid,
             UUID(application_id)
@@ -3587,6 +3600,11 @@ async def render_mcc_summary(request: Request, application_id: str, conn=Depends
     if not total_pledged:
         total_pledged = sum(Decimal(str(row["estimated_value"] or 0)) for row in pledged_items)
     pnl = await conn.fetchrow("SELECT * FROM business_pnl WHERE application_id=$1", app_uuid)
+    cashflows, financial_profile, obligations = await FeasibilityRepository(conn).get_inputs(app_uuid)
+    collateral_items = [dict(row) for row in await conn.fetch(
+        "SELECT * FROM collateral_items WHERE application_id=$1 ORDER BY created_at, id", app_uuid
+    )]
+    cam_feasibility = calculate_cam_feasibility(financial_profile, obligations, collateral_items)
     documents = await get_document_service(conn).repo.get_by_loan(app_uuid, current_user.org_id)
     recommendations = await _get_loan_recommendations(conn, app_uuid)
     rate = await conn.fetchval(
