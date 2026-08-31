@@ -58,8 +58,13 @@ class CustomerInput(BaseModel):
     @field_validator("date_of_birth")
     @classmethod
     def validate_dob(cls, value):
-        if value and value >= date.today():
-            raise ValueError("Date of birth must be in the past")
+        if value:
+            today = date.today()
+            if value >= today:
+                raise ValueError("Date of birth must be in the past")
+            age = today.year - value.year - ((today.month, today.day) < (value.month, value.day))
+            if age < 18:
+                raise ValueError("Applicant must be at least 18 years old")
         return value
 
 
