@@ -736,6 +736,27 @@ async def terms_view(request: Request):
     return response
 
 
+def render_public_page(request: Request, template_name: str):
+    response = templates.TemplateResponse(request, template_name, {})
+    response.headers["Cache-Control"] = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800"
+    return response
+
+
+@app.get("/platform")
+async def platform_view(request: Request):
+    return render_public_page(request, "shared/public_platform.html")
+
+
+@app.get("/controls")
+async def controls_view(request: Request):
+    return render_public_page(request, "shared/public_controls.html")
+
+
+@app.get("/privacy")
+async def privacy_view(request: Request):
+    return render_public_page(request, "shared/public_privacy.html")
+
+
 @app.get("/robots.txt", response_class=PlainTextResponse)
 async def robots_txt(request: Request):
     origin = str(request.base_url).rstrip("/")
@@ -749,6 +770,9 @@ async def sitemap_xml(request: Request):
         '<?xml version="1.0" encoding="UTF-8"?>'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
         f'<url><loc>{origin}/</loc></url>'
+        f'<url><loc>{origin}/platform</loc></url>'
+        f'<url><loc>{origin}/controls</loc></url>'
+        f'<url><loc>{origin}/privacy</loc></url>'
         f'<url><loc>{origin}/terms</loc></url>'
         '</urlset>'
     )

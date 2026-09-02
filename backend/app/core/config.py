@@ -86,6 +86,9 @@ class Settings(BaseSettings):
     # Email invitations and password resets. Without SMTP, local development
     # logs links instead of attempting delivery.
     APP_BASE_URL: str = os.getenv("APP_BASE_URL", "")
+    PUBLIC_SITE_URL: str = os.getenv(
+        "PUBLIC_SITE_URL", "https://field-crm-project.vercel.app"
+    )
     SMTP_HOST: str = os.getenv("SMTP_HOST", "")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
     SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
@@ -213,9 +216,8 @@ class Settings(BaseSettings):
 
     @property
     def public_base_url(self) -> str:
-        if self.APP_BASE_URL.strip():
-            return self.APP_BASE_URL.rstrip("/")
-        return self.cors_origins[0].rstrip("/")
+        """Canonical browser origin for invitations and password resets."""
+        return self.PUBLIC_SITE_URL.rstrip("/")
 
     @model_validator(mode="after")
     def normalize_database_url(self):
@@ -235,6 +237,9 @@ class Settings(BaseSettings):
             parsed_base = urlparse(self.APP_BASE_URL)
             if parsed_base.scheme not in {"http", "https"} or not parsed_base.hostname:
                 raise ValueError("APP_BASE_URL must be an absolute HTTP(S) URL.")
+        parsed_public_site = urlparse(self.PUBLIC_SITE_URL)
+        if parsed_public_site.scheme not in {"http", "https"} or not parsed_public_site.hostname:
+            raise ValueError("PUBLIC_SITE_URL must be an absolute HTTP(S) URL.")
         if self.is_production:
             parsed_database = urlparse(self.DATABASE_URL)
             host = parsed_database.hostname or ""
@@ -248,6 +253,8 @@ class Settings(BaseSettings):
                 raise ValueError("FIELD_ENCRYPTION_KEY and FIELD_LOOKUP_KEY are required in production.")
             if not self.public_base_url.startswith("https://"):
                 raise ValueError("APP_BASE_URL or the primary CORS origin must use HTTPS in production.")
+            if parsed_public_site.scheme != "https":
+                raise ValueError("PUBLIC_SITE_URL must use HTTPS in production.")
             if parsed_database.username != self.DATABASE_EXPECTED_RUNTIME_USER:
                 raise ValueError("Production requires the configured non-owner runtime database user.")
         for setting_name, encoded_key in (

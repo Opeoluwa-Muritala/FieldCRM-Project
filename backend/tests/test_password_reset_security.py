@@ -144,7 +144,7 @@ async def test_password_reset_request_delivers_the_single_use_link(monkeypatch):
         captured["message"] = message
         return True
 
-    monkeypatch.setattr(settings, "APP_BASE_URL", "https://fieldcrm.example")
+    monkeypatch.setattr(settings, "PUBLIC_SITE_URL", "https://field-crm-project.vercel.app")
     monkeypatch.setattr(EmailService, "send_password_reset", deliver)
 
     await AuthService(ResetRepository()).request_password_reset(user.email)
@@ -155,7 +155,7 @@ async def test_password_reset_request_delivers_the_single_use_link(monkeypatch):
     assert captured["message"]["recipient"] == user.email
     assert captured["message"]["full_name"] == user.full_name
     assert captured["message"]["reset_url"] == (
-        f"https://fieldcrm.example/reset-password?token={captured['token']}"
+        f"https://field-crm-project.vercel.app/reset-password?token={captured['token']}"
     )
 
 
