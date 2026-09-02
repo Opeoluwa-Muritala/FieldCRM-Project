@@ -862,7 +862,7 @@ async def render_forgot_password(request: Request):
     return templates.TemplateResponse(request, "shared/forgot_password.html", {"submitted": False, "error": None})
 
 @app.post("/forgot-password")
-async def process_forgot_password(request: Request, email: str = Form(...), conn=Depends(db_conn)):
+async def process_forgot_password(request: Request, email: str = Form(..., max_length=254), conn=Depends(public_db_conn)):
     from app.domains.auth.repository import AuthRepository
     from app.domains.auth.service import AuthService
     await enforce_reset_limits(request, email)
@@ -871,7 +871,7 @@ async def process_forgot_password(request: Request, email: str = Form(...), conn
 
 @app.get("/reset-password")
 async def render_reset_password(request: Request, token: str = None):
-    return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": None, "success": False})
+    return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": None, "success": False, "invitation": False})
 
 @app.get("/accept-invitation")
 async def render_accept_invitation(request: Request, token: str = None):
@@ -883,18 +883,18 @@ async def render_accept_invitation(request: Request, token: str = None):
 @app.post("/reset-password")
 async def process_reset_password(
     request: Request,
-    token: str = Form(...),
-    new_password: str = Form(...),
-    confirm_password: str = Form(...),
+    token: str = Form(..., min_length=1, max_length=256),
+    new_password: str = Form(..., min_length=12, max_length=128),
+    confirm_password: str = Form(..., min_length=12, max_length=128),
     invitation: bool = Form(False),
-    conn=Depends(db_conn),
+    conn=Depends(public_db_conn),
 ):
     await enforce_reset_limits(request, token)
     from app.domains.auth.repository import AuthRepository
     from app.domains.auth.service import AuthService
     from app.core.security import validate_password_strength
     if new_password != confirm_password:
-        return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": "Passwords do not match.", "success": False, "invitation": invitation})
+        return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": "Passwords do not match.", "success": False, "invitation": invitation}, status_code=status.HTTP_400_BAD_REQUEST)
     try:
         validate_password_strength(new_password)
     except ValueError as exc:
@@ -904,9 +904,29 @@ async def process_reset_password(
             {"token": token, "error": str(exc), "success": False, "invitation": invitation},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
-    ok = await AuthService(AuthRepository(conn)).reset_password(token, new_password)
+    try:
+        ok = await AuthService(AuthRepository(conn)).reset_password(token, new_password)
+    except Exception:
+        # The service transaction rolls back token consumption and password
+        # changes together. Keep the recovery token out of logs and let the
+        # user retry from the branded form after a temporary backend failure.
+        logger.exception(
+            "Password reset could not be completed request_id=%s",
+            getattr(request.state, "request_id", "unknown"),
+        )
+        return templates.TemplateResponse(
+            request,
+            "shared/reset_password.html",
+            {
+                "token": token,
+                "error": "We couldn't reset your password right now. Please try again.",
+                "success": False,
+                "invitation": invitation,
+            },
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
     if not ok:
-        return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": "Invalid or expired reset link.", "success": False, "invitation": invitation})
+        return templates.TemplateResponse(request, "shared/reset_password.html", {"token": token, "error": "Invalid or expired reset link.", "success": False, "invitation": invitation}, status_code=status.HTTP_400_BAD_REQUEST)
     return RedirectResponse(url="/login?reset=1", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/api/v1/health")
