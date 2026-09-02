@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from starlette.requests import Request
 
 from app.domains.auth.repository import AuthRepository
 from app.core.security import (
@@ -12,6 +13,42 @@ from app.core.security import (
     validate_password_strength,
     verify_password,
 )
+
+
+@pytest.mark.asyncio
+async def test_reset_page_keeps_token_and_renders_retry_message_on_service_failure(monkeypatch):
+    from app.domains.auth.service import AuthService
+    from app.main import process_reset_password
+
+    async def fail_reset(_service, _token, _password):
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(AuthService, "reset_password", fail_reset)
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/reset-password",
+            "headers": [],
+            "query_string": b"",
+            "server": ("testserver", 80),
+            "scheme": "http",
+            "state": {"request_id": "test-request"},
+        }
+    )
+
+    response = await process_reset_password(
+        request=request,
+        token="still-valid-token",
+        new_password="A-secure-new-password-48",
+        confirm_password="A-secure-new-password-48",
+        invitation=False,
+        conn=object(),
+    )
+
+    assert response.status_code == 503
+    assert b"Please try again" in response.body
+    assert b"still-valid-token" in response.body
 
 
 class RecordingConnection:
