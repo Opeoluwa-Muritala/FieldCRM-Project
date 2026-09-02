@@ -34,7 +34,8 @@ async def test_home_renders_public_product_and_preview_metadata(monkeypatch):
     assert "fieldcrm-social-preview.png" in body
     assert "Android release coming soon" in body
     assert "Staff login" in body
-    assert "capability-icon icon-device" in body
+    assert "Field-ready capture" in body
+    assert "Contextual documents" in body
     assert "â" not in body
 
 
@@ -83,6 +84,55 @@ async def test_terms_page_is_reachable_and_uses_home_header():
     assert "Mainstreet Microfinance Bank" in body
     assert 'href="/">Home</a>' in body
     assert response.headers["cache-control"].startswith("public")
+
+
+async def test_public_information_pages_are_reachable_and_documented():
+    pages = (
+        (main.platform_view, "/platform", "One dossier"),
+            (main.controls_view, "/controls", "Controls recorded"),
+        (main.privacy_view, "/privacy", "Nigeria Data Protection Act 2023"),
+    )
+    for view, path, marker in pages:
+        response = await view(make_request(path))
+        body = await response_body(response)
+        assert response.status_code == 200
+        assert marker in body
+        assert response.headers["cache-control"].startswith("public")
+
+
+async def test_terms_cover_nigerian_legal_and_operational_requirements():
+    response = await main.terms_view(make_request("/terms"))
+    body = await response_body(response)
+    for marker in (
+        "Nigeria Data Protection Act 2023",
+        "Cybercrimes",
+        "CBN Consumer Protection Regulations 2019",
+        "Governing law",
+        "Electronic records",
+        "Prohibited conduct",
+    ):
+        assert marker in body
+    assert "Legal review notice" in body
+
+
+async def test_public_pages_share_navigation_footer_and_scroll_motion():
+    rendered = []
+    for view, path in (
+        (main.root_view, "/"),
+        (main.platform_view, "/platform"),
+        (main.controls_view, "/controls"),
+        (main.privacy_view, "/privacy"),
+        (main.terms_view, "/terms"),
+    ):
+        response = await view(make_request(path))
+        rendered.append(await response_body(response))
+
+    expected_nav = '<nav aria-label="Public navigation"><a href="/">Home</a><a href="/platform">Platform</a><a href="/#workflow">Workflow</a><a href="/#mobile-app">Mobile</a><a href="/controls">Controls</a><a href="/#help">Help</a></nav>'
+    expected_footer_links = '<a href="/">Home</a><a href="/platform">Platform</a><a href="/controls">Controls</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/login">Staff login</a>'
+    for body in rendered:
+        assert expected_nav in body
+        assert expected_footer_links in body
+        assert "public-site.js" in body
 
 
 async def test_home_is_edge_cacheable(monkeypatch):
