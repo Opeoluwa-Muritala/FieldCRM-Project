@@ -1,0 +1,16 @@
+{% extends "shared/public_page_base.html" %}
+{% block title %}Controls &amp; Security | FieldCRM{% endblock %}
+{% block description %}FieldCRM's operational control environment for identity, tenant boundaries, evidence and decisions.{% endblock %}
+{% block content %}
+<section class="subpage-hero compact-hero"><p class="eyebrow"><span></span>Control environment</p><h1>Controls recorded.<br><em>Responsibility assigned.</em></h1><p>This catalogue describes how FieldCRM protects staff access, organisation boundaries, evidence, decisions, configuration, and external integrations.</p></section>
+<section class="control-catalogue" aria-label="FieldCRM control catalogue">
+<header><span>Reference</span><span>Control area</span><span>Implementation record</span></header>
+<article><b>CTRL-01</b><h2>Identity and session security</h2><p>Short-lived access, rotating refresh sessions, reuse detection, revocation, password-reset controls, rate limiting, secure cookies, and privileged step-up checks protect staff access.</p></article>
+<article><b>CTRL-02</b><h2>Organisation and branch isolation</h2><p>Tenant, branch, assignment, role, permission, and object-level authorisation limit each request to the records and actions the authenticated staff member may use.</p></article>
+<article><b>CTRL-03</b><h2>Document protection</h2><p>Context-bound uploads, file size and content validation, protected previews, private storage, and audit metadata preserve application evidence and restrict disclosure.</p></article>
+<article><b>CTRL-04</b><h2>Decision integrity</h2><p>Authority limits, maker-checker separation, immutable workflow events, append-only audit history, recorded reasons, and fixed application snapshots prevent silent decision changes.</p></article>
+<article><b>CTRL-05</b><h2>Configuration controls</h2><p>Separate administration, encrypted TOTP, short-lived step-up sessions, versioned drafts, different-person approval, immutable publication, and configuration diffs protect policy changes.</p></article>
+<article><b>CTRL-06</b><h2>Integration security</h2><p>Signed and replay-limited webhooks, idempotent events, scoped synchronisation, validated provider data, secret-gated jobs, and read-only imported financial records constrain third-party boundaries.</p></article>
+</section>
+<section class="assurance-note"><div><p class="eyebrow light"><span></span>Shared responsibility</p><h2>Technology supports the control environment.</h2></div><p>Authorised users must still protect credentials, verify evidence, follow policy, report suspected compromise, and use customer information only for assigned duties.</p></section>
+{% endblock %}

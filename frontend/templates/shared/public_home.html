@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FieldCRM | Field credit operations for Mainstreet Microfinance Bank</title>
-    <meta name="description" content="FieldCRM helps Mainstreet teams capture loan applications, verify documents, coordinate role-based reviews, and maintain a complete audit trail.">
+    <meta name="description" content="FieldCRM connects field intake, document verification, controlled approvals, and audit history for Mainstreet Microfinance Bank.">
     <meta name="theme-color" content="#2E0052">
     <link rel="canonical" href="{{ request.url_for('root_view') }}">
     <link rel="icon" href="/static/icons/favicon.svg?v=20260813" type="image/svg+xml">
@@ -12,69 +12,73 @@
     <link rel="shortcut icon" href="/static/icons/favicon.ico?v=20260813">
     <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png?v=20260813">
     <link rel="manifest" href="/static/site.webmanifest?v=20260813">
-    <meta property="og:type" content="website">
-    <meta property="og:site_name" content="FieldCRM">
+    <meta property="og:type" content="website"><meta property="og:site_name" content="FieldCRM">
     <meta property="og:title" content="FieldCRM | One accountable credit process">
-    <meta property="og:description" content="Capture applications, verify documents, coordinate approvals, and keep a complete audit trail.">
+    <meta property="og:description" content="Capture applications, verify evidence, coordinate approvals, and retain an accountable record.">
     <meta property="og:url" content="{{ request.url_for('root_view') }}">
     <meta property="og:image" content="{{ request.url_for('static', path='img/fieldcrm-social-preview.png') }}">
     <meta property="og:image:secure_url" content="{{ request.url_for('static', path='img/fieldcrm-social-preview.png') }}">
-    <meta property="og:image:type" content="image/png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="FieldCRM, a Mainstreet Microfinance Bank field credit operations platform">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="FieldCRM | One accountable credit process">
-    <meta name="twitter:description" content="Field credit operations from application to disbursement.">
+    <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="FieldCRM | One accountable credit process">
+    <meta name="twitter:description" content="Field credit operations from application to servicing.">
     <meta name="twitter:image" content="{{ request.url_for('static', path='img/fieldcrm-social-preview.png') }}">
-    <link rel="stylesheet" href="/static/css/home.css?v=20260812">
-    <link rel="stylesheet" href="/static/css/public-icons.css?v=20260812">
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/home.css?v=20260902-public-system-2">
+    <script defer src="/static/js/public-site.js?v=20260902-scroll-motion"></script>
 </head>
 <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
     <header class="site-header">
-        <a class="product-brand" href="/" aria-label="Mainstreet Microfinance Bank home">
-            <img src="/static/img/MMFB Logo Black.png" alt="Mainstreet Microfinance Bank">
-            <span>FieldCRM credit operations platform</span>
-        </a>
-        <nav aria-label="Public navigation">
-            <a href="/">Home</a><a href="#platform">Platform</a><a href="#workflow">Workflow</a><a href="#mobile-app">Mobile app</a><a href="#security">Security</a><a href="#help">Help</a>
-        </nav>
-        <div class="header-actions"><a class="button button-ghost" href="/login">Staff login</a><a class="button button-primary" href="#mobile-app">Download Android</a></div>
+        <a class="product-brand" href="/" aria-label="FieldCRM home"><img src="/static/img/MMFB Logo Black.png" alt="Mainstreet Microfinance Bank"><span>FieldCRM</span></a>
+        <nav aria-label="Public navigation"><a href="/">Home</a><a href="/platform">Platform</a><a href="/#workflow">Workflow</a><a href="/#mobile-app">Mobile</a><a href="/controls">Controls</a><a href="/#help">Help</a></nav>
+        <a class="button button-dark header-login" href="/login">Staff login <span aria-hidden="true">↗</span></a>
     </header>
 
     <main id="main-content">
         <section class="hero" id="platform">
             <div class="hero-copy">
-                <p class="eyebrow">Field credit operations</p>
-                <h1>One accountable process, from application to disbursement.</h1>
-                <p class="hero-intro">FieldCRM helps Mainstreet teams capture loan applications, verify documents, coordinate role-based reviews, and keep a complete audit trail.</p>
-                <div class="hero-actions"><a class="button button-primary" href="#mobile-app">Download Android</a><a class="text-link" href="/login">Staff login <span aria-hidden="true">-&gt;</span></a></div>
-                <p class="release-note">Version {{ release.version }} &middot; Android 8.0 and later{% if release.channel == 'preview' %} &middot; Testing build{% endif %}</p>
+                <p class="eyebrow"><span></span>Mainstreet credit operations</p>
+                <h1>One accountable process.<br><em>Every handoff visible.</em></h1>
+                <p class="hero-intro">FieldCRM connects field intake, evidence, review, approval, disbursement, and servicing in one role-aware workspace.</p>
+                <div class="hero-actions"><a class="button button-accent" href="/login">Enter staff workspace <span aria-hidden="true">→</span></a><a class="text-link" href="#workflow">See how work moves</a></div>
+                <dl class="hero-proof"><div><dt>Organisation scoped</dt><dd>Access follows role and branch</dd></div><div><dt>Evidence attached</dt><dd>Documents stay with the dossier</dd></div><div><dt>History retained</dt><dd>Decisions remain traceable</dd></div></dl>
             </div>
-            <div class="product-preview" aria-label="Example Relationship Officer dashboard">
-                <div class="preview-bar"><img src="/static/img/MMFB logo White.png" alt="Mainstreet Microfinance Bank"><strong>FIELDCRM</strong><span>Relationship Officer</span></div>
-                <div class="preview-greeting"><small>RELATIONSHIP OFFICER WORKSPACE</small><h2>Good morning.</h2><p>Your field activity at a glance</p></div>
-                <div class="preview-metrics"><article><strong>12</strong><span>Applications Today</span></article><article><strong>5</strong><span>Pending Sync</span></article><article><strong>8</strong><span>Visits Due</span></article><article><strong>3</strong><span>Missing Docs</span></article></div>
-                <div class="preview-tasks"><div><strong>Today's Tasks</strong><span>View all</span></div><article><b>Application intake</b><span>Capture</span></article><article><b>Document review</b><span>Verify</span></article><article><b>Approval follow-up</b><span>Review</span></article></div>
+
+            <div class="dossier-stage" aria-label="Illustration of an application dossier moving through FieldCRM">
+                <div class="dossier-grid" aria-hidden="true"></div>
+                <article class="dossier-card">
+                    <header><div><small>LIVE DOSSIER</small><strong>MSF-2026-0482</strong></div><span>Credit review</span></header>
+                    <div class="dossier-person"><span class="avatar">AO</span><div><small>APPLICANT</small><h2>Adeola Okafor</h2><p>Enterprise Growth Loan</p></div><strong>₦2.4m</strong></div>
+                    <div class="readiness"><div><span>File readiness</span><b>86%</b></div><i><span></span></i><p>Identity, visit, guarantor, and 6 of 7 required documents verified.</p></div>
+                    <ol class="handoff-list"><li class="done"><i>✓</i><div><b>Field intake completed</b><span>Relationship Officer · 09:42</span></div></li><li class="done"><i>✓</i><div><b>Branch concurrence</b><span>Team Lead · 11:18</span></div></li><li class="active"><i>03</i><div><b>Credit review in progress</b><span>Affordability and evidence review</span></div><em>Now</em></li><li><i>04</i><div><b>CRM dossier review</b><span>Waiting on prior stage</span></div></li></ol>
+                    <footer><span><i></i> Immutable workflow event recorded</span><b>Source: FieldCRM</b></footer>
+                </article>
             </div>
         </section>
 
-        <section class="capability-band" aria-label="Core capabilities"><div><i class="capability-icon icon-device" aria-hidden="true"></i><span>Offline field capture</span></div><div><i class="capability-icon icon-document" aria-hidden="true"></i><span>Secure document records</span></div><div><i class="capability-icon icon-approval" aria-hidden="true"></i><span>Role-based approvals</span></div><div><i class="capability-icon icon-audit" aria-hidden="true"></i><span>Audit history</span></div></section>
+        <section class="signal-strip" aria-label="Core capabilities"><div><span>01</span><b>Field-ready capture</b></div><div><span>02</span><b>Contextual documents</b></div><div><span>03</span><b>Controlled approvals</b></div><div><span>04</span><b>Append-only history</b></div></section>
 
         <section class="section workflow" id="workflow">
-            <p class="eyebrow">A controlled path</p><h2>Built around the credit workflow</h2>
-            <ol><li><b>Capture</b><span>Applications and documents</span></li><li><b>Verify</b><span>Identity and evidence</span></li><li><b>Review</b><span>Risk and customer information</span></li><li><b>Approve</b><span>Policy-based decisions</span></li><li><b>Disburse</b><span>Record the transaction</span></li><li><b>Monitor</b><span>Portfolio follow-up</span></li></ol>
+            <header class="section-heading"><div><p class="eyebrow"><span></span>One controlled path</p><h2>Work moves forward.<br>Context stays attached.</h2></div><p>Each role receives the dossier, evidence, and prior decisions needed for its part of the credit process.</p></header>
+            <ol class="workflow-rail"><li><span>01</span><div><b>Capture</b><p>Customer, application, visit, guarantor, collateral, and financial details.</p></div></li><li><span>02</span><div><b>Verify</b><p>Identity, documents, OCR quality, requirements, and exceptions.</p></div></li><li><span>03</span><div><b>Review</b><p>Branch concurrence, supervision, underwriting, and dossier checks.</p></div></li><li><span>04</span><div><b>Decide</b><p>Policy-aware authority, recorded reasons, and management approval.</p></div></li><li><span>05</span><div><b>Service</b><p>Disbursement context, repayments, portfolio position, and follow-up.</p></div></li></ol>
         </section>
 
-        <section class="section field-grid" id="security">
-            <article><p class="eyebrow">Field operations</p><h2>Work securely in the field</h2><ul><li>Encrypted session and document storage</li><li>Background synchronization</li><li>Camera document capture</li><li>Role-aware work queues and approvals</li></ul></article>
-            <article class="download-panel" id="mobile-app"><img src="/static/img/mainstreet-mark.png" alt="Mainstreet Microfinance Bank" width="64" height="64"><div><p class="eyebrow">Android application{% if release.channel == 'preview' %} &middot; Preview{% endif %}</p><h2>Get FieldCRM for Android</h2><dl><div><dt>Version</dt><dd>{{ release.version }}</dd></div><div><dt>Requires</dt><dd>Android 8.0+</dd></div>{% if release.released_at %}<div><dt>Released</dt><dd>{{ release.released_at }}</dd></div>{% endif %}</dl>{% if release.channel == 'preview' %}<p class="preview-warning">Testing build: signed with the Android debug certificate. Do not use as a production release.</p>{% endif %}{% if release.available %}<a class="button button-primary" href="/download/android">Download {% if release.channel == 'preview' %}Preview {% endif %}APK</a>{% else %}<span class="button button-disabled" aria-disabled="true">Android release coming soon</span>{% endif %}{% if release.sha256 %}<p class="checksum">SHA-256: <code>{{ release.sha256 }}</code></p>{% endif %}</div></article>
+        <section class="section operating-model" id="security">
+            <div class="model-copy"><p class="eyebrow light"><span></span>Designed for accountability</p><h2>A workspace shaped around responsibility.</h2><p>FieldCRM gives every desk a focused view while maintaining one connected record across the institution.</p><ul><li><b>Role-aware access</b><span>Work queues and actions reflect assigned responsibilities.</span></li><li><b>Tenant and branch boundaries</b><span>Operational data remains scoped to authorised staff.</span></li><li><b>Protected evidence</b><span>Document access, previews, and uploads stay contextual.</span></li><li><b>Recorded decisions</b><span>Workflow and audit events preserve who did what and when.</span></li></ul></div>
+            <div class="role-ledger" aria-label="FieldCRM role handoffs"><header><span>Operational ledger</span><span>Authorised desks</span></header><div><b>01</b><span>Relationship Officer</span><em>Intake</em></div><div><b>02</b><span>Team Lead &amp; Supervisor</span><em>Branch control</em></div><div><b>03</b><span>Credit Analyst</span><em>Underwriting</em></div><div><b>04</b><span>CRM &amp; Head CRM</span><em>Dossier review</em></div><div><b>05</b><span>ED / MD where required</span><em>Authority</em></div><div><b>06</b><span>Audit</span><em>Independent oversight</em></div></div>
         </section>
 
-        <section class="section faq" id="help"><p class="eyebrow">Help</p><h2>Frequently asked questions</h2><div class="faq-grid"><details><summary>Who can use FieldCRM?</summary><p>Authorized Mainstreet staff receive role-based access for field capture, review, approval, administration, and audit work.</p></details><details><summary>Can I work offline?</summary><p>The Android app can retain supported field data locally and synchronize it when connectivity returns. Server confirmation remains authoritative.</p></details><details><summary>How do I install the APK?</summary><p>Download the signed APK on an Android 8.0+ device, approve installation from this source when prompted, and open FieldCRM.</p></details><details><summary>Where can I get support?</summary><p>Contact your Mainstreet system administrator or internal technology support team.</p></details></div></section>
+        <section class="section mobile-section" id="mobile-app">
+            <div class="mobile-mark"><img src="/static/img/mainstreet-mark.png" alt="" width="72" height="72"><span>FIELD<br>CRM</span></div>
+            <div class="mobile-copy"><p class="eyebrow"><span></span>Android field companion{% if release.channel == 'preview' %} · Preview{% endif %}</p><h2>Carry the workflow into the field.</h2><p>Capture supported field information on Android and synchronise it with the server-managed dossier when connectivity returns.</p><dl><div><dt>Version</dt><dd>{{ release.version }}</dd></div><div><dt>Requires</dt><dd>Android 8.0+</dd></div>{% if release.released_at %}<div><dt>Released</dt><dd>{{ release.released_at }}</dd></div>{% endif %}</dl>{% if release.channel == 'preview' %}<p class="preview-warning">Testing build: signed with the Android debug certificate. Do not use as a production release.</p>{% endif %}</div>
+            <div class="mobile-action">{% if release.available %}<a class="button button-accent" href="/download/android">Download {% if release.channel == 'preview' %}Preview {% endif %}APK <span aria-hidden="true">↓</span></a>{% else %}<span class="button button-disabled" aria-disabled="true">Android release coming soon</span>{% endif %}<small>Server confirmation remains authoritative.</small>{% if release.sha256 %}<p class="checksum">SHA-256: <code>{{ release.sha256 }}</code></p>{% endif %}</div>
+        </section>
+
+        <section class="section faq" id="help"><div class="section-heading"><div><p class="eyebrow"><span></span>Useful answers</p><h2>Before you begin.</h2></div><p>FieldCRM is an internal operations platform for authorised Mainstreet staff.</p></div><div class="faq-list"><details><summary><span>Who can use FieldCRM?</span><b>+</b></summary><p>Authorised Mainstreet staff receive role-based access for field capture, review, approval, administration, and audit work.</p></details><details><summary><span>Can field teams work offline?</span><b>+</b></summary><p>The Android app can retain supported field data locally and synchronise when connectivity returns. Server confirmation remains authoritative.</p></details><details><summary><span>How is a decision traced?</span><b>+</b></summary><p>Workflow events, audit history, documents, reasons, and responsible actors remain connected to the application dossier.</p></details><details><summary><span>Where can staff get support?</span><b>+</b></summary><p>Contact your Mainstreet system administrator or internal technology support team.</p></details></div></section>
     </main>
 
-    <footer><div><img src="/static/img/MMFB logo White.png" alt="Mainstreet Microfinance Bank"><span>FieldCRM supports Mainstreet's field credit operations.</span></div><nav aria-label="Footer navigation"><a href="/terms">Terms &amp; Conditions</a><a href="#security">Security</a><a href="#help">Support</a><a href="/login">Staff login</a></nav></footer>
+    <footer class="site-footer"><img src="/static/img/MMFB logo White.png" alt="Mainstreet Microfinance Bank"><p>&copy; 2026 Mainstreet Microfinance Bank Limited. All rights reserved.</p><nav aria-label="Footer navigation"><a href="/">Home</a><a href="/platform">Platform</a><a href="/controls">Controls</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/login">Staff login</a></nav></footer>
 </body>
 </html>
