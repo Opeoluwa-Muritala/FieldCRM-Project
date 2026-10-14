@@ -1,3 +1,8 @@
+import shared.net
+import shared.clients
+import shared.http_session
+import shared.transport
+import shared.session
 import os
 import re
 import sys
